@@ -5,11 +5,12 @@ import { useState } from "react";
 import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, MessageSquareText, UploadCloud, Percent } from "lucide-react";
 import { useStore, fmtGs } from "@/lib/store";
 import { can, ROLE_LABEL } from "@/lib/rbac";
-import type { Role, User, Procedure, Patient } from "@/lib/types";
+import type { Role, User, Procedure } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
+import DentalinkImport from "@/components/DentalinkImport";
 
 export default function ConfigPage() {
-  const { db, session, upsertProcedure, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, importPatients } = useStore();
+  const { db, session, upsertProcedure, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser } = useStore();
   const [addingUser, setAddingUser] = useState(false);
   const [addingProc, setAddingProc] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -133,13 +134,17 @@ export default function ConfigPage() {
         )}
       </Card>
 
-      {/* Carga masiva */}
+      {/* Migración desde Dentalink / carga masiva */}
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2"><UploadCloud className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Carga masiva de pacientes</h2></div>
-          <Btn variant="outline" onClick={() => setImporting(true)}><UploadCloud className="h-4 w-4" /> Importar CSV</Btn>
+          <div className="flex items-center gap-2"><UploadCloud className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Migración desde Dentalink</h2></div>
+          <Btn onClick={() => setImporting(true)}><UploadCloud className="h-4 w-4" /> Iniciar migración</Btn>
         </div>
-        <p className="text-xs text-clinic-muted">Importá tu base actual con formato <code className="font-mono">nombre;apellido;ci;telefono;email</code> (una línea por paciente).</p>
+        <p className="text-xs leading-relaxed text-clinic-muted">
+          Traé toda tu base sin complicaciones: exportá <b>Reportes → Pacientes → Excel</b> en Dentalink, copiá y pegá (o subí el CSV) —
+          Novudent detecta las columnas solo, omite duplicados por CI y si hay columna de <b>deuda</b> la carga directo en Cuentas por cobrar.
+          Sirve también para cualquier otro software o planilla propia.
+        </p>
       </Card>
 
       {/* Servicios / aranceles */}
@@ -187,77 +192,8 @@ export default function ConfigPage() {
           onSave={(p) => { upsertProcedure(p); setOnboarding("servicesDefined", true); setAddingProc(false); }}
         />
       )}
-      {importing && (
-        <ImportPatients
-          clinicId={clinic.id}
-          existingDocs={db.patients.map((p) => p.document)}
-          onClose={() => setImporting(false)}
-          onImport={(list) => { importPatients(list); setImporting(false); }}
-        />
-      )}
+      {importing && <DentalinkImport onClose={() => setImporting(false)} />}
     </div>
-  );
-}
-
-/* ===== Carga masiva de pacientes (CSV) ===== */
-function ImportPatients({
-  clinicId, existingDocs, onClose, onImport,
-}: { clinicId: string; existingDocs: string[]; onClose: () => void; onImport: (list: Patient[]) => void }) {
-  const [text, setText] = useState("");
-  const sep = text.includes(";") ? ";" : ",";
-  const rows = text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => l.split(sep).map((c) => c.trim()))
-    .filter((c) => c[0] && c[1] && !/^nombre$/i.test(c[0]));
-  const dupes = rows.filter((c) => c[2] && existingDocs.includes(c[2])).length;
-  const valid = rows.filter((c) => !c[2] || !existingDocs.includes(c[2]));
-
-  return (
-    <Modal title="Importar pacientes (CSV)" onClose={onClose} wide>
-      <div className="space-y-3">
-        <p className="rounded-xl bg-azure-50 p-3 text-xs leading-relaxed text-azure-700">
-          Pegá el contenido del CSV — una línea por paciente: <code className="font-mono">nombre;apellido;ci;telefono;email</code>.
-          También podés copiar columnas directamente desde Excel.
-        </p>
-        <textarea
-          rows={8}
-          className={inputCls + " font-mono text-xs"}
-          placeholder={"María;González;3.456.789;+595 981 111 111;maria@mail.com\nJuan;Pérez;4.111.222;+595 982 333 444;"}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <div className="flex items-center justify-between text-xs text-clinic-muted">
-          <span>
-            {rows.length} fila{rows.length !== 1 && "s"} detectada{rows.length !== 1 && "s"}
-            {dupes > 0 && <span className="text-state-warn"> · {dupes} duplicada{dupes > 1 && "s"} por CI (se omiten)</span>}
-          </span>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
-          <Btn
-            disabled={valid.length === 0}
-            onClick={() => {
-              const now = Date.now();
-              onImport(
-                valid.map((c, i) => ({
-                  id: `p_${now}_${i}`,
-                  clinicId,
-                  firstName: c[0], lastName: c[1],
-                  document: c[2] || `s/d-${now}-${i}`,
-                  phone: c[3] || "",
-                  email: c[4] || undefined,
-                  forms: [], historyUpdatePending: false, emr: [],
-                }))
-              );
-            }}
-          >
-            Importar {valid.length > 0 && `${valid.length} paciente${valid.length > 1 ? "s" : ""}`}
-          </Btn>
-        </div>
-      </div>
-    </Modal>
   );
 }
 
