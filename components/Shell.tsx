@@ -196,14 +196,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <div className="ml-auto flex items-center gap-2">
               {/* estado backend */}
               <span
-                data-tip={backend === "firebase" ? "Datos sincronizados con Firestore" : "Firestore no disponible — datos locales del navegador"}
+                data-tip={backend === "firebase" ? "Todos tus datos se guardan en la nube de forma segura" : "Sin conexión — los datos se guardan solo en este navegador"}
                 data-tip-pos="down"
                 className={`hidden items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wide sm:inline-flex ${
                   backend === "firebase" ? "bg-state-okbg text-state-ok" : "bg-state-warnbg text-state-warn"
                 }`}
               >
                 <span className={`h-1.5 w-1.5 rounded-full ${backend === "firebase" ? "bg-state-ok" : "bg-state-warn"}`} />
-                {backend === "firebase" ? "Firebase" : "Local"}
+                {backend === "firebase" ? "En línea" : "Sin conexión"}
               </span>
               {/* campana */}
               <a
