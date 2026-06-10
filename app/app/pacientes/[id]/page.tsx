@@ -15,10 +15,12 @@ type Tab = "resumen" | "odontograma" | "historial" | "formularios" | "facturacio
 
 export default function PatientProfile() {
   const { id } = useParams<{ id: string }>();
-  const { db, session, completeForm, addEmrNote, setTooth } = useStore();
+  const { db, session, completeForm, addEmrNote, setTooth, markHistoryUpdate } = useStore();
   const [tab, setTab] = useState<Tab>("resumen");
   const [fillingForm, setFillingForm] = useState<PatientForm | null>(null);
   const [writingNote, setWritingNote] = useState(false);
+  const [clipOpen, setClipOpen] = useState(false);
+  const [clipDate, setClipDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const p = db.patients.find((x) => x.id === id);
   const appts = useMemo(() => db.appointments.filter((a) => a.patientId === id).sort((a, b) => b.start.localeCompare(a.start)), [db.appointments, id]);
@@ -59,11 +61,20 @@ export default function PatientProfile() {
                 <FileText className="h-4.5 w-4.5 h-5 w-5 text-state-warn" />
               </button>
             )}
-            {p.historyUpdatePending && (
-              <span data-tip="Actualización de historial médico pendiente" className="grid h-9 w-9 place-items-center rounded-xl bg-state-infobg">
-                <ClipboardList className="h-5 w-5 text-state-info" />
-              </span>
-            )}
+            {p.historyUpdatePending &&
+              (canForms ? (
+                <button
+                  onClick={() => setClipOpen(true)}
+                  data-tip="Actualización de historial pendiente — clic para marcarla como recibida"
+                  className="grid h-9 w-9 place-items-center rounded-xl bg-state-infobg transition-transform hover:scale-105"
+                >
+                  <ClipboardList className="h-5 w-5 text-state-info" />
+                </button>
+              ) : (
+                <span data-tip="Actualización de historial médico pendiente" className="grid h-9 w-9 place-items-center rounded-xl bg-state-infobg">
+                  <ClipboardList className="h-5 w-5 text-state-info" />
+                </span>
+              ))}
             <a href="/app/agenda"><Btn variant="outline"><CalendarDays className="h-4 w-4" /> Ver agenda</Btn></a>
           </div>
         </div>
@@ -236,6 +247,32 @@ export default function PatientProfile() {
           onClose={() => setFillingForm(null)}
           onSave={(fields, date) => { completeForm(p.id, fillingForm.id, fields, date); setFillingForm(null); }}
         />
+      )}
+
+      {/* Modal: flujo clipboard — actualización de historial recibida */}
+      {clipOpen && (
+        <Modal title="Actualización de historial médico" onClose={() => setClipOpen(false)}>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              markHistoryUpdate(p.id, clipDate);
+              setClipOpen(false);
+            }}
+          >
+            <p className="rounded-xl bg-state-infobg p-3 text-sm leading-relaxed text-state-info">
+              Registrá la <b>fecha de envío</b> de la actualización del historial médico del paciente.
+              Al guardar, el ícono de pendiente desaparece del Buscador de Pacientes.
+            </p>
+            <Field label="Fecha de envío">
+              <input type="date" required className={inputCls} value={clipDate} onChange={(e) => setClipDate(e.target.value)} />
+            </Field>
+            <div className="flex justify-end gap-2">
+              <Btn variant="outline" onClick={() => setClipOpen(false)}>Cancelar</Btn>
+              <Btn type="submit">Marcar como recibida</Btn>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Modal: nueva nota EMR */}

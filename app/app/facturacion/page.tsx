@@ -1,7 +1,7 @@
 "use client";
 /** Módulo de Facturación (sec. 3.3): flags de estado, transiciones y validación de códigos. */
 import { useMemo, useState } from "react";
-import { Send, Unlock, Plus, AlertTriangle, History, Banknote, Lock } from "lucide-react";
+import { Send, Unlock, Plus, AlertTriangle, History, Banknote, Lock, Flag } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { validatePairings, canSubmit, canRelease, CPT_DX, CPT_POS, CPT_MOD } from "@/lib/billing";
@@ -11,13 +11,15 @@ import { Card, Btn, Modal, Field, inputCls, Badge, FlagBadge, Empty } from "@/co
 type Filter = "todos" | "sin-enviar" | "en-retencion" | "facturado";
 
 export default function BillingPage() {
-  const { db, session, submitBilling, releaseBilling, toggleAch, upsertBilling } = useStore();
+  const { db, session, submitBilling, releaseBilling, toggleAch, toggleFollowUp, upsertBilling } = useStore();
   const [filter, setFilter] = useState<Filter>("todos");
   const [creating, setCreating] = useState(false);
   const [historyFor, setHistoryFor] = useState<BillingRecord | null>(null);
 
   if (!session) return null;
+  /* Matriz v2: Enviar a Cobro / pagos = admin+asistente · Finalizar (Release) = admin+dentista */
   const allowed = can(session.role, "billing.submit");
+  const canFinalize = can(session.role, "billing.finalize");
 
   const list = useMemo(() => {
     return db.billing.filter((b) => {
@@ -46,6 +48,10 @@ export default function BillingPage() {
         </div>
         {allowed ? (
           <Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Nuevo registro</Btn>
+        ) : canFinalize ? (
+          <Badge tone="info" tip="Como dentista podés finalizar facturas (Release from Hold), pero no enviar a cobro">
+            <Unlock className="mr-1 inline h-3 w-3" /> Rol: finalización de facturas
+          </Badge>
         ) : (
           <Badge tone="muted" tip="Permiso de Administrador/Asistente"><Lock className="mr-1 inline h-3 w-3" /> Solo lectura para tu rol</Badge>
         )}
@@ -105,15 +111,20 @@ export default function BillingPage() {
                         <Send className="h-3.5 w-3.5" /> Enviar a cobro
                       </Btn>
                     )}
-                    {allowed && canRelease(b) && (
-                      <Btn variant="outline" onClick={() => releaseBilling(b.id)} tip="Libera la retención y completa el proceso (FACTURADO)">
+                    {canFinalize && canRelease(b) && (
+                      <Btn variant="outline" onClick={() => releaseBilling(b.id)} tip="Finalizar factura: libera la retención y completa el proceso (FACTURADO)">
                         <Unlock className="h-3.5 w-3.5" /> Release from Hold
                       </Btn>
                     )}
                     {allowed && b.flags.includes("FACTURADO") && (
-                      <Btn variant="outline" onClick={() => toggleAch(b.id)} tip={b.flags.includes("ACH") ? "Desactivar pago automático" : "Activar pago automático (ACH)"}>
-                        <Banknote className="h-3.5 w-3.5" /> {b.flags.includes("ACH") ? "ACH activo" : "Activar ACH"}
-                      </Btn>
+                      <>
+                        <Btn variant="outline" onClick={() => toggleFollowUp(b.id)} tip={b.flags.includes("SEGUIMIENTO") ? "Marcar seguimiento como completado" : "Marcar para seguimiento de pago (SEGUIMIENTO)"}>
+                          <Flag className="h-3.5 w-3.5" /> {b.flags.includes("SEGUIMIENTO") ? "Seguimiento listo" : "Seguimiento"}
+                        </Btn>
+                        <Btn variant="outline" onClick={() => toggleAch(b.id)} tip={b.flags.includes("ACH") ? "Desactivar pago automático" : "Activar pago automático (ACH)"}>
+                          <Banknote className="h-3.5 w-3.5" /> {b.flags.includes("ACH") ? "ACH activo" : "Activar ACH"}
+                        </Btn>
+                      </>
                     )}
                   </div>
                 </div>

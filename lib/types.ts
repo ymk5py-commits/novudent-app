@@ -25,7 +25,7 @@ export interface User {
   authUid?: string;
 }
 
-export type AppointmentStatus = "confirmada" | "pendiente" | "cancelada";
+export type AppointmentStatus = "confirmada" | "pendiente" | "completada" | "cancelada";
 
 export interface Appointment {
   id: string;
@@ -95,6 +95,8 @@ export interface Patient {
   /* Flags de engagement (íconos del Patient Finder) */
   forms: PatientForm[];
   historyUpdatePending: boolean;
+  /** fecha de envío registrada al marcar la actualización de historial como recibida (flujo clipboard) */
+  historyUpdateDate?: string;
   emr: EmrNote[];
   /* Odontograma: pieza FDI -> estado (ausencia de entrada = pieza sana) */
   odontogram?: Record<string, ToothRecord>;
@@ -107,6 +109,7 @@ export type BillingFlag =
   | "HOLD"
   | "MGRHOLD"
   | "FACTURADO"
+  | "SEGUIMIENTO"
   | "ACH";
 
 export type ClaimType = "electronic" | "manual";

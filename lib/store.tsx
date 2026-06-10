@@ -99,11 +99,14 @@ interface Ctx {
   upsertPatient: (p: Patient) => void;
   completeForm: (patientId: string, formId: string, fields: { label: string; value: string }[], completedAt: string) => void;
   addEmrNote: (patientId: string, note: EmrNote) => void;
+  /** Flujo clipboard: marca la actualización de historial médico como recibida con fecha de envío */
+  markHistoryUpdate: (patientId: string, date: string) => void;
   setTooth: (patientId: string, tooth: string, rec: ToothRecord | null) => void;
   upsertBilling: (b: BillingRecord) => void;
   submitBilling: (id: string) => void;
   releaseBilling: (id: string) => void;
   toggleAch: (id: string) => void;
+  toggleFollowUp: (id: string) => void;
   upsertUser: (u: User) => void;
   upsertProcedure: (p: Procedure) => void;
   setOnboarding: (k: keyof DB["onboarding"], v: boolean) => void;
@@ -242,6 +245,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           return { ...p, forms, historyUpdatePending: stillPending ? p.historyUpdatePending : false };
         }),
       addEmrNote: (patientId, note) => patchPatient(patientId, (p) => ({ ...p, emr: [note, ...p.emr] })),
+      markHistoryUpdate: (patientId, date) =>
+        patchPatient(patientId, (p) => ({ ...p, historyUpdatePending: false, historyUpdateDate: date })),
       setTooth: (patientId, tooth, rec) =>
         patchPatient(patientId, (p) => {
           const od = { ...(p.odontogram ?? {}) };
@@ -261,6 +266,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             ...b,
             flags: has ? b.flags.filter((f) => f !== "ACH") : [...b.flags, "ACH"],
             history: [...b.history, { at: new Date().toISOString(), action: has ? "Pago automático desactivado (ACH)" : "Pago automático activado (ACH)", by }],
+          };
+        }),
+      toggleFollowUp: (id) =>
+        patchBilling(id, (b) => {
+          const has = b.flags.includes("SEGUIMIENTO");
+          return {
+            ...b,
+            flags: has ? b.flags.filter((f) => f !== "SEGUIMIENTO") : [...b.flags, "SEGUIMIENTO"],
+            history: [...b.history, { at: new Date().toISOString(), action: has ? "Seguimiento completado (quita SEGUIMIENTO)" : "Marcado para seguimiento de pago (SEGUIMIENTO)", by }],
           };
         }),
       upsertUser: (u) => {

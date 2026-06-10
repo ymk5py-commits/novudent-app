@@ -9,7 +9,9 @@ export type Permission =
   | "agenda.edit"
   | "emr.read"
   | "emr.write"
-  | "billing.submit"
+  | "billing.submit" // Enviar a Cobro / gestionar pagos y seguimiento
+  | "billing.finalize" // Finalizar facturas (Release from Hold)
+  | "billing.reports" // Ver reportes financieros
   | "engagement.forms";
 
 const MATRIX: Record<Permission, Role[]> = {
@@ -21,6 +23,8 @@ const MATRIX: Record<Permission, Role[]> = {
   "emr.read": ["admin", "dentist", "assistant"], // asistente: solo lectura
   "emr.write": ["admin", "dentist"],
   "billing.submit": ["admin", "assistant"], // dentista: denegado
+  "billing.finalize": ["admin", "dentist"], // asistente: denegado (matriz v2)
+  "billing.reports": ["admin", "assistant"], // dentista: denegado (matriz v2)
   "engagement.forms": ["admin", "assistant"], // dentista: denegado
 };
 

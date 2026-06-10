@@ -71,14 +71,15 @@ function RevenueBars({ data }: { data: { d: string; v: number }[] }) {
 }
 
 /* ---- donut de estados ---- */
-function StatusDonut({ ok, warn, err }: { ok: number; warn: number; err: number }) {
-  const total = Math.max(ok + warn + err, 1);
+function StatusDonut({ ok, warn, done, err }: { ok: number; warn: number; done: number; err: number }) {
+  const total = Math.max(ok + warn + done + err, 1);
   const C = 2 * Math.PI * 42;
   const seg = (n: number) => (n / total) * C;
   let offset = 0;
   const parts = [
     { v: ok, color: "#0E9F6E", label: "Confirmadas" },
     { v: warn, color: "#D97706", label: "Pendientes" },
+    { v: done, color: "#1769E0", label: "Completadas" },
     { v: err, color: "#DC2626", label: "Canceladas" },
   ];
   return (
@@ -102,11 +103,11 @@ function StatusDonut({ ok, warn, err }: { ok: number; warn: number; err: number 
           return el;
         })}
         <g className="rotate-90" style={{ transformOrigin: "50px 50px" }}>
-          <text x="50" y="47" textAnchor="middle" className="fill-clinic-text" fontSize="20" fontWeight="800">{ok + warn + err}</text>
+          <text x="50" y="47" textAnchor="middle" className="fill-clinic-text" fontSize="20" fontWeight="800">{ok + warn + done + err}</text>
           <text x="50" y="61" textAnchor="middle" className="fill-clinic-muted" fontSize="7.5" fontWeight="700">CITAS · SEMANA</text>
         </g>
       </svg>
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {parts.map((p) => (
           <div key={p.label} className="flex items-center gap-2.5 text-sm">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />
@@ -150,8 +151,11 @@ export default function Dashboard() {
   const statusCount = {
     ok: week.filter((a) => a.status === "confirmada").length,
     warn: week.filter((a) => a.status === "pendiente").length,
+    done: week.filter((a) => a.status === "completada").length,
     err: week.filter((a) => a.status === "cancelada").length,
   };
+  /* Matriz v2: el dentista no ve reportes financieros */
+  const canReports = can(session.role, "billing.reports");
 
   const checklist = [
     { key: "usersCreated" as const, label: "Crear usuarios del equipo", done: db.onboarding.usersCreated, href: "/app/configuracion" },
@@ -177,8 +181,8 @@ export default function Dashboard() {
           <h1 className="mt-2 font-logo text-3xl sm:text-4xl">Hola, {session.name.split(" ")[0]}</h1>
           <p className="mt-1.5 max-w-md text-sm text-white/65">
             {todays.length > 0
-              ? <>Tenés <b className="text-white">{todays.length} cita{todays.length > 1 ? "s" : ""}</b> hoy · facturación semanal <b className="text-white">{fmtGs(weekRevenue)}</b>.</>
-              : <>Sin citas para hoy · facturación semanal <b className="text-white">{fmtGs(weekRevenue)}</b>.</>}
+              ? <>Tenés <b className="text-white">{todays.length} cita{todays.length > 1 ? "s" : ""}</b> hoy{canReports && <> · producción semanal <b className="text-white">{fmtGs(weekRevenue)}</b></>}.</>
+              : <>Sin citas para hoy{canReports && <> · producción semanal <b className="text-white">{fmtGs(weekRevenue)}</b></>}.</>}
           </p>
           <div className="mt-5 flex flex-wrap gap-2.5">
             <a href="/app/agenda" className="btn-shine inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-navy-800 transition-all hover:-translate-y-0.5">
@@ -199,18 +203,31 @@ export default function Dashboard() {
         <SpikeStat label="Reclamos en retención" value={onHold} icon={PauseCircle} tone={onHold > 0 ? "red" : "green"} href="/app/facturacion" />
       </div>
 
-      {/* ===== Gráficos ===== */}
+      {/* ===== Gráficos (reportes financieros: solo admin/asistente — matriz v2) ===== */}
       <div className="grid gap-5 lg:grid-cols-5">
-        <Card className="p-6 lg:col-span-3">
-          <div className="mb-5 flex items-start justify-between">
-            <div>
-              <h2 className="font-extrabold text-clinic-text">Producción de la semana</h2>
-              <p className="text-xs text-clinic-muted">Total: <b className="text-clinic-text">{fmtGs(weekRevenue)}</b> · citas no canceladas</p>
+        {canReports ? (
+          <Card className="p-6 lg:col-span-3">
+            <div className="mb-5 flex items-start justify-between">
+              <div>
+                <h2 className="font-extrabold text-clinic-text">Producción de la semana</h2>
+                <p className="text-xs text-clinic-muted">Total: <b className="text-clinic-text">{fmtGs(weekRevenue)}</b> · citas no canceladas</p>
+              </div>
+              <span className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-clinic-bg"><MoreHorizontal className="h-4 w-4" /></span>
             </div>
-            <span className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-clinic-bg"><MoreHorizontal className="h-4 w-4" /></span>
-          </div>
-          <RevenueBars data={revenue} />
-        </Card>
+            <RevenueBars data={revenue} />
+          </Card>
+        ) : (
+          <Card className="p-6 lg:col-span-3">
+            <h2 className="font-extrabold text-clinic-text">Mi semana clínica</h2>
+            <p className="mt-0.5 text-xs text-clinic-muted">Citas por día (los reportes financieros son del área administrativa)</p>
+            <div className="mt-5">
+              <RevenueBars data={DAYS.map((d, i) => {
+                const day = new Date(mon); day.setDate(mon.getDate() + i);
+                return { d, v: week.filter((a) => new Date(a.start).toDateString() === day.toDateString() && a.status !== "cancelada").length };
+              })} />
+            </div>
+          </Card>
+        )}
         <Card className="p-6 lg:col-span-2">
           <div className="mb-4 flex items-start justify-between">
             <div>

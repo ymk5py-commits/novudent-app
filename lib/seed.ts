@@ -81,7 +81,7 @@ const patients: Patient[] = [
 const appointments: Appointment[] = [
   { id: "a1", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", title: "Resina pieza 16", start: at(0, 9), end: at(0, 10), status: "confirmada", amount: 420000, discount: 0 },
   { id: "a2", clinicId: CLINIC_ID, patientId: "p2", dentistId: "u2", title: "Primera consulta", start: at(0, 11), end: at(0, 11, 40), status: "pendiente", amount: 150000, discount: 0 },
-  { id: "a3", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", title: "Profilaxis", start: at(1, 10), end: at(1, 10, 45), status: "confirmada", amount: 250000, discount: 25000 },
+  { id: "a3", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", title: "Profilaxis", start: at(1, 10), end: at(1, 10, 45), status: "completada", amount: 250000, discount: 25000 },
   { id: "a4", clinicId: CLINIC_ID, patientId: "p4", dentistId: "u2", title: "Exodoncia 28", start: at(2, 9, 30), end: at(2, 10, 30), status: "confirmada", amount: 600000, discount: 0 },
   { id: "a5", clinicId: CLINIC_ID, patientId: "p5", dentistId: "u2", title: "Control + limpieza", start: at(2, 15), end: at(2, 16), status: "pendiente", amount: 250000, discount: 0 },
   { id: "a6", clinicId: CLINIC_ID, patientId: "p6", dentistId: "u2", title: "Control ortodoncia", start: at(3, 17), end: at(3, 17, 30), status: "confirmada", amount: 350000, discount: 0 },

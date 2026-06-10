@@ -126,5 +126,6 @@ export const FLAG_INFO: Record<BillingFlag, { label: string; desc: string; tone:
   HOLD: { label: "HOLD", desc: "Retención automática (reclamo electrónico)", tone: "hold" },
   MGRHOLD: { label: "MGRHOLD", desc: "Retención manual — requiere revisión humana", tone: "warn" },
   FACTURADO: { label: "FACTURADO", desc: "Proceso completado", tone: "ok" },
+  SEGUIMIENTO: { label: "SEGUIMIENTO", desc: "Facturado — requiere seguimiento de pago", tone: "info" },
   ACH: { label: "ACH", desc: "Pago automático activo", tone: "ok" },
 };

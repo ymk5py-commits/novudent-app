@@ -24,6 +24,7 @@ const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const STATUS_BG: Record<AppointmentStatus, string> = {
   confirmada: "bg-state-okbg border-state-ok/30 text-state-ok",
   pendiente: "bg-state-warnbg border-state-warn/30 text-state-warn",
+  completada: "bg-state-infobg border-azure-300/40 text-azure-700",
   cancelada: "bg-state-errbg border-state-err/30 text-state-err line-through",
 };
 
@@ -291,6 +292,7 @@ export default function AgendaPage() {
 function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () => void; onSave: (a: Appointment) => void }) {
   const { db } = useStore();
   const [form, setForm] = useState(appt);
+  const [conflict, setConflict] = useState<string | null>(null);
   const isNew = !db.appointments.some((x) => x.id === appt.id);
 
   const toLocal = (iso: string) => {
@@ -299,11 +301,36 @@ function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () =>
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
+  /** Validación de negocio: el dentista no puede tener dos citas solapadas. */
+  function findConflict(a: Appointment): string | null {
+    const s = new Date(a.start).getTime();
+    const e = new Date(a.end).getTime();
+    if (e <= s) return "La hora de fin debe ser posterior a la de inicio.";
+    const clash = db.appointments.find(
+      (x) =>
+        x.id !== a.id &&
+        x.dentistId === a.dentistId &&
+        x.status !== "cancelada" &&
+        new Date(x.start).getTime() < e &&
+        new Date(x.end).getTime() > s
+    );
+    if (clash) {
+      const p = db.patients.find((y) => y.id === clash.patientId);
+      return `El dentista ya tiene una cita en ese horario: "${clash.title}"${p ? ` con ${fullName(p)}` : ""} (${fmtTime(clash.start)}–${fmtTime(clash.end)}).`;
+    }
+    return null;
+  }
+
   return (
     <Modal title={isNew ? "Nueva cita" : "Editar cita"} onClose={onClose}>
       <form
         className="space-y-4"
-        onSubmit={(e) => { e.preventDefault(); onSave(form); }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          const c = findConflict(form);
+          setConflict(c);
+          if (!c) onSave(form);
+        }}
       >
         <Field label="Título"><input required className={inputCls} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej.: Profilaxis" /></Field>
         <div className="grid grid-cols-2 gap-3">
@@ -327,6 +354,7 @@ function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () =>
             <select className={inputCls} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as AppointmentStatus })}>
               <option value="pendiente">Pendiente</option>
               <option value="confirmada">Confirmada</option>
+              <option value="completada">Completada</option>
               <option value="cancelada">Cancelada</option>
             </select>
           </Field>
@@ -334,6 +362,11 @@ function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () =>
           <Field label="Descuento (Gs)"><input type="number" min={0} className={inputCls} value={form.discount} onChange={(e) => setForm({ ...form, discount: +e.target.value })} /></Field>
         </div>
         <Field label="Notas"><textarea className={inputCls} rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
+        {conflict && (
+          <p role="alert" className="rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-state-err">
+            ⚠ {conflict}
+          </p>
+        )}
         <div className="flex items-center justify-between pt-1">
           <span className="text-xs text-clinic-muted">Total a cobrar: <b className="font-mono text-clinic-text">{fmtGs(form.amount - form.discount)}</b></span>
           <div className="flex gap-2">
