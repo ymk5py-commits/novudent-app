@@ -32,9 +32,9 @@ const patients: Patient[] = [
       { id: "n2", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-7, 10, 30), kind: "plan", text: "Plan: resina compuesta en 16. Control de placa. Profilaxis en próxima visita." },
     ],
     odontogram: {
-      "16": { condition: "caries", note: "Oclusal, sensibilidad al frío", updatedAt: at(-7, 10), updatedBy: "Dra. Sofía Benítez" },
-      "24": { condition: "caries", note: "Interproximal mesial", updatedAt: at(-7, 10), updatedBy: "Dra. Sofía Benítez" },
-      "11": { condition: "restaurado", note: "Resina 2024", updatedAt: at(-30, 9), updatedBy: "Dra. Sofía Benítez" },
+      "16": { condition: "caries", surfaces: ["O"], note: "Oclusal, sensibilidad al frío", updatedAt: at(-7, 10), updatedBy: "Dra. Sofía Benítez" },
+      "24": { condition: "caries", surfaces: ["M"], note: "Interproximal mesial", updatedAt: at(-7, 10), updatedBy: "Dra. Sofía Benítez" },
+      "11": { condition: "restaurado", surfaces: ["V"], note: "Resina 2024", updatedAt: at(-30, 9), updatedBy: "Dra. Sofía Benítez" },
       "26": { condition: "corona", note: "Corona cerámica", updatedAt: at(-60, 9), updatedBy: "Dra. Sofía Benítez" },
       "28": { condition: "ausente", updatedAt: at(-90, 9), updatedBy: "Dra. Sofía Benítez" },
     },

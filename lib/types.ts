@@ -61,8 +61,13 @@ export type ToothCondition =
   | "ausente"
   | "implante";
 
+/** Superficies dentales: Mesial, Distal, Vestibular, Lingual/Palatina, Oclusal/Incisal */
+export type ToothSurface = "M" | "D" | "V" | "L" | "O";
+
 export interface ToothRecord {
   condition: ToothCondition;
+  /** superficies afectadas (aplica a caries y restauraciones) */
+  surfaces?: ToothSurface[];
   note?: string;
   updatedAt: string;
   updatedBy: string;
