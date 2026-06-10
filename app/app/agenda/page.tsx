@@ -95,7 +95,7 @@ export default function AgendaPage() {
             Semana del {weekStart.toLocaleDateString("es-PY", { day: "numeric", month: "long" })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex overflow-hidden rounded-xl border border-clinic-border bg-white">
             <button onClick={() => setWeekStart(addDays(weekStart, -7))} className="px-2.5 py-2 hover:bg-clinic-bg" aria-label="Semana anterior">
               <ChevronLeft className="h-4 w-4" />
@@ -209,7 +209,8 @@ export default function AgendaPage() {
           {weekAppointments.length === 0 ? (
             <Empty title="Sin citas esta semana" desc="Creá una desde el botón Nueva cita o haciendo clic en el calendario." />
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
                   <th className="px-4 py-3">Título</th>
@@ -258,6 +259,7 @@ export default function AgendaPage() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </Card>
       )}

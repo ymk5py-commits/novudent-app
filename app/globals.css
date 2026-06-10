@@ -105,6 +105,23 @@ html, body {
   pointer-events: none;
 }
 
+/* Variantes de posición — para elementos pegados a un borde donde el
+   default (arriba, centrado) se corta fuera de la pantalla:
+     data-tip-pos="down"      → debajo, centrado (topbar)
+     data-tip-pos="down-left" → debajo, alineado al borde derecho del
+                                elemento (esquina sup. derecha: campana) */
+[data-tip][data-tip-pos="down"]:hover::after {
+  bottom: auto;
+  top: calc(100% + 8px);
+}
+[data-tip][data-tip-pos="down-left"]:hover::after {
+  bottom: auto;
+  top: calc(100% + 8px);
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
 /* ===== Impresión: solo el área imprimible (presupuestos, recetas) ===== */
 @media print {
   body * { visibility: hidden; }

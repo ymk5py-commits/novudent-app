@@ -99,7 +99,8 @@ export default function SubscriptionPage() {
           <h2 className="font-extrabold text-clinic-text">Historial de facturas</h2>
           <Badge tone="muted">Datos de ejemplo</Badge>
         </div>
-        <table className="mt-3 w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="mt-3 w-full min-w-[560px] text-sm">
           <thead>
             <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
               <th className="px-6 py-3">Factura</th>
@@ -123,6 +124,7 @@ export default function SubscriptionPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   );

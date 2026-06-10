@@ -210,7 +210,8 @@ function BudgetDetail({ budget: b, onClose }: { budget: Budget; onClose: () => v
           {b.convenio && <div><span className="text-clinic-muted">Convenio:</span> <b>{b.convenio}</b> ({b.discountPct}% desc.)</div>}
         </div>
 
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
               <th className="py-2">Procedimiento</th>
@@ -248,6 +249,7 @@ function BudgetDetail({ budget: b, onClose }: { budget: Budget; onClose: () => v
             ))}
           </tbody>
         </table>
+        </div>
 
         <div className="space-y-1 rounded-xl border border-clinic-border p-4 text-sm">
           <div className="flex justify-between text-clinic-muted"><span>Subtotal</span><span className="font-mono">{fmtGs(budgetSubtotal(b))}</span></div>

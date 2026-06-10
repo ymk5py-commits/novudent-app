@@ -156,7 +156,8 @@ export default function ConfigPage() {
         {db.procedures.length === 0 ? (
           <Empty title="Sin servicios" />
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
                 <th className="py-2 pr-3">Código</th><th className="py-2 pr-3">Descripción</th><th className="py-2 text-right">Arancel</th>
@@ -172,6 +173,7 @@ export default function ConfigPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
 

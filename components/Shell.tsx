@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, LayoutDashboard, Bell, CreditCard,
-  FileSpreadsheet, Wallet, Package, BarChart3, Bot,
+  FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X,
 } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
@@ -39,6 +39,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [q, setQ] = useState("");
+  // Drawer móvil: la sidebar fija de 232px no entra en pantallas chicas.
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => { setNavOpen(false); }, [pathname]);
 
   useEffect(() => {
     if (ready && !session) router.replace("/login");
@@ -80,8 +83,21 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-clinic-bg">
-      {/* ===== Sidebar blanca (Spike) ===== */}
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-[232px] flex-col border-r border-clinic-border bg-white">
+      {/* Overlay del drawer móvil */}
+      {navOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={() => setNavOpen(false)}
+          role="presentation"
+        />
+      )}
+
+      {/* ===== Sidebar blanca (Spike) — drawer en móvil ===== */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-[232px] flex-col border-r border-clinic-border bg-white transition-transform duration-200 md:z-40 md:translate-x-0 ${
+          navOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        }`}
+      >
         <div className="px-5 pb-2 pt-6">
           <a href="/app" className="flex items-baseline gap-2">
             <span className="font-logo text-xl tracking-[0.16em] text-navy-800">NOVUdent</span>
@@ -141,11 +157,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* ===== Área principal ===== */}
-      <div className="ml-[232px] flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:ml-[232px]">
         <header className="sticky top-0 z-30 border-b border-clinic-border bg-white/85 backdrop-blur">
-          <div className="relative mx-auto flex h-16 max-w-6xl items-center gap-3 px-6">
+          <div className="relative mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
+            {/* Hamburguesa — abre el drawer en móvil */}
+            <button
+              onClick={() => setNavOpen(true)}
+              aria-label="Abrir menú"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-clinic-border bg-white text-clinic-muted md:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
             {/* Patient Finder */}
-            <div className="relative w-full max-w-md">
+            <div className="relative min-w-0 w-full max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
               <input
                 value={q}
@@ -173,6 +197,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               {/* estado backend */}
               <span
                 data-tip={backend === "firebase" ? "Datos sincronizados con Firestore" : "Firestore no disponible — datos locales del navegador"}
+                data-tip-pos="down"
                 className={`hidden items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wide sm:inline-flex ${
                   backend === "firebase" ? "bg-state-okbg text-state-ok" : "bg-state-warnbg text-state-warn"
                 }`}
@@ -184,6 +209,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <a
                 href={pendings > 0 ? "/app/pacientes" : "#"}
                 data-tip={pendings > 0 ? `${pendings} pendiente(s): formularios y retenciones` : "Sin pendientes"}
+                data-tip-pos="down-left"
                 className="relative grid h-10 w-10 place-items-center rounded-xl border border-clinic-border bg-white text-clinic-muted transition-colors hover:text-azure-600"
                 aria-label="Notificaciones"
               >
@@ -201,7 +227,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-7">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-7">{children}</main>
       </div>
     </div>
   );
