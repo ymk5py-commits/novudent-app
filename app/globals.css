@@ -19,6 +19,26 @@ html, body {
 
 :focus-visible { outline: 2px solid #2e83f5; outline-offset: 2px; border-radius: 6px; }
 
+/* ===== Polish global ===== */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.anim-in { animation: fade-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Botón primario con barrido de brillo */
+.btn-shine { position: relative; overflow: hidden; isolation: isolate; }
+.btn-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.35) 50%, transparent 65%);
+  transform: translateX(-120%);
+  transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  pointer-events: none;
+}
+.btn-shine:hover::after { transform: translateX(120%); }
+
 /* ===== Landing (tema claro) ===== */
 .lp-grid {
   background-image:

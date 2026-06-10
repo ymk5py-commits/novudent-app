@@ -10,7 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch,
 } from "firebase/firestore";
-import { app, fsdb } from "./firebase";
+import { app, fsdb, createAuthUser, signInEmail } from "./firebase";
 
 /** Autenticación anónima: requisito de las reglas de producción
  *  (`request.auth != null`). Si el proveedor no está habilitado, seguimos
@@ -90,6 +90,8 @@ interface Ctx {
   ready: boolean;
   backend: Backend;
   login: (userId: string) => void;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
+  createTeamUser: (data: { name: string; email: string; role: import("./types").Role; password: string; color: string }) => Promise<void>;
   logout: () => void;
   resetDemo: () => void;
   upsertAppointment: (a: Appointment) => void;
@@ -185,6 +187,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const s: Session = { userId: u.id, clinicId: u.clinicId, role: u.role, name: u.name };
         setSession(s);
         localStorage.setItem(SES_KEY, JSON.stringify(s));
+      },
+      loginWithEmail: async (email, password) => {
+        const uid = await signInEmail(email, password); // lanza error de Firebase si falla
+        const u =
+          db.users.find((x) => x.authUid === uid) ??
+          db.users.find((x) => x.email.toLowerCase() === email.toLowerCase());
+        if (!u) {
+          throw new Error("Tu cuenta existe pero no está asignada a esta clínica. Pedile al administrador que cree tu usuario en Configuración.");
+        }
+        if (!u.active) throw new Error("Tu usuario está desactivado. Contactá al administrador.");
+        const s: Session = { userId: u.id, clinicId: u.clinicId, role: u.role, name: u.name };
+        setSession(s);
+        localStorage.setItem(SES_KEY, JSON.stringify(s));
+      },
+      createTeamUser: async ({ name, email, role, password, color }) => {
+        const uid = await createAuthUser(email, password); // cuenta real en Firebase Auth
+        const u: User = { id: uid, authUid: uid, clinicId: CLINIC_ID, name, email, role, color, active: true };
+        persist({ ...db, users: [...db.users, u] });
+        fsSave("users", u.id, u);
       },
       logout: () => { setSession(null); localStorage.removeItem(SES_KEY); },
       resetDemo: () => {

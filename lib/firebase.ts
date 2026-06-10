@@ -17,6 +17,28 @@ const firebaseConfig = {
 export const app = getApps()[0] ?? initializeApp(firebaseConfig);
 export const fsdb = getFirestore(app);
 
+/** Crea una cuenta en Firebase Auth SIN tocar la sesión actual del admin
+ *  (usa una app secundaria temporal). Devuelve el uid. */
+export async function createAuthUser(email: string, password: string): Promise<string> {
+  const { initializeApp, deleteApp } = await import("firebase/app");
+  const { getAuth, createUserWithEmailAndPassword, signOut } = await import("firebase/auth");
+  const temp = initializeApp((app.options as object) as Record<string, string>, `creator-${Date.now()}`);
+  try {
+    const cred = await createUserWithEmailAndPassword(getAuth(temp), email, password);
+    await signOut(getAuth(temp)).catch(() => {});
+    return cred.user.uid;
+  } finally {
+    await deleteApp(temp).catch(() => {});
+  }
+}
+
+/** Inicia sesión real con email/contraseña. Devuelve el uid. */
+export async function signInEmail(email: string, password: string): Promise<string> {
+  const { getAuth, signInWithEmailAndPassword } = await import("firebase/auth");
+  const cred = await signInWithEmailAndPassword(getAuth(app), email, password);
+  return cred.user.uid;
+}
+
 // Analytics opcional (no bloquea si el entorno no lo soporta)
 if (typeof window !== "undefined") {
   import("firebase/analytics")

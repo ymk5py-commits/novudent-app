@@ -39,7 +39,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       {/* Sidebar fija */}
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-[218px] flex-col bg-navy-800 text-white">
+      <aside
+        className="fixed inset-y-0 left-0 z-40 flex w-[218px] flex-col text-white"
+        style={{ background: "linear-gradient(180deg, #0F1F3D 0%, #0B1A36 60%, #081427 100%)" }}
+      >
         <div className="flex items-center gap-2 px-5 pb-6 pt-6">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-500/20 ring-1 ring-azure-300/40 font-logo text-sm text-azure-200">N</span>
           <div className="leading-tight">
@@ -55,11 +58,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <a
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
-                  active ? "bg-azure-500/20 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
+                className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                  active
+                    ? "bg-azure-500/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    : "text-white/60 hover:translate-x-0.5 hover:bg-white/5 hover:text-white"
                 }`}
               >
-                <item.icon className="h-4 w-4" strokeWidth={2} />
+                {active && <span className="absolute -left-3 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-azure-300" />}
+                <item.icon className={`h-4 w-4 ${active ? "text-azure-200" : ""}`} strokeWidth={2} />
                 {item.label}
               </a>
             );

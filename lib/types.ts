@@ -21,6 +21,8 @@ export interface User {
   role: Role;
   color: string; // color de agenda
   active: boolean;
+  /** uid de Firebase Auth (cuenta real creada por el administrador) */
+  authUid?: string;
 }
 
 export type AppointmentStatus = "confirmada" | "pendiente" | "cancelada";

@@ -8,7 +8,7 @@ import type { Role, User, Procedure } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 
 export default function ConfigPage() {
-  const { db, session, upsertUser, upsertProcedure, setOnboarding } = useStore();
+  const { db, session, upsertProcedure, setOnboarding, createTeamUser, backend } = useStore();
   const [addingUser, setAddingUser] = useState(false);
   const [addingProc, setAddingProc] = useState(false);
 
@@ -95,9 +95,13 @@ export default function ConfigPage() {
 
       {addingUser && (
         <NewUser
-          clinicId={session.clinicId}
+          firebase={backend === "firebase"}
           onClose={() => setAddingUser(false)}
-          onSave={(u) => { upsertUser(u); setOnboarding("usersCreated", true); setAddingUser(false); }}
+          onCreate={async (data) => {
+            await createTeamUser(data);
+            setOnboarding("usersCreated", true);
+            setAddingUser(false);
+          }}
         />
       )}
       {addingProc && (
@@ -110,20 +114,55 @@ export default function ConfigPage() {
   );
 }
 
-function NewUser({ clinicId, onClose, onSave }: { clinicId: string; onClose: () => void; onSave: (u: User) => void }) {
-  const [f, setF] = useState({ name: "", email: "", role: "assistant" as Role });
+function NewUser({
+  firebase,
+  onClose,
+  onCreate,
+}: {
+  firebase: boolean;
+  onClose: () => void;
+  onCreate: (d: { name: string; email: string; role: Role; password: string; color: string }) => Promise<void>;
+}) {
+  const [f, setF] = useState({ name: "", email: "", role: "assistant" as Role, password: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const COLORS: Record<Role, string> = { admin: "#1769E0", dentist: "#0E9F6E", assistant: "#B45309" };
+
   return (
     <Modal title="Agregar usuario" onClose={onClose}>
       <form
         className="space-y-4"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          onSave({ id: `u_${Date.now()}`, clinicId, name: f.name, email: f.email, role: f.role, color: COLORS[f.role], active: true });
+          setBusy(true);
+          setError(null);
+          try {
+            await onCreate({ name: f.name, email: f.email, role: f.role, password: f.password, color: COLORS[f.role] });
+          } catch (err: any) {
+            const code = err?.code ?? "";
+            setError(
+              code.includes("email-already-in-use") ? "Ese email ya tiene una cuenta."
+              : code.includes("weak-password") ? "La contraseña debe tener al menos 6 caracteres."
+              : code.includes("operation-not-allowed") ? "Habilitá «Email/Contraseña» en Firebase Console → Authentication → Sign-in method."
+              : err?.message ?? "No se pudo crear el usuario."
+            );
+          } finally {
+            setBusy(false);
+          }
         }}
       >
+        <p className="rounded-xl bg-azure-50 p-3 text-xs leading-relaxed text-azure-700">
+          {firebase
+            ? "Se crea una cuenta real en Firebase Auth. Compartile el email y la contraseña provisional a tu colaborador — ingresa desde la pantalla de inicio de sesión."
+            : "⚠ Estás en modo local: el usuario se guarda solo en este navegador. Conectá Firebase para crear cuentas reales."}
+        </p>
         <Field label="Nombre completo"><input required className={inputCls} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <Field label="Email"><input type="email" required className={inputCls} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Email"><input type="email" required autoComplete="off" className={inputCls} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
+          <Field label="Contraseña provisional" hint="Mínimo 6 caracteres.">
+            <input type="text" required minLength={6} autoComplete="new-password" className={inputCls} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder="Ej.: Clinica2026" />
+          </Field>
+        </div>
         <Field label="Rol" hint="Define permisos según la matriz RBAC.">
           <select className={inputCls} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as Role })}>
             <option value="admin">Administrador</option>
@@ -131,7 +170,11 @@ function NewUser({ clinicId, onClose, onSave }: { clinicId: string; onClose: () 
             <option value="assistant">Asistente</option>
           </select>
         </Field>
-        <div className="flex justify-end gap-2"><Btn variant="outline" onClick={onClose}>Cancelar</Btn><Btn type="submit">Crear usuario</Btn></div>
+        {error && <p role="alert" className="rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-state-err">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
+          <Btn type="submit" disabled={busy}>{busy ? "Creando…" : "Crear usuario"}</Btn>
+        </div>
       </form>
     </Modal>
   );
