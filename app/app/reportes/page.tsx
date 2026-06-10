@@ -2,7 +2,7 @@
 /** Informes de gestión: KPIs de 30 días, producción y comisiones por profesional,
  *  tasa de aceptación de presupuestos, morosidad y reportes descargables (Excel/CSV). */
 import { useMemo } from "react";
-import { ShieldAlert, Download, TrendingUp, TrendingDown, Scale, FileSpreadsheet, Percent } from "lucide-react";
+import { ShieldAlert, Download, TrendingUp, TrendingDown, Scale, FileSpreadsheet, Percent, Bot, Star } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, patientBalance, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
@@ -56,7 +56,14 @@ export default function ReportsPage() {
       .filter((x) => x.balance > 0)
       .sort((a, b) => b.balance - a.balance);
 
-    return { pays, exps, collected, spent, presented, accepted, acceptRate, production, maxProd, debtors };
+    /* NPS (encuestas respondidas vía Botika) */
+    const surveys = db.patients.filter((p) => p.nps).map((p) => ({ p, ...p.nps! }));
+    const prom = surveys.filter((s) => s.score >= 9).length;
+    const pasv = surveys.filter((s) => s.score >= 7 && s.score <= 8).length;
+    const detr = surveys.filter((s) => s.score <= 6).length;
+    const npsScore = surveys.length ? Math.round(((prom - detr) / surveys.length) * 100) : null;
+
+    return { pays, exps, collected, spent, presented, accepted, acceptRate, production, maxProd, debtors, surveys, prom, pasv, detr, npsScore };
   }, [db]);
 
   if (!session) return null;
@@ -207,6 +214,56 @@ export default function ReportsPage() {
           </p>
         </Card>
       </div>
+
+      {/* NPS — encuestas vía Botika */}
+      <Card className="p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Star className="h-4 w-4 text-azure-600" />
+            <h2 className="font-extrabold text-clinic-text">Encuestas NPS</h2>
+            <Badge tone="info" tip="Las encuestas las hace Botika por WhatsApp al completar cada tratamiento">
+              <span className="inline-flex items-center gap-1"><Bot className="h-3 w-3" /> vía Botika</span>
+            </Badge>
+          </div>
+          <a href="/app/integraciones" className="text-xs font-bold text-azure-700 hover:underline">Configurar →</a>
+        </div>
+        {data.npsScore === null ? (
+          <p className="py-6 text-center text-sm text-clinic-muted">Aún no hay encuestas respondidas. Botika las envía automáticamente al completar tratamientos.</p>
+        ) : (
+          <div className="mt-4 grid gap-5 lg:grid-cols-[180px_1fr]">
+            <div className="rounded-2xl bg-navy-800 p-5 text-center text-white">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-azure-200">NPS</div>
+              <div className="mt-1 font-mono text-4xl font-extrabold">{data.npsScore > 0 ? `+${data.npsScore}` : data.npsScore}</div>
+              <div className="mt-1 text-[11px] text-white/60">{data.surveys.length} encuesta{data.surveys.length !== 1 && "s"}</div>
+            </div>
+            <div>
+              {/* barra apilada */}
+              <div className="flex h-4 overflow-hidden rounded-full bg-clinic-bg">
+                {data.prom > 0 && <div className="bg-state-ok transition-all duration-700" style={{ width: `${(data.prom / data.surveys.length) * 100}%` }} title={`Promotores: ${data.prom}`} />}
+                {data.pasv > 0 && <div className="bg-state-warn transition-all duration-700" style={{ width: `${(data.pasv / data.surveys.length) * 100}%` }} title={`Pasivos: ${data.pasv}`} />}
+                {data.detr > 0 && <div className="bg-state-err transition-all duration-700" style={{ width: `${(data.detr / data.surveys.length) * 100}%` }} title={`Detractores: ${data.detr}`} />}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-4 text-xs text-clinic-muted">
+                <span><span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-state-ok" />Promotores (9-10): <b>{data.prom}</b></span>
+                <span><span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-state-warn" />Pasivos (7-8): <b>{data.pasv}</b></span>
+                <span><span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-state-err" />Detractores (0-6): <b>{data.detr}</b></span>
+              </div>
+              {/* últimos comentarios */}
+              <div className="mt-3 space-y-1.5">
+                {data.surveys
+                  .filter((s) => s.comment)
+                  .sort((a, b) => b.at.localeCompare(a.at))
+                  .slice(0, 3)
+                  .map((s) => (
+                    <p key={s.p.id} className="rounded-xl bg-clinic-bg px-3 py-2 text-xs text-clinic-muted">
+                      <b className="font-mono text-clinic-text">{s.score}/10</b> — “{s.comment}” · <a href={`/app/pacientes/${s.p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(s.p)}</a>
+                    </p>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </Card>
 
       {/* exportables */}
       <Card className="p-5">

@@ -27,11 +27,12 @@ async function ensureAuth() {
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord,
   Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
+  OutboxTask, OutboxResult,
 } from "./types";
 import { buildSeed } from "./seed";
 import { submitToBilling, releaseFromHold } from "./billing";
 
-const DB_KEY = "novudent.db.v3";
+const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
 const CLINIC_ID = "cl_demo";
 type Backend = "connecting" | "firebase" | "local";
@@ -64,6 +65,7 @@ async function seedFirestore(seed: DB) {
   for (const s of seed.stock) batch.set(doc(fsdb, "clinics", CLINIC_ID, "stock", s.id), clean(s));
   for (const m of seed.stockMoves) batch.set(doc(fsdb, "clinics", CLINIC_ID, "stockMoves", m.id), clean(m));
   for (const w of seed.waitlist) batch.set(doc(fsdb, "clinics", CLINIC_ID, "waitlist", w.id), clean(w));
+  for (const t of seed.outbox) batch.set(doc(fsdb, "clinics", CLINIC_ID, "outbox", t.id), clean(t));
   await batch.commit();
 }
 
@@ -76,9 +78,9 @@ async function loadFirestore(): Promise<DB> {
   }
   const meta = clinicSnap.data() as any;
   const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
-    col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"),
+    col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, config: meta.config }],
@@ -93,6 +95,7 @@ async function loadFirestore(): Promise<DB> {
     stock: stock.docs.map((d) => d.data() as StockItem),
     stockMoves: stockMoves.docs.map((d) => d.data() as StockMove),
     waitlist: waitlist.docs.map((d) => d.data() as WaitlistEntry),
+    outbox: outbox.docs.map((d) => d.data() as OutboxTask),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   /* Upgrade v3: bases creadas antes de los módulos nuevos — sembramos
@@ -131,6 +134,28 @@ async function loadFirestore(): Promise<DB> {
     await batch.commit().catch((e) => console.warn("upgrade v3", e));
     db.budgets = seed.budgets; db.payments = seed.payments; db.expenses = seed.expenses;
     db.stock = seed.stock; db.stockMoves = seed.stockMoves; db.waitlist = seed.waitlist;
+  }
+  /* Upgrade v4: integración Botika (outbox + NPS + config) */
+  if (db.outbox.length === 0) {
+    const seed = buildSeed();
+    const batch = writeBatch(fsdb);
+    for (const t of seed.outbox) batch.set(doc(fsdb, "clinics", CLINIC_ID, "outbox", t.id), clean(t));
+    if (!db.clinics[0].config?.botika) {
+      const cfg = { ...db.clinics[0].config, botika: seed.clinics[0].config.botika };
+      batch.set(doc(fsdb, "clinics", CLINIC_ID), clean({ config: cfg }), { merge: true });
+      db.clinics[0].config = cfg;
+    }
+    db.patients = db.patients.map((p) => {
+      const sp = seed.patients.find((x) => x.id === p.id);
+      if (sp?.nps && !p.nps) {
+        const up = { ...p, nps: sp.nps };
+        batch.set(doc(fsdb, "clinics", CLINIC_ID, "patients", p.id), clean(up));
+        return up;
+      }
+      return p;
+    });
+    await batch.commit().catch((e) => console.warn("upgrade v4", e));
+    db.outbox = seed.outbox;
   }
   return db;
 }
@@ -189,6 +214,11 @@ interface Ctx {
   /* — Configuración — */
   updateClinicConfig: (patch: Partial<Clinic["config"]>) => void;
   importPatients: (list: Patient[]) => void;
+  /* — Integración Botika (outbox) — */
+  addOutboxTask: (t: OutboxTask) => void;
+  deleteOutboxTask: (id: string) => void;
+  /** Refleja el resultado que escribe Botika: actualiza tarea + cita/paciente según el tipo */
+  applyOutboxResult: (taskId: string, result: OutboxResult) => void;
 }
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -307,6 +337,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           delExtras("stock", db.stock.map((x) => x.id), seed.stock.map((x) => x.id));
           delExtras("stockMoves", db.stockMoves.map((x) => x.id), seed.stockMoves.map((x) => x.id));
           delExtras("waitlist", db.waitlist.map((x) => x.id), seed.waitlist.map((x) => x.id));
+          delExtras("outbox", db.outbox.map((x) => x.id), seed.outbox.map((x) => x.id));
           seedFirestore(seed).catch(() => {});
         }
         persist(seed);
@@ -452,6 +483,46 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       importPatients: (list) => {
         persist({ ...db, patients: [...db.patients, ...list] });
         list.forEach((p) => fsSave("patients", p.id, p));
+      },
+      /* — Integración Botika (outbox) — */
+      addOutboxTask: (t) => {
+        persist({ ...db, outbox: [t, ...db.outbox] });
+        fsSave("outbox", t.id, t);
+      },
+      deleteOutboxTask: (id) => {
+        persist({ ...db, outbox: db.outbox.filter((x) => x.id !== id) });
+        fsDelete("outbox", id);
+      },
+      applyOutboxResult: (taskId, result) => {
+        const task = db.outbox.find((t) => t.id === taskId);
+        if (!task) return;
+        const updated: OutboxTask = { ...task, status: result.error ? "error" : "respondido", result };
+        let next: DB = { ...db, outbox: db.outbox.map((t) => (t.id === taskId ? updated : t)) };
+
+        /* reflejo según tipo de tarea */
+        if ((task.type === "confirmar_cita" || task.type === "reagendar") && result.confirmed && task.refId) {
+          next = {
+            ...next,
+            appointments: next.appointments.map((a) =>
+              a.id === task.refId ? { ...a, status: "confirmada" as const, reminderSent: true, confirmedVia: "botika" as const } : a
+            ),
+          };
+          const appt = next.appointments.find((a) => a.id === task.refId);
+          if (appt) fsSave("appointments", appt.id, appt);
+        }
+        if (task.type === "nps" && typeof result.nps === "number") {
+          next = {
+            ...next,
+            patients: next.patients.map((p) =>
+              p.id === task.patientId ? { ...p, nps: { score: result.nps!, comment: result.comment, at: result.at } } : p
+            ),
+          };
+          const pat = next.patients.find((p) => p.id === task.patientId);
+          if (pat) fsSave("patients", pat.id, pat);
+        }
+
+        persist(next);
+        fsSave("outbox", updated.id, updated);
       },
     };
   }, [db, session, ready, backend, persist, fsSave, fsDelete, fsMeta]);

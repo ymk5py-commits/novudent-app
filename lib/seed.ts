@@ -1,4 +1,4 @@
-import type { DB, Appointment, Patient, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry } from "./types";
+import type { DB, Appointment, Patient, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, OutboxTask } from "./types";
 
 /** Devuelve el lunes de la semana actual a las 00:00 */
 function monday(): Date {
@@ -48,6 +48,7 @@ const patients: Patient[] = [
         notes: "Tomar con alimentos. Suspender ibuprofeno si hay molestias gástricas.",
       },
     ],
+    nps: { score: 7, at: at(-20, 9) },
   },
   {
     id: "p2", clinicId: CLINIC_ID, firstName: "Juan", lastName: "Ríos", document: "4.567.890",
@@ -62,6 +63,7 @@ const patients: Patient[] = [
     forms: [],
     historyUpdatePending: false,
     emr: [{ id: "n3", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-14, 9), kind: "tratamiento", text: "Profilaxis realizada (D1110). Encías saludables, leve gingivitis en sector anteroinferior." }],
+    nps: { score: 10, comment: "Excelente todo 😊", at: at(-13, 11) },
   },
   {
     id: "p4", clinicId: CLINIC_ID, firstName: "Andrés", lastName: "Mejía", document: "2.345.678",
@@ -74,6 +76,7 @@ const patients: Patient[] = [
       "36": { condition: "endodoncia", note: "Endodoncia 2023, asintomática", updatedAt: at(-120, 9), updatedBy: "Dra. Sofía Benítez" },
       "46": { condition: "implante", note: "Implante + corona 2022", updatedAt: at(-200, 9), updatedBy: "Dra. Sofía Benítez" },
     },
+    nps: { score: 9, comment: "Muy buena atención de la doctora, la exodoncia fue rápida.", at: at(-1, 13) },
   },
   {
     id: "p5", clinicId: CLINIC_ID, firstName: "Lucía", lastName: "Ferreira", document: "6.789.012",
@@ -186,13 +189,40 @@ const waitlist: WaitlistEntry[] = [
   { id: "w2", clinicId: CLINIC_ID, patientId: "p2", reason: "Sensibilidad pieza 21 — urgencia leve", preference: "Cualquier mañana", createdAt: at(-1, 8) },
 ];
 
+/* ===== Outbox Botika (demo del ciclo completo) ===== */
+const outbox: OutboxTask[] = [
+  {
+    id: "t1", clinicId: CLINIC_ID, type: "confirmar_cita", patientId: "p6", phone: "+595 986 666 666",
+    message: "Hola Marco 👋 Te recordamos tu control de ortodoncia el jueves a las 17:00 en Clínica Demo Asunción. ¿Confirmás tu asistencia?",
+    refId: "a6", status: "respondido", createdAt: at(-1, 9), createdBy: "sistema",
+    result: { at: at(-1, 9, 24), confirmed: true, reply: "Sí, confirmo. ¡Gracias!" },
+  },
+  {
+    id: "t2", clinicId: CLINIC_ID, type: "nps", patientId: "p4", phone: "+595 984 444 444",
+    message: "Hola Andrés 👋 ¿Del 0 al 10, cuánto recomendarías Clínica Demo Asunción a un amigo o familiar?",
+    refId: "g3", status: "respondido", createdAt: at(-1, 12), createdBy: "sistema",
+    result: { at: at(-1, 13, 10), nps: 9, comment: "Muy buena atención de la doctora, la exodoncia fue rápida." },
+  },
+  {
+    id: "t3", clinicId: CLINIC_ID, type: "nps", patientId: "p3", phone: "+595 983 333 333",
+    message: "Hola Camila 👋 ¿Del 0 al 10, cuánto recomendarías Clínica Demo Asunción a un amigo o familiar?",
+    status: "respondido", createdAt: at(-13, 10), createdBy: "sistema",
+    result: { at: at(-13, 11, 5), nps: 10, comment: "Excelente todo 😊" },
+  },
+  {
+    id: "t4", clinicId: CLINIC_ID, type: "cobranza", patientId: "p6", phone: "+595 986 666 666",
+    message: "Hola Marco 👋 Te recordamos que tenés una cuota de tu tratamiento de ortodoncia pendiente. ¿Querés que te pase los medios de pago?",
+    refId: "g2", status: "pendiente", createdAt: at(0, 8), createdBy: "Carlos Admin",
+  },
+];
+
 const appointments: Appointment[] = [
   { id: "a1", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", title: "Resina pieza 16", start: at(0, 9), end: at(0, 10), status: "confirmada", amount: 420000, discount: 0 },
   { id: "a2", clinicId: CLINIC_ID, patientId: "p2", dentistId: "u2", title: "Primera consulta", start: at(0, 11), end: at(0, 11, 40), status: "pendiente", amount: 150000, discount: 0 },
   { id: "a3", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", title: "Profilaxis", start: at(1, 10), end: at(1, 10, 45), status: "completada", amount: 250000, discount: 25000 },
   { id: "a4", clinicId: CLINIC_ID, patientId: "p4", dentistId: "u2", title: "Exodoncia 28", start: at(2, 9, 30), end: at(2, 10, 30), status: "confirmada", amount: 600000, discount: 0 },
   { id: "a5", clinicId: CLINIC_ID, patientId: "p5", dentistId: "u2", title: "Control + limpieza", start: at(2, 15), end: at(2, 16), status: "pendiente", amount: 250000, discount: 0 },
-  { id: "a6", clinicId: CLINIC_ID, patientId: "p6", dentistId: "u2", title: "Control ortodoncia", start: at(3, 17), end: at(3, 17, 30), status: "confirmada", amount: 350000, discount: 0, reminderSent: true },
+  { id: "a6", clinicId: CLINIC_ID, patientId: "p6", dentistId: "u2", title: "Control ortodoncia", start: at(3, 17), end: at(3, 17, 30), status: "confirmada", amount: 350000, discount: 0, reminderSent: true, confirmedVia: "botika" },
   { id: "a7", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", title: "Blanqueamiento — evaluación", start: at(4, 14), end: at(4, 14, 30), status: "pendiente", amount: 0, discount: 0 },
   { id: "a8", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", title: "Control post-operatorio", start: at(4, 9), end: at(4, 9, 20), status: "cancelada", amount: 0, discount: 0 },
 ];
@@ -211,6 +241,10 @@ export function buildSeed(): DB {
           ],
           reminderTemplate:
             "Hola {paciente} 👋 Te recordamos tu cita en {clinica} el {fecha} a las {hora}. Respondé *SI* para confirmar o avisanos si necesitás reagendar. ¡Gracias!",
+          botika: {
+            connected: true, // demo: conexión simulada hasta cargar credenciales reales
+            automations: { confirmCita: true, nps: true, cobranza: true, reagendar: true },
+          },
         },
       },
     ],
@@ -280,6 +314,7 @@ export function buildSeed(): DB {
     stock,
     stockMoves,
     waitlist,
+    outbox,
     onboarding: { usersCreated: true, servicesDefined: true, tourDone: false },
   };
 }

@@ -3,9 +3,10 @@
  *  (tareas de morosidad con recordatorio por WhatsApp). */
 import { useMemo, useState } from "react";
 import {
-  ShieldAlert, Plus, Wallet, TrendingDown, Scale, Trash2, MessageCircle, Banknote, CreditCard, Landmark, QrCode,
+  ShieldAlert, Plus, Wallet, TrendingDown, Scale, Trash2, MessageCircle, Banknote, CreditCard, Landmark, QrCode, Bot, Check,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fullName, waLink } from "@/lib/store";
+import { botikaEnabled, makeOutboxTask, cobranzaMessage } from "@/lib/botika";
 import { can } from "@/lib/rbac";
 import { budgetTotal, budgetBalance, patientBalance, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import type { Payment, PaymentMethod, Expense } from "@/lib/types";
@@ -23,6 +24,7 @@ export default function CashPage() {
   const [day, setDay] = useState(todayKey());
   const [newPay, setNewPay] = useState(false);
   const [newExp, setNewExp] = useState(false);
+  const [queued, setQueued] = useState<string[]>([]);
 
   if (!session) return null;
   const allowed = can(session.role, "payments.manage");
@@ -149,13 +151,26 @@ export default function CashPage() {
                     <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{fullName(p)}</span>
                     <span className="font-mono text-xs font-extrabold text-state-err">{fmtGs(balance)}</span>
                   </a>
+                  {botikaEnabled(db, "cobranza") && (
+                    <button
+                      disabled={queued.includes(p.id)}
+                      onClick={() => {
+                        store.addOutboxTask(makeOutboxTask({ db, type: "cobranza", patient: p, by: session.name, message: cobranzaMessage(p, db.clinics[0].name, fmtGs(balance)) }));
+                        setQueued((q) => [...q, p.id]);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-navy-800 px-3 py-2 text-xs font-bold text-azure-200 transition-colors hover:bg-navy-700 disabled:opacity-60"
+                      title="Botika conversa con el paciente y gestiona el pago (cola de mensajería)"
+                    >
+                      {queued.includes(p.id) ? <><Check className="h-3.5 w-3.5" /> Encolado</> : <><Bot className="h-3.5 w-3.5" /> Botika</>}
+                    </button>
+                  )}
                   <a
                     href={waLink(p.phone, `Hola ${p.firstName} 👋 Te escribimos de ${db.clinics[0].name}. Tenés un saldo pendiente de ${fmtGs(balance)}. ¿Coordinamos el pago? ¡Gracias!`)}
                     target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366]/10 px-3 py-2 text-xs font-bold text-[#128C7E] transition-colors hover:bg-[#25D366]/20"
-                    title="Enviar recordatorio de pago por WhatsApp"
+                    title="Enviar recordatorio manual por WhatsApp"
                   >
-                    <MessageCircle className="h-3.5 w-3.5" /> Recordar
+                    <MessageCircle className="h-3.5 w-3.5" /> Manual
                   </a>
                 </li>
               ))}

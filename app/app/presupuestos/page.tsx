@@ -6,6 +6,7 @@ import {
   Plus, ShieldAlert, Printer, Check, X, Send, CircleCheck, Trash2, Pencil, FileText,
 } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
+import { botikaEnabled, makeOutboxTask, npsMessage } from "@/lib/botika";
 import { can } from "@/lib/rbac";
 import { budgetTotal, budgetSubtotal, budgetPaid, budgetBalance, installmentValue, BUDGET_STATUS_INFO } from "@/lib/budgets";
 import type { Budget, BudgetItem, BudgetStatus } from "@/lib/types";
@@ -123,7 +124,17 @@ export default function BudgetsPage() {
                     <Btn onClick={() => act(b, "Aceptado por el paciente", { status: "aceptado" })}><Check className="h-3.5 w-3.5" /> Marcar aceptado</Btn>
                   )}
                   {b.status === "aceptado" && done === b.items.length && (
-                    <Btn onClick={() => act(b, "Todos los procedimientos realizados — completado", { status: "completado" })}>
+                    <Btn
+                      onClick={() => {
+                        act(b, "Todos los procedimientos realizados — completado", { status: "completado" });
+                        /* Botika: tratamiento completado → encuesta NPS automática */
+                        if (patient?.phone && botikaEnabled(db, "nps")) {
+                          store.addOutboxTask(
+                            makeOutboxTask({ db, type: "nps", patient, refId: b.id, by: session.name, message: npsMessage(patient, db.clinics[0].name) })
+                          );
+                        }
+                      }}
+                    >
                       <CircleCheck className="h-3.5 w-3.5" /> Completar
                     </Btn>
                   )}

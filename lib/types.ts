@@ -20,6 +20,8 @@ export interface Clinic {
     convenios?: Convenio[];
     /** Plantilla de recordatorio de cita (placeholders {paciente} {fecha} {hora} {clinica}) */
     reminderTemplate?: string;
+    /** Integración Botika (bot de WhatsApp con IA) */
+    botika?: BotikaConfig;
   };
 }
 
@@ -53,6 +55,8 @@ export interface Appointment {
   notes?: string;
   /** Confirmación de citas: recordatorio WhatsApp/email ya enviado */
   reminderSent?: boolean;
+  /** quién confirmó la cita (botika = automático por el bot) */
+  confirmedVia?: "botika" | "manual";
 }
 
 export type FormStatus = "pendiente" | "completado";
@@ -120,6 +124,8 @@ export interface Patient {
   files?: PatientFileRec[];
   /* Módulo de ortodoncia */
   ortho?: OrthoRecord;
+  /* Última encuesta NPS respondida (vía Botika) */
+  nps?: { score: number; comment?: string; at: string };
 }
 
 /* ===== Facturación (sec. 3.3) ===== */
@@ -305,6 +311,50 @@ export interface WaitlistEntry {
   createdAt: string;
 }
 
+/* ===== Integración Botika (bot agéntico de WhatsApp) =====
+ * Patrón outbox/inbox sobre Firestore: Novudent encola tareas de mensajería,
+ * el worker de Botika las escucha, conversa por WhatsApp y escribe `result`.
+ * Contrato completo en docs/INTEGRACION-BOTIKA.md */
+export type OutboxTaskType = "confirmar_cita" | "nps" | "cobranza" | "reagendar";
+export type OutboxStatus = "pendiente" | "enviado" | "respondido" | "error";
+
+export interface OutboxResult {
+  at: string;
+  /** respuesta libre del paciente (resumen de Botika) */
+  reply?: string;
+  /** confirmar_cita / reagendar */
+  confirmed?: boolean;
+  /** encuesta NPS (0–10) */
+  nps?: number;
+  comment?: string;
+  error?: string;
+}
+
+export interface OutboxTask {
+  id: string;
+  clinicId: string;
+  type: OutboxTaskType;
+  patientId: string;
+  phone: string;
+  message: string;
+  /** referencia: citaId (confirmar_cita/reagendar) o budgetId (nps/cobranza) */
+  refId?: string;
+  status: OutboxStatus;
+  createdAt: string;
+  createdBy: string;
+  result?: OutboxResult;
+}
+
+export interface BotikaConfig {
+  connected: boolean;
+  automations: {
+    confirmCita: boolean; // al crear cita → tarea de confirmación
+    nps: boolean; // al completar presupuesto → encuesta
+    cobranza: boolean; // recordatorios de deuda conversacionales
+    reagendar: boolean; // citas canceladas → reagendamiento
+  };
+}
+
 export interface Session {
   userId: string;
   clinicId: string;
@@ -325,5 +375,6 @@ export interface DB {
   stock: StockItem[];
   stockMoves: StockMove[];
   waitlist: WaitlistEntry[];
+  outbox: OutboxTask[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }

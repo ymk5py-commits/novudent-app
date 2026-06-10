@@ -6,6 +6,7 @@ import {
   MessageCircle, Hourglass, BellRing,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } from "@/lib/store";
+import { botikaEnabled, makeOutboxTask } from "@/lib/botika";
 import type { Appointment, AppointmentStatus } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, StatusBadge, Badge, Empty } from "@/components/ui";
 
@@ -30,7 +31,7 @@ const STATUS_BG: Record<AppointmentStatus, string> = {
 };
 
 export default function AgendaPage() {
-  const { db, session, upsertAppointment, deleteAppointment, setOnboarding, removeWaitlist } = useStore();
+  const { db, session, upsertAppointment, deleteAppointment, setOnboarding, removeWaitlist, addOutboxTask } = useStore();
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
   const [editing, setEditing] = useState<Appointment | null>(null);
@@ -353,8 +354,30 @@ export default function AgendaPage() {
           appt={editing}
           onClose={() => { setEditing(null); setFromWaitlist(null); }}
           onSave={(a) => {
+            const isNew = !db.appointments.some((x) => x.id === a.id);
             upsertAppointment(a);
             if (fromWaitlist) removeWaitlist(fromWaitlist);
+            /* Botika: cita nueva → encolar confirmación automática */
+            if (isNew && a.status !== "cancelada" && botikaEnabled(db, "confirmCita")) {
+              const p = db.patients.find((x) => x.id === a.patientId);
+              const clinic = db.clinics[0];
+              if (p?.phone) {
+                addOutboxTask(
+                  makeOutboxTask({
+                    db, type: "confirmar_cita", patient: p, refId: a.id, by: session!.name,
+                    message: fillReminder(
+                      clinic.config.reminderTemplate ?? "Hola {paciente}, te recordamos tu cita en {clinica} el {fecha} a las {hora}. ¿Confirmás tu asistencia?",
+                      {
+                        paciente: p.firstName,
+                        fecha: new Date(a.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" }),
+                        hora: fmtTime(a.start),
+                        clinica: clinic.name,
+                      }
+                    ),
+                  })
+                );
+              }
+            }
             setEditing(null); setFromWaitlist(null);
           }}
         />

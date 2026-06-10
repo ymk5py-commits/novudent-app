@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, LayoutDashboard, Bell, CreditCard,
-  FileSpreadsheet, Wallet, Package, BarChart3,
+  FileSpreadsheet, Wallet, Package, BarChart3, Bot,
 } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
@@ -27,6 +27,7 @@ const SECTIONS: { label: string; items: { href: string; label: string; icon: any
       { href: "/app/facturacion", label: "Facturación", icon: Receipt },
       { href: "/app/inventario", label: "Inventario", icon: Package, perm: "inventory.manage" },
       { href: "/app/reportes", label: "Reportes", icon: BarChart3, perm: "billing.reports" },
+      { href: "/app/integraciones", label: "Integraciones", icon: Bot, perm: "practice.config" },
       { href: "/app/suscripcion", label: "Suscripción", icon: CreditCard, perm: "practice.config" },
       { href: "/app/configuracion", label: "Configuración", icon: Settings, perm: "practice.config" },
     ],
