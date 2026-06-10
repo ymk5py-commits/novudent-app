@@ -2,6 +2,12 @@
 
 export type Role = "admin" | "dentist" | "assistant";
 
+/** Convenio empresarial / aseguradora con descuento pactado */
+export interface Convenio {
+  name: string;
+  discountPct: number;
+}
+
 export interface Clinic {
   id: string;
   name: string;
@@ -10,6 +16,10 @@ export interface Clinic {
     currency: "PYG" | "USD";
     address?: string;
     phone?: string;
+    /** Gestión de convenios (descuento % aplicable a presupuestos) */
+    convenios?: Convenio[];
+    /** Plantilla de recordatorio de cita (placeholders {paciente} {fecha} {hora} {clinica}) */
+    reminderTemplate?: string;
   };
 }
 
@@ -23,6 +33,8 @@ export interface User {
   active: boolean;
   /** uid de Firebase Auth (cuenta real creada por el administrador) */
   authUid?: string;
+  /** % de comisión sobre producción cobrada (cálculo de pago a odontólogos) */
+  commissionPct?: number;
 }
 
 export type AppointmentStatus = "confirmada" | "pendiente" | "completada" | "cancelada";
@@ -39,6 +51,8 @@ export interface Appointment {
   amount: number; // Importe total
   discount: number; // Descuento
   notes?: string;
+  /** Confirmación de citas: recordatorio WhatsApp/email ya enviado */
+  reminderSent?: boolean;
 }
 
 export type FormStatus = "pendiente" | "completado";
@@ -100,6 +114,12 @@ export interface Patient {
   emr: EmrNote[];
   /* Odontograma: pieza FDI -> estado (ausencia de entrada = pieza sana) */
   odontogram?: Record<string, ToothRecord>;
+  /* Recetas emitidas */
+  prescriptions?: Prescription[];
+  /* Archivos clínicos (imágenes/documentos) */
+  files?: PatientFileRec[];
+  /* Módulo de ortodoncia */
+  ortho?: OrthoRecord;
 }
 
 /* ===== Facturación (sec. 3.3) ===== */
@@ -148,6 +168,143 @@ export interface Procedure {
   defaultDx: string[];
 }
 
+/* ===== Presupuestos (planes de tratamiento) ===== */
+export type BudgetStatus = "borrador" | "presentado" | "aceptado" | "completado" | "anulado";
+
+export interface BudgetItem {
+  id: string;
+  cpt: string;
+  description: string;
+  /** pieza FDI opcional (11–48) */
+  tooth?: string;
+  price: number;
+  status: "pendiente" | "realizado";
+  doneAt?: string;
+  doneBy?: string;
+}
+
+export interface Budget {
+  id: string;
+  clinicId: string;
+  patientId: string;
+  dentistId: string;
+  createdAt: string;
+  status: BudgetStatus;
+  items: BudgetItem[];
+  /** descuento % (manual o por convenio) */
+  discountPct?: number;
+  /** convenio aplicado (nombre) */
+  convenio?: string;
+  /** cobro en cuotas: nº de cuotas pactadas */
+  installments?: number;
+  notes?: string;
+  history: { at: string; action: string; by: string }[];
+}
+
+/* ===== Caja: pagos y gastos ===== */
+export type PaymentMethod = "efectivo" | "tarjeta" | "transferencia" | "qr";
+
+export interface Payment {
+  id: string;
+  clinicId: string;
+  patientId: string;
+  /** presupuesto al que abona (opcional: pago libre) */
+  budgetId?: string;
+  date: string; // ISO
+  amount: number;
+  method: PaymentMethod;
+  concept: string;
+  receivedBy: string;
+}
+
+export interface Expense {
+  id: string;
+  clinicId: string;
+  date: string; // ISO
+  category: string;
+  supplier?: string;
+  description: string;
+  amount: number;
+  registeredBy: string;
+}
+
+/* ===== Inventario (bodega virtual) ===== */
+export interface StockItem {
+  id: string;
+  clinicId: string;
+  name: string;
+  category: string;
+  unit: string; // unidad, caja, ml…
+  stock: number;
+  minStock: number;
+  cost: number; // costo unitario
+}
+
+export interface StockMove {
+  id: string;
+  clinicId: string;
+  itemId: string;
+  date: string;
+  type: "entrada" | "salida";
+  qty: number;
+  reason: string;
+  by: string;
+}
+
+/* ===== Recetas (plantillas de prescripción) ===== */
+export interface PrescriptionItem {
+  drug: string;
+  dose: string;
+  freq: string;
+  days: string;
+}
+
+export interface Prescription {
+  id: string;
+  date: string;
+  dentistId: string;
+  dentistName: string;
+  items: PrescriptionItem[];
+  notes?: string;
+}
+
+/* ===== Archivos clínicos del paciente (imágenes/documentos) ===== */
+export interface PatientFileRec {
+  id: string;
+  name: string;
+  kind: "imagen" | "documento";
+  /** dataURL comprimido (≤ ~150 KB) — apto para Firestore */
+  dataUrl: string;
+  uploadedAt: string;
+  by: string;
+}
+
+/* ===== Módulo de ortodoncia ===== */
+export interface OrthoControl {
+  date: string;
+  note: string;
+  by: string;
+}
+
+export interface OrthoRecord {
+  active: boolean;
+  applianceType: string; // brackets metálicos, estéticos, alineadores…
+  diagnosis: string;
+  startDate: string;
+  monthlyFee: number;
+  controls: OrthoControl[];
+}
+
+/* ===== Lista de espera ===== */
+export interface WaitlistEntry {
+  id: string;
+  clinicId: string;
+  patientId: string;
+  reason: string;
+  preference: string; // franja/día preferido
+  createdAt: string;
+}
+
 export interface Session {
   userId: string;
   clinicId: string;
@@ -162,5 +319,11 @@ export interface DB {
   appointments: Appointment[];
   billing: BillingRecord[];
   procedures: Procedure[];
+  budgets: Budget[];
+  payments: Payment[];
+  expenses: Expense[];
+  stock: StockItem[];
+  stockMoves: StockMove[];
+  waitlist: WaitlistEntry[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }

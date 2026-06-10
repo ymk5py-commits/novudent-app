@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft, ChevronRight, CalendarDays, List, MoreHorizontal, Eye, Pencil, Trash2, Plus, User,
+  MessageCircle, Hourglass, BellRing,
 } from "lucide-react";
-import { useStore, fmtGs, fmtTime, fullName } from "@/lib/store";
+import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } from "@/lib/store";
 import type { Appointment, AppointmentStatus } from "@/lib/types";
-import { Card, Btn, Modal, Field, inputCls, StatusBadge, Empty } from "@/components/ui";
+import { Card, Btn, Modal, Field, inputCls, StatusBadge, Badge, Empty } from "@/components/ui";
 
 /* ===== helpers de semana ===== */
 function mondayOf(d: Date): Date {
@@ -29,12 +30,14 @@ const STATUS_BG: Record<AppointmentStatus, string> = {
 };
 
 export default function AgendaPage() {
-  const { db, session, upsertAppointment, deleteAppointment, setOnboarding } = useStore();
+  const { db, session, upsertAppointment, deleteAppointment, setOnboarding, removeWaitlist } = useStore();
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [viewing, setViewing] = useState<Appointment | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [waitOpen, setWaitOpen] = useState(false);
+  const [fromWaitlist, setFromWaitlist] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   /* marcar tour al visitar agenda */
@@ -117,6 +120,10 @@ export default function AgendaPage() {
               <List className="h-4 w-4" /> Lista
             </button>
           </div>
+          <Btn variant="outline" onClick={() => setWaitOpen(true)}>
+            <Hourglass className="h-4 w-4" /> Lista de espera
+            {db.waitlist.length > 0 && <span className="rounded-full bg-azure-600 px-1.5 font-mono text-[10px] font-bold text-white">{db.waitlist.length}</span>}
+          </Btn>
           <Btn onClick={() => quickCreate(((today.getDay() + 6) % 7), Math.min(today.getHours() + 1, 22))}>
             <Plus className="h-4 w-4" /> Nueva cita
           </Btn>
@@ -260,16 +267,58 @@ export default function AgendaPage() {
           {(() => {
             const p = db.patients.find((x) => x.id === viewing.patientId);
             const d = db.users.find((x) => x.id === viewing.dentistId);
+            const clinic = db.clinics[0];
+            const live = db.appointments.find((x) => x.id === viewing.id) ?? viewing;
+            const reminderMsg = p
+              ? fillReminder(
+                  clinic.config.reminderTemplate ?? "Hola {paciente}, te recordamos tu cita en {clinica} el {fecha} a las {hora}.",
+                  {
+                    paciente: p.firstName,
+                    fecha: new Date(live.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" }),
+                    hora: fmtTime(live.start),
+                    clinica: clinic.name,
+                  }
+                )
+              : "";
             return (
               <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between"><span className="text-clinic-muted">Estado</span><StatusBadge status={viewing.status} /></div>
+                <div className="flex items-center justify-between"><span className="text-clinic-muted">Estado</span><StatusBadge status={live.status} /></div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Paciente</span>{p ? <a className="font-bold text-azure-600 hover:underline" href={`/app/pacientes/${p.id}`}>{fullName(p)}</a> : "—"}</div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Dentista</span><span className="font-semibold">{d?.name ?? "—"}</span></div>
-                <div className="flex items-center justify-between"><span className="text-clinic-muted">Horario</span><span className="font-mono text-xs">{new Date(viewing.start).toLocaleString("es-PY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} → {fmtTime(viewing.end)}</span></div>
-                <div className="flex items-center justify-between"><span className="text-clinic-muted">Total a cobrar</span><span className="font-mono font-bold">{fmtGs(viewing.amount - viewing.discount)}</span></div>
-                {viewing.notes && <p className="rounded-xl bg-clinic-bg p-3 text-clinic-text">{viewing.notes}</p>}
+                <div className="flex items-center justify-between"><span className="text-clinic-muted">Horario</span><span className="font-mono text-xs">{new Date(live.start).toLocaleString("es-PY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} → {fmtTime(live.end)}</span></div>
+                <div className="flex items-center justify-between"><span className="text-clinic-muted">Total a cobrar</span><span className="font-mono font-bold">{fmtGs(live.amount - live.discount)}</span></div>
+                {live.notes && <p className="rounded-xl bg-clinic-bg p-3 text-clinic-text">{live.notes}</p>}
+
+                {/* Confirmación de citas */}
+                {p && (
+                  <div className="rounded-xl border border-clinic-border p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">
+                        <BellRing className="h-3.5 w-3.5" /> Confirmación de cita
+                      </span>
+                      {live.reminderSent ? <Badge tone="ok" tip="Ya se envió el recordatorio">Enviado</Badge> : <Badge tone="warn" tip="Aún sin recordatorio">Pendiente</Badge>}
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      <a
+                        href={waLink(p.phone, reminderMsg)}
+                        target="_blank" rel="noopener noreferrer"
+                        onClick={() => upsertAppointment({ ...live, reminderSent: true })}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366]/10 px-3.5 py-2 text-xs font-bold text-[#128C7E] transition-colors hover:bg-[#25D366]/20"
+                      >
+                        <MessageCircle className="h-4 w-4" /> Enviar por WhatsApp
+                      </a>
+                      <button
+                        onClick={() => upsertAppointment({ ...live, reminderSent: !live.reminderSent })}
+                        className="rounded-xl border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-muted hover:text-clinic-text"
+                      >
+                        {live.reminderSent ? "Marcar como no enviado" : "Marcar como enviado"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-end gap-2 pt-2">
-                  <Btn variant="outline" onClick={() => { setEditing(viewing); setViewing(null); }}><Pencil className="h-3.5 w-3.5" /> Editar</Btn>
+                  <Btn variant="outline" onClick={() => { setEditing(live); setViewing(null); }}><Pencil className="h-3.5 w-3.5" /> Editar</Btn>
                 </div>
               </div>
             );
@@ -277,15 +326,102 @@ export default function AgendaPage() {
         </Modal>
       )}
 
+      {/* Modal LISTA DE ESPERA */}
+      {waitOpen && (
+        <WaitlistModal
+          onClose={() => setWaitOpen(false)}
+          onSchedule={(entry) => {
+            const start = new Date();
+            start.setDate(start.getDate() + 1);
+            start.setHours(9, 0, 0, 0);
+            const end = new Date(start); end.setHours(10);
+            setFromWaitlist(entry.id);
+            setEditing({
+              id: `a_${Date.now()}`, clinicId: session!.clinicId, patientId: entry.patientId,
+              dentistId: db.users.find((u) => u.role === "dentist")?.id ?? "",
+              title: entry.reason, start: start.toISOString(), end: end.toISOString(),
+              status: "pendiente", amount: 0, discount: 0,
+            });
+            setWaitOpen(false);
+          }}
+        />
+      )}
+
       {/* Modal CREAR/EDITAR */}
       {editing && (
         <ApptForm
           appt={editing}
-          onClose={() => setEditing(null)}
-          onSave={(a) => { upsertAppointment(a); setEditing(null); }}
+          onClose={() => { setEditing(null); setFromWaitlist(null); }}
+          onSave={(a) => {
+            upsertAppointment(a);
+            if (fromWaitlist) removeWaitlist(fromWaitlist);
+            setEditing(null); setFromWaitlist(null);
+          }}
         />
       )}
     </div>
+  );
+}
+
+/* ===== Lista de espera ===== */
+function WaitlistModal({ onClose, onSchedule }: { onClose: () => void; onSchedule: (e: import("@/lib/types").WaitlistEntry) => void }) {
+  const { db, addWaitlist, removeWaitlist } = useStore();
+  const [adding, setAdding] = useState(false);
+  const [patientId, setPatientId] = useState(db.patients[0]?.id ?? "");
+  const [reason, setReason] = useState("");
+  const [preference, setPreference] = useState("");
+  const list = [...db.waitlist].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+  return (
+    <Modal title="Lista de espera" onClose={onClose} wide>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-clinic-muted">Pacientes esperando un hueco — agendalos cuando se libere un horario.</p>
+          <Btn variant="outline" onClick={() => setAdding((v) => !v)}><Plus className="h-3.5 w-3.5" /> Agregar</Btn>
+        </div>
+
+        {adding && (
+          <div className="grid gap-2 rounded-xl border border-clinic-border p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+            <select className={inputCls} value={patientId} onChange={(e) => setPatientId(e.target.value)}>
+              {db.patients.map((p) => <option key={p.id} value={p.id}>{fullName(p)}</option>)}
+            </select>
+            <input className={inputCls} placeholder="Motivo" value={reason} onChange={(e) => setReason(e.target.value)} />
+            <input className={inputCls} placeholder="Preferencia horaria" value={preference} onChange={(e) => setPreference(e.target.value)} />
+            <Btn
+              disabled={!reason.trim()}
+              onClick={() => {
+                addWaitlist({ id: `w_${Date.now()}`, clinicId: db.clinics[0].id, patientId, reason: reason.trim(), preference: preference.trim() || "Sin preferencia", createdAt: new Date().toISOString() });
+                setReason(""); setPreference(""); setAdding(false);
+              }}
+            >
+              Guardar
+            </Btn>
+          </div>
+        )}
+
+        {list.length === 0 ? (
+          <Empty title="Lista de espera vacía" />
+        ) : (
+          <ul className="space-y-2">
+            {list.map((w) => {
+              const p = db.patients.find((x) => x.id === w.patientId);
+              return (
+                <li key={w.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-clinic-bg p-3">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold text-clinic-text">{p ? fullName(p) : "—"}</span>
+                    <span className="block text-xs text-clinic-muted">{w.reason} · {w.preference} · en espera desde {fmtDate(w.createdAt)}</span>
+                  </span>
+                  <Btn onClick={() => onSchedule(w)}><CalendarDays className="h-3.5 w-3.5" /> Agendar</Btn>
+                  <button onClick={() => removeWaitlist(w.id)} className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err" title="Quitar de la lista">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </Modal>
   );
 }
 

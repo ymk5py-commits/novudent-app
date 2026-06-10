@@ -1,9 +1,11 @@
 "use client";
-/** Perfil del paciente: Resumen · Historial (EMR) · Formularios (pencil-flow) · Facturación. */
+/** Perfil del paciente: Resumen · Odontograma · Historial (EMR) · Presupuestos · Recetas ·
+ *  Archivos · Ortodoncia · Formularios (pencil-flow) · Facturación. */
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2, Smile,
+  FileSpreadsheet, Pill, FolderOpen, Braces,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fullName } from "@/lib/store";
 import { recordTotal } from "@/lib/billing";
@@ -11,8 +13,9 @@ import { can } from "@/lib/rbac";
 import type { EmrNote, PatientForm } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, FlagBadge, Empty } from "@/components/ui";
 import Odontogram from "@/components/Odontogram";
+import { BudgetsTab, RxTab, FilesTab, OrthoTab } from "@/components/PatientExtras";
 
-type Tab = "resumen" | "odontograma" | "historial" | "formularios" | "facturacion";
+type Tab = "resumen" | "odontograma" | "historial" | "presupuestos" | "recetas" | "archivos" | "ortodoncia" | "formularios" | "facturacion";
 
 export default function PatientProfile() {
   const { id } = useParams<{ id: string }>();
@@ -37,7 +40,11 @@ export default function PatientProfile() {
   const TABS: { key: Tab; label: string; icon: any; badge?: number }[] = [
     { key: "resumen", label: "Resumen", icon: Stethoscope },
     { key: "odontograma", label: "Odontograma", icon: Smile },
-    { key: "historial", label: "Historial clínico", icon: ClipboardList },
+    { key: "historial", label: "Historial", icon: ClipboardList },
+    { key: "presupuestos", label: "Presupuestos", icon: FileSpreadsheet },
+    { key: "recetas", label: "Recetas", icon: Pill },
+    { key: "archivos", label: "Archivos", icon: FolderOpen, badge: p.files?.length || undefined },
+    { key: "ortodoncia", label: "Ortodoncia", icon: Braces },
     { key: "formularios", label: "Formularios", icon: FileText, badge: pendingForms.length || undefined },
     { key: "facturacion", label: "Facturación", icon: Receipt },
   ];
@@ -182,6 +189,12 @@ export default function PatientProfile() {
           )}
         </div>
       )}
+
+      {/* ===== PRESUPUESTOS / RECETAS / ARCHIVOS / ORTODONCIA ===== */}
+      {tab === "presupuestos" && <BudgetsTab patient={p} />}
+      {tab === "recetas" && <RxTab patient={p} />}
+      {tab === "archivos" && <FilesTab patient={p} />}
+      {tab === "ortodoncia" && <OrthoTab patient={p} />}
 
       {/* ===== FORMULARIOS (Engagement) ===== */}
       {tab === "formularios" && (

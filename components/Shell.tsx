@@ -5,23 +5,28 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, LayoutDashboard, Bell, CreditCard,
+  FileSpreadsheet, Wallet, Package, BarChart3,
 } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
-import { can, ROLE_LABEL } from "@/lib/rbac";
+import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
 
-const SECTIONS: { label: string; items: { href: string; label: string; icon: any; perm?: "practice.config" }[] }[] = [
+const SECTIONS: { label: string; items: { href: string; label: string; icon: any; perm?: Permission }[] }[] = [
   {
     label: "Principal",
     items: [
       { href: "/app", label: "Inicio", icon: LayoutDashboard },
       { href: "/app/agenda", label: "Agenda", icon: CalendarDays },
       { href: "/app/pacientes", label: "Pacientes", icon: Users },
+      { href: "/app/presupuestos", label: "Presupuestos", icon: FileSpreadsheet, perm: "budgets.manage" },
     ],
   },
   {
     label: "Gestión",
     items: [
+      { href: "/app/caja", label: "Caja", icon: Wallet, perm: "payments.manage" },
       { href: "/app/facturacion", label: "Facturación", icon: Receipt },
+      { href: "/app/inventario", label: "Inventario", icon: Package, perm: "inventory.manage" },
+      { href: "/app/reportes", label: "Reportes", icon: BarChart3, perm: "billing.reports" },
       { href: "/app/suscripcion", label: "Suscripción", icon: CreditCard, perm: "practice.config" },
       { href: "/app/configuracion", label: "Configuración", icon: Settings, perm: "practice.config" },
     ],

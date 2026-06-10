@@ -1,0 +1,50 @@
+import type { Budget, BudgetStatus, Payment } from "./types";
+
+/* ===== Presupuestos: totales, saldos y estados ===== */
+
+export const BUDGET_STATUS_INFO: Record<BudgetStatus, { label: string; tone: "muted" | "info" | "warn" | "ok" | "err"; desc: string }> = {
+  borrador: { label: "Borrador", tone: "muted", desc: "En preparación — aún no presentado al paciente" },
+  presentado: { label: "Presentado", tone: "info", desc: "Entregado al paciente — pendiente de aceptación (tarea de captura)" },
+  aceptado: { label: "Aceptado", tone: "ok", desc: "Aprobado por el paciente — tratamiento en curso" },
+  completado: { label: "Completado", tone: "ok", desc: "Todos los procedimientos realizados" },
+  anulado: { label: "Anulado", tone: "err", desc: "Presupuesto descartado" },
+};
+
+export function budgetSubtotal(b: Pick<Budget, "items">): number {
+  return b.items.reduce((s, i) => s + i.price, 0);
+}
+
+/** Total con descuento (% manual o de convenio) */
+export function budgetTotal(b: Pick<Budget, "items" | "discountPct">): number {
+  return Math.round(budgetSubtotal(b) * (1 - (b.discountPct ?? 0) / 100));
+}
+
+export function budgetPaid(budgetId: string, payments: Payment[]): number {
+  return payments.filter((p) => p.budgetId === budgetId).reduce((s, p) => s + p.amount, 0);
+}
+
+export function budgetBalance(b: Budget, payments: Payment[]): number {
+  return budgetTotal(b) - budgetPaid(b.id, payments);
+}
+
+/** Valor de cada cuota pactada */
+export function installmentValue(b: Budget): number | null {
+  if (!b.installments || b.installments < 2) return null;
+  return Math.round(budgetTotal(b) / b.installments);
+}
+
+/** Saldo total del paciente: presupuestos aceptados/completados − todos sus pagos */
+export function patientBalance(patientId: string, budgets: Budget[], payments: Payment[]): number {
+  const owed = budgets
+    .filter((b) => b.patientId === patientId && (b.status === "aceptado" || b.status === "completado"))
+    .reduce((s, b) => s + budgetTotal(b), 0);
+  const paid = payments.filter((p) => p.patientId === patientId).reduce((s, p) => s + p.amount, 0);
+  return owed - paid;
+}
+
+export const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  efectivo: "Efectivo",
+  tarjeta: "Tarjeta",
+  transferencia: "Transferencia",
+  qr: "QR / billetera",
+};

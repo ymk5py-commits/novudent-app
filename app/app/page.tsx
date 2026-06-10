@@ -5,8 +5,10 @@ import { useEffect, useRef } from "react";
 import { motion, useInView, useMotionValue, animate } from "framer-motion";
 import {
   CalendarDays, Users, FileText, PauseCircle, ArrowRight, RotateCcw, CheckCircle2, Circle, MoreHorizontal, Sparkles,
+  AlertTriangle, FileSpreadsheet, Wallet, Package, CalendarX,
 } from "lucide-react";
 import { useStore, fmtTime, fmtGs, fullName } from "@/lib/store";
+import { patientBalance } from "@/lib/budgets";
 import { can } from "@/lib/rbac";
 import { Card, Badge, StatusBadge, Btn } from "@/components/ui";
 import { ToothGlyph } from "@/components/Odontogram";
@@ -157,6 +159,34 @@ export default function Dashboard() {
   /* Matriz v2: el dentista no ve reportes financieros */
   const canReports = can(session.role, "billing.reports");
 
+  /* ===== Panel de tareas críticas ===== */
+  const captureBudgets = db.budgets.filter((b) => b.status === "presentado");
+  const debtorCount = db.patients.filter((p) => patientBalance(p.id, db.budgets, db.payments) > 0).length;
+  const cancelledWeek = week.filter((a) => a.status === "cancelada");
+  const lowStock = db.stock.filter((s) => s.stock <= s.minStock);
+  const criticalTasks = [
+    can(session.role, "budgets.manage") && captureBudgets.length > 0 && {
+      icon: FileSpreadsheet, tone: "bg-state-infobg text-state-info",
+      label: `${captureBudgets.length} presupuesto${captureBudgets.length > 1 ? "s" : ""} presentado${captureBudgets.length > 1 ? "s" : ""} sin aceptar`,
+      hint: "Tarea de captura: hacer seguimiento al paciente", href: "/app/presupuestos",
+    },
+    canReports && debtorCount > 0 && {
+      icon: Wallet, tone: "bg-state-warnbg text-state-warn",
+      label: `${debtorCount} paciente${debtorCount > 1 ? "s" : ""} con saldo pendiente`,
+      hint: "Tarea de morosidad: enviar recordatorio de pago", href: "/app/caja",
+    },
+    cancelledWeek.length > 0 && {
+      icon: CalendarX, tone: "bg-state-errbg text-state-err",
+      label: `${cancelledWeek.length} cita${cancelledWeek.length > 1 ? "s" : ""} cancelada${cancelledWeek.length > 1 ? "s" : ""} esta semana`,
+      hint: "Reagendar o pasar a lista de espera", href: "/app/agenda",
+    },
+    can(session.role, "inventory.manage") && lowStock.length > 0 && {
+      icon: Package, tone: "bg-state-warnbg text-state-warn",
+      label: `${lowStock.length} insumo${lowStock.length > 1 ? "s" : ""} con stock bajo`,
+      hint: lowStock.map((s) => s.name.split(" ").slice(0, 2).join(" ")).join(", "), href: "/app/inventario",
+    },
+  ].filter(Boolean) as { icon: any; tone: string; label: string; hint: string; href: string }[];
+
   const checklist = [
     { key: "usersCreated" as const, label: "Crear usuarios del equipo", done: db.onboarding.usersCreated, href: "/app/configuracion" },
     { key: "servicesDefined" as const, label: "Definir servicios y aranceles", done: db.onboarding.servicesDefined, href: "/app/configuracion" },
@@ -202,6 +232,29 @@ export default function Dashboard() {
         <SpikeStat label="Formularios pendientes" value={pendingForms} icon={FileText} tone={pendingForms > 0 ? "amber" : "green"} href="/app/pacientes" />
         <SpikeStat label="Reclamos en retención" value={onHold} icon={PauseCircle} tone={onHold > 0 ? "red" : "green"} href="/app/facturacion" />
       </div>
+
+      {/* ===== Panel de tareas críticas ===== */}
+      {criticalTasks.length > 0 && (
+        <Card className="p-5">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-state-warn" />
+            <h2 className="font-extrabold text-clinic-text">Tareas críticas</h2>
+            <Badge tone="warn">{criticalTasks.length}</Badge>
+          </div>
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+            {criticalTasks.map((t) => (
+              <a key={t.label} href={t.href} className="group flex items-center gap-3 rounded-xl border border-clinic-border p-3 transition-all hover:-translate-y-0.5 hover:border-azure-200 hover:shadow-card">
+                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${t.tone}`}><t.icon className="h-4 w-4" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold text-clinic-text">{t.label}</span>
+                  <span className="block truncate text-[11px] text-clinic-muted">{t.hint}</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-clinic-muted transition-transform group-hover:translate-x-0.5 group-hover:text-azure-600" />
+              </a>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* ===== Gráficos (reportes financieros: solo admin/asistente — matriz v2) ===== */}
       <div className="grid gap-5 lg:grid-cols-5">

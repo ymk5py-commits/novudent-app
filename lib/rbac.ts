@@ -12,7 +12,11 @@ export type Permission =
   | "billing.submit" // Enviar a Cobro / gestionar pagos y seguimiento
   | "billing.finalize" // Finalizar facturas (Release from Hold)
   | "billing.reports" // Ver reportes financieros
-  | "engagement.forms";
+  | "engagement.forms"
+  | "budgets.manage" // Presupuestos: crear/presentar/aceptar
+  | "payments.manage" // Caja: pagos y arqueo
+  | "expenses.manage" // Gastos de la clínica
+  | "inventory.manage"; // Inventario / bodega
 
 const MATRIX: Record<Permission, Role[]> = {
   "users.manage": ["admin"],
@@ -26,6 +30,10 @@ const MATRIX: Record<Permission, Role[]> = {
   "billing.finalize": ["admin", "dentist"], // asistente: denegado (matriz v2)
   "billing.reports": ["admin", "assistant"], // dentista: denegado (matriz v2)
   "engagement.forms": ["admin", "assistant"], // dentista: denegado
+  "budgets.manage": ["admin", "dentist", "assistant"],
+  "payments.manage": ["admin", "assistant"], // caja: dentista no maneja dinero
+  "expenses.manage": ["admin"],
+  "inventory.manage": ["admin", "assistant"],
 };
 
 export function can(role: Role, p: Permission): boolean {

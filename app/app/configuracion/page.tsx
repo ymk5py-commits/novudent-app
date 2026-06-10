@@ -1,16 +1,21 @@
 "use client";
-/** Configuración de la práctica (solo Administrador): usuarios, servicios, clínica. */
+/** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
+ *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useState } from "react";
-import { ShieldAlert, Plus, UserCog, Stethoscope, Building2 } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, MessageSquareText, UploadCloud, Percent } from "lucide-react";
 import { useStore, fmtGs } from "@/lib/store";
 import { can, ROLE_LABEL } from "@/lib/rbac";
-import type { Role, User, Procedure } from "@/lib/types";
+import type { Role, User, Procedure, Patient } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 
 export default function ConfigPage() {
-  const { db, session, upsertProcedure, setOnboarding, createTeamUser, backend } = useStore();
+  const { db, session, upsertProcedure, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, importPatients } = useStore();
   const [addingUser, setAddingUser] = useState(false);
   const [addingProc, setAddingProc] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [convName, setConvName] = useState("");
+  const [convPct, setConvPct] = useState(10);
+  const [template, setTemplate] = useState<string | null>(null);
 
   if (!session) return null;
   if (!can(session.role, "practice.config")) {
@@ -59,10 +64,82 @@ export default function ConfigPage() {
                 <span className="block text-sm font-bold text-clinic-text">{u.name}</span>
                 <span className="block text-xs text-clinic-muted">{u.email}</span>
               </span>
+              {u.role === "dentist" && (
+                <label className="flex items-center gap-1 rounded-lg border border-clinic-border px-2 py-1" title="% de comisión sobre producción cobrada">
+                  <Percent className="h-3 w-3 text-clinic-muted" />
+                  <input
+                    type="number" min={0} max={100}
+                    className="w-10 bg-transparent text-right font-mono text-xs font-bold text-clinic-text focus:outline-none"
+                    value={u.commissionPct ?? 0}
+                    onChange={(e) => upsertUser({ ...u, commissionPct: Number(e.target.value) || 0 })}
+                  />
+                </label>
+              )}
               <Badge tone={u.role === "admin" ? "info" : u.role === "dentist" ? "ok" : "warn"}>{ROLE_LABEL[u.role]}</Badge>
             </div>
           ))}
         </div>
+        <p className="mt-2 text-[11px] text-clinic-muted">El % de comisión de cada dentista alimenta el cálculo de pago en <a href="/app/reportes" className="font-bold text-azure-700">Reportes</a>.</p>
+      </Card>
+
+      {/* Convenios */}
+      <Card className="p-5">
+        <div className="mb-3 flex items-center gap-2"><Handshake className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Gestión de convenios</h2></div>
+        <p className="mb-3 text-xs text-clinic-muted">Acuerdos con empresas/aseguradoras — el descuento se aplica automáticamente en los presupuestos.</p>
+        <div className="flex flex-wrap gap-2">
+          {(clinic.config.convenios ?? []).map((c) => (
+            <span key={c.name} className="inline-flex items-center gap-2 rounded-full border border-clinic-border bg-clinic-bg px-3 py-1.5 text-xs font-bold text-clinic-text">
+              {c.name} <span className="font-mono text-azure-700">{c.discountPct}%</span>
+              <button
+                onClick={() => updateClinicConfig({ convenios: (clinic.config.convenios ?? []).filter((x) => x.name !== c.name) })}
+                className="text-clinic-muted hover:text-state-err" aria-label={`Quitar ${c.name}`}
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          {(clinic.config.convenios ?? []).length === 0 && <span className="text-sm text-clinic-muted">Sin convenios cargados.</span>}
+        </div>
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <input className={inputCls + " !w-48"} placeholder="Nombre (ej: IPS)" value={convName} onChange={(e) => setConvName(e.target.value)} />
+          <input type="number" min={0} max={100} className={inputCls + " !w-24"} value={convPct} onChange={(e) => setConvPct(Number(e.target.value))} title="% de descuento" />
+          <Btn
+            variant="outline"
+            disabled={!convName.trim()}
+            onClick={() => {
+              updateClinicConfig({ convenios: [...(clinic.config.convenios ?? []).filter((x) => x.name !== convName.trim()), { name: convName.trim(), discountPct: convPct }] });
+              setConvName("");
+            }}
+          >
+            <Plus className="h-3.5 w-3.5" /> Agregar convenio
+          </Btn>
+        </div>
+      </Card>
+
+      {/* Plantilla de recordatorio */}
+      <Card className="p-5">
+        <div className="mb-3 flex items-center gap-2"><MessageSquareText className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Confirmación de citas — plantilla WhatsApp</h2></div>
+        <p className="mb-2 text-xs text-clinic-muted">Variables disponibles: <code className="font-mono">{"{paciente} {fecha} {hora} {clinica}"}</code>. Se usa desde la Agenda al enviar recordatorios.</p>
+        <textarea
+          rows={3}
+          className={inputCls}
+          value={template ?? clinic.config.reminderTemplate ?? ""}
+          onChange={(e) => setTemplate(e.target.value)}
+        />
+        {template !== null && template !== (clinic.config.reminderTemplate ?? "") && (
+          <div className="mt-2 flex justify-end">
+            <Btn onClick={() => { updateClinicConfig({ reminderTemplate: template }); setTemplate(null); }}>Guardar plantilla</Btn>
+          </div>
+        )}
+      </Card>
+
+      {/* Carga masiva */}
+      <Card className="p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2"><UploadCloud className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Carga masiva de pacientes</h2></div>
+          <Btn variant="outline" onClick={() => setImporting(true)}><UploadCloud className="h-4 w-4" /> Importar CSV</Btn>
+        </div>
+        <p className="text-xs text-clinic-muted">Importá tu base actual con formato <code className="font-mono">nombre;apellido;ci;telefono;email</code> (una línea por paciente).</p>
       </Card>
 
       {/* Servicios / aranceles */}
@@ -110,7 +187,77 @@ export default function ConfigPage() {
           onSave={(p) => { upsertProcedure(p); setOnboarding("servicesDefined", true); setAddingProc(false); }}
         />
       )}
+      {importing && (
+        <ImportPatients
+          clinicId={clinic.id}
+          existingDocs={db.patients.map((p) => p.document)}
+          onClose={() => setImporting(false)}
+          onImport={(list) => { importPatients(list); setImporting(false); }}
+        />
+      )}
     </div>
+  );
+}
+
+/* ===== Carga masiva de pacientes (CSV) ===== */
+function ImportPatients({
+  clinicId, existingDocs, onClose, onImport,
+}: { clinicId: string; existingDocs: string[]; onClose: () => void; onImport: (list: Patient[]) => void }) {
+  const [text, setText] = useState("");
+  const sep = text.includes(";") ? ";" : ",";
+  const rows = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => l.split(sep).map((c) => c.trim()))
+    .filter((c) => c[0] && c[1] && !/^nombre$/i.test(c[0]));
+  const dupes = rows.filter((c) => c[2] && existingDocs.includes(c[2])).length;
+  const valid = rows.filter((c) => !c[2] || !existingDocs.includes(c[2]));
+
+  return (
+    <Modal title="Importar pacientes (CSV)" onClose={onClose} wide>
+      <div className="space-y-3">
+        <p className="rounded-xl bg-azure-50 p-3 text-xs leading-relaxed text-azure-700">
+          Pegá el contenido del CSV — una línea por paciente: <code className="font-mono">nombre;apellido;ci;telefono;email</code>.
+          También podés copiar columnas directamente desde Excel.
+        </p>
+        <textarea
+          rows={8}
+          className={inputCls + " font-mono text-xs"}
+          placeholder={"María;González;3.456.789;+595 981 111 111;maria@mail.com\nJuan;Pérez;4.111.222;+595 982 333 444;"}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <div className="flex items-center justify-between text-xs text-clinic-muted">
+          <span>
+            {rows.length} fila{rows.length !== 1 && "s"} detectada{rows.length !== 1 && "s"}
+            {dupes > 0 && <span className="text-state-warn"> · {dupes} duplicada{dupes > 1 && "s"} por CI (se omiten)</span>}
+          </span>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
+          <Btn
+            disabled={valid.length === 0}
+            onClick={() => {
+              const now = Date.now();
+              onImport(
+                valid.map((c, i) => ({
+                  id: `p_${now}_${i}`,
+                  clinicId,
+                  firstName: c[0], lastName: c[1],
+                  document: c[2] || `s/d-${now}-${i}`,
+                  phone: c[3] || "",
+                  email: c[4] || undefined,
+                  forms: [], historyUpdatePending: false, emr: [],
+                }))
+              );
+            }}
+          >
+            Importar {valid.length > 0 && `${valid.length} paciente${valid.length > 1 ? "s" : ""}`}
+          </Btn>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

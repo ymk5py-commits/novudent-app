@@ -1,4 +1,4 @@
-import type { DB, Appointment, Patient } from "./types";
+import type { DB, Appointment, Patient, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry } from "./types";
 
 /** Devuelve el lunes de la semana actual a las 00:00 */
 function monday(): Date {
@@ -38,6 +38,16 @@ const patients: Patient[] = [
       "26": { condition: "corona", note: "Corona cerámica", updatedAt: at(-60, 9), updatedBy: "Dra. Sofía Benítez" },
       "28": { condition: "ausente", updatedAt: at(-90, 9), updatedBy: "Dra. Sofía Benítez" },
     },
+    prescriptions: [
+      {
+        id: "rx1", date: at(-7, 11), dentistId: "u2", dentistName: "Dra. Sofía Benítez",
+        items: [
+          { drug: "Amoxicilina 500 mg", dose: "1 cápsula", freq: "cada 8 horas", days: "7 días" },
+          { drug: "Ibuprofeno 400 mg", dose: "1 comprimido", freq: "cada 8 horas", days: "3 días" },
+        ],
+        notes: "Tomar con alimentos. Suspender ibuprofeno si hay molestias gástricas.",
+      },
+    ],
   },
   {
     id: "p2", clinicId: CLINIC_ID, firstName: "Juan", lastName: "Ríos", document: "4.567.890",
@@ -75,7 +85,105 @@ const patients: Patient[] = [
     phone: "+595 986 666 666", birthDate: "1985-02-08",
     forms: [], historyUpdatePending: false,
     emr: [{ id: "n5", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-1, 16), kind: "plan", text: "Inicio de ortodoncia (D8080). Estudio cefalométrico solicitado." }],
+    ortho: {
+      active: true,
+      applianceType: "Brackets metálicos autoligado",
+      diagnosis: "Clase II división 1 — apiñamiento moderado superior e inferior",
+      startDate: at(-30, 10),
+      monthlyFee: 375000,
+      controls: [
+        { date: at(-30, 10), note: "Instalación de aparatología superior. Indicaciones de higiene entregadas.", by: "Dra. Sofía Benítez" },
+        { date: at(-2, 17), note: "Activación + cambio de ligaduras. Buena higiene, leve gingivitis en 31-41.", by: "Dra. Sofía Benítez" },
+      ],
+    },
   },
+];
+
+/* ===== Presupuestos demo (plan de tratamiento → captura → cobro) ===== */
+const budgets: Budget[] = [
+  {
+    id: "g1", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", createdAt: at(-5, 11), status: "presentado",
+    items: [
+      { id: "gi1", cpt: "D2330", description: "Resina compuesta — 1 superficie", tooth: "16", price: 420000, status: "pendiente" },
+      { id: "gi2", cpt: "D2330", description: "Resina compuesta — 1 superficie", tooth: "24", price: 420000, status: "pendiente" },
+      { id: "gi3", cpt: "D1110", description: "Profilaxis (adulto)", price: 250000, status: "pendiente" },
+    ],
+    discountPct: 15, convenio: "Asismed", installments: 2,
+    notes: "Iniciar por pieza 16 (sintomática).",
+    history: [
+      { at: at(-5, 11), action: "Presupuesto creado", by: "Dra. Sofía Benítez" },
+      { at: at(-4, 9), action: "Presentado al paciente", by: "Paola Asistente" },
+    ],
+  },
+  {
+    id: "g2", clinicId: CLINIC_ID, patientId: "p6", dentistId: "u2", createdAt: at(-30, 10), status: "aceptado",
+    items: [{ id: "gi4", cpt: "D8080", description: "Ortodoncia integral (adolescente/adulto)", price: 4500000, status: "pendiente" }],
+    installments: 12,
+    notes: "Ortodoncia integral — entrega inicial + 12 cuotas mensuales.",
+    history: [
+      { at: at(-30, 10), action: "Presupuesto creado", by: "Dra. Sofía Benítez" },
+      { at: at(-30, 11), action: "Aceptado por el paciente", by: "Paola Asistente" },
+    ],
+  },
+  {
+    id: "g3", clinicId: CLINIC_ID, patientId: "p4", dentistId: "u2", createdAt: at(-10, 9), status: "completado",
+    items: [
+      { id: "gi5", cpt: "D7140", description: "Exodoncia simple", tooth: "28", price: 600000, status: "realizado", doneAt: at(-1, 10), doneBy: "Dra. Sofía Benítez" },
+      { id: "gi6", cpt: "D0120", description: "Evaluación oral periódica", price: 150000, status: "realizado", doneAt: at(-10, 9), doneBy: "Dra. Sofía Benítez" },
+    ],
+    history: [
+      { at: at(-10, 9), action: "Presupuesto creado", by: "Dra. Sofía Benítez" },
+      { at: at(-10, 10), action: "Aceptado por el paciente", by: "Paola Asistente" },
+      { at: at(-1, 10), action: "Todos los procedimientos realizados — completado", by: "Dra. Sofía Benítez" },
+    ],
+  },
+  {
+    id: "g4", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", createdAt: at(-1, 12), status: "borrador",
+    items: [
+      { id: "gi7", cpt: "D9972", description: "Blanqueamiento dental (arcada)", tooth: undefined, price: 900000, status: "pendiente" },
+      { id: "gi8", cpt: "D9972", description: "Blanqueamiento dental (arcada)", price: 900000, status: "pendiente" },
+    ],
+    notes: "Evaluar sensibilidad antes de confirmar.",
+    history: [{ at: at(-1, 12), action: "Presupuesto creado", by: "Dra. Sofía Benítez" }],
+  },
+];
+
+/* ===== Pagos (caja) ===== */
+const payments: Payment[] = [
+  { id: "pay1", clinicId: CLINIC_ID, patientId: "p6", budgetId: "g2", date: at(-30, 11), amount: 1500000, method: "efectivo", concept: "Entrega inicial ortodoncia", receivedBy: "Paola Asistente" },
+  { id: "pay2", clinicId: CLINIC_ID, patientId: "p6", budgetId: "g2", date: at(-2, 10), amount: 375000, method: "transferencia", concept: "Cuota mensual ortodoncia", receivedBy: "Paola Asistente" },
+  { id: "pay3", clinicId: CLINIC_ID, patientId: "p4", budgetId: "g3", date: at(-1, 11), amount: 750000, method: "tarjeta", concept: "Exodoncia 28 + consulta", receivedBy: "Carlos Admin" },
+  { id: "pay4", clinicId: CLINIC_ID, patientId: "p3", date: at(0, 10), amount: 225000, method: "efectivo", concept: "Profilaxis (con descuento)", receivedBy: "Paola Asistente" },
+  { id: "pay5", clinicId: CLINIC_ID, patientId: "p1", budgetId: "g1", date: at(0, 12), amount: 200000, method: "qr", concept: "Anticipo presupuesto resinas", receivedBy: "Paola Asistente" },
+];
+
+/* ===== Gastos ===== */
+const expenses: Expense[] = [
+  { id: "e1", clinicId: CLINIC_ID, date: at(0, 9), category: "Insumos", supplier: "Dental Center PY", description: "Resinas A2 y adhesivos", amount: 480000, registeredBy: "Carlos Admin" },
+  { id: "e2", clinicId: CLINIC_ID, date: at(-1, 15), category: "Servicios", description: "ANDE — electricidad mayo", amount: 350000, registeredBy: "Carlos Admin" },
+  { id: "e3", clinicId: CLINIC_ID, date: at(-3, 10), category: "Laboratorio", supplier: "LaboDent", description: "Corona cerámica pieza 26", amount: 900000, registeredBy: "Carlos Admin" },
+];
+
+/* ===== Inventario ===== */
+const stock: StockItem[] = [
+  { id: "s1", clinicId: CLINIC_ID, name: "Resina compuesta A2 (jeringa)", category: "Restauración", unit: "unidad", stock: 6, minStock: 4, cost: 180000 },
+  { id: "s2", clinicId: CLINIC_ID, name: "Anestesia lidocaína 2% c/epinefrina", category: "Anestésicos", unit: "caja x50", stock: 2, minStock: 3, cost: 220000 },
+  { id: "s3", clinicId: CLINIC_ID, name: "Guantes nitrilo M", category: "Descartables", unit: "caja x100", stock: 14, minStock: 5, cost: 65000 },
+  { id: "s4", clinicId: CLINIC_ID, name: "Agujas cortas 30G", category: "Descartables", unit: "caja x100", stock: 8, minStock: 4, cost: 45000 },
+  { id: "s5", clinicId: CLINIC_ID, name: "Ácido grabador 37%", category: "Restauración", unit: "jeringa", stock: 5, minStock: 2, cost: 35000 },
+  { id: "s6", clinicId: CLINIC_ID, name: "Hipoclorito de sodio 5%", category: "Endodoncia", unit: "litro", stock: 1, minStock: 2, cost: 40000 },
+];
+
+const stockMoves: StockMove[] = [
+  { id: "m1", clinicId: CLINIC_ID, itemId: "s3", date: at(-7, 9), type: "entrada", qty: 10, reason: "Compra Dental Center PY", by: "Carlos Admin" },
+  { id: "m2", clinicId: CLINIC_ID, itemId: "s1", date: at(-1, 12), type: "salida", qty: 2, reason: "Consumo consultorio 1", by: "Paola Asistente" },
+  { id: "m3", clinicId: CLINIC_ID, itemId: "s2", date: at(0, 9), type: "salida", qty: 1, reason: "Cirugía paciente Mejía", by: "Paola Asistente" },
+];
+
+/* ===== Lista de espera ===== */
+const waitlist: WaitlistEntry[] = [
+  { id: "w1", clinicId: CLINIC_ID, patientId: "p5", reason: "Limpieza + control", preference: "Tardes después de 17:00", createdAt: at(-2, 9) },
+  { id: "w2", clinicId: CLINIC_ID, patientId: "p2", reason: "Sensibilidad pieza 21 — urgencia leve", preference: "Cualquier mañana", createdAt: at(-1, 8) },
 ];
 
 const appointments: Appointment[] = [
@@ -84,7 +192,7 @@ const appointments: Appointment[] = [
   { id: "a3", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", title: "Profilaxis", start: at(1, 10), end: at(1, 10, 45), status: "completada", amount: 250000, discount: 25000 },
   { id: "a4", clinicId: CLINIC_ID, patientId: "p4", dentistId: "u2", title: "Exodoncia 28", start: at(2, 9, 30), end: at(2, 10, 30), status: "confirmada", amount: 600000, discount: 0 },
   { id: "a5", clinicId: CLINIC_ID, patientId: "p5", dentistId: "u2", title: "Control + limpieza", start: at(2, 15), end: at(2, 16), status: "pendiente", amount: 250000, discount: 0 },
-  { id: "a6", clinicId: CLINIC_ID, patientId: "p6", dentistId: "u2", title: "Control ortodoncia", start: at(3, 17), end: at(3, 17, 30), status: "confirmada", amount: 350000, discount: 0 },
+  { id: "a6", clinicId: CLINIC_ID, patientId: "p6", dentistId: "u2", title: "Control ortodoncia", start: at(3, 17), end: at(3, 17, 30), status: "confirmada", amount: 350000, discount: 0, reminderSent: true },
   { id: "a7", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", title: "Blanqueamiento — evaluación", start: at(4, 14), end: at(4, 14, 30), status: "pendiente", amount: 0, discount: 0 },
   { id: "a8", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", title: "Control post-operatorio", start: at(4, 9), end: at(4, 9, 20), status: "cancelada", amount: 0, discount: 0 },
 ];
@@ -92,12 +200,25 @@ const appointments: Appointment[] = [
 export function buildSeed(): DB {
   return {
     clinics: [
-      { id: CLINIC_ID, name: "Clínica Demo Asunción", config: { timezone: "America/Asuncion", currency: "PYG", address: "Av. España 1234, Asunción", phone: "+595 21 555 000" } },
+      {
+        id: CLINIC_ID, name: "Clínica Demo Asunción",
+        config: {
+          timezone: "America/Asuncion", currency: "PYG", address: "Av. España 1234, Asunción", phone: "+595 21 555 000",
+          convenios: [
+            { name: "Asismed", discountPct: 15 },
+            { name: "IPS", discountPct: 10 },
+            { name: "OSDE PY", discountPct: 12 },
+          ],
+          reminderTemplate:
+            "Hola {paciente} 👋 Te recordamos tu cita en {clinica} el {fecha} a las {hora}. Respondé *SI* para confirmar o avisanos si necesitás reagendar. ¡Gracias!",
+        },
+      },
     ],
     users: [
       { id: "u1", clinicId: CLINIC_ID, name: "Carlos Admin", email: "admin@novudent.app", role: "admin", color: "#1769E0", active: true },
-      { id: "u2", clinicId: CLINIC_ID, name: "Dra. Sofía Benítez", email: "sofia@novudent.app", role: "dentist", color: "#0E9F6E", active: true },
+      { id: "u2", clinicId: CLINIC_ID, name: "Dra. Sofía Benítez", email: "sofia@novudent.app", role: "dentist", color: "#0E9F6E", active: true, commissionPct: 30 },
       { id: "u3", clinicId: CLINIC_ID, name: "Paola Asistente", email: "paola@novudent.app", role: "assistant", color: "#B45309", active: true },
+      { id: "u4", clinicId: CLINIC_ID, name: "Dr. Diego Martínez", email: "diego@novudent.app", role: "dentist", color: "#0D9488", active: true, commissionPct: 25 },
     ],
     patients,
     appointments,
@@ -151,7 +272,14 @@ export function buildSeed(): DB {
       { cpt: "D4341", description: "Raspado y alisado radicular (cuadrante)", price: 550000, defaultDx: ["K05.30"] },
       { cpt: "D7140", description: "Exodoncia simple", price: 600000, defaultDx: ["K08.3"] },
       { cpt: "D8080", description: "Ortodoncia integral (adolescente/adulto)", price: 4500000, defaultDx: ["M26.4"] },
+      { cpt: "D9972", description: "Blanqueamiento dental (arcada)", price: 900000, defaultDx: ["Z01.20"] },
     ],
+    budgets,
+    payments,
+    expenses,
+    stock,
+    stockMoves,
+    waitlist,
     onboarding: { usersCreated: true, servicesDefined: true, tourDone: false },
   };
 }

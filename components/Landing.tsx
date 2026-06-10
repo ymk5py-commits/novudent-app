@@ -58,12 +58,14 @@ const MARQUEE_TEETH: { n: string; rec?: ToothRecord }[] = [
 ];
 
 const CAPACIDADES = [
-  { n: "01", t: "Agenda inteligente", d: "Calendario semanal 00–24 h y lista de tareas. Clic en una franja vacía y la cita existe. Reagendamiento automático." },
+  { n: "01", t: "Agenda + confirmación de citas", d: "Calendario semanal 00–24 h, lista de espera y recordatorios por WhatsApp con plantilla propia. Clic en una franja vacía y la cita existe." },
   { n: "02", t: "Odontograma por superficies", d: "32 piezas FDI con morfología real. Caries en mesial, corona en la 26: dos clics, queda auditado quién y cuándo." },
-  { n: "03", t: "Patient Finder", d: "Buscador central con íconos de estado: formularios pendientes e historial por actualizar, visibles antes de abrir la ficha." },
-  { n: "04", t: "Formularios y consentimientos", d: "Anamnesis digital con el flujo del lápiz: completar, fecha de finalización, y los pendientes desaparecen solos." },
-  { n: "05", t: "Facturación con máquina de estados", d: "MBILLED → HOLD/MGRHOLD → FACTURADO. Nada se envía sin validar CPT-DX, POS y modificadores." },
-  { n: "06", t: "Roles y permisos", d: "Administrador, dentista y asistente. Cada uno ve exactamente lo que le corresponde — el historial clínico no se toca por error." },
+  { n: "03", t: "Presupuestos y cobro en cuotas", d: "Plan de tratamiento con convenios y descuento automático. Borrador → presentado → aceptado, ejecución por pieza e impresión en PDF." },
+  { n: "04", t: "Caja, gastos y morosidad", d: "Arqueo diario por método de pago, control de gastos y cuentas por cobrar con recordatorio de deuda en un clic." },
+  { n: "05", t: "Inventario y comisiones", d: "Bodega virtual con alertas de reposición, y cálculo automático del pago a cada odontólogo según su producción cobrada." },
+  { n: "06", t: "Ortodoncia, recetas y archivos", d: "Módulo de ortodoncia con controles mensuales, recetas con plantillas listas para imprimir y radiografías en la ficha." },
+  { n: "07", t: "Informes de gestión", d: "KPIs de 30 días, tasa de aceptación de presupuestos y reportes descargables en Excel: pagos, gastos, comisiones, pacientes." },
+  { n: "08", t: "Roles, formularios y facturación", d: "RBAC de 3 roles, anamnesis digital con flujo del lápiz y máquina de estados MBILLED → HOLD → FACTURADO con validaciones CPT." },
 ];
 
 export default function Landing() {
