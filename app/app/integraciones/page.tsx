@@ -185,10 +185,9 @@ export default function IntegrationsPage() {
         </div>
 
         <p className="relative mt-4 rounded-xl bg-clinic-bg p-3 text-[11px] leading-relaxed text-clinic-muted">
-          <b>Cómo funciona:</b> Novudent encola tareas en <code className="font-mono">clinics/{clinic.id}/outbox</code>;
-          el worker de Botika las escucha con una service account, conversa por WhatsApp y escribe el resultado en el mismo documento.
-          La cita se confirma o el NPS aparece <b>en vivo, sin recargar</b>. Contrato técnico completo en{" "}
-          <code className="font-mono">docs/INTEGRACION-BOTIKA.md</code>.
+          <b>Cómo funciona:</b> activá las automatizaciones que quieras y Botika se encarga del resto:
+          le escribe a tus pacientes por WhatsApp, conversa con ellos como una persona y el resultado
+          aparece solo en tu agenda y en las fichas — <b>en vivo, sin recargar</b>. No tenés que hacer nada más.
         </p>
       </Card>
 
