@@ -10,7 +10,20 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch,
 } from "firebase/firestore";
-import { fsdb } from "./firebase";
+import { app, fsdb } from "./firebase";
+
+/** Autenticación anónima: requisito de las reglas de producción
+ *  (`request.auth != null`). Si el proveedor no está habilitado, seguimos
+ *  igual — las reglas decidirán. */
+async function ensureAuth() {
+  try {
+    const { getAuth, signInAnonymously } = await import("firebase/auth");
+    const auth = getAuth(app);
+    if (!auth.currentUser) await signInAnonymously(auth);
+  } catch (e) {
+    console.warn("Auth anónima no disponible:", e);
+  }
+}
 import type { DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord } from "./types";
 import { buildSeed } from "./seed";
 import { submitToBilling, releaseFromHold } from "./billing";
@@ -111,7 +124,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     } catch {}
     (async () => {
       try {
-        const remote = await withTimeout(loadFirestore(), 8000);
+        await withTimeout(ensureAuth(), 6000).catch(() => {});
+        const remote = await withTimeout(loadFirestore(), 9000);
         setDb(remote);
         setBackend("firebase");
       } catch (e) {
