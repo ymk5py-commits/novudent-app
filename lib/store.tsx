@@ -208,6 +208,7 @@ interface Ctx {
   /** Flujo clipboard: marca la actualización de historial médico como recibida con fecha de envío */
   markHistoryUpdate: (patientId: string, date: string) => void;
   setTooth: (patientId: string, tooth: string, rec: ToothRecord | null) => void;
+  addPerioSession: (patientId: string, session: import("./types").PerioSession) => void;
   upsertBilling: (b: BillingRecord) => void;
   submitBilling: (id: string) => void;
   releaseBilling: (id: string) => void;
@@ -418,6 +419,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           return { ...p, forms, historyUpdatePending: stillPending ? p.historyUpdatePending : false };
         }),
       addEmrNote: (patientId, note) => patchPatient(patientId, (p) => ({ ...p, emr: [note, ...p.emr] })),
+      addPerioSession: (patientId, session) =>
+        patchPatient(patientId, (p) => ({ ...p, perio: [session, ...(p.perio ?? [])] })),
       markHistoryUpdate: (patientId, date) =>
         patchPatient(patientId, (p) => ({ ...p, historyUpdatePending: false, historyUpdateDate: date })),
       setTooth: (patientId, tooth, rec) =>

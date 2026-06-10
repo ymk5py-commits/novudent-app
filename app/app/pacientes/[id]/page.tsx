@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2, Smile,
-  FileSpreadsheet, Pill, FolderOpen, Braces,
+  FileSpreadsheet, Pill, FolderOpen, Braces, Activity,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fullName } from "@/lib/store";
 import { recordTotal } from "@/lib/billing";
@@ -15,12 +15,13 @@ import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, FlagBadge, Empty
 import Odontogram from "@/components/Odontogram";
 import { BudgetsTab, RxTab, FilesTab, OrthoTab } from "@/components/PatientExtras";
 import { VoiceNoteButton, PatientBriefButton } from "@/components/NovudentIA";
+import Periodontogram from "@/components/Periodontogram";
 
-type Tab = "resumen" | "odontograma" | "historial" | "presupuestos" | "recetas" | "archivos" | "ortodoncia" | "formularios" | "facturacion";
+type Tab = "resumen" | "odontograma" | "periodoncia" | "historial" | "presupuestos" | "recetas" | "archivos" | "ortodoncia" | "formularios" | "facturacion";
 
 export default function PatientProfile() {
   const { id } = useParams<{ id: string }>();
-  const { db, session, completeForm, addEmrNote, setTooth, markHistoryUpdate } = useStore();
+  const { db, session, completeForm, addEmrNote, addPerioSession, setTooth, markHistoryUpdate } = useStore();
   const [tab, setTab] = useState<Tab>("resumen");
   const [fillingForm, setFillingForm] = useState<PatientForm | null>(null);
   const [writingNote, setWritingNote] = useState(false);
@@ -41,6 +42,7 @@ export default function PatientProfile() {
   const TABS: { key: Tab; label: string; icon: any; badge?: number }[] = [
     { key: "resumen", label: "Resumen", icon: Stethoscope },
     { key: "odontograma", label: "Odontograma", icon: Smile },
+    { key: "periodoncia", label: "Periodoncia", icon: Activity, badge: p.perio?.length || undefined },
     { key: "historial", label: "Historial", icon: ClipboardList },
     { key: "presupuestos", label: "Presupuestos", icon: FileSpreadsheet },
     { key: "recetas", label: "Recetas", icon: Pill },
@@ -177,6 +179,16 @@ export default function PatientProfile() {
             onChange={(tooth, rec) => setTooth(p.id, tooth, rec)}
           />
         </div>
+      )}
+
+      {/* ===== PERIODONCIA ===== */}
+      {tab === "periodoncia" && (
+        <Periodontogram
+          sessions={p.perio ?? []}
+          canWrite={canWriteEmr}
+          authorName={session.name}
+          onSave={(s) => addPerioSession(p.id, s)}
+        />
       )}
 
       {/* ===== HISTORIAL CLÍNICO (EMR) ===== */}

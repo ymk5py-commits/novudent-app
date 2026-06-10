@@ -124,8 +124,29 @@ export interface Patient {
   files?: PatientFileRec[];
   /* Módulo de ortodoncia */
   ortho?: OrthoRecord;
+  /* Periodontograma: sesiones de medición periodontal */
+  perio?: PerioSession[];
   /* Última encuesta NPS respondida (vía Botika) */
   nps?: { score: number; comment?: string; at: string };
+}
+
+/* ===== Periodontograma ===== */
+/** Medición de una pieza: profundidad de sondaje en mm por sitio
+ *  (3 vestibulares MV-V-DV + 3 linguopalatinos ML-L-DL), sangrado al
+ *  sondaje por sitio y movilidad (escala Miller 0-3). null = sitio no
+ *  medido. */
+export interface PerioToothRecord {
+  pd: (number | null)[];   // largo 6
+  bop: boolean[];          // largo 6
+  mobility?: 0 | 1 | 2 | 3;
+}
+
+export interface PerioSession {
+  id: string;
+  date: string; // ISO
+  by: string;   // profesional que midió
+  teeth: Record<string, PerioToothRecord>; // clave = pieza FDI
+  notes?: string;
 }
 
 /* ===== Facturación (sec. 3.3) ===== */
