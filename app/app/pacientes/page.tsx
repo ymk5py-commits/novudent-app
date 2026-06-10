@@ -49,8 +49,8 @@ export default function PatientsPage() {
           {list.map((p) => {
             const pendingForms = p.forms.filter((f) => f.status === "pendiente").length;
             return (
-              <a key={p.id} href={`/app/pacientes/${p.id}`} className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-clinic-bg/70">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-azure-100 font-bold text-azure-700">
+              <a key={p.id} href={`/app/pacientes/${p.id}`} className="group flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-clinic-bg/70">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-azure-100 to-azure-200 font-bold text-azure-700 ring-1 ring-azure-200/60 transition-transform group-hover:scale-105">
                   {p.firstName[0]}{p.lastName[0]}
                 </span>
                 <span className="min-w-0 flex-1">

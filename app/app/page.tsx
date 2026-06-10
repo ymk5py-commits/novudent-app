@@ -5,6 +5,8 @@ import { CheckCircle2, Circle, CalendarDays, Users, Receipt, ArrowRight, RotateC
 import { useStore, fmtTime, fmtGs, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { Card, Badge, StatusBadge, Btn } from "@/components/ui";
+import { StatCard } from "@/components/StatCard";
+import { FileText, PauseCircle } from "lucide-react";
 
 export default function Dashboard() {
   const { db, session, setOnboarding, resetDemo } = useStore();
@@ -21,6 +23,16 @@ export default function Dashboard() {
 
   const pendingForms = db.patients.filter((p) => p.forms.some((f) => f.status === "pendiente")).length;
   const onHold = db.billing.filter((b) => b.flags.includes("HOLD") || b.flags.includes("MGRHOLD")).length;
+
+  /* tendencia real: citas por día de la semana actual */
+  const mon = new Date(today);
+  mon.setHours(0, 0, 0, 0);
+  mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+  const weekTrend = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    return db.appointments.filter((a) => new Date(a.start).toDateString() === d.toDateString()).length;
+  });
 
   const checklist = useMemo(
     () => [
@@ -46,26 +58,30 @@ export default function Dashboard() {
         </Btn>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs (StatCard de 21st.dev: count-up + sparkline) */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <a href="/app/agenda">
-          <Card className="p-5 transition-shadow hover:shadow-pop">
-            <div className="flex items-center gap-2 text-clinic-muted"><CalendarDays className="h-4 w-4" /><span className="text-xs font-bold uppercase tracking-wide">Citas de hoy</span></div>
-            <div className="mt-2 text-3xl font-extrabold text-clinic-text">{todays.length}</div>
-          </Card>
-        </a>
-        <a href="/app/pacientes">
-          <Card className="p-5 transition-shadow hover:shadow-pop">
-            <div className="flex items-center gap-2 text-clinic-muted"><Users className="h-4 w-4" /><span className="text-xs font-bold uppercase tracking-wide">Formularios pendientes</span></div>
-            <div className="mt-2 text-3xl font-extrabold text-clinic-text">{pendingForms}</div>
-          </Card>
-        </a>
-        <a href="/app/facturacion">
-          <Card className="p-5 transition-shadow hover:shadow-pop">
-            <div className="flex items-center gap-2 text-clinic-muted"><Receipt className="h-4 w-4" /><span className="text-xs font-bold uppercase tracking-wide">Reclamos en retención</span></div>
-            <div className="mt-2 text-3xl font-extrabold text-clinic-text">{onHold}</div>
-          </Card>
-        </a>
+        <StatCard
+          href="/app/agenda"
+          label="Citas de hoy"
+          value={todays.length}
+          icon={<CalendarDays className="h-5 w-5" strokeWidth={2} />}
+          tone="azure"
+          trend={weekTrend}
+        />
+        <StatCard
+          href="/app/pacientes"
+          label="Formularios pendientes"
+          value={pendingForms}
+          icon={<FileText className="h-5 w-5" strokeWidth={2} />}
+          tone={pendingForms > 0 ? "amber" : "green"}
+        />
+        <StatCard
+          href="/app/facturacion"
+          label="Reclamos en retención"
+          value={onHold}
+          icon={<PauseCircle className="h-5 w-5" strokeWidth={2} />}
+          tone={onHold > 0 ? "amber" : "green"}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-5">

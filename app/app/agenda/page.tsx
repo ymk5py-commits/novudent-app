@@ -172,14 +172,18 @@ export default function AgendaPage() {
                       const top = (s.getHours() + s.getMinutes() / 60) * 56;
                       const height = Math.max(28, ((e.getTime() - s.getTime()) / 3600000) * 56 - 3);
                       const p = db.patients.find((x) => x.id === a.patientId);
+                      const dent = db.users.find((x) => x.id === a.dentistId);
                       return (
                         <button
                           key={a.id}
                           onClick={(ev) => { ev.stopPropagation(); setViewing(a); }}
                           style={{ top, height }}
-                          className={`absolute left-1 right-1 overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] font-semibold shadow-card ${STATUS_BG[a.status]}`}
+                          className={`absolute left-1 right-1 overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] font-semibold shadow-card transition-all duration-150 hover:z-10 hover:-translate-y-px hover:shadow-pop ${STATUS_BG[a.status]}`}
                         >
-                          <div className="truncate">{fmtTime(a.start)} · {a.title || "Cita"}</div>
+                          <div className="flex items-center gap-1 truncate">
+                            {dent && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: dent.color }} title={dent.name} />}
+                            <span className="truncate">{fmtTime(a.start)} · {a.title || "Cita"}</span>
+                          </div>
                           {p && <div className="truncate font-normal opacity-80">{fullName(p)}</div>}
                         </button>
                       );

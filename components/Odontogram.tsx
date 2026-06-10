@@ -105,11 +105,13 @@ function Tooth({ n, rec, upper, onClick }: { n: string; rec?: ToothRecord; upper
   return (
     <button
       onClick={onClick}
-      data-tip={rec ? `${n} · ${CONDITIONS[rec.condition].label}${rec.note ? `\n${rec.note}` : ""}` : `${n} · Sana`}
-      className={`group flex flex-col items-center gap-0.5 rounded-lg px-0.5 py-1 transition-colors hover:bg-azure-50 ${upper ? "" : "flex-col-reverse"}`}
+      title={rec ? `${n} · ${CONDITIONS[rec.condition].label}${rec.note ? ` — ${rec.note}` : ""}` : `${n} · Sana`}
+      className={`group flex flex-col items-center gap-0.5 rounded-lg px-0.5 py-1 transition-all duration-150 hover:bg-azure-50 ${upper ? "" : "flex-col-reverse"}`}
       aria-label={`Pieza ${n}${rec ? ` — ${CONDITIONS[rec.condition].label}` : " — sana"}`}
     >
-      <ToothGlyph n={n} rec={rec} upper={upper} />
+      <span className="transition-transform duration-150 group-hover:scale-110">
+        <ToothGlyph n={n} rec={rec} upper={upper} />
+      </span>
       <span className={`font-mono text-[9.5px] ${rec ? "font-bold text-clinic-text" : "text-clinic-muted"}`}>{n}</span>
     </button>
   );

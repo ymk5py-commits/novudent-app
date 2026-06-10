@@ -33,7 +33,23 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   }, [q, db.patients]);
 
   if (!ready || !session) {
-    return <div className="grid min-h-screen place-items-center text-sm text-clinic-muted">Cargando Novudent…</div>;
+    return (
+      <div className="flex min-h-screen">
+        <div className="hidden w-[218px] bg-navy-800 md:block" />
+        <div className="flex-1 p-8">
+          <div className="mx-auto max-w-6xl space-y-5">
+            <div className="h-9 w-56 animate-pulse rounded-xl bg-clinic-border/60" />
+            <div className="grid gap-4 sm:grid-cols-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-28 animate-pulse rounded-2xl bg-clinic-border/50" style={{ animationDelay: `${i * 120}ms` }} />
+              ))}
+            </div>
+            <div className="h-72 animate-pulse rounded-2xl bg-clinic-border/40" />
+            <p className="text-center font-mono text-[10px] font-bold uppercase tracking-widest text-clinic-muted">Cargando Novudent…</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
