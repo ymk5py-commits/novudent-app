@@ -14,6 +14,7 @@ import type { EmrNote, PatientForm } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, FlagBadge, Empty } from "@/components/ui";
 import Odontogram from "@/components/Odontogram";
 import { BudgetsTab, RxTab, FilesTab, OrthoTab } from "@/components/PatientExtras";
+import { VoiceNoteButton, PatientBriefButton } from "@/components/NovudentIA";
 
 type Tab = "resumen" | "odontograma" | "historial" | "presupuestos" | "recetas" | "archivos" | "ortodoncia" | "formularios" | "facturacion";
 
@@ -64,6 +65,24 @@ export default function PatientProfile() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <PatientBriefButton
+              patient={p}
+              context={{
+                appointments: appts.slice(0, 6).map((a) => ({
+                  fecha: a.start, estado: a.status, titulo: a.title,
+                })),
+                budgets: db.budgets
+                  .filter((b) => b.patientId === p.id)
+                  .slice(0, 6)
+                  .map((b) => ({
+                    estado: b.status,
+                    items: b.items.length,
+                    cuotas: b.installments || null,
+                    fecha: b.createdAt?.slice(0, 10),
+                  })),
+                billing: bills.slice(0, 6).map((b) => ({ flags: b.flags, total: recordTotal(b) })),
+              }}
+            />
             {pendingForms.length > 0 && (
               <button onClick={() => setTab("formularios")} data-tip="Formularios pendientes — clic para gestionar" className="grid h-9 w-9 place-items-center rounded-xl bg-state-warnbg">
                 <FileText className="h-4.5 w-4.5 h-5 w-5 text-state-warn" />
@@ -169,7 +188,16 @@ export default function PatientProfile() {
                 <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> Tu rol tiene acceso de <b>solo lectura</b> al historial clínico.</span>
               )}
             </p>
-            {canWriteEmr && <Btn onClick={() => setWritingNote(true)}><Plus className="h-4 w-4" /> Nueva nota</Btn>}
+            {canWriteEmr && (
+              <div className="flex items-center gap-2">
+                <VoiceNoteButton
+                  patientName={fullName(p)}
+                  author={{ id: session.userId, name: session.name }}
+                  onSave={(note) => addEmrNote(p.id, note)}
+                />
+                <Btn onClick={() => setWritingNote(true)}><Plus className="h-4 w-4" /> Nueva nota</Btn>
+              </div>
+            )}
           </div>
           {p.emr.length === 0 ? (
             <Empty title="Historial vacío" desc="Las notas del dentista aparecerán aquí." />

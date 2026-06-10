@@ -136,13 +136,14 @@ export default function IntegrationsPage() {
             <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-navy-800"><Bot className="h-7 w-7 text-azure-300" /></span>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-lg font-extrabold text-clinic-text">Botika</h2>
-                <Badge tone="info">by NOVUM</Badge>
+                <h2 className="text-lg font-extrabold text-clinic-text">Contact Center IA</h2>
+                <Badge tone="info">Botika · by NOVUM</Badge>
                 {botika.connected ? <Badge tone="ok" tip="Outbox activo — esperando credenciales del worker para mensajería real">Conectado · modo demo</Badge> : <Badge tone="muted">Desconectado</Badge>}
               </div>
               <p className="mt-1 max-w-xl text-sm text-clinic-muted">
-                Bot agéntico de WhatsApp con IA. Confirma citas, hace encuestas NPS y cobra — conversando como un humano, 24/7.
-                Corre como servicio independiente y se comunica con Novudent por el <b>outbox</b> de Firestore.
+                Tu asistente de WhatsApp con IA, 24/7: responde a tus pacientes conversando como
+                una persona, confirma citas, hace encuestas de satisfacción y recuerda pagos
+                pendientes. Vos atendés pacientes; él atiende el teléfono.
               </p>
               <a href="https://botika.lat" target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-azure-700 hover:underline">
                 botika.lat <ExternalLink className="h-3 w-3" />
