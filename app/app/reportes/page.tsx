@@ -7,6 +7,7 @@ import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, patientBalance, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { Card, Btn, Badge } from "@/components/ui";
+import { ReportsIAPanel } from "@/components/NovudentIA";
 
 /** Descarga CSV con BOM UTF-8 (abre directo en Excel) */
 function downloadCsv(filename: string, rows: (string | number)[][]) {
@@ -130,6 +131,37 @@ export default function ReportsPage() {
     },
   ];
 
+  // Payload compacto para Reportes IA — agregados ya computados, nunca
+  // la DB cruda. Nombres en español para que el modelo los entienda.
+  const iaDatos = {
+    ventana: "últimos 30 días",
+    cobradoGs: data.collected,
+    gastadoGs: data.spent,
+    resultadoGs: data.collected - data.spent,
+    presupuestos: {
+      presentados: data.presented.length,
+      aceptados: data.accepted.length,
+      tasaAceptacionPct: data.acceptRate,
+    },
+    produccionPorProfesional: data.production.map((x) => ({
+      nombre: x.d.name,
+      cobradoGs: x.collected,
+      comisionPct: x.pct,
+      comisionGs: x.commission,
+    })),
+    morosos: data.debtors.slice(0, 10).map((x) => ({
+      paciente: fullName(x.p),
+      saldoGs: x.balance,
+    })),
+    nps: {
+      score: data.npsScore,
+      respuestas: data.surveys.length,
+      promotores: data.prom,
+      pasivos: data.pasv,
+      detractores: data.detr,
+    },
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -138,6 +170,9 @@ export default function ReportsPage() {
           <p className="text-sm text-clinic-muted">Resultados de los últimos 30 días + reportes descargables.</p>
         </div>
       </div>
+
+      {/* Novudent IA — pregúntale a tus datos */}
+      <ReportsIAPanel datos={iaDatos} />
 
       {/* KPIs 30 días */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

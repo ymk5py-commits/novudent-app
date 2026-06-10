@@ -12,6 +12,7 @@ import { patientBalance } from "@/lib/budgets";
 import { can } from "@/lib/rbac";
 import { Card, Badge, StatusBadge, Btn } from "@/components/ui";
 import { ToothGlyph } from "@/components/Odontogram";
+import { ContralorCard } from "@/components/NovudentIA";
 
 /* ---- count-up ---- */
 function Count({ value }: { value: number }) {
@@ -193,6 +194,38 @@ export default function Dashboard() {
     { key: "tourDone" as const, label: "Recorrer la Agenda y el Buscador", done: db.onboarding.tourDone, href: "/app/agenda" },
   ];
 
+  // Snapshot de pendientes para el Contralor IA — los mismos flujos
+  // del panel de tareas críticas, con el detalle que el digest necesita.
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+  const tomorrowUnconfirmed = db.appointments.filter(
+    (a) => new Date(a.start).toDateString() === tomorrow.toDateString() && a.status === "pendiente"
+  );
+  const contralorPendientes = {
+    fecha: today.toISOString().slice(0, 10),
+    citasMananaSinConfirmar: tomorrowUnconfirmed.map((a) => ({
+      hora: a.start.slice(11, 16),
+      paciente: (() => { const p = db.patients.find((x) => x.id === a.patientId); return p ? `${p.firstName} ${p.lastName}` : "—"; })(),
+      titulo: a.title,
+    })),
+    presupuestosSinRespuesta: captureBudgets.slice(0, 10).map((b) => ({
+      paciente: (() => { const p = db.patients.find((x) => x.id === b.patientId); return p ? `${p.firstName} ${p.lastName}` : "—"; })(),
+      presentadoEl: b.createdAt?.slice(0, 10),
+    })),
+    morosos: canReports
+      ? db.patients
+          .map((p) => ({ nombre: `${p.firstName} ${p.lastName}`, saldoGs: patientBalance(p.id, db.budgets, db.payments) }))
+          .filter((x) => x.saldoGs > 0)
+          .sort((a, b) => b.saldoGs - a.saldoGs)
+          .slice(0, 8)
+      : [],
+    formulariosPendientes: db.patients
+      .filter((p) => p.forms.some((f) => f.status === "pendiente"))
+      .slice(0, 10)
+      .map((p) => `${p.firstName} ${p.lastName}`),
+    canceladasEstaSemana: cancelledWeek.length,
+    stockBajo: lowStock.map((s) => ({ insumo: s.name, stock: s.stock, minimo: s.minStock })),
+  };
+
   return (
     <div className="space-y-6">
       {/* ===== Banner de bienvenida (Spike) ===== */}
@@ -232,6 +265,9 @@ export default function Dashboard() {
         <SpikeStat label="Formularios pendientes" value={pendingForms} icon={FileText} tone={pendingForms > 0 ? "amber" : "green"} href="/app/pacientes" />
         <SpikeStat label="Reclamos en retención" value={onHold} icon={PauseCircle} tone={onHold > 0 ? "red" : "green"} href="/app/facturacion" />
       </div>
+
+      {/* ===== Contralor IA — parte del día ===== */}
+      <ContralorCard pendientes={contralorPendientes} />
 
       {/* ===== Panel de tareas críticas ===== */}
       {criticalTasks.length > 0 && (

@@ -13,9 +13,9 @@
  * viajan audio/datos y vuelve el resultado.
  */
 import { useEffect, useRef, useState } from "react";
-import { Mic, Square, Sparkles, Loader2, X, Copy, Check } from "lucide-react";
+import { Mic, Square, Sparkles, Loader2, X, Copy, Check, Send, ShieldCheck, RefreshCw } from "lucide-react";
 import type { EmrNote, Patient } from "@/lib/types";
-import { Btn, Modal, Field, inputCls } from "@/components/ui";
+import { Btn, Modal, Field, inputCls, Card } from "@/components/ui";
 
 /* ============================================================== */
 /*  Dictado por voz                                                */
@@ -368,5 +368,177 @@ export function PatientBriefButton({
         </Modal>
       )}
     </>
+  );
+}
+
+/* ============================================================== */
+/*  Reportes IA — "Pregúntale a tus datos"                         */
+/* ============================================================== */
+
+const SUGGESTED_QUESTIONS = [
+  "¿Cómo vienen los ingresos vs gastos?",
+  "¿Qué profesional produjo más?",
+  "¿Cómo está la aceptación de presupuestos?",
+  "¿Quiénes son los mayores deudores?",
+];
+
+export function ReportsIAPanel({ datos }: { datos: unknown }) {
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function ask(q?: string) {
+    const finalQ = (q ?? question).trim();
+    if (!finalQ || loading) return;
+    if (q) setQuestion(q);
+    setLoading(true);
+    setError(null);
+    setAnswer(null);
+    try {
+      const res = await fetch("/api/ia/reportes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: finalQ, datos }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setAnswer(data.answer);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="grid h-9 w-9 place-items-center rounded-xl bg-azure-100 text-azure-700">
+          <Sparkles className="h-4.5 w-4.5 h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="font-extrabold text-clinic-text">Pregúntale a tus datos</h2>
+          <p className="text-xs text-clinic-muted">
+            Consultá los números de los últimos 30 días en lenguaje natural.
+          </p>
+        </div>
+      </div>
+
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void ask();
+        }}
+      >
+        <input
+          className={inputCls + " flex-1"}
+          placeholder="Ej: ¿cuánto cobramos este mes y cuánto gastamos?"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          maxLength={400}
+          disabled={loading}
+        />
+        <Btn type="submit" disabled={loading || !question.trim()}>
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          Preguntar
+        </Btn>
+      </form>
+
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {SUGGESTED_QUESTIONS.map((q) => (
+          <button
+            key={q}
+            type="button"
+            onClick={() => void ask(q)}
+            disabled={loading}
+            className="rounded-full bg-clinic-bg px-3 py-1.5 text-[11px] font-semibold text-clinic-muted transition hover:bg-azure-50 hover:text-azure-700 disabled:opacity-50"
+          >
+            {q}
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <p className="mt-3 rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold text-state-err">
+          {error}
+        </p>
+      )}
+      {answer && (
+        <div className="mt-3 whitespace-pre-wrap rounded-2xl bg-clinic-bg p-4 text-sm leading-relaxed text-clinic-text">
+          {answer}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* ============================================================== */
+/*  Contralor IA — parte diario de pendientes                      */
+/* ============================================================== */
+
+export function ContralorCard({ pendientes }: { pendientes: unknown }) {
+  const [digest, setDigest] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run() {
+    if (loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/ia/contralor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pendientes }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setDigest(data.digest);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-azure-100 text-azure-700">
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="font-extrabold text-clinic-text">Contralor IA</h2>
+            <p className="text-xs text-clinic-muted">
+              El parte del día: qué atacar primero para que nada quede colgado.
+            </p>
+          </div>
+        </div>
+        <Btn variant={digest ? "outline" : "primary"} onClick={run} disabled={loading}>
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : digest ? (
+            <RefreshCw className="h-4 w-4" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
+          {digest ? "Actualizar" : "Generar parte del día"}
+        </Btn>
+      </div>
+
+      {error && (
+        <p className="mt-3 rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold text-state-err">
+          {error}
+        </p>
+      )}
+      {digest && (
+        <div className="mt-4 whitespace-pre-wrap rounded-2xl bg-clinic-bg p-4 text-sm leading-relaxed text-clinic-text">
+          {digest}
+        </div>
+      )}
+    </Card>
   );
 }
