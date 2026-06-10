@@ -8,7 +8,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch,
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, onSnapshot,
 } from "firebase/firestore";
 import { app, fsdb, createAuthUser, signInEmail } from "./firebase";
 
@@ -163,6 +163,33 @@ async function loadFirestore(): Promise<DB> {
 const withTimeout = <T,>(p: Promise<T>, ms: number) =>
   Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
 
+/** Reflejo idempotente del resultado de una tarea Botika sobre citas/pacientes.
+ *  Devuelve el DB actualizado + los docs a persistir (solo si algo cambió). */
+function reflectOutbox(prev: DB, task: OutboxTask): { next: DB; saves: [string, string, unknown][] } {
+  let next = prev;
+  const saves: [string, string, unknown][] = [];
+  const r = task.result;
+  if (!r) return { next, saves };
+
+  if ((task.type === "confirmar_cita" || task.type === "reagendar") && r.confirmed && task.refId) {
+    const appt = next.appointments.find((a) => a.id === task.refId);
+    if (appt && (appt.status !== "confirmada" || appt.confirmedVia !== "botika")) {
+      const up = { ...appt, status: "confirmada" as const, reminderSent: true, confirmedVia: "botika" as const };
+      next = { ...next, appointments: next.appointments.map((a) => (a.id === up.id ? up : a)) };
+      saves.push(["appointments", up.id, up]);
+    }
+  }
+  if (task.type === "nps" && typeof r.nps === "number") {
+    const pat = next.patients.find((p) => p.id === task.patientId);
+    if (pat && pat.nps?.at !== r.at) {
+      const up = { ...pat, nps: { score: r.nps, comment: r.comment, at: r.at } };
+      next = { ...next, patients: next.patients.map((p) => (p.id === up.id ? up : p)) };
+      saves.push(["patients", up.id, up]);
+    }
+  }
+  return { next, saves };
+}
+
 interface Ctx {
   db: DB;
   session: Session | null;
@@ -257,6 +284,36 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setDb(next);
     try { localStorage.setItem(DB_KEY, JSON.stringify(next)); } catch {}
   }, []);
+
+  /* ===== Tiempo real: outbox de Botika =====
+   * Cuando el worker escribe `result`, la UI refleja EN VIVO la confirmación
+   * de la cita o el NPS, sin recargar. El reflejo es idempotente. */
+  useEffect(() => {
+    if (backend !== "firebase") return;
+    const unsub = onSnapshot(
+      collection(fsdb, "clinics", CLINIC_ID, "outbox"),
+      (snap) => {
+        const incoming = snap.docs
+          .map((d) => d.data() as OutboxTask)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        setDb((prev) => {
+          let next: DB = { ...prev, outbox: incoming };
+          for (const t of incoming) {
+            if (t.status !== "respondido") continue;
+            const r = reflectOutbox(next, t);
+            next = r.next;
+            r.saves.forEach(([c, i, d]) =>
+              setDoc(doc(fsdb, "clinics", CLINIC_ID, c, i), clean(d)).catch(() => {})
+            );
+          }
+          try { localStorage.setItem(DB_KEY, JSON.stringify(next)); } catch {}
+          return next;
+        });
+      },
+      (e) => console.warn("listener outbox:", e)
+    );
+    return unsub;
+  }, [backend]);
 
   /* write-through a Firestore (no-op en modo local) */
   const fsSave = useCallback((colName: string, id: string, data: unknown) => {
@@ -497,31 +554,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const task = db.outbox.find((t) => t.id === taskId);
         if (!task) return;
         const updated: OutboxTask = { ...task, status: result.error ? "error" : "respondido", result };
-        let next: DB = { ...db, outbox: db.outbox.map((t) => (t.id === taskId ? updated : t)) };
-
-        /* reflejo según tipo de tarea */
-        if ((task.type === "confirmar_cita" || task.type === "reagendar") && result.confirmed && task.refId) {
-          next = {
-            ...next,
-            appointments: next.appointments.map((a) =>
-              a.id === task.refId ? { ...a, status: "confirmada" as const, reminderSent: true, confirmedVia: "botika" as const } : a
-            ),
-          };
-          const appt = next.appointments.find((a) => a.id === task.refId);
-          if (appt) fsSave("appointments", appt.id, appt);
-        }
-        if (task.type === "nps" && typeof result.nps === "number") {
-          next = {
-            ...next,
-            patients: next.patients.map((p) =>
-              p.id === task.patientId ? { ...p, nps: { score: result.nps!, comment: result.comment, at: result.at } } : p
-            ),
-          };
-          const pat = next.patients.find((p) => p.id === task.patientId);
-          if (pat) fsSave("patients", pat.id, pat);
-        }
-
+        const base: DB = { ...db, outbox: db.outbox.map((t) => (t.id === taskId ? updated : t)) };
+        const { next, saves } = reflectOutbox(base, updated);
         persist(next);
+        saves.forEach(([c, i, d]) => fsSave(c, i, d));
         fsSave("outbox", updated.id, updated);
       },
     };

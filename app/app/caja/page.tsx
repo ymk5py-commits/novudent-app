@@ -6,7 +6,7 @@ import {
   ShieldAlert, Plus, Wallet, TrendingDown, Scale, Trash2, MessageCircle, Banknote, CreditCard, Landmark, QrCode, Bot, Check,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fullName, waLink } from "@/lib/store";
-import { botikaEnabled, makeOutboxTask, cobranzaMessage } from "@/lib/botika";
+import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { can } from "@/lib/rbac";
 import { budgetTotal, budgetBalance, patientBalance, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import type { Payment, PaymentMethod, Expense } from "@/lib/types";
@@ -155,7 +155,7 @@ export default function CashPage() {
                     <button
                       disabled={queued.includes(p.id)}
                       onClick={() => {
-                        store.addOutboxTask(makeOutboxTask({ db, type: "cobranza", patient: p, by: session.name, message: cobranzaMessage(p, db.clinics[0].name, fmtGs(balance)) }));
+                        store.addOutboxTask(makeOutboxTask({ db, type: "cobranza", patient: p, by: session.name, message: botikaMessage(db, "cobranza", { paciente: p.firstName, clinica: db.clinics[0].name, saldo: fmtGs(balance) }) }));
                         setQueued((q) => [...q, p.id]);
                       }}
                       className="inline-flex items-center gap-1.5 rounded-xl bg-navy-800 px-3 py-2 text-xs font-bold text-azure-200 transition-colors hover:bg-navy-700 disabled:opacity-60"

@@ -353,6 +353,8 @@ export interface BotikaConfig {
     cobranza: boolean; // recordatorios de deuda conversacionales
     reagendar: boolean; // citas canceladas → reagendamiento
   };
+  /** plantillas personalizadas por automatización (vacío = default de Novudent) */
+  templates?: Partial<Record<keyof BotikaConfig["automations"], string>>;
 }
 
 export interface Session {

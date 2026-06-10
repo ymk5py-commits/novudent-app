@@ -1,13 +1,47 @@
 import type { DB, OutboxTask, OutboxTaskType, Patient, BotikaConfig } from "./types";
 
-/* ===== Integración Botika: helpers de encolado =====
+/* ===== Integración Botika: helpers de encolado y plantillas =====
  * Las páginas encolan tareas con estos builders; el worker de Botika
  * (servicio externo) las procesa por WhatsApp y escribe `result`.
  * Contrato: docs/INTEGRACION-BOTIKA.md */
 
-export function botikaEnabled(db: DB, automation: keyof BotikaConfig["automations"]): boolean {
+export type BotikaAutoKey = keyof BotikaConfig["automations"];
+
+export function botikaEnabled(db: DB, automation: BotikaAutoKey): boolean {
   const b = db.clinics[0]?.config.botika;
   return !!b?.connected && !!b.automations[automation];
+}
+
+/** Variables disponibles en todas las plantillas */
+export const BOTIKA_TEMPLATE_VARS = "{paciente} {clinica} {fecha} {hora} {titulo} {saldo}";
+
+export const DEFAULT_TEMPLATES: Record<BotikaAutoKey, string> = {
+  confirmCita:
+    "Hola {paciente} 👋 Te recordamos tu cita «{titulo}» en {clinica} el {fecha} a las {hora}. ¿Confirmás tu asistencia?",
+  nps:
+    "Hola {paciente} 👋 ¿Del 0 al 10, cuánto recomendarías {clinica} a un amigo o familiar? Tu opinión nos ayuda a mejorar 🙏",
+  cobranza:
+    "Hola {paciente} 👋 Te escribimos de {clinica}. Tenés un saldo pendiente de {saldo}. ¿Querés que te pase los medios de pago o coordinamos una fecha?",
+  reagendar:
+    "Hola {paciente} 👋 Tu cita «{titulo}» del {fecha} fue cancelada. ¿Buscamos un nuevo horario? Contame qué días y franjas te quedan cómodos 😊",
+};
+
+export const AUTOMATION_LABEL: Record<BotikaAutoKey, string> = {
+  confirmCita: "Confirmación de citas",
+  nps: "Encuesta NPS",
+  cobranza: "Cobranza",
+  reagendar: "Reagendamiento",
+};
+
+type TemplateVars = Partial<Record<"paciente" | "clinica" | "fecha" | "hora" | "titulo" | "saldo", string>>;
+
+/** Mensaje final: plantilla personalizada (Integraciones) o default, con variables rellenas */
+export function botikaMessage(db: DB, kind: BotikaAutoKey, vars: TemplateVars): string {
+  const tpl = db.clinics[0]?.config.botika?.templates?.[kind] || DEFAULT_TEMPLATES[kind];
+  return (Object.entries(vars) as [string, string][]).reduce(
+    (s, [k, v]) => s.replaceAll(`{${k}}`, v ?? ""),
+    tpl
+  );
 }
 
 export function makeOutboxTask(args: {
@@ -30,12 +64,4 @@ export function makeOutboxTask(args: {
     createdAt: new Date().toISOString(),
     createdBy: args.by,
   };
-}
-
-export function npsMessage(patient: Patient, clinicName: string): string {
-  return `Hola ${patient.firstName} 👋 ¿Del 0 al 10, cuánto recomendarías ${clinicName} a un amigo o familiar? Tu opinión nos ayuda a mejorar 🙏`;
-}
-
-export function cobranzaMessage(patient: Patient, clinicName: string, amountStr: string): string {
-  return `Hola ${patient.firstName} 👋 Te escribimos de ${clinicName}. Tenés un saldo pendiente de ${amountStr}. ¿Querés que te pase los medios de pago o coordinamos una fecha?`;
 }

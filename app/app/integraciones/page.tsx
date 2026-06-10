@@ -7,8 +7,64 @@ import {
 } from "lucide-react";
 import { useStore, fmtDate, fmtTime, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
+import { DEFAULT_TEMPLATES, AUTOMATION_LABEL, BOTIKA_TEMPLATE_VARS, type BotikaAutoKey } from "@/lib/botika";
 import type { OutboxTask, OutboxTaskType, BotikaConfig } from "@/lib/types";
-import { Card, Btn, Badge, Empty } from "@/components/ui";
+import { Card, Btn, Badge, Empty, Field, inputCls } from "@/components/ui";
+
+/* ===== Editor de plantillas por automatización ===== */
+function TemplatesEditor({ botika, onSave }: { botika: BotikaConfig; onSave: (t: BotikaConfig["templates"]) => void }) {
+  const [drafts, setDrafts] = useState<Record<string, string>>(() => ({
+    confirmCita: botika.templates?.confirmCita ?? DEFAULT_TEMPLATES.confirmCita,
+    nps: botika.templates?.nps ?? DEFAULT_TEMPLATES.nps,
+    cobranza: botika.templates?.cobranza ?? DEFAULT_TEMPLATES.cobranza,
+    reagendar: botika.templates?.reagendar ?? DEFAULT_TEMPLATES.reagendar,
+  }));
+  const keys = Object.keys(DEFAULT_TEMPLATES) as BotikaAutoKey[];
+  const dirty = keys.some((k) => drafts[k] !== (botika.templates?.[k] ?? DEFAULT_TEMPLATES[k]));
+
+  return (
+    <Card className="p-5">
+      <h2 className="font-extrabold text-clinic-text">Plantillas de mensajes</h2>
+      <p className="mt-0.5 text-xs text-clinic-muted">
+        Primer mensaje que envía Botika en cada automatización. Variables: <code className="font-mono">{BOTIKA_TEMPLATE_VARS}</code>.
+        La conversación posterior la maneja la IA de Botika.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {keys.map((k) => (
+          <Field key={k} label={AUTOMATION_LABEL[k]}>
+            <textarea
+              rows={3}
+              className={inputCls + " text-xs"}
+              value={drafts[k]}
+              onChange={(e) => setDrafts((d) => ({ ...d, [k]: e.target.value }))}
+            />
+            {drafts[k] !== DEFAULT_TEMPLATES[k] && (
+              <button
+                onClick={() => setDrafts((d) => ({ ...d, [k]: DEFAULT_TEMPLATES[k] }))}
+                className="mt-1 text-[11px] font-bold text-clinic-muted hover:text-azure-700"
+              >
+                ↺ Restaurar default
+              </button>
+            )}
+          </Field>
+        ))}
+      </div>
+      {dirty && (
+        <div className="mt-3 flex justify-end">
+          <Btn
+            onClick={() => {
+              const t: BotikaConfig["templates"] = {};
+              keys.forEach((k) => { if (drafts[k] !== DEFAULT_TEMPLATES[k]) t[k] = drafts[k]; });
+              onSave(t);
+            }}
+          >
+            Guardar plantillas
+          </Btn>
+        </div>
+      )}
+    </Card>
+  );
+}
 
 const TYPE_INFO: Record<OutboxTaskType, { label: string; icon: any; tone: "info" | "ok" | "warn" | "hold" }> = {
   confirmar_cita: { label: "Confirmación de cita", icon: CalendarClock, tone: "info" },
@@ -131,10 +187,13 @@ export default function IntegrationsPage() {
         <p className="relative mt-4 rounded-xl bg-clinic-bg p-3 text-[11px] leading-relaxed text-clinic-muted">
           <b>Cómo funciona:</b> Novudent encola tareas en <code className="font-mono">clinics/{clinic.id}/outbox</code>;
           el worker de Botika las escucha con una service account, conversa por WhatsApp y escribe el resultado en el mismo documento.
-          La cita se confirma o el NPS aparece en la ficha sin intervención manual. Contrato técnico completo en{" "}
+          La cita se confirma o el NPS aparece <b>en vivo, sin recargar</b>. Contrato técnico completo en{" "}
           <code className="font-mono">docs/INTEGRACION-BOTIKA.md</code>.
         </p>
       </Card>
+
+      {/* ===== Plantillas de mensajes ===== */}
+      {botika.connected && <TemplatesEditor botika={botika} onSave={(templates) => setBotika({ templates })} />}
 
       {/* ===== Cola de mensajería (outbox) ===== */}
       <Card className="p-5">

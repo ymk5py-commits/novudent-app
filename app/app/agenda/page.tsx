@@ -6,7 +6,7 @@ import {
   MessageCircle, Hourglass, BellRing,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } from "@/lib/store";
-import { botikaEnabled, makeOutboxTask } from "@/lib/botika";
+import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import type { Appointment, AppointmentStatus } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, StatusBadge, Badge, Empty } from "@/components/ui";
 
@@ -354,26 +354,42 @@ export default function AgendaPage() {
           appt={editing}
           onClose={() => { setEditing(null); setFromWaitlist(null); }}
           onSave={(a) => {
-            const isNew = !db.appointments.some((x) => x.id === a.id);
+            const old = db.appointments.find((x) => x.id === a.id);
+            const isNew = !old;
             upsertAppointment(a);
             if (fromWaitlist) removeWaitlist(fromWaitlist);
+            /* Botika: cita cancelada → ofrecer reagendamiento automático */
+            if (old && old.status !== "cancelada" && a.status === "cancelada" && botikaEnabled(db, "reagendar")) {
+              const p = db.patients.find((x) => x.id === a.patientId);
+              if (p?.phone) {
+                addOutboxTask(
+                  makeOutboxTask({
+                    db, type: "reagendar", patient: p, refId: a.id, by: session!.name,
+                    message: botikaMessage(db, "reagendar", {
+                      paciente: p.firstName,
+                      clinica: db.clinics[0].name,
+                      titulo: a.title || "Cita",
+                      fecha: new Date(a.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" }),
+                      hora: fmtTime(a.start),
+                    }),
+                  })
+                );
+              }
+            }
             /* Botika: cita nueva → encolar confirmación automática */
             if (isNew && a.status !== "cancelada" && botikaEnabled(db, "confirmCita")) {
               const p = db.patients.find((x) => x.id === a.patientId);
-              const clinic = db.clinics[0];
               if (p?.phone) {
                 addOutboxTask(
                   makeOutboxTask({
                     db, type: "confirmar_cita", patient: p, refId: a.id, by: session!.name,
-                    message: fillReminder(
-                      clinic.config.reminderTemplate ?? "Hola {paciente}, te recordamos tu cita en {clinica} el {fecha} a las {hora}. ¿Confirmás tu asistencia?",
-                      {
-                        paciente: p.firstName,
-                        fecha: new Date(a.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" }),
-                        hora: fmtTime(a.start),
-                        clinica: clinic.name,
-                      }
-                    ),
+                    message: botikaMessage(db, "confirmCita", {
+                      paciente: p.firstName,
+                      clinica: db.clinics[0].name,
+                      titulo: a.title || "Cita",
+                      fecha: new Date(a.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" }),
+                      hora: fmtTime(a.start),
+                    }),
                   })
                 );
               }
