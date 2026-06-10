@@ -1,4 +1,25 @@
-import type { BillingRecord, BillingFlag } from "./types";
+import type { BillingRecord, BillingFlag, BillingExtra } from "./types";
+
+/** Total del reclamo: principal − descuento + procedimientos adicionales */
+export function recordTotal(b: Pick<BillingRecord, "amount" | "discount" | "extras">): number {
+  return b.amount - b.discount + (b.extras ?? []).reduce((s, e) => s + e.amount, 0);
+}
+
+/** Valida Modificador-CPT de cada procedimiento adicional */
+export function validateExtras(extras: BillingExtra[] | undefined): ValidationIssue[] {
+  if (!extras?.length) return [];
+  const issues: ValidationIssue[] = [];
+  extras.forEach((e, i) => {
+    const modOk = CPT_MOD[e.cpt];
+    if (modOk && !modOk.includes(e.modifier ?? "")) {
+      issues.push({
+        field: "modifier",
+        message: `Adicional #${i + 1} (${e.cpt}): modificador "${e.modifier || "—"}" no válido. Permitidos: ${modOk.map((m) => m || "—").join(", ")}`,
+      });
+    }
+  });
+  return issues;
+}
 
 /* ===== Máquina de estados de facturación (sec. 3.3 B) =====
  * Enviar a Cobro  -> MBILLED  (+HOLD si e-claim, +MGRHOLD si manual)

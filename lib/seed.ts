@@ -108,7 +108,7 @@ export function buildSeed(): DB {
       },
       {
         id: "b2", clinicId: CLINIC_ID, patientId: "p1", appointmentId: "a1", cpt: "D2330", dx: "K02.9", pos: "11", modifier: "",
-        amount: 420000, discount: 0, claimType: "electronic", flags: ["ATHENA", "MBILLED", "HOLD"],
+        amount: 420000, discount: 0, extras: [{ cpt: "D0120", modifier: "25", amount: 150000 }], claimType: "electronic", flags: ["ATHENA", "MBILLED", "HOLD"],
         holdReason: "Retención automática: reclamo electrónico en cola de validación.",
         history: [
           { at: at(-2, 9), action: "Registro creado", by: "Paola Asistente" },

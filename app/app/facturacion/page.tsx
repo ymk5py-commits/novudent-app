@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { Send, Unlock, Plus, AlertTriangle, History, Banknote, Lock, Flag } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
-import { validatePairings, canSubmit, canRelease, CPT_DX, CPT_POS, CPT_MOD } from "@/lib/billing";
-import type { BillingRecord, ClaimType } from "@/lib/types";
+import { validatePairings, validateExtras, recordTotal, canSubmit, canRelease, CPT_DX, CPT_POS, CPT_MOD } from "@/lib/billing";
+import type { BillingRecord, ClaimType, BillingExtra } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, FlagBadge, Empty } from "@/components/ui";
 
 type Filter = "todos" | "sin-enviar" | "en-retencion" | "facturado";
@@ -77,7 +77,7 @@ export default function BillingPage() {
           {list.map((b) => {
             const p = db.patients.find((x) => x.id === b.patientId);
             const proc = db.procedures.find((x) => x.cpt === b.cpt);
-            const issues = validatePairings(b);
+            const issues = [...validatePairings(b), ...validateExtras(b.extras)];
             return (
               <Card key={b.id} className="p-4">
                 <div className="flex flex-wrap items-center gap-3">
@@ -92,8 +92,17 @@ export default function BillingPage() {
                       <span data-tip="Place of Service">POS {b.pos}</span>
                       <span data-tip="Modificador">MOD {b.modifier || "—"}</span>
                       <span>{b.claimType === "electronic" ? "E-claim" : "Manual claim"}</span>
-                      <span className="font-bold text-clinic-text">{fmtGs(b.amount - b.discount)}</span>
+                      <span className="font-bold text-clinic-text">{fmtGs(recordTotal(b))}</span>
                     </div>
+                    {b.extras && b.extras.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {b.extras.map((e, i) => (
+                          <span key={i} className="rounded-md bg-azure-50 px-2 py-0.5 font-mono text-[10px] font-bold text-azure-700" data-tip={`Procedimiento adicional · ${fmtGs(e.amount)}`}>
+                            + {e.cpt}{e.modifier ? `·${e.modifier}` : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {b.flags.length === 0 ? <Badge tone="muted">SIN ENVIAR</Badge> : b.flags.map((fl) => <FlagBadge key={fl} flag={fl} />)}
@@ -184,8 +193,23 @@ function NewBilling({ onClose, onSave }: { onClose: () => void; onSave: (b: Bill
   const proc = db.procedures.find((x) => x.cpt === cpt);
   const [amount, setAmount] = useState(proc?.price ?? 0);
   const [discount, setDiscount] = useState(0);
+  const [extras, setExtras] = useState<BillingExtra[]>([]);
 
-  const issues = validatePairings({ cpt, dx, pos, modifier });
+  const issues = [...validatePairings({ cpt, dx, pos, modifier }), ...validateExtras(extras)];
+  const total = amount - discount + extras.reduce((s, e) => s + e.amount, 0);
+
+  function addExtra() {
+    const first = db.procedures.find((x) => x.cpt !== cpt) ?? db.procedures[0];
+    if (first) setExtras([...extras, { cpt: first.cpt, modifier: "", amount: first.price }]);
+  }
+  function setExtra(i: number, patch: Partial<BillingExtra>) {
+    setExtras(extras.map((e, j) => {
+      if (j !== i) return e;
+      const next = { ...e, ...patch };
+      if (patch.cpt) next.amount = db.procedures.find((x) => x.cpt === patch.cpt)?.price ?? next.amount;
+      return next;
+    }));
+  }
 
   function onCptChange(next: string) {
     setCpt(next);
@@ -209,6 +233,7 @@ function NewBilling({ onClose, onSave }: { onClose: () => void; onSave: (b: Bill
             patientId,
             cpt, dx, pos, modifier,
             amount, discount,
+            extras: extras.length > 0 ? extras : undefined,
             claimType,
             flags: athena ? ["ATHENA"] : [],
             history: [{ at: new Date().toISOString(), action: "Registro creado", by: session!.name }],
@@ -248,10 +273,37 @@ function NewBilling({ onClose, onSave }: { onClose: () => void; onSave: (b: Bill
             </select>
           </Field>
         </div>
-        <label className="flex items-center gap-2 text-sm font-semibold text-clinic-text">
-          <input type="checkbox" checked={athena} onChange={(e) => setAthena(e.target.checked)} className="h-4 w-4 accent-azure-600" />
-          Cuenta ATHENA asociada
-        </label>
+        {/* Procedimientos adicionales (Procedure_Billing_Mapping) */}
+        <div className="rounded-2xl border border-clinic-border bg-clinic-bg/50 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wide text-clinic-muted">Procedimientos adicionales</span>
+            <Btn variant="outline" onClick={addExtra}><Plus className="h-3.5 w-3.5" /> Agregar</Btn>
+          </div>
+          {extras.length === 0 ? (
+            <p className="text-xs text-clinic-muted">Mismo reclamo, varios procedimientos: agregalos acá con su modificador.</p>
+          ) : (
+            <div className="space-y-2">
+              {extras.map((e, i) => (
+                <div key={i} className="grid grid-cols-12 items-center gap-2">
+                  <select className={`${inputCls} col-span-5`} value={e.cpt} onChange={(ev) => setExtra(i, { cpt: ev.target.value })}>
+                    {db.procedures.map((p) => <option key={p.cpt} value={p.cpt}>{p.cpt} — {p.description}</option>)}
+                  </select>
+                  <input className={`${inputCls} col-span-2`} placeholder="MOD" value={e.modifier ?? ""} onChange={(ev) => setExtra(i, { modifier: ev.target.value })} data-tip={`Permitidos: ${(CPT_MOD[e.cpt] ?? []).map((m) => m || "—").join(", ")}`} />
+                  <input type="number" min={0} className={`${inputCls} col-span-4`} value={e.amount} onChange={(ev) => setExtra(i, { amount: +ev.target.value })} />
+                  <button type="button" onClick={() => setExtras(extras.filter((_, j) => j !== i))} aria-label="Quitar" className="col-span-1 grid h-9 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2 text-sm font-semibold text-clinic-text">
+            <input type="checkbox" checked={athena} onChange={(e) => setAthena(e.target.checked)} className="h-4 w-4 accent-azure-600" />
+            Cuenta ATHENA asociada
+          </label>
+          <span className="text-sm text-clinic-muted">Total del reclamo: <b className="font-mono text-clinic-text">{fmtGs(total)}</b></span>
+        </div>
         {issues.length > 0 && (
           <div className="space-y-1 rounded-xl bg-state-errbg px-3 py-2">
             {issues.map((i) => (

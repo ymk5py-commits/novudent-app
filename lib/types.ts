@@ -114,6 +114,14 @@ export type BillingFlag =
 
 export type ClaimType = "electronic" | "manual";
 
+/** Procedure_Billing_Mapping: procedimiento adicional asociado al registro,
+ *  con modificador opcional (el principal vive en cpt/dx/pos del registro). */
+export interface BillingExtra {
+  cpt: string;
+  modifier?: string;
+  amount: number;
+}
+
 export interface BillingRecord {
   id: string;
   clinicId: string;
@@ -125,6 +133,8 @@ export interface BillingRecord {
   modifier?: string;
   amount: number;
   discount: number;
+  /** procedimientos adicionales del mismo reclamo (multi-procedimiento) */
+  extras?: BillingExtra[];
   claimType: ClaimType;
   flags: BillingFlag[];
   holdReason?: string;
