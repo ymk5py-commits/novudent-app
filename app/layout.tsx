@@ -8,9 +8,10 @@ const jost = Jost({ subsets: ["latin"], weight: ["300", "400", "500"], variable:
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-jbmono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "Novudent — Gestión dental", template: "%s · Novudent" },
-  description: "Plataforma SaaS de gestión para clínicas dentales: agenda, pacientes, historial clínico y facturación.",
-  robots: { index: false, follow: false }, // app privada
+  title: { default: "Novudent — Software de gestión para clínicas dentales", template: "%s · Novudent" },
+  description:
+    "Agenda inteligente, odontograma interactivo FDI, ficha clínica, formularios y facturación con estados — todo en la nube. Software dental hecho para Paraguay, por NOVUM.",
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
