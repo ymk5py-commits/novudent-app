@@ -3,18 +3,19 @@
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
-  FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2,
+  FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2, Smile,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import type { EmrNote, PatientForm } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, FlagBadge, Empty } from "@/components/ui";
+import Odontogram from "@/components/Odontogram";
 
-type Tab = "resumen" | "historial" | "formularios" | "facturacion";
+type Tab = "resumen" | "odontograma" | "historial" | "formularios" | "facturacion";
 
 export default function PatientProfile() {
   const { id } = useParams<{ id: string }>();
-  const { db, session, completeForm, addEmrNote } = useStore();
+  const { db, session, completeForm, addEmrNote, setTooth } = useStore();
   const [tab, setTab] = useState<Tab>("resumen");
   const [fillingForm, setFillingForm] = useState<PatientForm | null>(null);
   const [writingNote, setWritingNote] = useState(false);
@@ -32,6 +33,7 @@ export default function PatientProfile() {
 
   const TABS: { key: Tab; label: string; icon: any; badge?: number }[] = [
     { key: "resumen", label: "Resumen", icon: Stethoscope },
+    { key: "odontograma", label: "Odontograma", icon: Smile },
     { key: "historial", label: "Historial clínico", icon: ClipboardList },
     { key: "formularios", label: "Formularios", icon: FileText, badge: pendingForms.length || undefined },
     { key: "facturacion", label: "Facturación", icon: Receipt },
@@ -119,6 +121,23 @@ export default function PatientProfile() {
               </div>
             )}
           </Card>
+        </div>
+      )}
+
+      {/* ===== ODONTOGRAMA ===== */}
+      {tab === "odontograma" && (
+        <div className="space-y-3">
+          {!canWriteEmr && (
+            <p className="rounded-xl bg-clinic-bg p-3 text-sm text-clinic-muted">
+              <Lock className="mr-1 inline h-3.5 w-3.5" /> Solo el dentista o administrador puede editar el odontograma. Hacé clic en una pieza para ver su detalle.
+            </p>
+          )}
+          <Odontogram
+            value={p.odontogram ?? {}}
+            editable={canWriteEmr}
+            authorName={session.name}
+            onChange={(tooth, rec) => setTooth(p.id, tooth, rec)}
+          />
         </div>
       )}
 

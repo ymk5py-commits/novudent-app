@@ -31,6 +31,13 @@ const patients: Patient[] = [
       { id: "n1", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-7, 10), kind: "diagnostico", text: "Caries oclusal en pieza 16 (K02.9). Sensibilidad al frío." },
       { id: "n2", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-7, 10, 30), kind: "plan", text: "Plan: resina compuesta en 16. Control de placa. Profilaxis en próxima visita." },
     ],
+    odontogram: {
+      "16": { condition: "caries", note: "Oclusal, sensibilidad al frío", updatedAt: at(-7, 10), updatedBy: "Dra. Sofía Benítez" },
+      "24": { condition: "caries", note: "Interproximal mesial", updatedAt: at(-7, 10), updatedBy: "Dra. Sofía Benítez" },
+      "11": { condition: "restaurado", note: "Resina 2024", updatedAt: at(-30, 9), updatedBy: "Dra. Sofía Benítez" },
+      "26": { condition: "corona", note: "Corona cerámica", updatedAt: at(-60, 9), updatedBy: "Dra. Sofía Benítez" },
+      "28": { condition: "ausente", updatedAt: at(-90, 9), updatedBy: "Dra. Sofía Benítez" },
+    },
   },
   {
     id: "p2", clinicId: CLINIC_ID, firstName: "Juan", lastName: "Ríos", document: "4.567.890",
@@ -52,6 +59,11 @@ const patients: Patient[] = [
     forms: [{ id: "f4", templateName: "Historia médica (actualización)", status: "pendiente", fields: [{ label: "Cambios de salud", value: "" }, { label: "Nueva medicación", value: "" }] }],
     historyUpdatePending: true,
     emr: [{ id: "n4", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-3, 11), kind: "diagnostico", text: "Resto radicular pieza 28 (K08.3). Indicada exodoncia simple." }],
+    odontogram: {
+      "28": { condition: "extraccion", note: "Resto radicular — exodoncia programada", updatedAt: at(-3, 11), updatedBy: "Dra. Sofía Benítez" },
+      "36": { condition: "endodoncia", note: "Endodoncia 2023, asintomática", updatedAt: at(-120, 9), updatedBy: "Dra. Sofía Benítez" },
+      "46": { condition: "implante", note: "Implante + corona 2022", updatedAt: at(-200, 9), updatedBy: "Dra. Sofía Benítez" },
+    },
   },
   {
     id: "p5", clinicId: CLINIC_ID, firstName: "Lucía", lastName: "Ferreira", document: "6.789.012",

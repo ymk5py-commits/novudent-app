@@ -49,6 +49,23 @@ export interface PatientForm {
   fields: { label: string; value: string }[];
 }
 
+/* ===== Odontograma (notación FDI) ===== */
+export type ToothCondition =
+  | "caries"
+  | "restaurado"
+  | "corona"
+  | "endodoncia"
+  | "extraccion" // extracción indicada
+  | "ausente"
+  | "implante";
+
+export interface ToothRecord {
+  condition: ToothCondition;
+  note?: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
 export interface EmrNote {
   id: string;
   authorId: string;
@@ -72,6 +89,8 @@ export interface Patient {
   forms: PatientForm[];
   historyUpdatePending: boolean;
   emr: EmrNote[];
+  /* Odontograma: pieza FDI -> estado (ausencia de entrada = pieza sana) */
+  odontogram?: Record<string, ToothRecord>;
 }
 
 /* ===== Facturación (sec. 3.3) ===== */

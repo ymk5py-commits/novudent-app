@@ -17,7 +17,7 @@ const NAV = [
 ];
 
 export default function Shell({ children }: { children: React.ReactNode }) {
-  const { session, ready, logout, db } = useStore();
+  const { session, ready, logout, db, backend } = useStore();
   const router = useRouter();
   const pathname = usePathname();
   const [q, setQ] = useState("");
@@ -107,6 +107,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 </div>
               )}
             </div>
+            <span
+              data-tip={
+                backend === "firebase"
+                  ? "Datos sincronizados con Firestore (proyecto novudent-664f3)"
+                  : "Firestore no disponible — trabajando con datos locales del navegador.\nCreá la base en Firebase Console → Firestore Database."
+              }
+              className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wide ${
+                backend === "firebase" ? "bg-state-okbg text-state-ok" : "bg-state-warnbg text-state-warn"
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${backend === "firebase" ? "bg-state-ok" : "bg-state-warn"}`} />
+              {backend === "firebase" ? "Firebase" : "Local"}
+            </span>
           </div>
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-7">{children}</main>
