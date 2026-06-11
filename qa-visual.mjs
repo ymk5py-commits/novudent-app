@@ -34,6 +34,7 @@ const PAGES = [
   ["configuracion", "/app/configuracion"],
   ["reservar-publica", "/reservar/cl_demo"],
   ["login", "/login"],
+  ["superadmin", "/superadmin"],
 ];
 
 const VIEWPORTS = [

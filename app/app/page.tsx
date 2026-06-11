@@ -2,7 +2,7 @@
 /** Dashboard estilo "Spike admin" adaptado a Novudent: banner de bienvenida,
  *  stats pastel, ingresos de la semana (barras), donut de estados y agenda. */
 import { useEffect, useRef } from "react";
-import { motion, useInView, useMotionValue, animate } from "framer-motion";
+import { useInView, useMotionValue, animate } from "framer-motion";
 import {
   CalendarDays, Users, FileText, PauseCircle, ArrowRight, RotateCcw, CheckCircle2, Circle, MoreHorizontal, Sparkles,
   AlertTriangle, FileSpreadsheet, Wallet, Package, CalendarX,
@@ -10,9 +10,10 @@ import {
 import { useStore, fmtTime, fmtGs, fullName } from "@/lib/store";
 import { patientBalance } from "@/lib/budgets";
 import { can } from "@/lib/rbac";
-import { Card, Badge, StatusBadge, Btn } from "@/components/ui";
+import { Card, Badge, StatusBadge } from "@/components/ui";
 import { ToothGlyph } from "@/components/Odontogram";
 import { ContralorCard } from "@/components/NovudentIA";
+import { WeekBarsChart, StatusDonutChart } from "@/components/Charts";
 
 /* ---- count-up ---- */
 function Count({ value }: { value: number }) {
@@ -52,76 +53,8 @@ function SpikeStat({
   );
 }
 
-/* ---- barras: ingresos por día ---- */
-function RevenueBars({ data }: { data: { d: string; v: number }[] }) {
-  const max = Math.max(...data.map((x) => x.v), 1);
-  return (
-    <div className="flex h-44 items-end gap-3 sm:gap-4">
-      {data.map((x, i) => (
-        <div key={x.d} className="group flex flex-1 flex-col items-center gap-2" title={`${x.d}: ${fmtGs(x.v)}`}>
-          <motion.div
-            initial={{ height: 0 }}
-            whileInView={{ height: `${Math.max(4, (x.v / max) * 100)}%` }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
-            className={`w-full max-w-9 rounded-t-lg ${x.v === max ? "bg-azure-600" : "bg-azure-200 group-hover:bg-azure-300"} transition-colors`}
-          />
-          <span className="font-mono text-[10px] font-bold text-clinic-muted">{x.d}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ---- donut de estados ---- */
-function StatusDonut({ ok, warn, done, err }: { ok: number; warn: number; done: number; err: number }) {
-  const total = Math.max(ok + warn + done + err, 1);
-  const C = 2 * Math.PI * 42;
-  const seg = (n: number) => (n / total) * C;
-  let offset = 0;
-  const parts = [
-    { v: ok, color: "#0E9F6E", label: "Confirmadas" },
-    { v: warn, color: "#D97706", label: "Pendientes" },
-    { v: done, color: "#1769E0", label: "Completadas" },
-    { v: err, color: "#DC2626", label: "Canceladas" },
-  ];
-  return (
-    <div className="flex items-center gap-6">
-      <svg viewBox="0 0 100 100" className="h-36 w-36 -rotate-90">
-        <circle cx="50" cy="50" r="42" fill="none" stroke="#EEF2F8" strokeWidth="12" />
-        {parts.map((p) => {
-          const el = (
-            <motion.circle
-              key={p.label}
-              cx="50" cy="50" r="42" fill="none"
-              stroke={p.color} strokeWidth="12" strokeLinecap="butt"
-              strokeDasharray={`${seg(p.v)} ${C}`}
-              initial={{ strokeDashoffset: -0 , opacity: 0 }}
-              whileInView={{ strokeDashoffset: -offset, opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            />
-          );
-          offset += seg(p.v);
-          return el;
-        })}
-        <g className="rotate-90" style={{ transformOrigin: "50px 50px" }}>
-          <text x="50" y="47" textAnchor="middle" className="fill-clinic-text" fontSize="20" fontWeight="800">{ok + warn + done + err}</text>
-          <text x="50" y="61" textAnchor="middle" className="fill-clinic-muted" fontSize="7.5" fontWeight="700">CITAS · SEMANA</text>
-        </g>
-      </svg>
-      <div className="space-y-2">
-        {parts.map((p) => (
-          <div key={p.label} className="flex items-center gap-2.5 text-sm">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />
-            <span className="w-24 text-clinic-muted">{p.label}</span>
-            <span className="font-bold tabular-nums text-clinic-text">{p.v}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+/* Las gráficas (barras semanales y donut de estados) viven en
+ * components/Charts.tsx — Recharts con tooltips interactivos. */
 
 export default function Dashboard() {
   const { db, session, setOnboarding, resetDemo } = useStore();
@@ -251,9 +184,11 @@ export default function Dashboard() {
             <a href="/app/agenda" className="btn-shine inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-navy-800 transition-all hover:-translate-y-0.5">
               Ir a la agenda <ArrowRight className="h-4 w-4" />
             </a>
-            <button onClick={resetDemo} className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white">
-              <RotateCcw className="h-3.5 w-3.5" /> Reiniciar demo
-            </button>
+            {session.clinicId === "cl_demo" && (
+              <button onClick={resetDemo} className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white">
+                <RotateCcw className="h-3.5 w-3.5" /> Reiniciar demo
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -303,14 +238,14 @@ export default function Dashboard() {
               </div>
               <span className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-clinic-bg"><MoreHorizontal className="h-4 w-4" /></span>
             </div>
-            <RevenueBars data={revenue} />
+            <WeekBarsChart data={revenue} money name="Producción" />
           </Card>
         ) : (
           <Card className="p-6 lg:col-span-3">
             <h2 className="font-extrabold text-clinic-text">Mi semana clínica</h2>
             <p className="mt-0.5 text-xs text-clinic-muted">Citas por día (los reportes financieros son del área administrativa)</p>
             <div className="mt-5">
-              <RevenueBars data={DAYS.map((d, i) => {
+              <WeekBarsChart name="Citas" data={DAYS.map((d, i) => {
                 const day = new Date(mon); day.setDate(mon.getDate() + i);
                 return { d, v: week.filter((a) => new Date(a.start).toDateString() === day.toDateString() && a.status !== "cancelada").length };
               })} />
@@ -325,7 +260,15 @@ export default function Dashboard() {
             </div>
             <span className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-clinic-bg"><MoreHorizontal className="h-4 w-4" /></span>
           </div>
-          <StatusDonut {...statusCount} />
+          <StatusDonutChart
+            centerLabel="Citas · semana"
+            parts={[
+              { label: "Confirmadas", v: statusCount.ok, color: "#0E9F6E" },
+              { label: "Pendientes", v: statusCount.warn, color: "#D97706" },
+              { label: "Completadas", v: statusCount.done, color: "#1769E0" },
+              { label: "Canceladas", v: statusCount.err, color: "#DC2626" },
+            ]}
+          />
         </Card>
       </div>
 

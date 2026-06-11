@@ -8,6 +8,7 @@ import { can } from "@/lib/rbac";
 import { budgetTotal, patientBalance, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { Card, Btn, Badge } from "@/components/ui";
 import { ReportsIAPanel } from "@/components/NovudentIA";
+import { CashflowAreaChart, ProductionBarsChart } from "@/components/Charts";
 
 /** Descarga CSV con BOM UTF-8 (abre directo en Excel) */
 function downloadCsv(filename: string, rows: (string | number)[][]) {
@@ -52,6 +53,17 @@ export default function ReportsPage() {
     });
     const maxProd = Math.max(1, ...production.map((x) => x.collected));
 
+    /* flujo de caja diario (30 días): cobrado vs gastos */
+    const cashflow = Array.from({ length: 30 }, (_, i) => {
+      const day = new Date(since + (i + 1) * 24 * 3600 * 1000);
+      const key = day.toISOString().slice(0, 10);
+      return {
+        d: day.toLocaleDateString("es-PY", { day: "2-digit", month: "short" }),
+        cobrado: pays.filter((p) => p.date.slice(0, 10) === key).reduce((s, p) => s + p.amount, 0),
+        gastos: exps.filter((e) => e.date.slice(0, 10) === key).reduce((s, e) => s + e.amount, 0),
+      };
+    });
+
     const debtors = db.patients
       .map((p) => ({ p, balance: patientBalance(p.id, db.budgets, db.payments) }))
       .filter((x) => x.balance > 0)
@@ -64,7 +76,7 @@ export default function ReportsPage() {
     const detr = surveys.filter((s) => s.score <= 6).length;
     const npsScore = surveys.length ? Math.round(((prom - detr) / surveys.length) * 100) : null;
 
-    return { pays, exps, collected, spent, presented, accepted, acceptRate, production, maxProd, debtors, surveys, prom, pasv, detr, npsScore };
+    return { pays, exps, collected, spent, presented, accepted, acceptRate, production, maxProd, cashflow, debtors, surveys, prom, pasv, detr, npsScore };
   }, [db]);
 
   if (!session) return null;
@@ -198,30 +210,33 @@ export default function ReportsPage() {
         </Card>
       </div>
 
+      {/* flujo de caja 30 días — cobrado vs gastos */}
+      <Card className="p-5">
+        <h2 className="font-extrabold text-clinic-text">Flujo de caja — últimos 30 días</h2>
+        <p className="text-[11px] text-clinic-muted">Cobros y gastos por día. Pasá el mouse para ver el detalle.</p>
+        <div className="mt-4">
+          <CashflowAreaChart data={data.cashflow} />
+        </div>
+      </Card>
+
       <div className="grid gap-5 lg:grid-cols-2">
         {/* producción + comisiones */}
         <Card className="p-5">
           <h2 className="font-extrabold text-clinic-text">Producción y comisiones por profesional</h2>
           <p className="text-[11px] text-clinic-muted">Pagos cobrados (30 días) sobre presupuestos de cada profesional.</p>
-          <div className="mt-4 space-y-4">
-            {data.production.map(({ d, collected, pct, commission }) => (
-              <div key={d.id}>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 font-bold text-clinic-text">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
-                    {d.name}
+          <div className="mt-4">
+            <ProductionBarsChart data={data.production.map((x) => ({ name: x.d.name, v: x.collected, color: x.d.color }))} />
+            <div className="mt-2 space-y-1.5">
+              {data.production.map(({ d, pct, commission }) => (
+                <div key={d.id} className="flex items-center justify-between text-[11px] text-clinic-muted">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full" style={{ background: d.color }} />
+                    {d.name} · comisión {pct}%
                   </span>
-                  <span className="font-mono text-xs font-extrabold">{fmtGs(collected)}</span>
-                </div>
-                <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-clinic-bg">
-                  <div className="h-full rounded-full bg-gradient-to-r from-azure-500 to-azure-600 transition-all duration-700" style={{ width: `${(collected / data.maxProd) * 100}%` }} />
-                </div>
-                <div className="mt-1 flex justify-between text-[11px] text-clinic-muted">
-                  <span>Comisión {pct}%</span>
                   <span className="font-mono font-bold text-state-ok">{fmtGs(commission)}</span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
             {data.production.length === 0 && <p className="py-6 text-center text-sm text-clinic-muted">Sin profesionales activos.</p>}
           </div>
         </Card>

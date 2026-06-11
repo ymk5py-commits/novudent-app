@@ -34,7 +34,17 @@ import { submitToBilling, releaseFromHold } from "./billing";
 
 const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
-const CLINIC_ID = "cl_demo";
+const DEMO_CLINIC_ID = "cl_demo";
+/** Clínica activa (multi-clínica). Se resuelve desde la sesión guardada antes
+ *  de cargar Firestore; cambia al iniciar sesión con una cuenta de otra clínica. */
+let CLINIC_ID = DEMO_CLINIC_ID;
+function resolveClinicId(): string {
+  try {
+    const s = JSON.parse(localStorage.getItem(SES_KEY) || "null");
+    if (s?.clinicId) return s.clinicId as string;
+  } catch {}
+  return DEMO_CLINIC_ID;
+}
 type Backend = "connecting" | "firebase" | "local";
 
 /* Firestore no acepta `undefined` → sanitizamos vía JSON */
@@ -72,6 +82,9 @@ async function seedFirestore(seed: DB) {
 async function loadFirestore(): Promise<DB> {
   const clinicSnap = await getDoc(doc(fsdb, "clinics", CLINIC_ID));
   if (!clinicSnap.exists()) {
+    /* Solo la clínica demo se auto-siembra. Una clínica real inexistente
+     * significa sesión huérfana → el caller limpia y vuelve a la demo. */
+    if (CLINIC_ID !== DEMO_CLINIC_ID) throw new Error("CLINICA_NO_ENCONTRADA");
     const seed = buildSeed();
     await seedFirestore(seed);
     return seed;
@@ -99,8 +112,9 @@ async function loadFirestore(): Promise<DB> {
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   /* Upgrade v3: bases creadas antes de los módulos nuevos — sembramos
-   * presupuestos/caja/inventario/espera demo una sola vez. */
-  if (db.budgets.length === 0 && db.stock.length === 0) {
+   * presupuestos/caja/inventario/espera demo una sola vez. SOLO en la demo:
+   * una clínica real recién creada está vacía a propósito. */
+  if (CLINIC_ID === DEMO_CLINIC_ID && db.budgets.length === 0 && db.stock.length === 0) {
     const seed = buildSeed();
     const batch = writeBatch(fsdb);
     for (const g of seed.budgets) batch.set(doc(fsdb, "clinics", CLINIC_ID, "budgets", g.id), clean(g));
@@ -135,8 +149,8 @@ async function loadFirestore(): Promise<DB> {
     db.budgets = seed.budgets; db.payments = seed.payments; db.expenses = seed.expenses;
     db.stock = seed.stock; db.stockMoves = seed.stockMoves; db.waitlist = seed.waitlist;
   }
-  /* Upgrade v4: integración Botika (outbox + NPS + config) */
-  if (db.outbox.length === 0) {
+  /* Upgrade v4: integración Botika (outbox + NPS + config) — solo demo */
+  if (CLINIC_ID === DEMO_CLINIC_ID && db.outbox.length === 0) {
     const seed = buildSeed();
     const batch = writeBatch(fsdb);
     for (const t of seed.outbox) batch.set(doc(fsdb, "clinics", CLINIC_ID, "outbox", t.id), clean(t));
@@ -200,6 +214,8 @@ interface Ctx {
   createTeamUser: (data: { name: string; email: string; role: import("./types").Role; password: string; color: string }) => Promise<void>;
   logout: () => void;
   resetDemo: () => void;
+  /** Restaura los datos de ejemplo SIN borrar cuentas reales (login vacío) */
+  seedDemo: () => Promise<void>;
   upsertAppointment: (a: Appointment) => void;
   deleteAppointment: (id: string) => void;
   upsertPatient: (p: Patient) => void;
@@ -264,10 +280,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const s = localStorage.getItem(SES_KEY);
       if (s) setSession(JSON.parse(s));
     } catch {}
+    CLINIC_ID = resolveClinicId();
     (async () => {
       try {
         await withTimeout(ensureAuth(), 6000).catch(() => {});
-        const remote = await withTimeout(loadFirestore(), 9000);
+        let remote: DB;
+        try {
+          remote = await withTimeout(loadFirestore(), 9000);
+        } catch (e: any) {
+          if (String(e?.message).includes("CLINICA_NO_ENCONTRADA")) {
+            // sesión apunta a una clínica que ya no existe → limpiar y volver a la demo
+            localStorage.removeItem(SES_KEY);
+            setSession(null);
+            CLINIC_ID = DEMO_CLINIC_ID;
+            remote = await withTimeout(loadFirestore(), 9000);
+          } else throw e;
+        }
         setDb(remote);
         setBackend("firebase");
       } catch (e) {
@@ -314,7 +342,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       (e) => console.warn("listener outbox:", e)
     );
     return unsub;
-  }, [backend]);
+    // re-suscribir si cambia la clínica activa (login multi-clínica)
+  }, [backend, session?.clinicId]);
 
   /* write-through a Firestore (no-op en modo local) */
   const fsSave = useCallback((colName: string, id: string, data: unknown) => {
@@ -360,11 +389,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
       loginWithEmail: async (email, password) => {
         const uid = await signInEmail(email, password); // lanza error de Firebase si falla
-        const u =
+        let u =
           db.users.find((x) => x.authUid === uid) ??
           db.users.find((x) => x.email.toLowerCase() === email.toLowerCase());
+        if (!u && backendRef.current === "firebase") {
+          /* Multi-clínica: la cuenta puede pertenecer a OTRA clínica.
+           * El directorio global uid → clinicId nos dice cuál; cargamos esa
+           * clínica completa y seguimos ahí. */
+          const dir = await getDoc(doc(fsdb, "directory", uid)).catch(() => null);
+          const clinicId = dir?.exists() ? (dir.data() as any).clinicId : null;
+          if (clinicId && clinicId !== CLINIC_ID) {
+            CLINIC_ID = clinicId;
+            const remote = await loadFirestore();
+            u =
+              remote.users.find((x) => x.authUid === uid) ??
+              remote.users.find((x) => x.email.toLowerCase() === email.toLowerCase());
+            if (u) {
+              setDb(remote);
+              try { localStorage.setItem(DB_KEY, JSON.stringify(remote)); } catch {}
+            } else {
+              CLINIC_ID = resolveClinicId(); // revertimos: el doc de usuario no está
+            }
+          }
+        }
         if (!u) {
-          throw new Error("Tu cuenta existe pero no está asignada a esta clínica. Pedile al administrador que cree tu usuario en Configuración.");
+          throw new Error("Tu cuenta existe pero no está asignada a ninguna clínica. Pedile al administrador que cree tu usuario en Configuración.");
         }
         if (!u.active) throw new Error("Tu usuario está desactivado. Contactá al administrador.");
         const s: Session = { userId: u.id, clinicId: u.clinicId, role: u.role, name: u.name };
@@ -376,9 +425,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const u: User = { id: uid, authUid: uid, clinicId: CLINIC_ID, name, email, role, color, active: true };
         persist({ ...db, users: [...db.users, u] });
         fsSave("users", u.id, u);
+        // directorio global uid → clínica (permite iniciar sesión desde cualquier dispositivo)
+        if (backendRef.current === "firebase") {
+          setDoc(doc(fsdb, "directory", uid), { clinicId: CLINIC_ID, email }).catch(() => {});
+        }
       },
       logout: () => { setSession(null); localStorage.removeItem(SES_KEY); },
+      seedDemo: async () => {
+        if (CLINIC_ID !== DEMO_CLINIC_ID) return; // jamás sobre una clínica real
+        const seed = buildSeed();
+        if (backendRef.current === "firebase") await seedFirestore(seed).catch((e) => console.warn("seedDemo", e));
+        const realUsers = db.users.filter((u) => u.authUid && !seed.users.some((s) => s.id === u.id));
+        persist({ ...seed, users: [...seed.users, ...realUsers] });
+      },
       resetDemo: () => {
+        if (CLINIC_ID !== DEMO_CLINIC_ID) return; // jamás sobre una clínica real
         const seed = buildSeed();
         if (backendRef.current === "firebase") {
           // borrar extras y reescribir semilla

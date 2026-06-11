@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ShieldCheck, Stethoscope, Headset, Mail, Lock, Eye, EyeOff, LoaderCircle, ArrowLeft, Sparkles } from "lucide-react";
+import { ShieldCheck, Stethoscope, Headset, Mail, Lock, Eye, EyeOff, LoaderCircle, ArrowLeft, Sparkles, RotateCcw } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ROLE_LABEL } from "@/lib/rbac";
 import { Field, inputCls } from "@/components/ui";
@@ -21,14 +21,16 @@ function friendlyAuthError(e: any): string {
 }
 
 export default function Login() {
-  const { db, login, loginWithEmail, ready, backend } = useStore();
+  const { db, login, loginWithEmail, seedDemo, ready, backend } = useStore();
   const router = useRouter();
   const [tab, setTab] = useState<"auth" | "demo">("auth");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const demoUsers = db.users.filter((u) => !u.authUid);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -136,8 +138,28 @@ export default function Login() {
                   <h1 className="text-xl font-extrabold text-navy-800">Recorré la demo</h1>
                   <p className="mt-1 text-sm text-clinic-muted">Datos de ejemplo. Cada rol ve y puede hacer cosas distintas (RBAC).</p>
                 </div>
+                {ready && demoUsers.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-clinic-border p-5 text-center">
+                    <p className="text-sm font-semibold text-clinic-text">La demo está vacía</p>
+                    <p className="mt-1 text-xs leading-relaxed text-clinic-muted">
+                      Cargá los datos de ejemplo (pacientes, agenda, caja) para recorrerla.
+                      Tus cuentas reales no se tocan.
+                    </p>
+                    <button
+                      onClick={async () => {
+                        setSeeding(true);
+                        try { await seedDemo(); } finally { setSeeding(false); }
+                      }}
+                      disabled={seeding}
+                      className="mt-3 inline-flex items-center gap-2 rounded-xl bg-azure-600 px-4 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-azure-700 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted"
+                    >
+                      {seeding ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                      Restaurar datos de demo
+                    </button>
+                  </div>
+                )}
                 {ready &&
-                  db.users.filter((u) => !u.authUid).map((u) => {
+                  demoUsers.map((u) => {
                     const Icon = ICON[u.role];
                     return (
                       <button
