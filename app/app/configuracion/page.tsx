@@ -7,10 +7,12 @@ import { useStore, fmtGs } from "@/lib/store";
 import { can, ROLE_LABEL } from "@/lib/rbac";
 import type { Role, User, Procedure } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
+import { useClinicPlan } from "@/components/PlanGate";
 import DentalinkImport from "@/components/DentalinkImport";
 
 export default function ConfigPage() {
   const { db, session, upsertProcedure, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser } = useStore();
+  const plan = useClinicPlan();
   const [addingUser, setAddingUser] = useState(false);
   const [addingProc, setAddingProc] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -52,7 +54,7 @@ export default function ConfigPage() {
       {/* Usuarios */}
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2"><UserCog className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Usuarios del equipo</h2></div>
+          <div className="flex items-center gap-2"><UserCog className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Usuarios del equipo</h2><span data-tip={`Tu Plan ${plan.label} incluye hasta ${plan.maxUsers === Infinity ? "usuarios ilimitados" : `${plan.maxUsers} usuarios`} y ${plan.maxDentists === Infinity ? "profesionales ilimitados" : `${plan.maxDentists} profesional${plan.maxDentists > 1 ? "es" : ""}`}`} className="rounded-full bg-clinic-bg px-2 py-0.5 font-mono text-[10px] font-bold text-clinic-muted">{db.users.filter((u) => u.active).length}{plan.maxUsers === Infinity ? "" : ` / ${plan.maxUsers}`}</span></div>
           <Btn onClick={() => setAddingUser(true)}><Plus className="h-4 w-4" /> Agregar usuario</Btn>
         </div>
         <div className="divide-y divide-clinic-border">

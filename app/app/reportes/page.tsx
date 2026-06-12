@@ -7,6 +7,7 @@ import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, patientBalance, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { Card, Btn, Badge } from "@/components/ui";
+import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { ReportsIAPanel } from "@/components/NovudentIA";
 import { CashflowAreaChart, ProductionBarsChart } from "@/components/Charts";
 
@@ -79,7 +80,9 @@ export default function ReportsPage() {
     return { pays, exps, collected, spent, presented, accepted, acceptRate, production, maxProd, cashflow, debtors, surveys, prom, pasv, detr, npsScore };
   }, [db]);
 
+  const plan = useClinicPlan();
   if (!session) return null;
+  if (!plan.features.includes("reportes")) return <PlanLocked feature="reportes" />;
   if (!can(session.role, "billing.reports")) {
     return (
       <Card className="p-10 text-center">

@@ -11,6 +11,7 @@ import { can } from "@/lib/rbac";
 import { budgetTotal, budgetBalance, patientBalance, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import type { Payment, PaymentMethod, Expense } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
+import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 
 const METHOD_ICON: Record<PaymentMethod, any> = { efectivo: Banknote, tarjeta: CreditCard, transferencia: Landmark, qr: QrCode };
 const EXPENSE_CATS = ["Insumos", "Laboratorio", "Servicios", "Sueldos", "Alquiler", "Equipamiento", "Otros"];
@@ -26,7 +27,9 @@ export default function CashPage() {
   const [newExp, setNewExp] = useState(false);
   const [queued, setQueued] = useState<string[]>([]);
 
+  const plan = useClinicPlan();
   if (!session) return null;
+  if (!plan.features.includes("caja")) return <PlanLocked feature="caja" />;
   const allowed = can(session.role, "payments.manage");
   if (!allowed) {
     return (

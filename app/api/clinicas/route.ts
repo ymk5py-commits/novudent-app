@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
   const adminName = norm(body.adminName);
   const adminEmail = norm(body.adminEmail).toLowerCase();
   const adminPassword = String(body.adminPassword ?? "");
+  const plan = ["solo", "clinica", "cadena"].includes(norm(body.plan)) ? norm(body.plan) : "clinica";
   if (!clinicName || !adminName || !adminEmail || adminPassword.length < 6) {
     return NextResponse.json(
       { error: "Completá nombre de la clínica, nombre del admin, email y una contraseña de 6+ caracteres." },
@@ -110,6 +111,7 @@ export async function POST(req: NextRequest) {
     await setDocument(`clinics/${clinicId}`, {
       id: clinicId,
       name: clinicName,
+      plan, // nivel contratado — limita módulos y usuarios (lib/plan.ts)
       config: {
         timezone: "America/Asuncion",
         currency: "PYG",
@@ -149,6 +151,7 @@ export async function POST(req: NextRequest) {
       ok: true,
       clinicId,
       clinicName,
+      plan,
       admin: { name: adminName, email: adminEmail },
       bookingUrl: `/reservar/${clinicId}`,
     });

@@ -15,6 +15,7 @@ import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, FlagBadge, Empty
 import Odontogram from "@/components/Odontogram";
 import { BudgetsTab, RxTab, FilesTab, OrthoTab } from "@/components/PatientExtras";
 import { VoiceNoteButton, PatientBriefButton } from "@/components/NovudentIA";
+import { useClinicPlan } from "@/components/PlanGate";
 import Periodontogram from "@/components/Periodontogram";
 
 type Tab = "resumen" | "odontograma" | "periodoncia" | "historial" | "presupuestos" | "recetas" | "archivos" | "ortodoncia" | "formularios" | "facturacion";
@@ -22,6 +23,7 @@ type Tab = "resumen" | "odontograma" | "periodoncia" | "historial" | "presupuest
 export default function PatientProfile() {
   const { id } = useParams<{ id: string }>();
   const { db, session, completeForm, addEmrNote, addPerioSession, setTooth, markHistoryUpdate } = useStore();
+  const hasIA = useClinicPlan().features.includes("ia"); // Novudent IA: Plan Clínica+
   const [tab, setTab] = useState<Tab>("resumen");
   const [fillingForm, setFillingForm] = useState<PatientForm | null>(null);
   const [writingNote, setWritingNote] = useState(false);
@@ -67,7 +69,7 @@ export default function PatientProfile() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <PatientBriefButton
+            {hasIA && <PatientBriefButton
               patient={p}
               context={{
                 appointments: appts.slice(0, 6).map((a) => ({
@@ -84,7 +86,7 @@ export default function PatientProfile() {
                   })),
                 billing: bills.slice(0, 6).map((b) => ({ flags: b.flags, total: recordTotal(b) })),
               }}
-            />
+            />}
             {pendingForms.length > 0 && (
               <button onClick={() => setTab("formularios")} data-tip="Formularios pendientes — clic para gestionar" className="grid h-9 w-9 place-items-center rounded-xl bg-state-warnbg">
                 <FileText className="h-4.5 w-4.5 h-5 w-5 text-state-warn" />
@@ -202,11 +204,11 @@ export default function PatientProfile() {
             </p>
             {canWriteEmr && (
               <div className="flex items-center gap-2">
-                <VoiceNoteButton
+                {hasIA && <VoiceNoteButton
                   patientName={fullName(p)}
                   author={{ id: session.userId, name: session.name }}
                   onSave={(note) => addEmrNote(p.id, note)}
-                />
+                />}
                 <Btn onClick={() => setWritingNote(true)}><Plus className="h-4 w-4" /> Nueva nota</Btn>
               </div>
             )}

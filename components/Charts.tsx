@@ -64,15 +64,17 @@ export function WeekBarsChart({ data, money, name }: { data: { d: string; v: num
 }
 
 /* ---------- donut de estados de citas ---------- */
-export function StatusDonutChart({ parts, centerLabel }: {
+export function StatusDonutChart({ parts, centerLabel, glow }: {
   parts: { label: string; v: number; color: string }[];
   centerLabel: string;
+  /** halo 3D bajo el anillo */
+  glow?: boolean;
 }) {
   const total = parts.reduce((s, p) => s + p.v, 0);
   const data = parts.filter((p) => p.v > 0).map((p) => ({ name: p.label, value: p.v, fill: p.color }));
   return (
     <div className="flex flex-wrap items-center gap-5">
-      <div className="relative h-40 w-40">
+      <div className={`relative h-40 w-40 ${glow ? "chart-glow" : ""}`}>
         <ResponsiveContainer>
           <PieChart>
             <Tooltip content={<CardTooltip />} />
@@ -82,7 +84,8 @@ export function StatusDonutChart({ parts, centerLabel }: {
               innerRadius="68%" outerRadius="100%"
               paddingAngle={data.length > 1 ? 2.5 : 0}
               cornerRadius={5}
-              stroke="none"
+              stroke="#fff"
+              strokeWidth={1.5}
               animationDuration={900}
               animationEasing="ease-out"
             />

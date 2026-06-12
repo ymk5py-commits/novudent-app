@@ -11,6 +11,9 @@ export interface Convenio {
 export interface Clinic {
   id: string;
   name: string;
+  /** Plan contratado (solo | clinica | cadena) — limita módulos y usuarios.
+   *  Clínicas creadas antes del sistema de planes → "clinica" (lib/plan.ts planOf). */
+  plan?: "solo" | "clinica" | "cadena";
   config: {
     timezone: string;
     currency: "PYG" | "USD";

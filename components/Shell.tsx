@@ -9,8 +9,9 @@ import {
 } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
+import { planOf, type PlanFeature } from "@/lib/plan";
 
-const SECTIONS: { label: string; items: { href: string; label: string; icon: any; perm?: Permission }[] }[] = [
+const SECTIONS: { label: string; items: { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature }[] }[] = [
   {
     label: "Principal",
     items: [
@@ -23,11 +24,11 @@ const SECTIONS: { label: string; items: { href: string; label: string; icon: any
   {
     label: "Gestión",
     items: [
-      { href: "/app/caja", label: "Caja", icon: Wallet, perm: "payments.manage" },
+      { href: "/app/caja", label: "Caja", icon: Wallet, perm: "payments.manage", feature: "caja" },
       { href: "/app/facturacion", label: "Facturación", icon: Receipt },
-      { href: "/app/inventario", label: "Inventario", icon: Package, perm: "inventory.manage" },
-      { href: "/app/reportes", label: "Reportes", icon: BarChart3, perm: "billing.reports" },
-      { href: "/app/integraciones", label: "Integraciones", icon: Bot, perm: "practice.config" },
+      { href: "/app/inventario", label: "Inventario", icon: Package, perm: "inventory.manage", feature: "inventario" },
+      { href: "/app/reportes", label: "Reportes", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/integraciones", label: "Integraciones", icon: Bot, perm: "practice.config", feature: "integraciones" },
       { href: "/app/suscripcion", label: "Suscripción", icon: CreditCard, perm: "practice.config" },
       { href: "/app/configuracion", label: "Configuración", icon: Settings, perm: "practice.config" },
     ],
@@ -80,6 +81,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   }
 
   const me = db.users.find((u) => u.id === session.userId);
+  const plan = planOf(db.clinics[0]);
 
   return (
     <div className="flex min-h-screen bg-clinic-bg">
@@ -102,11 +104,21 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <a href="/app" className="flex items-baseline gap-2">
             <span className="font-logo text-xl tracking-[0.16em] text-navy-800">NOVUdent</span>
           </a>
-          <div className="mt-0.5 font-mono text-[8.5px] uppercase tracking-[0.3em] text-clinic-muted">gestión dental</div>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.3em] text-clinic-muted">gestión dental</span>
+            <span
+              data-tip={`Plan ${plan.label} — ${plan.maxDentists === Infinity ? "profesionales ilimitados" : `hasta ${plan.maxDentists} profesional${plan.maxDentists > 1 ? "es" : ""}`}`}
+              className="rounded-full bg-azure-50 px-1.5 py-0.5 font-mono text-[8px] font-extrabold uppercase tracking-wide text-azure-700"
+            >
+              {plan.label}
+            </span>
+          </div>
         </div>
         <nav className="flex-1 space-y-5 overflow-y-auto px-3 pt-4">
           {SECTIONS.map((sec) => {
-            const items = sec.items.filter((it) => !it.perm || can(session.role, it.perm));
+            const items = sec.items.filter(
+              (it) => (!it.perm || can(session.role, it.perm)) && (!it.feature || plan.features.includes(it.feature))
+            );
             if (items.length === 0) return null;
             return (
               <div key={sec.label}>
@@ -158,7 +170,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
       {/* ===== Área principal ===== */}
       <div className="flex min-h-screen min-w-0 flex-1 flex-col md:ml-[232px]">
-        <header className="sticky top-0 z-30 border-b border-clinic-border bg-white/85 backdrop-blur">
+        <header className="sticky top-0 z-30 border-b border-white/60 bg-white/70 shadow-[0_4px_24px_-12px_rgba(15,31,61,0.12)] backdrop-blur-xl [-webkit-backdrop-filter:blur(20px)_saturate(1.4)] [backdrop-filter:blur(20px)_saturate(1.4)]">
           <div className="relative mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
             {/* Hamburguesa — abre el drawer en móvil */}
             <button

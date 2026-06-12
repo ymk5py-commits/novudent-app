@@ -10,16 +10,19 @@ import {
   LoaderCircle, CheckCircle2, Copy, ArrowRight, ShieldCheck, Plus,
 } from "lucide-react";
 import { Field, inputCls } from "@/components/ui";
+import { PLANS, type PlanId } from "@/lib/plan";
 
 type Created = {
   clinicId: string;
   clinicName: string;
+  plan: PlanId;
   admin: { name: string; email: string };
   bookingUrl: string;
 };
 
 export default function SuperAdminPage() {
   const [ownerKey, setOwnerKey] = useState("");
+  const [plan, setPlan] = useState<PlanId>("clinica");
   const [clinicName, setClinicName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -39,7 +42,7 @@ export default function SuperAdminPage() {
       const res = await fetch("/api/clinicas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ownerKey, clinicName, phone, address, adminName, adminEmail, adminPassword }),
+        body: JSON.stringify({ ownerKey, plan, clinicName, phone, address, adminName, adminEmail, adminPassword }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
@@ -55,6 +58,7 @@ export default function SuperAdminPage() {
     if (!created) return;
     const text = [
       `¡Bienvenido a Novudent, ${created.clinicName}! 🦷`,
+      `Tu plan: Plan ${PLANS[created.plan]?.label ?? "Clínica"}${PLANS[created.plan]?.priceUsd ? ` (USD ${PLANS[created.plan].priceUsd}/mes)` : ""}`,
       ``,
       `Tu acceso de administrador:`,
       `• Entrá en: ${location.origin}/login`,
@@ -101,6 +105,7 @@ export default function SuperAdminPage() {
 
               <div className="space-y-2.5 rounded-2xl bg-clinic-bg p-4 text-sm">
                 <div className="flex justify-between gap-3"><span className="text-clinic-muted">Clínica</span><b className="text-clinic-text">{created.clinicName}</b></div>
+                <div className="flex justify-between gap-3"><span className="text-clinic-muted">Plan</span><b className="text-azure-700">Plan {PLANS[created.plan]?.label ?? "Clínica"}{PLANS[created.plan]?.priceUsd ? ` · $${PLANS[created.plan].priceUsd}/mes` : ""}</b></div>
                 <div className="flex justify-between gap-3"><span className="text-clinic-muted">ID interno</span><span className="font-mono text-xs font-bold text-clinic-text">{created.clinicId}</span></div>
                 <div className="flex justify-between gap-3"><span className="text-clinic-muted">Admin</span><b className="text-clinic-text">{created.admin.name}</b></div>
                 <div className="flex justify-between gap-3"><span className="text-clinic-muted">Email de acceso</span><span className="font-mono text-xs font-bold text-clinic-text">{created.admin.email}</span></div>
@@ -136,6 +141,35 @@ export default function SuperAdminPage() {
                   <input type="password" required className={`${inputCls} pl-9`} value={ownerKey} onChange={(e) => setOwnerKey(e.target.value)} placeholder="OWNER_PANEL_KEY" autoComplete="off" />
                 </div>
               </Field>
+
+              <div className="border-t border-clinic-border pt-4">
+                <p className="mb-3 font-mono text-[10px] font-extrabold uppercase tracking-[0.2em] text-clinic-muted">Plan contratado</p>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {(Object.values(PLANS)).map((p) => (
+                    <button
+                      type="button"
+                      key={p.id}
+                      onClick={() => setPlan(p.id)}
+                      className={`rounded-2xl border-2 p-3 text-left transition-all ${
+                        plan === p.id
+                          ? "border-azure-600 bg-azure-50 shadow-[0_6px_18px_-8px_rgba(46,131,245,0.5)]"
+                          : "border-clinic-border hover:border-azure-300"
+                      }`}
+                    >
+                      <span className={`block text-sm font-extrabold ${plan === p.id ? "text-azure-700" : "text-clinic-text"}`}>{p.label}</span>
+                      <span className="block font-mono text-[11px] font-bold text-clinic-muted">
+                        {p.priceUsd ? `$${p.priceUsd}/mes` : "A medida"}
+                      </span>
+                      <span className="mt-1 block text-[10px] leading-snug text-clinic-muted">
+                        {p.id === "solo" ? "1 profesional" : p.id === "clinica" ? "Hasta 5 prof. · todo incluido" : "Multi-sucursal · ilimitado"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-[10.5px] leading-relaxed text-clinic-muted">
+                  El plan limita los módulos y la cantidad de profesionales dentro de la app. Se puede cambiar después.
+                </p>
+              </div>
 
               <div className="border-t border-clinic-border pt-4">
                 <p className="mb-3 font-mono text-[10px] font-extrabold uppercase tracking-[0.2em] text-clinic-muted">Datos de la clínica</p>

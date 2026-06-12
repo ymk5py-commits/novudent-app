@@ -7,6 +7,7 @@ import { useStore, fmtGs, fmtDate } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import type { StockItem, StockMove } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
+import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 
 export default function InventoryPage() {
   const store = useStore();
@@ -14,7 +15,9 @@ export default function InventoryPage() {
   const [editing, setEditing] = useState<StockItem | "new" | null>(null);
   const [moving, setMoving] = useState<{ item: StockItem; type: "entrada" | "salida" } | null>(null);
 
+  const plan = useClinicPlan();
   if (!session) return null;
+  if (!plan.features.includes("inventario")) return <PlanLocked feature="inventario" />;
   if (!can(session.role, "inventory.manage")) {
     return (
       <Card className="p-10 text-center">

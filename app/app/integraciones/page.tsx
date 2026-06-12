@@ -10,6 +10,7 @@ import { can } from "@/lib/rbac";
 import { DEFAULT_TEMPLATES, AUTOMATION_LABEL, BOTIKA_TEMPLATE_VARS, type BotikaAutoKey } from "@/lib/botika";
 import type { OutboxTask, OutboxTaskType, BotikaConfig } from "@/lib/types";
 import { Card, Btn, Badge, Empty, Field, inputCls } from "@/components/ui";
+import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 
 /* ===== Editor de plantillas por automatización ===== */
 function TemplatesEditor({ botika, onSave }: { botika: BotikaConfig; onSave: (t: BotikaConfig["templates"]) => void }) {
@@ -85,7 +86,9 @@ export default function IntegrationsPage() {
   const { db, session } = store;
   const [busy, setBusy] = useState<string | null>(null);
 
+  const plan = useClinicPlan();
   if (!session) return null;
+  if (!plan.features.includes("integraciones")) return <PlanLocked feature="integraciones" />;
   if (!can(session.role, "practice.config")) {
     return (
       <Card className="p-10 text-center">

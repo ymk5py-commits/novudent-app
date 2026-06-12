@@ -7,28 +7,18 @@ import { ShieldAlert, CreditCard, Check, ExternalLink, FileText, Mail, Sparkles 
 import { useStore } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { Card, Badge, Btn } from "@/components/ui";
-
-const PLAN = {
-  name: "Clínica",
-  priceUsd: 129,
-  features: [
-    "Hasta 5 sillones / profesionales",
-    "Odontograma por superficies",
-    "Financiamiento y morosidad",
-    "Formularios y consentimientos",
-    "Facturación con estados",
-    "Soporte prioritario",
-  ],
-};
-
-const DEMO_INVOICES = [
-  { n: "NOV-2026-0003", date: "01 jun 2026", amount: 129, status: "pagada" },
-  { n: "NOV-2026-0002", date: "01 may 2026", amount: 129, status: "pagada" },
-  { n: "NOV-2026-0001", date: "01 abr 2026", amount: 129, status: "pagada" },
-];
+import { planOf } from "@/lib/plan";
 
 export default function SubscriptionPage() {
   const { session, db } = useStore();
+  // Plan real contratado por la clínica (lo fija el dueño al crear la cuenta)
+  const PLAN = planOf(db.clinics[0]);
+  const price = PLAN.priceUsd ?? 0;
+  const DEMO_INVOICES = [
+    { n: "NOV-2026-0003", date: "01 jun 2026", amount: price, status: "pagada" },
+    { n: "NOV-2026-0002", date: "01 may 2026", amount: price, status: "pagada" },
+    { n: "NOV-2026-0001", date: "01 abr 2026", amount: price, status: "pagada" },
+  ];
   if (!session) return null;
   if (!can(session.role, "practice.config")) {
     return (
@@ -60,11 +50,11 @@ export default function SubscriptionPage() {
               <Badge tone="ok">Activo</Badge>
             </div>
             <div className="mt-3 flex items-end gap-2">
-              <span className="text-4xl font-extrabold text-clinic-text">Plan {PLAN.name}</span>
-              <span className="mb-1 font-mono text-sm text-clinic-muted">USD {PLAN.priceUsd}/mes</span>
+              <span className="text-4xl font-extrabold text-clinic-text">Plan {PLAN.label}</span>
+              <span className="mb-1 font-mono text-sm text-clinic-muted">{PLAN.priceUsd ? `USD ${PLAN.priceUsd}/mes` : "precio a medida"}</span>
             </div>
             <ul className="mt-5 grid gap-2 sm:grid-cols-2">
-              {PLAN.features.map((f) => (
+              {PLAN.bullets.map((f) => (
                 <li key={f} className="flex items-start gap-2 text-sm text-clinic-text">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-azure-600" strokeWidth={2.5} /> {f}
                 </li>

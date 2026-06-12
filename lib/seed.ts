@@ -231,7 +231,7 @@ export function buildSeed(): DB {
   return {
     clinics: [
       {
-        id: CLINIC_ID, name: "Clínica Demo Asunción",
+        id: CLINIC_ID, name: "Clínica Demo Asunción", plan: "clinica",
         config: {
           timezone: "America/Asuncion", currency: "PYG", address: "Av. España 1234, Asunción", phone: "+595 21 555 000",
           convenios: [

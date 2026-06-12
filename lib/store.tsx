@@ -31,6 +31,7 @@ import type {
 } from "./types";
 import { buildSeed } from "./seed";
 import { submitToBilling, releaseFromHold } from "./billing";
+import { planUserLimitError } from "./plan";
 
 const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
@@ -96,7 +97,7 @@ async function loadFirestore(): Promise<DB> {
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"),
   ]);
   const db: DB = {
-    clinics: [{ id: CLINIC_ID, name: meta.name, config: meta.config }],
+    clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
     users: users.docs.map((d) => d.data() as User),
     patients: patients.docs.map((d) => d.data() as Patient),
     appointments: appointments.docs.map((d) => d.data() as Appointment),
@@ -421,6 +422,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(SES_KEY, JSON.stringify(s));
       },
       createTeamUser: async ({ name, email, role, password, color }) => {
+        // límite del plan contratado (profesionales / usuarios activos)
+        const limitErr = planUserLimitError(db.clinics[0], db.users, role);
+        if (limitErr) throw new Error(limitErr);
         const uid = await createAuthUser(email, password); // cuenta real en Firebase Auth
         const u: User = { id: uid, authUid: uid, clinicId: CLINIC_ID, name, email, role, color, active: true };
         persist({ ...db, users: [...db.users, u] });

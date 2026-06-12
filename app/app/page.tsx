@@ -14,6 +14,7 @@ import { Card, Badge, StatusBadge } from "@/components/ui";
 import { ToothGlyph } from "@/components/Odontogram";
 import { ContralorCard } from "@/components/NovudentIA";
 import { WeekBarsChart, StatusDonutChart } from "@/components/Charts";
+import { useClinicPlan } from "@/components/PlanGate";
 
 /* ---- count-up ---- */
 function Count({ value }: { value: number }) {
@@ -43,8 +44,8 @@ function SpikeStat({
     red: "bg-state-errbg text-state-err",
   }[tone];
   return (
-    <a href={href} className="group rounded-2xl border border-clinic-border bg-white p-5 shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-pop">
-      <span className={`grid h-12 w-12 place-items-center rounded-2xl transition-transform group-hover:scale-105 ${tones}`}>
+    <a href={href} className="card-3d group rounded-2xl border border-clinic-border bg-white p-5 shadow-card">
+      <span className={`icon-3d grid h-12 w-12 place-items-center rounded-2xl transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 ${tones}`}>
         <Icon className="h-5 w-5" strokeWidth={2} />
       </span>
       <p className="mt-4 text-3xl font-extrabold tabular-nums text-clinic-text"><Count value={value} /></p>
@@ -58,6 +59,7 @@ function SpikeStat({
 
 export default function Dashboard() {
   const { db, session, setOnboarding, resetDemo } = useStore();
+  const plan = useClinicPlan();
   if (!session) return null;
 
   const today = new Date();
@@ -98,13 +100,15 @@ export default function Dashboard() {
   const debtorCount = db.patients.filter((p) => patientBalance(p.id, db.budgets, db.payments) > 0).length;
   const cancelledWeek = week.filter((a) => a.status === "cancelada");
   const lowStock = db.stock.filter((s) => s.stock <= s.minStock);
+  const hasCaja = plan.features.includes("caja");
+  const hasInv = plan.features.includes("inventario");
   const criticalTasks = [
     can(session.role, "budgets.manage") && captureBudgets.length > 0 && {
       icon: FileSpreadsheet, tone: "bg-state-infobg text-state-info",
       label: `${captureBudgets.length} presupuesto${captureBudgets.length > 1 ? "s" : ""} presentado${captureBudgets.length > 1 ? "s" : ""} sin aceptar`,
       hint: "Tarea de captura: hacer seguimiento al paciente", href: "/app/presupuestos",
     },
-    canReports && debtorCount > 0 && {
+    hasCaja && canReports && debtorCount > 0 && {
       icon: Wallet, tone: "bg-state-warnbg text-state-warn",
       label: `${debtorCount} paciente${debtorCount > 1 ? "s" : ""} con saldo pendiente`,
       hint: "Tarea de morosidad: enviar recordatorio de pago", href: "/app/caja",
@@ -114,7 +118,7 @@ export default function Dashboard() {
       label: `${cancelledWeek.length} cita${cancelledWeek.length > 1 ? "s" : ""} cancelada${cancelledWeek.length > 1 ? "s" : ""} esta semana`,
       hint: "Reagendar o pasar a lista de espera", href: "/app/agenda",
     },
-    can(session.role, "inventory.manage") && lowStock.length > 0 && {
+    hasInv && can(session.role, "inventory.manage") && lowStock.length > 0 && {
       icon: Package, tone: "bg-state-warnbg text-state-warn",
       label: `${lowStock.length} insumo${lowStock.length > 1 ? "s" : ""} con stock bajo`,
       hint: lowStock.map((s) => s.name.split(" ").slice(0, 2).join(" ")).join(", "), href: "/app/inventario",
@@ -161,16 +165,17 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* ===== Banner de bienvenida (Spike) ===== */}
-      <div className="relative overflow-hidden rounded-3xl bg-navy-800 p-7 text-white sm:p-8">
-        <div className="absolute -right-8 -top-12 h-56 w-56 rounded-full bg-azure-500/25 blur-3xl" />
-        <div className="absolute bottom-0 right-6 hidden gap-3 opacity-25 sm:flex">
+      {/* ===== Banner de bienvenida (malla de gradientes + glow 3D) ===== */}
+      <div className="mesh-hero ring-glow relative overflow-hidden rounded-3xl p-7 text-white sm:p-8">
+        <div className="absolute -right-8 -top-12 h-56 w-56 rounded-full bg-azure-500/30 blur-3xl" />
+        <div className="absolute -bottom-16 left-1/3 h-44 w-72 rounded-full bg-azure-400/15 blur-3xl" />
+        <div className="absolute bottom-0 right-6 hidden gap-3 opacity-30 drop-shadow-[0_10px_12px_rgba(0,0,0,0.45)] sm:flex">
           {["16", "11", "26"].map((n) => (
             <span key={n} className="[&_*]:!stroke-white/70 [&_svg]:h-20 [&_svg]:w-12"><ToothGlyph n={n} upper /></span>
           ))}
         </div>
         <div className="relative">
-          <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-azure-200">
+          <div className="glass-dark inline-flex items-center gap-2 rounded-full px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-azure-200">
             <Sparkles className="h-3.5 w-3.5" />
             {today.toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" })}
           </div>
@@ -202,7 +207,7 @@ export default function Dashboard() {
       </div>
 
       {/* ===== Contralor IA — parte del día ===== */}
-      <ContralorCard pendientes={contralorPendientes} />
+      {plan.features.includes("ia") && <ContralorCard pendientes={contralorPendientes} />}
 
       {/* ===== Panel de tareas críticas ===== */}
       {criticalTasks.length > 0 && (
@@ -238,7 +243,7 @@ export default function Dashboard() {
               </div>
               <span className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-clinic-bg"><MoreHorizontal className="h-4 w-4" /></span>
             </div>
-            <WeekBarsChart data={revenue} money name="Producción" />
+            <div className="chart-glow"><WeekBarsChart data={revenue} money name="Producción" /></div>
           </Card>
         ) : (
           <Card className="p-6 lg:col-span-3">
@@ -261,6 +266,7 @@ export default function Dashboard() {
             <span className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-clinic-bg"><MoreHorizontal className="h-4 w-4" /></span>
           </div>
           <StatusDonutChart
+            glow
             centerLabel="Citas · semana"
             parts={[
               { label: "Confirmadas", v: statusCount.ok, color: "#0E9F6E" },
