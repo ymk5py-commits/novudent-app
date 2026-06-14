@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { getDocument, setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
 import { buildSeed } from "@/lib/seed";
+
+/** Comparación constante en el tiempo (evita timing attack sobre OWNER_PANEL_KEY). */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 /**
  * Alta de clientes (solo el dueño del SaaS).
@@ -59,9 +68,6 @@ export async function POST(req: NextRequest) {
   if (!ownerKey) {
     return NextResponse.json({ error: "Falta configurar OWNER_PANEL_KEY en Vercel." }, { status: 503 });
   }
-  if (!isServerFirestoreConfigured()) {
-    return NextResponse.json({ error: "Faltan las credenciales de servidor (FIREBASE_WEB_API_KEY / SERVICE_USER_*)." }, { status: 503 });
-  }
 
   let body: Record<string, unknown>;
   try {
@@ -70,8 +76,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "JSON inválido." }, { status: 400 });
   }
 
-  if (norm(body.ownerKey) !== ownerKey) {
+  // Autorización PRIMERO: una clave mala siempre da 401, sin revelar el estado
+  // de configuración del servidor (no filtrar si Firestore está o no listo).
+  if (!safeEqual(norm(body.ownerKey), ownerKey)) {
     return NextResponse.json({ error: "Clave de propietario incorrecta." }, { status: 401 });
+  }
+
+  if (!isServerFirestoreConfigured()) {
+    return NextResponse.json({ error: "Faltan las credenciales de servidor (FIREBASE_WEB_API_KEY / SERVICE_USER_*)." }, { status: 503 });
   }
 
   const clinicName = norm(body.clinicName);
@@ -129,12 +141,9 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     });
 
-    // 5) aranceles de arranque (el admin los ajusta en Configuración)
-    for (const pr of buildSeed().procedures) {
-      await setDocument(`clinics/${clinicId}/procedures/${pr.cpt}`, pr as unknown as Record<string, unknown>);
-    }
-
-    // 6) usuario admin + directorio global (login multi-clínica)
+    // 5) usuario admin + directorio global PRIMERO: si el alta falla a mitad,
+    // un reintento con el mismo email detecta la clínica a medias vía
+    // `existingDir` (paso 2) y no crea una clínica huérfana duplicada.
     await setDocument(`clinics/${clinicId}/users/${uid}`, {
       id: uid,
       authUid: uid,
@@ -146,6 +155,11 @@ export async function POST(req: NextRequest) {
       active: true,
     });
     await setDocument(`directory/${uid}`, { clinicId, email: adminEmail });
+
+    // 6) aranceles de arranque (el admin los ajusta en Configuración)
+    for (const pr of buildSeed().procedures) {
+      await setDocument(`clinics/${clinicId}/procedures/${pr.cpt}`, pr as unknown as Record<string, unknown>);
+    }
 
     return NextResponse.json({
       ok: true,

@@ -1,0 +1,117 @@
+rules_version = '2';
+
+// =============================================================================
+// Novudent — Firestore Security Rules (aislamiento multi-clínica)
+//
+// Modelo: el navegador del personal de la clínica lee/escribe Firestore
+// DIRECTAMENTE. Estas reglas son la ÚNICA frontera entre clínicas — no hay
+// proxy de servidor para las operaciones del dashboard. Sin ellas, cualquier
+// usuario autenticado (incluso un anónimo de la demo) podría leer pacientes,
+// facturación e historiales de OTRA clínica.
+//
+// Reglas clave:
+//   • Un usuario pertenece a la clínica {cid} sii existe el doc
+//     clinics/{cid}/users/{suUid}. Esa es la fuente de verdad de membresía.
+//   • Solo los admin escriben la config de la clínica y la lista de usuarios
+//     (cierra la escalada de privilegios: un asistente no puede auto-ascenderse).
+//   • La demo (cl_demo) es un sandbox público: cualquier sesión (anónima
+//     incluida) puede leer/escribir — son datos de ejemplo descartables.
+//   • Los "service users" del servidor (Botika worker, rutas /api/*) no son
+//     miembros de ninguna clínica; se habilitan con un doc allowlist en
+//     serviceAccounts/{suUid}. Como no se pueden crear service-account keys en
+//     este proyecto (org policy), este es el mecanismo de elevación.
+//
+// ⚠ ANTES DE DESPLEGAR: crear serviceAccounts/{uid} para el/los usuario(s) de
+//   servicio, o se rompen Botika y las reservas online. Ver SECURITY.md.
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Usuario de servidor habilitado (allowlist). get()/exists() dentro de las
+    // reglas son privilegiados: no quedan sujetos a las reglas de serviceAccounts.
+    function isService() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/serviceAccounts/$(request.auth.uid));
+    }
+
+    // La demo es un sandbox abierto (datos de ejemplo).
+    function isDemo(cid) {
+      return cid == 'cl_demo';
+    }
+
+    // Miembro de la clínica: tiene doc en clinics/{cid}/users/{uid}.
+    function isMember(cid) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid));
+    }
+
+    // Admin de la clínica: miembro con role == 'admin'.
+    function isAdmin(cid) {
+      return isMember(cid)
+        && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ---- Allowlist de servicio: nunca accesible por el cliente. ----
+    // isService() la consulta con exists() (privilegiado), así que puede quedar
+    // totalmente cerrada. Solo el dueño la edita desde la consola de Firebase.
+    match /serviceAccounts/{uid} {
+      allow read, write: if false;
+    }
+
+    // ---- Directorio global uid → clínica (login multi-clínica). ----
+    // Lectura: solo tu propia entrada (o el servidor). Creación: un admin solo
+    // puede crear una entrada que apunte a SU clínica, y solo si no existe
+    // (no puede secuestrar el routing de otro usuario). Cambios/borrados: server.
+    match /directory/{uid} {
+      allow read: if isService() || (isSignedIn() && request.auth.uid == uid);
+      allow create: if isService()
+        || (isAdmin(request.resource.data.clinicId)
+            && !exists(/databases/$(database)/documents/directory/$(uid)));
+      allow update, delete: if isService();
+    }
+
+    // ---- Clínica + subcolecciones ----
+    match /clinics/{cid} {
+      // Doc raíz: plan + config. Lectura: miembros/servidor/demo.
+      // Escritura: SOLO admin (cambia plan/config), servidor o demo.
+      allow read:  if isMember(cid) || isService() || isDemo(cid);
+      allow write: if isAdmin(cid)  || isService() || isDemo(cid);
+
+      // Equipo: solo admin gestiona usuarios (anti-escalada de privilegios).
+      // NOTA: este bloque NO comparte wildcard con los de datos de abajo, así
+      // que un miembro común no puede escribir usuarios por el "OR" de reglas.
+      match /users/{uid} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if isAdmin(cid)  || isService() || isDemo(cid);
+      }
+
+      // Datos operativos: cualquier miembro de la clínica (RBAC fino se aplica
+      // en la UI; acá garantizamos el aislamiento entre clínicas). Enumeradas
+      // explícitamente: una subcolección nueva no listada queda DENEGADA por
+      // defecto (preferimos negar a filtrar).
+      match /patients/{docId}    { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /appointments/{docId}{ allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /billing/{docId}     { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /procedures/{docId}  { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /budgets/{docId}     { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /payments/{docId}    { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /expenses/{docId}    { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /stock/{docId}       { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /stockMoves/{docId}  { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /waitlist/{docId}    { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /outbox/{docId}      { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Lock atómico de slots de reserva online (lo crea el service user).
+      match /slotLocks/{docId}   { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+    }
+
+    // Todo lo demás: denegado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

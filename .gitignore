@@ -2,7 +2,10 @@ node_modules
 .next
 out
 .DS_Store
-.env*.local
+# Todos los .env (no solo *.local): nunca commitear secretos
+.env
+.env.*
+!.env.example
 .vercel
 *.tsbuildinfo
 next-env.d.ts

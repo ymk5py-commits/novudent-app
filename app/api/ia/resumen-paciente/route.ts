@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyIdToken, AuthError } from "@/lib/server/auth";
 
 /**
  * Resumen Clínico — Novudent IA.
@@ -14,6 +15,13 @@ import { NextRequest, NextResponse } from "next/server";
  */
 
 export async function POST(req: NextRequest) {
+  // Solo usuarios autenticados de este proyecto Firebase (cierra el proxy abierto a Gemini).
+  try {
+    await verifyIdToken(req);
+  } catch (e) {
+    const status = e instanceof AuthError ? e.status : 401;
+    return NextResponse.json({ ok: false, error: "No autorizado" }, { status });
+  }
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(

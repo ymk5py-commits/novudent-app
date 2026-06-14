@@ -185,6 +185,9 @@ function reflectOutbox(prev: DB, task: OutboxTask): { next: DB; saves: [string, 
   const saves: [string, string, unknown][] = [];
   const r = task.result;
   if (!r) return { next, saves };
+  // Un resultado con error NO refleja nada (cita/NPS). Cierra la asimetría con
+  // el path de snapshot, que ya excluía las tareas no "respondido".
+  if (r.error) return { next, saves };
 
   if ((task.type === "confirmar_cita" || task.type === "reagendar") && r.confirmed && task.refId) {
     const appt = next.appointments.find((a) => a.id === task.refId);
@@ -275,6 +278,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [backend, setBackend] = useState<Backend>("connecting");
   const backendRef = useRef<Backend>("connecting");
   backendRef.current = backend;
+  /* Clínica realmente cargada en memoria. TODA escritura a Firestore se ata a
+   * ESTE id (no a la variable de módulo `CLINIC_ID`, que es mutable y puede
+   * desincronizarse durante un cambio de clínica) → garantiza que los datos de
+   * la clínica X nunca se escriban en la clínica Y. */
+  const clinicIdRef = useRef<string>(DEMO_CLINIC_ID);
+  clinicIdRef.current = db.clinics[0]?.id ?? CLINIC_ID;
+  const activeClinicId = db.clinics[0]?.id ?? CLINIC_ID;
 
   useEffect(() => {
     try {
@@ -320,20 +330,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
    * de la cita o el NPS, sin recargar. El reflejo es idempotente. */
   useEffect(() => {
     if (backend !== "firebase") return;
+    // Fijamos el id de la clínica al suscribir: la suscripción y los writes del
+    // callback usan SIEMPRE el mismo `cid`, aunque la clínica activa cambie.
+    const cid = activeClinicId;
     const unsub = onSnapshot(
-      collection(fsdb, "clinics", CLINIC_ID, "outbox"),
+      collection(fsdb, "clinics", cid, "outbox"),
       (snap) => {
         const incoming = snap.docs
           .map((d) => d.data() as OutboxTask)
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         setDb((prev) => {
+          // Si la clínica activa ya cambió, ignoramos snapshots tardíos de la vieja.
+          if ((prev.clinics[0]?.id ?? cid) !== cid) return prev;
           let next: DB = { ...prev, outbox: incoming };
           for (const t of incoming) {
             if (t.status !== "respondido") continue;
             const r = reflectOutbox(next, t);
             next = r.next;
             r.saves.forEach(([c, i, d]) =>
-              setDoc(doc(fsdb, "clinics", CLINIC_ID, c, i), clean(d)).catch(() => {})
+              setDoc(doc(fsdb, "clinics", cid, c, i), clean(d)).catch(() => {})
             );
           }
           try { localStorage.setItem(DB_KEY, JSON.stringify(next)); } catch {}
@@ -343,22 +358,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       (e) => console.warn("listener outbox:", e)
     );
     return unsub;
-    // re-suscribir si cambia la clínica activa (login multi-clínica)
-  }, [backend, session?.clinicId]);
+    // re-suscribir si cambia la clínica cargada (login multi-clínica)
+  }, [backend, activeClinicId]);
 
-  /* write-through a Firestore (no-op en modo local) */
+  /* write-through a Firestore (no-op en modo local). Siempre escribe en la
+   * clínica cargada en memoria (clinicIdRef), nunca en la global mutable. */
   const fsSave = useCallback((colName: string, id: string, data: unknown) => {
     if (backendRef.current !== "firebase") return;
-    setDoc(doc(fsdb, "clinics", CLINIC_ID, colName, id), clean(data)).catch((e) => console.warn("fsSave", e));
+    setDoc(doc(fsdb, "clinics", clinicIdRef.current, colName, id), clean(data)).catch((e) => console.warn("fsSave", e));
   }, []);
   const fsDelete = useCallback((colName: string, id: string) => {
     if (backendRef.current !== "firebase") return;
-    deleteDoc(doc(fsdb, "clinics", CLINIC_ID, colName, id)).catch((e) => console.warn("fsDelete", e));
+    deleteDoc(doc(fsdb, "clinics", clinicIdRef.current, colName, id)).catch((e) => console.warn("fsDelete", e));
   }, []);
   const fsMeta = useCallback((dbNow: DB) => {
     if (backendRef.current !== "firebase") return;
     const c = dbNow.clinics[0];
-    setDoc(doc(fsdb, "clinics", CLINIC_ID), clean({ ...c, onboarding: dbNow.onboarding }), { merge: true }).catch(() => {});
+    if (!c) return;
+    setDoc(doc(fsdb, "clinics", c.id), clean({ ...c, onboarding: dbNow.onboarding }), { merge: true }).catch(() => {});
   }, []);
 
   const value = useMemo<Ctx>(() => {
@@ -425,25 +442,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // límite del plan contratado (profesionales / usuarios activos)
         const limitErr = planUserLimitError(db.clinics[0], db.users, role);
         if (limitErr) throw new Error(limitErr);
+        const cid = clinicIdRef.current; // clínica del admin que crea (la cargada)
         const uid = await createAuthUser(email, password); // cuenta real en Firebase Auth
-        const u: User = { id: uid, authUid: uid, clinicId: CLINIC_ID, name, email, role, color, active: true };
+        const u: User = { id: uid, authUid: uid, clinicId: cid, name, email, role, color, active: true };
         persist({ ...db, users: [...db.users, u] });
         fsSave("users", u.id, u);
         // directorio global uid → clínica (permite iniciar sesión desde cualquier dispositivo)
         if (backendRef.current === "firebase") {
-          setDoc(doc(fsdb, "directory", uid), { clinicId: CLINIC_ID, email }).catch(() => {});
+          setDoc(doc(fsdb, "directory", uid), { clinicId: cid, email }).catch(() => {});
         }
       },
       logout: () => { setSession(null); localStorage.removeItem(SES_KEY); },
       seedDemo: async () => {
-        if (CLINIC_ID !== DEMO_CLINIC_ID) return; // jamás sobre una clínica real
+        if (clinicIdRef.current !== DEMO_CLINIC_ID) return; // jamás sobre una clínica real
+        CLINIC_ID = DEMO_CLINIC_ID; // seedFirestore escribe en CLINIC_ID — lo forzamos a demo
         const seed = buildSeed();
         if (backendRef.current === "firebase") await seedFirestore(seed).catch((e) => console.warn("seedDemo", e));
         const realUsers = db.users.filter((u) => u.authUid && !seed.users.some((s) => s.id === u.id));
         persist({ ...seed, users: [...seed.users, ...realUsers] });
       },
       resetDemo: () => {
-        if (CLINIC_ID !== DEMO_CLINIC_ID) return; // jamás sobre una clínica real
+        if (clinicIdRef.current !== DEMO_CLINIC_ID) return; // jamás sobre una clínica real
+        CLINIC_ID = DEMO_CLINIC_ID; // seedFirestore/fsDelete operan sobre demo
         const seed = buildSeed();
         if (backendRef.current === "firebase") {
           // borrar extras y reescribir semilla

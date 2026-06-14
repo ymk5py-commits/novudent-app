@@ -39,6 +39,17 @@ export async function signInEmail(email: string, password: string): Promise<stri
   return cred.user.uid;
 }
 
+/** ID token del usuario actual (para autorizar las rutas /api/ia/*). null si no hay sesión. */
+export async function currentIdToken(): Promise<string | null> {
+  try {
+    const { getAuth } = await import("firebase/auth");
+    const u = getAuth(app).currentUser;
+    return u ? await u.getIdToken() : null;
+  } catch {
+    return null;
+  }
+}
+
 // Analytics opcional (no bloquea si el entorno no lo soporta)
 if (typeof window !== "undefined") {
   import("firebase/analytics")

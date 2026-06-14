@@ -168,3 +168,19 @@ export async function setDocument(path: string, value: Record<string, unknown>):
     throw new Error(`set ${path} falló (${res.status}): ${body.slice(0, 160)}`);
   }
 }
+
+/**
+ * Crea un documento SOLO si no existe (precondición atómica `exists=false`).
+ * Devuelve true si lo creó, false si ya existía (409) — sirve como lock para
+ * evitar carreras (p. ej. doble reserva del mismo slot). Lanza en otros errores.
+ */
+export async function createIfAbsent(path: string, value: Record<string, unknown>): Promise<boolean> {
+  const res = await authedFetch(`${FS_BASE}/${path}?currentDocument.exists=false`, {
+    method: "PATCH",
+    body: JSON.stringify({ fields: encodeFields(value) }),
+  });
+  if (res.ok) return true;
+  if (res.status === 409 || res.status === 412) return false; // ya existe / precondición fallida
+  const body = await res.text().catch(() => "");
+  throw new Error(`createIfAbsent ${path} falló (${res.status}): ${body.slice(0, 160)}`);
+}

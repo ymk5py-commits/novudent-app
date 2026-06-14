@@ -4,6 +4,7 @@ import {
   getDocument,
   listCollection,
   setDocument,
+  createIfAbsent,
 } from "@/lib/server/firestore-rest";
 
 /**
@@ -144,8 +145,11 @@ export async function POST(req: NextRequest) {
   }
   const startISO = `${date}T${time}:00`;
   const day = new Date(startISO);
+  // Misma política que el GET: mañana → +30 días, domingo cerrado (no "hoy").
+  const dayMidnight = new Date(`${date}T00:00:00`);
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  if (!(day > new Date()) || day.getDay() === 0) {
+  const max = new Date(today); max.setDate(today.getDate() + BOOKING_DAYS_AHEAD);
+  if (!(dayMidnight > today && dayMidnight <= max) || day.getDay() === 0) {
     return NextResponse.json({ ok: false, error: "Horario no disponible" }, { status: 400 });
   }
 
@@ -155,7 +159,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Clínica no encontrada" }, { status: 404 });
     }
 
-    // Re-chequear que el slot siga libre (carrera entre dos pacientes).
+    // Lock de slot para serializar reservas concurrentes del mismo horario.
+    // Es un guard de corta vida (TTL): solo evita la carrera entre dos POST
+    // simultáneos. La disponibilidad REAL la define la colección de citas (el
+    // pre-chequeo de abajo), así que un lock viejo (de una reserva anterior o
+    // de una cita ya cancelada) se considera obsoleto y se puede retomar — así
+    // un slot liberado por cancelación vuelve a estar disponible.
+    const SLOT_LOCK_TTL_MS = 60_000;
+    const slotId = `${dentistId}_${date}_${time}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const lockPath = `clinics/${clinicId}/slotLocks/${slotId}`;
+    const lockData = { dentistId, date, time, at: new Date().toISOString() };
+    let locked = await createIfAbsent(lockPath, lockData);
+    if (!locked) {
+      const existing = await getDocument(lockPath);
+      const at = existing?.at ? Date.parse(String(existing.at)) : 0;
+      if (!at || Date.now() - at > SLOT_LOCK_TTL_MS) {
+        await setDocument(lockPath, lockData); // lock obsoleto → lo retomamos
+        locked = true;
+      }
+    }
+    if (!locked) {
+      return NextResponse.json(
+        { ok: false, error: "Ese horario se acaba de ocupar. Elegí otro." },
+        { status: 409 }
+      );
+    }
+
+    // Pre-chequeo de citas existentes (fuente de verdad de disponibilidad:
+    // cubre slots ocupados por la agenda interna, no solo por reservas online).
     const appts = await listCollection(`clinics/${clinicId}`, "appointments", 500);
     const taken = appts.some(
       (a) =>
@@ -241,7 +272,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, appointmentId: apptId, botikaQueued });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: msg }, { status: 502 });
+    // No filtrar detalles internos (paths de Firestore, projectId) al paciente.
+    console.error("[reservas POST]", e);
+    return NextResponse.json(
+      { ok: false, error: "No se pudo completar la reserva. Intentá de nuevo en un momento." },
+      { status: 502 }
+    );
   }
 }

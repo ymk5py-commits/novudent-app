@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyIdToken, AuthError } from "@/lib/server/auth";
 
 /**
  * Notas clínicas por voz — Novudent IA.
@@ -39,6 +40,13 @@ Respondé SOLO este JSON (sin markdown, sin explicación):
 Si el audio es inaudible o vacío: {"kind":"nota","text":"","transcript":""}`;
 
 export async function POST(req: NextRequest) {
+  // Solo usuarios autenticados de este proyecto Firebase (cierra el proxy abierto a Gemini).
+  try {
+    await verifyIdToken(req);
+  } catch (e) {
+    const status = e instanceof AuthError ? e.status : 401;
+    return NextResponse.json({ ok: false, error: "No autorizado" }, { status });
+  }
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(

@@ -16,6 +16,20 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, Square, Sparkles, Loader2, X, Copy, Check, Send, ShieldCheck, RefreshCw } from "lucide-react";
 import type { EmrNote, Patient } from "@/lib/types";
 import { Btn, Modal, Field, inputCls, Card } from "@/components/ui";
+import { currentIdToken } from "@/lib/firebase";
+
+/** POST a una ruta /api/ia/* con el Firebase ID token (cierra el proxy abierto). */
+async function iaFetch(url: string, payload: unknown): Promise<Response> {
+  const token = await currentIdToken();
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+}
 
 /* ============================================================== */
 /*  Dictado por voz                                                */
@@ -125,11 +139,7 @@ function VoiceNoteModal({
       }
       const b64 = btoa(bin);
 
-      const res = await fetch("/api/ia/nota-voz", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ audio: b64, mimeType: mime, patientName }),
-      });
+      const res = await iaFetch("/api/ia/nota-voz", { audio: b64, mimeType: mime, patientName });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setKind(data.kind);
@@ -298,11 +308,7 @@ export function PatientBriefButton({
         })),
         ortodonciaActiva: !!patient.ortho,
       };
-      const res = await fetch("/api/ia/resumen-paciente", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patient: slim, context }),
-      });
+      const res = await iaFetch("/api/ia/resumen-paciente", { patient: slim, context });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setSummary(data.summary);
@@ -396,11 +402,7 @@ export function ReportsIAPanel({ datos }: { datos: unknown }) {
     setError(null);
     setAnswer(null);
     try {
-      const res = await fetch("/api/ia/reportes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: finalQ, datos }),
-      });
+      const res = await iaFetch("/api/ia/reportes", { question: finalQ, datos });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setAnswer(data.answer);
@@ -488,11 +490,7 @@ export function ContralorCard({ pendientes }: { pendientes: unknown }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/ia/contralor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pendientes }),
-      });
+      const res = await iaFetch("/api/ia/contralor", { pendientes });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setDigest(data.digest);
