@@ -54,6 +54,15 @@ miembro de ninguna clínica).
   entradas que apunten a su clínica y que no existan (no puede secuestrar el
   routing de otro). Cambios/borrados: solo servidor.
 
+### Tests de las reglas (CI)
+Hay un suite que prueba el aislamiento (`test/firestore-rules.test.mjs`):
+```bash
+npm run test:rules   # requiere Java (lo usa el emulador de Firestore)
+```
+Verifica: clínica A no lee/escribe la B, no-admin no escala a admin, self-update
+acotado (mustChangePassword), demo abierta, directory protegido, serviceAccounts
+inaccesible, y deny-by-default. Correlo antes de cada cambio a `firestore.rules`.
+
 ## Otras medidas aplicadas en código (esta auditoría)
 - `/api/ia/*` ahora exige un **Firebase ID token** válido (`Authorization: Bearer`):
   se cerró el proxy abierto a Gemini y el canal de PII sin auth.
@@ -66,9 +75,44 @@ miembro de ninguna clínica).
   consistente y mensajes de error genéricos (sin filtrar paths internos).
 - `.gitignore` cubre todos los `.env*` (no solo `.env*.local`).
 
-## Pendientes recomendados (no bloqueantes)
-- **Rate limiting** en `/api/ia/*`, `/api/reservas` y `/api/clinicas` (p. ej.
-  Upstash/Vercel KV) — hoy no hay límite por IP.
-- Forzar **cambio de contraseña en el primer login** del admin creado en
-  `/superadmin` (la credencial inicial viaja en texto al cliente).
-- Histórico de NPS por paciente (hoy se guarda solo el último).
+## Resueltos en la 2ª pasada
+- **Rate limiting** en `/api/ia/*` (por uid), `/api/reservas` (por IP, POST más
+  estricto) y `/api/clinicas` (antibruteforce por IP) — `lib/server/rate-limit.ts`.
+  ⚠ Es in-memory POR INSTANCIA (serverless). Para un límite global y persistente,
+  cambiar el backend del rate-limiter por Upstash/Vercel KV (misma firma).
+- **Cambio de contraseña obligatorio al primer login**: las cuentas creadas en
+  `/superadmin` y en Configuración nacen con `mustChangePassword: true`; el
+  `ChangePasswordGate` bloquea el dashboard hasta que el usuario crea su propia
+  contraseña. Caduca la credencial inicial que viaja en texto.
+- **Histórico de NPS** por paciente (`npsHistory[]`) — ya no se pierde ninguna
+  respuesta; `nps` conserva la última por compatibilidad.
+
+## 3ª pasada — hallazgos de la verificación adversarial (workflow multi-agente)
+Un workflow de 6 dimensiones revisó los fixes y confirmó 14 hallazgos (verificando
+cada uno adversarialmente). Los reales se corrigieron:
+- **[ALTO] Regla self-update con lista negra** → un dentista podía subir su propio
+  `commissionPct` (fraude) o limpiar `mustChangePassword`. Ahora la regla usa lista
+  BLANCA: un usuario solo edita su propio `name`/`color`. role/active/clinicId/
+  email/commissionPct/mustChangePassword son inmutables desde el cliente.
+- **[ALTO] El gate de contraseña era solo-cliente** → el flag se podía limpiar por
+  SDK sin rotar la clave. Ahora el cambio es 100% server-side: `/api/change-password`
+  rota la contraseña vía Identity Toolkit y SOLO entonces el service user limpia
+  el flag (inmutable desde el cliente). Imposible saltarse el cambio.
+- **[ALTO] Seed de NPS duplicaba el histórico** (timestamps `at` desalineados entre
+  paciente y tarea) → alineados; la idempotencia por `at` ya no duplica.
+- **[MEDIO] Envenenamiento de `directory`** → un admin solo crea la entrada de un
+  uid que YA es miembro de su clínica (`exists(users/{uid})`).
+- **[MEDIO/regresión] `createTeamUser`** ahora espera y propaga el fallo del write
+  (no deja cuentas de Auth sin doc) y resuelve el orden users→directory.
+- **[BAJO] RBAC financiero a nivel reglas:** `payments`/`expenses` solo los escribe
+  el staff (admin/asistente); el dentista no maneja dinero ni por SDK directo.
+- **[BAJO] GC del rate-limiter** expira cada clave con SU ventana (no la del llamante).
+
+Confirmado SIN cambios (verificación los validó): auth corre antes de Gemini en
+las 4 rutas IA, ninguna respuesta filtra errores de Gemini/PII/credenciales, los
+caps de payload siguen, el invariante clinicIdRef en el store se respeta.
+
+## Pendiente recomendado (no bloqueante)
+- Migrar el rate-limiter a Upstash/Vercel KV para límite global (hoy es por
+  instancia de lambda).
+- Correr `npm run test:rules` (Java) en CI antes de cada deploy de reglas.

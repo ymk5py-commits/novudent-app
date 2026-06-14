@@ -38,6 +38,9 @@ export interface User {
   active: boolean;
   /** uid de Firebase Auth (cuenta real creada por el administrador) */
   authUid?: string;
+  /** true mientras el usuario use la contraseña inicial que le asignaron;
+   *  la app fuerza el cambio antes de dejarlo entrar al dashboard. */
+  mustChangePassword?: boolean;
   /** % de comisión sobre producción cobrada (cálculo de pago a odontólogos) */
   commissionPct?: number;
 }
@@ -129,8 +132,10 @@ export interface Patient {
   ortho?: OrthoRecord;
   /* Periodontograma: sesiones de medición periodontal */
   perio?: PerioSession[];
-  /* Última encuesta NPS respondida (vía Botika) */
+  /* Última encuesta NPS respondida (vía Botika) — se mantiene por compatibilidad */
   nps?: { score: number; comment?: string; at: string };
+  /* Histórico completo de encuestas NPS (no se pierde ninguna respuesta) */
+  npsHistory?: { score: number; comment?: string; at: string }[];
 }
 
 /* ===== Periodontograma ===== */

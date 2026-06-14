@@ -10,6 +10,7 @@ import {
 import { useStore, fullName } from "@/lib/store";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
 import { planOf, type PlanFeature } from "@/lib/plan";
+import ChangePasswordGate from "@/components/ChangePasswordGate";
 
 const SECTIONS: { label: string; items: { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature }[] }[] = [
   {
@@ -81,6 +82,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   }
 
   const me = db.users.find((u) => u.id === session.userId);
+  // Cambio de contraseña inicial obligatorio: bloquea TODO el dashboard.
+  if (me?.mustChangePassword) return <ChangePasswordGate />;
   const plan = planOf(db.clinics[0]);
 
   return (

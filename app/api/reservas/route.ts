@@ -6,6 +6,7 @@ import {
   setDocument,
   createIfAbsent,
 } from "@/lib/server/firestore-rest";
+import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 
 /**
  * Agendamiento online — Fase 3 Novudent.
@@ -43,6 +44,8 @@ function isValidId(s: string): boolean {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(`reservas-get:${clientIp(req)}`, { limit: 40, windowMs: 60_000 });
+  if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
   if (!isServerFirestoreConfigured()) {
     return NextResponse.json(
       { ok: false, error: "Reservas online no configuradas (envs del servidor)" },
@@ -108,6 +111,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // Reserva real: límite más estricto (evita spam de citas / enumeración de CIs).
+  const rl = rateLimit(`reservas-post:${clientIp(req)}`, { limit: 8, windowMs: 60_000 });
+  if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
   if (!isServerFirestoreConfigured()) {
     return NextResponse.json(
       { ok: false, error: "Reservas online no configuradas (envs del servidor)" },

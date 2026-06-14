@@ -56,6 +56,13 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // "Staff" administrativo (admin o asistente). El dentista NO maneja dinero
+    // (matriz RBAC: payments.manage / expenses.manage = [admin, asistente]).
+    function isStaff(cid) {
+      return isMember(cid)
+        && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role in ['admin', 'assistant'];
+    }
+
     // ---- Allowlist de servicio: nunca accesible por el cliente. ----
     // isService() la consulta con exists() (privilegiado), así que puede quedar
     // totalmente cerrada. Solo el dueño la edita desde la consola de Firebase.
@@ -69,9 +76,13 @@ service cloud.firestore {
     // (no puede secuestrar el routing de otro usuario). Cambios/borrados: server.
     match /directory/{uid} {
       allow read: if isService() || (isSignedIn() && request.auth.uid == uid);
+      // Un admin solo puede crear la entrada de un uid que YA es usuario de su
+      // clínica (el users/{uid} se escribe antes), y solo si no existe — no
+      // puede sembrar/envenenar el routing de un uid ajeno o aún no provisto.
       allow create: if isService()
         || (isAdmin(request.resource.data.clinicId)
-            && !exists(/databases/$(database)/documents/directory/$(uid)));
+            && !exists(/databases/$(database)/documents/directory/$(uid))
+            && exists(/databases/$(database)/documents/clinics/$(request.resource.data.clinicId)/users/$(uid)));
       allow update, delete: if isService();
     }
 
@@ -86,8 +97,17 @@ service cloud.firestore {
       // NOTA: este bloque NO comparte wildcard con los de datos de abajo, así
       // que un miembro común no puede escribir usuarios por el "OR" de reglas.
       match /users/{uid} {
-        allow read:  if isMember(cid) || isService() || isDemo(cid);
-        allow write: if isAdmin(cid)  || isService() || isDemo(cid);
+        allow read:   if isMember(cid) || isService() || isDemo(cid);
+        allow create: if isAdmin(cid)  || isService() || isDemo(cid);
+        allow delete: if isAdmin(cid)  || isService() || isDemo(cid);
+        // Update: admin/servicio/demo libres. Un usuario puede editar SU PROPIO
+        // doc pero SOLO nombre y color (lista BLANCA). NO puede tocar
+        // role/active/clinicId/email (escalada) NI commissionPct (fraude de
+        // comisiones) NI mustChangePassword (saltarse el cambio forzado: ese
+        // flag solo lo limpia el servidor tras rotar la contraseña real).
+        allow update: if isService() || isDemo(cid) || isAdmin(cid)
+          || (request.auth.uid == uid
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'color']));
       }
 
       // Datos operativos: cualquier miembro de la clínica (RBAC fino se aplica
@@ -96,11 +116,18 @@ service cloud.firestore {
       // defecto (preferimos negar a filtrar).
       match /patients/{docId}    { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       match /appointments/{docId}{ allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // billing: lo escriben admin (finaliza), asistente (envía a cobro) y
+      // dentista (finaliza) — todos los roles según la matriz, así que isMember.
       match /billing/{docId}     { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       match /procedures/{docId}  { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       match /budgets/{docId}     { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
-      match /payments/{docId}    { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
-      match /expenses/{docId}    { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Dinero (caja/gastos): el dentista NO maneja dinero. Lectura: cualquier
+      // miembro; escritura: solo staff (admin/asistente). Cierra el fraude
+      // financiero vía SDK directo saltándose el RBAC de la UI.
+      match /payments/{docId}    { allow read: if isMember(cid) || isService() || isDemo(cid);
+                                   allow write: if isStaff(cid) || isService() || isDemo(cid); }
+      match /expenses/{docId}    { allow read: if isMember(cid) || isService() || isDemo(cid);
+                                   allow write: if isStaff(cid) || isService() || isDemo(cid); }
       match /stock/{docId}       { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       match /stockMoves/{docId}  { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       match /waitlist/{docId}    { allow read, write: if isMember(cid) || isService() || isDemo(cid); }

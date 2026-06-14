@@ -124,6 +124,24 @@ else ok("plan solo: upsell con CTA");
 const subBody = await goAndCheck("plan solo: suscripcion", "/app/suscripcion", "Plan Solo");
 if (!subBody.includes("45")) bad("plan solo: precio", "no muestra $45");
 
+/* ===== 5. Gate de cambio de contraseña obligatorio ===== */
+await page.evaluate(() => {
+  const db = JSON.parse(localStorage.getItem("novudent.db.v4"));
+  const ses = JSON.parse(localStorage.getItem("novudent.session.v1"));
+  const me = db.users.find((u) => u.id === ses.userId) || db.users[0];
+  me.mustChangePassword = true;
+  localStorage.setItem("novudent.db.v4", JSON.stringify(db));
+});
+await page.goto(BASE + "/app", { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(2200);
+const gateBody = await page.evaluate(() => document.body.innerText);
+if (gateBody.includes("Creá tu contraseña")) ok("gate de contraseña bloquea el dashboard");
+else bad("gate de contraseña", "no apareció el bloqueo de cambio de contraseña");
+// No debe verse el dashboard detrás del gate
+if (gateBody.includes("Tareas críticas") || gateBody.includes("Producción de la semana"))
+  bad("gate de contraseña", "el dashboard se ve detrás del gate");
+{ const e = errsSnapshot(); if (e.length) bad("gate de contraseña: consola", e.join(" | ")); }
+
 /* ===== resumen ===== */
 console.log("\n" + (issues.length ? `🔴 ${issues.length} problema(s)` : "🟢 Flujo completo sin errores"));
 await browser.close();

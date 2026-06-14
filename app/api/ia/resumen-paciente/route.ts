@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
+import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
 /**
  * Resumen Clínico — Novudent IA.
@@ -16,12 +17,16 @@ import { verifyIdToken, AuthError } from "@/lib/server/auth";
 
 export async function POST(req: NextRequest) {
   // Solo usuarios autenticados de este proyecto Firebase (cierra el proxy abierto a Gemini).
+  let _user;
   try {
-    await verifyIdToken(req);
+    _user = await verifyIdToken(req);
   } catch (e) {
     const status = e instanceof AuthError ? e.status : 401;
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status });
   }
+  // Rate limit por usuario (frena el abuso de la cuota de Gemini).
+  const _rl = rateLimit(`ia:${_user.uid}`, { limit: 20, windowMs: 60_000 });
+  if (!_rl.ok) return tooManyRequests(_rl.retryAfterSec);
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -79,8 +84,8 @@ ${payload}`;
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const msg = data?.error?.message || `Gemini HTTP ${res.status}`;
-      return NextResponse.json({ ok: false, error: msg }, { status: 502 });
+      console.error("[Resumen] Gemini error:", data?.error?.message || res.status);
+      return NextResponse.json({ ok: false, error: "El asistente de IA no está disponible en este momento. Probá de nuevo en unos minutos." }, { status: 502 });
     }
     const summary: string =
       data?.candidates?.[0]?.content?.parts
@@ -92,7 +97,7 @@ ${payload}`;
     }
     return NextResponse.json({ ok: true, summary: summary.slice(0, 4000) });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: `Resumen falló: ${msg}` }, { status: 502 });
+    console.error("[Resumen] error:", e);
+    return NextResponse.json({ ok: false, error: "El asistente de IA no está disponible en este momento. Probá de nuevo en unos minutos." }, { status: 502 });
   }
 }

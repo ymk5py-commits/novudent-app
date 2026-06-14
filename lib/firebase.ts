@@ -50,6 +50,14 @@ export async function currentIdToken(): Promise<string | null> {
   }
 }
 
+/** Cambia la contraseña del usuario actualmente autenticado (cambio inicial obligatorio). */
+export async function updateCurrentPassword(newPassword: string): Promise<void> {
+  const { getAuth, updatePassword } = await import("firebase/auth");
+  const u = getAuth(app).currentUser;
+  if (!u) throw new Error("No hay sesión activa. Volvé a iniciar sesión.");
+  await updatePassword(u, newPassword); // puede pedir reautenticación si la sesión es vieja
+}
+
 // Analytics opcional (no bloquea si el entorno no lo soporta)
 if (typeof window !== "undefined") {
   import("firebase/analytics")

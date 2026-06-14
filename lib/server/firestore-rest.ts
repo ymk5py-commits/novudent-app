@@ -170,6 +170,25 @@ export async function setDocument(path: string, value: Record<string, unknown>):
 }
 
 /**
+ * Actualiza SOLO los campos dados de un documento existente (updateMask),
+ * sin tocar el resto. Útil para flags puntuales (p. ej. mustChangePassword)
+ * sin reescribir el doc entero.
+ */
+export async function patchFields(path: string, fields: Record<string, unknown>): Promise<void> {
+  const mask = Object.keys(fields)
+    .map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`)
+    .join("&");
+  const res = await authedFetch(`${FS_BASE}/${path}?${mask}`, {
+    method: "PATCH",
+    body: JSON.stringify({ fields: encodeFields(fields) }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`patchFields ${path} falló (${res.status}): ${body.slice(0, 160)}`);
+  }
+}
+
+/**
  * Crea un documento SOLO si no existe (precondición atómica `exists=false`).
  * Devuelve true si lo creó, false si ya existía (409) — sirve como lock para
  * evitar carreras (p. ej. doble reserva del mismo slot). Lanza en otros errores.

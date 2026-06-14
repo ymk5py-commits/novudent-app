@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { getDocument, setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
+import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 import { buildSeed } from "@/lib/seed";
+
+export const runtime = "nodejs"; // usa node:crypto (timingSafeEqual) y Buffer
 
 /** Comparación constante en el tiempo (evita timing attack sobre OWNER_PANEL_KEY). */
 function safeEqual(a: string, b: string): boolean {
@@ -64,6 +67,10 @@ async function createOrRecoverAuthUser(email: string, password: string): Promise
 }
 
 export async function POST(req: NextRequest) {
+  // Antibruteforce sobre OWNER_PANEL_KEY: pocas creaciones por minuto por IP.
+  const rl = rateLimit(`clinicas:${clientIp(req)}`, { limit: 5, windowMs: 60_000 });
+  if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
+
   const ownerKey = process.env.OWNER_PANEL_KEY;
   if (!ownerKey) {
     return NextResponse.json({ error: "Falta configurar OWNER_PANEL_KEY en Vercel." }, { status: 503 });
@@ -153,6 +160,7 @@ export async function POST(req: NextRequest) {
       role: "admin",
       color: "#1769E0",
       active: true,
+      mustChangePassword: true, // fuerza cambio de la contraseña inicial al primer login
     });
     await setDocument(`directory/${uid}`, { clinicId, email: adminEmail });
 

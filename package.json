@@ -6,7 +6,8 @@
     "dev": "next dev -p 3100",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.mjs\""
   },
   "dependencies": {
     "firebase": "^12.14.0",
@@ -18,6 +19,7 @@
     "recharts": "^3.8.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@types/node": "20.16.10",
     "@types/react": "18.3.11",
     "@types/react-dom": "18.3.0",

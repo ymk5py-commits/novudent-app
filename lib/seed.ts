@@ -201,13 +201,15 @@ const outbox: OutboxTask[] = [
     id: "t2", clinicId: CLINIC_ID, type: "nps", patientId: "p4", phone: "+595 984 444 444",
     message: "Hola Andrés 👋 ¿Del 0 al 10, cuánto recomendarías Clínica Demo Asunción a un amigo o familiar?",
     refId: "g3", status: "respondido", createdAt: at(-1, 12), createdBy: "sistema",
-    result: { at: at(-1, 13, 10), nps: 9, comment: "Muy buena atención de la doctora, la exodoncia fue rápida." },
+    // `at` alineado con p4.nps.at (mismo survey) → idempotencia por `at` no duplica npsHistory
+    result: { at: at(-1, 13), nps: 9, comment: "Muy buena atención de la doctora, la exodoncia fue rápida." },
   },
   {
     id: "t3", clinicId: CLINIC_ID, type: "nps", patientId: "p3", phone: "+595 983 333 333",
     message: "Hola Camila 👋 ¿Del 0 al 10, cuánto recomendarías Clínica Demo Asunción a un amigo o familiar?",
     status: "respondido", createdAt: at(-13, 10), createdBy: "sistema",
-    result: { at: at(-13, 11, 5), nps: 10, comment: "Excelente todo 😊" },
+    // `at` alineado con p3.nps.at (mismo survey) → idempotencia por `at` no duplica npsHistory
+    result: { at: at(-13, 11), nps: 10, comment: "Excelente todo 😊" },
   },
   {
     id: "t4", clinicId: CLINIC_ID, type: "cobranza", patientId: "p6", phone: "+595 986 666 666",

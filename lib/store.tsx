@@ -10,7 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, onSnapshot,
 } from "firebase/firestore";
-import { app, fsdb, createAuthUser, signInEmail } from "./firebase";
+import { app, fsdb, createAuthUser, signInEmail, currentIdToken } from "./firebase";
 
 /** Autenticación anónima: requisito de las reglas de producción
  *  (`request.auth != null`). Si el proveedor no está habilitado, seguimos
@@ -199,8 +199,14 @@ function reflectOutbox(prev: DB, task: OutboxTask): { next: DB; saves: [string, 
   }
   if (task.type === "nps" && typeof r.nps === "number") {
     const pat = next.patients.find((p) => p.id === task.patientId);
-    if (pat && pat.nps?.at !== r.at) {
-      const up = { ...pat, nps: { score: r.nps, comment: r.comment, at: r.at } };
+    // Idempotencia por `at`: no re-aplicar el mismo resultado.
+    const already = pat?.npsHistory?.some((h) => h.at === r.at) || pat?.nps?.at === r.at;
+    if (pat && !already) {
+      const entry = { score: r.nps, comment: r.comment, at: r.at };
+      // npsHistory acumula TODAS las encuestas (no se pierde el histórico);
+      // `nps` guarda la última por compatibilidad con reportes.
+      const prior = pat.npsHistory ?? (pat.nps ? [pat.nps] : []);
+      const up = { ...pat, nps: entry, npsHistory: [entry, ...prior] };
       next = { ...next, patients: next.patients.map((p) => (p.id === up.id ? up : p)) };
       saves.push(["patients", up.id, up]);
     }
@@ -216,6 +222,8 @@ interface Ctx {
   login: (userId: string) => void;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   createTeamUser: (data: { name: string; email: string; role: import("./types").Role; password: string; color: string }) => Promise<void>;
+  /** Cambia la contraseña del usuario actual y limpia mustChangePassword (cambio inicial obligatorio) */
+  changeMyPassword: (newPassword: string) => Promise<void>;
   logout: () => void;
   resetDemo: () => void;
   /** Restaura los datos de ejemplo SIN borrar cuentas reales (login vacío) */
@@ -444,12 +452,36 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (limitErr) throw new Error(limitErr);
         const cid = clinicIdRef.current; // clínica del admin que crea (la cargada)
         const uid = await createAuthUser(email, password); // cuenta real en Firebase Auth
-        const u: User = { id: uid, authUid: uid, clinicId: cid, name, email, role, color, active: true };
-        persist({ ...db, users: [...db.users, u] });
-        fsSave("users", u.id, u);
-        // directorio global uid → clínica (permite iniciar sesión desde cualquier dispositivo)
+        const u: User = { id: uid, authUid: uid, clinicId: cid, name, email, role, color, active: true, mustChangePassword: true };
+        // Escribir el doc del usuario Y el directorio ANTES de declarar éxito:
+        // si el write falla (reglas/red), el alta NO se reporta como exitosa
+        // (no queda una cuenta de Auth sin doc). El directorio requiere que el
+        // users/{uid} ya exista (regla), por eso va después y secuencial.
         if (backendRef.current === "firebase") {
-          setDoc(doc(fsdb, "directory", uid), { clinicId: cid, email }).catch(() => {});
+          await setDoc(doc(fsdb, "clinics", cid, "users", u.id), clean(u));
+          await setDoc(doc(fsdb, "directory", uid), { clinicId: cid, email });
+        }
+        persist({ ...db, users: [...db.users, u] });
+      },
+      changeMyPassword: async (newPassword) => {
+        // El cambio ocurre EN EL SERVIDOR: rota la contraseña en Firebase Auth y
+        // recién entonces limpia mustChangePassword (que es inmutable desde el
+        // cliente por reglas). Así el gate no se puede saltar sin cambiar la clave.
+        const token = await currentIdToken();
+        if (!token) throw new Error("No hay sesión activa. Volvé a iniciar sesión.");
+        const res = await fetch("/api/change-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ newPassword }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo cambiar la contraseña.");
+        // El servidor ya limpió el flag en Firestore → reflejarlo localmente para
+        // que el gate deje pasar (en el próximo load llega confirmado del server).
+        const me = db.users.find((u) => u.id === session?.userId);
+        if (me) {
+          const up = { ...me, mustChangePassword: false };
+          persist({ ...db, users: db.users.map((u) => (u.id === up.id ? up : u)) });
         }
       },
       logout: () => { setSession(null); localStorage.removeItem(SES_KEY); },
@@ -589,6 +621,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addStockMove: (m) => {
         const item = db.stock.find((s) => s.id === m.itemId);
         if (!item) return;
+        // Una salida no puede exceder el stock disponible: registrar un movimiento
+        // mayor dejaría el stock (clamp a 0) inconsistente con el qty guardado.
+        if (m.type === "salida" && m.qty > item.stock) return;
         const delta = m.type === "entrada" ? m.qty : -m.qty;
         const updated = { ...item, stock: Math.max(0, item.stock + delta) };
         persist({ ...db, stock: db.stock.map((s) => (s.id === m.itemId ? updated : s)), stockMoves: [m, ...db.stockMoves] });
