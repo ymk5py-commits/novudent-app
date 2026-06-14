@@ -472,7 +472,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const res = await fetch("/api/change-password", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ newPassword }),
+          // clinicId como respaldo si directory/{uid} faltara (datos a medias)
+          body: JSON.stringify({ newPassword, clinicId: session?.clinicId }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo cambiar la contraseña.");

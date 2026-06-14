@@ -102,6 +102,14 @@ test("dentista NO puede subir su propio commissionPct (fraude de comisiones)", a
   );
 });
 
+test("usuario NO puede BORRAR campos por omisión (set sin merge solo name/color)", async () => {
+  // set() sin merge omite role/active/clinicId/email/commissionPct → affectedKeys
+  // los incluye (los borra) → hasOnly(['name','color']) lo rechaza.
+  await assertFails(
+    setDoc(doc(authed("dentA"), "clinics/clA/users/dentA"), { name: "Solo Nombre", color: "#000000" })
+  );
+});
+
 test("admin SÍ gestiona usuarios de su clínica", async () => {
   await assertSucceeds(
     setDoc(doc(authed("adminA"), "clinics/clA/users/nuevo"), { id: "nuevo", role: "assistant", active: true, clinicId: "clA", email: "n@a.com" })

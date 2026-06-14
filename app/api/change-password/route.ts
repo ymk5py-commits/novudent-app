@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status });
   }
 
-  let body: { newPassword?: unknown };
+  let body: { newPassword?: unknown; clinicId?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
   if (newPassword.length < 6) {
     return NextResponse.json({ ok: false, error: "La contraseña debe tener al menos 6 caracteres." }, { status: 400 });
   }
+  const hintClinicId = typeof body.clinicId === "string" ? body.clinicId : null;
 
   // Reusar el Bearer token para el cambio (identifica al usuario en Auth).
   const idToken = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
@@ -77,14 +78,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "No se pudo cambiar la contraseña." }, { status: 502 });
     }
 
-    // 3) limpiar el flag como service user (en la clínica del usuario)
+    // 3) limpiar el flag como service user (en la clínica del usuario). La
+    // clínica sale de directory/{uid}; si falta (datos a medias), usamos el
+    // clinicId que envía el cliente PERO validando que el doc del usuario exista
+    // ahí (no creamos docs basura ni tocamos otra clínica).
+    let clinicId = null;
     const dir = await getDocument(`directory/${user.uid}`);
-    const clinicId = dir?.clinicId ? String(dir.clinicId) : null;
-    if (clinicId) {
-      await patchFields(`clinics/${clinicId}/users/${user.uid}`, { mustChangePassword: false }).catch((e) =>
-        console.error("[change-password] clear flag", e)
+    if (dir?.clinicId) {
+      clinicId = String(dir.clinicId);
+    } else if (hintClinicId) {
+      const u = await getDocument(`clinics/${hintClinicId}/users/${user.uid}`);
+      if (u) clinicId = hintClinicId;
+    }
+    if (!clinicId) {
+      // La contraseña SÍ se rotó, pero no pudimos ubicar al usuario para limpiar
+      // el flag → ser honestos (no ok:true falso) para que pida ayuda al admin.
+      console.error("[change-password] usuario sin clínica resoluble", user.uid);
+      return NextResponse.json(
+        { ok: false, error: "Tu contraseña se cambió, pero tu cuenta necesita un ajuste del administrador para continuar." },
+        { status: 409 }
       );
     }
+    // Si el patch falla, NO devolvemos ok:true (evita el limbo: clave nueva + gate eterno).
+    await patchFields(`clinics/${clinicId}/users/${user.uid}`, { mustChangePassword: false });
 
     return NextResponse.json({ ok: true, clinicId });
   } catch (e) {
