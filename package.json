@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
     "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.mjs\""
   },
   "dependencies": {
@@ -27,6 +28,7 @@
     "playwright": "^1.60.0",
     "postcss": "8.4.47",
     "tailwindcss": "3.4.13",
-    "typescript": "5.6.2"
+    "typescript": "5.6.2",
+    "vitest": "^4.1.9"
   }
 }

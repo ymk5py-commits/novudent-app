@@ -110,6 +110,7 @@ async function loadFirestore(): Promise<DB> {
     stockMoves: stockMoves.docs.map((d) => d.data() as StockMove),
     waitlist: waitlist.docs.map((d) => d.data() as WaitlistEntry),
     outbox: outbox.docs.map((d) => d.data() as OutboxTask),
+    recoveryMonitors: [],
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   /* Upgrade v3: bases creadas antes de los módulos nuevos — sembramos

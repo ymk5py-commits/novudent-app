@@ -317,6 +317,7 @@ export function buildSeed(): DB {
     stockMoves,
     waitlist,
     outbox,
+    recoveryMonitors: [],
     onboarding: { usersCreated: true, servicesDefined: true, tourDone: false },
   };
 }

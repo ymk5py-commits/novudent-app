@@ -72,6 +72,8 @@ const TYPE_INFO: Record<OutboxTaskType, { label: string; icon: any; tone: "info"
   nps: { label: "Encuesta NPS", icon: Star, tone: "ok" },
   cobranza: { label: "Cobranza", icon: Wallet, tone: "warn" },
   reagendar: { label: "Reagendamiento", icon: RefreshCcw, tone: "hold" },
+  postop: { label: "Seguimiento post-op", icon: MessageCircle, tone: "info" },
+  postop_alert: { label: "Alerta post-op", icon: ShieldAlert, tone: "warn" },
 };
 
 const AUTOMATIONS: { key: keyof BotikaConfig["automations"]; label: string; desc: string; icon: any }[] = [

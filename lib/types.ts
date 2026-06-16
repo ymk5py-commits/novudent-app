@@ -41,6 +41,8 @@ export interface User {
   /** true mientras el usuario use la contraseña inicial que le asignaron;
    *  la app fuerza el cambio antes de dejarlo entrar al dashboard. */
   mustChangePassword?: boolean;
+  /** WhatsApp del doctor para la alerta roja del monitor de recuperación */
+  phone?: string;
   /** % de comisión sobre producción cobrada (cálculo de pago a odontólogos) */
   commissionPct?: number;
 }
@@ -201,6 +203,8 @@ export interface Procedure {
   description: string;
   price: number;
   defaultDx: string[];
+  /** Marca el arancel como quirúrgico (sugiere monitor de recuperación post-op) */
+  surgical?: boolean;
 }
 
 /* ===== Presupuestos (planes de tratamiento) ===== */
@@ -344,7 +348,7 @@ export interface WaitlistEntry {
  * Patrón outbox/inbox sobre Firestore: Novudent encola tareas de mensajería,
  * el worker de Botika las escucha, conversa por WhatsApp y escribe `result`.
  * Contrato completo en docs/INTEGRACION-BOTIKA.md */
-export type OutboxTaskType = "confirmar_cita" | "nps" | "cobranza" | "reagendar";
+export type OutboxTaskType = "confirmar_cita" | "nps" | "cobranza" | "reagendar" | "postop" | "postop_alert";
 export type OutboxStatus = "pendiente" | "enviado" | "respondido" | "error";
 
 export interface OutboxResult {
@@ -357,6 +361,9 @@ export interface OutboxResult {
   nps?: number;
   comment?: string;
   error?: string;
+  severity?: "verde" | "amarillo" | "rojo";
+  pain?: number;     // 0-10
+  summary?: string;  // resumen IA de 1 línea
 }
 
 export interface OutboxTask {
@@ -393,6 +400,32 @@ export interface Session {
   name: string;
 }
 
+/* ===== Monitor de recuperación post-operatoria ===== */
+export interface RecoveryTouchpoint {
+  offsetHours: 24 | 48 | 72;
+  dueAt: string;
+  status: "pendiente" | "enviado" | "respondido" | "vencido";
+  severity?: "verde" | "amarillo" | "rojo";
+  pain?: number;
+  reply?: string;
+  summary?: string;
+  repliedAt?: string;
+}
+export interface RecoveryMonitor {
+  id: string;
+  clinicId: string;
+  patientId: string;
+  dentistId: string;
+  procedure: string;
+  startedAt: string;
+  touchpoints: RecoveryTouchpoint[];
+  status: "activo" | "completado" | "escalado";
+  worstSeverity?: "verde" | "amarillo" | "rojo";
+  alertedAt?: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+}
+
 export interface DB {
   clinics: Clinic[];
   users: User[];
@@ -407,5 +440,6 @@ export interface DB {
   stockMoves: StockMove[];
   waitlist: WaitlistEntry[];
   outbox: OutboxTask[];
+  recoveryMonitors: RecoveryMonitor[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }
