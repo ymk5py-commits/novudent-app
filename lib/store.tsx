@@ -250,6 +250,40 @@ function reflectOutbox(prev: DB, task: OutboxTask): { next: DB; saves: [string, 
       }
     }
   }
+  if (task.type === "negociacion" && r.negociacionStatus && task.refId) {
+    const bud = next.budgets.find((b) => b.id === task.refId);
+    if (bud) {
+      const mapa: Record<"listo_para_cerrar" | "negociando" | "rechazado", "listo_para_cerrar" | "en_curso" | "sin_respuesta" | "rechazado"> = {
+        listo_para_cerrar: "listo_para_cerrar",
+        negociando: "en_curso",
+        rechazado: "rechazado",
+      } as const;
+      const nuevoStatus = mapa[r.negociacionStatus];
+      const up: Budget = {
+        ...bud,
+        negociacion: {
+          ...(bud.negociacion ?? { intentos: 1, ultimoContactoAt: r.at }),
+          status: nuevoStatus,
+          financiacionElegida: r.financiacionElegida ?? bud.negociacion?.financiacionElegida,
+          resumen: r.summary ?? bud.negociacion?.resumen,
+          ultimoContactoAt: r.at,
+        },
+      };
+      next = { ...next, budgets: next.budgets.map((b) => (b.id === up.id ? up : b)) };
+      saves.push(["budgets", up.id, up]);
+      if (nuevoStatus === "listo_para_cerrar") {
+        const pat = next.patients.find((p) => p.id === bud.patientId);
+        const alertId = `negolisto_${bud.id}`;
+        const alert: OutboxTask = {
+          id: alertId, clinicId: bud.clinicId, type: "negociacion_listo" as const,
+          patientId: bud.patientId, phone: "",
+          message: `💰 Presupuesto listo para cerrar: ${pat ? pat.firstName + " " + pat.lastName : "paciente"}${r.financiacionElegida ? ` (${r.financiacionElegida})` : ""}. Confirmá las condiciones.`,
+          refId: bud.id, status: "pendiente" as const, createdAt: r.at, createdBy: "Negociación",
+        };
+        saves.push(["outbox", alertId, alert]);
+      }
+    }
+  }
   return { next, saves };
 }
 
@@ -314,6 +348,8 @@ interface Ctx {
   deleteOutboxTask: (id: string) => void;
   /** Refleja el resultado que escribe Botika: actualiza tarea + cita/paciente según el tipo */
   applyOutboxResult: (taskId: string, result: OutboxResult) => void;
+  /* — Negociación de presupuestos — */
+  confirmNegociacion: (budgetId: string, by: string) => void;
   /* — Monitor de recuperación post-operatoria — */
   addRecoveryMonitor: (m: RecoveryMonitor) => void;
   resolveRecoveryMonitor: (id: string, by: string) => void;
@@ -737,6 +773,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const up = { ...mon, status: "completado" as const, resolvedAt: new Date().toISOString(), resolvedBy: by };
         persist({ ...db, recoveryMonitors: db.recoveryMonitors.map((m) => (m.id === id ? up : m)) });
         fsSave("recoveryMonitors", id, up);
+      },
+      /* — Negociación de presupuestos — */
+      confirmNegociacion: (budgetId, by) => {
+        const bud = db.budgets.find((b) => b.id === budgetId);
+        if (!bud) return;
+        const up: Budget = {
+          ...bud,
+          status: "aceptado" as const,
+          negociacion: bud.negociacion ? { ...bud.negociacion, status: "listo_para_cerrar" as const } : undefined,
+          history: [...bud.history, { at: new Date().toISOString(), action: "Aceptado tras negociación del bot", by }],
+        };
+        persist({ ...db, budgets: db.budgets.map((b) => (b.id === budgetId ? up : b)) });
+        fsSave("budgets", budgetId, up);
       },
     };
   }, [db, session, ready, backend, persist, fsSave, fsDelete, fsMeta]);
