@@ -17,6 +17,7 @@ import { BudgetsTab, RxTab, FilesTab, OrthoTab } from "@/components/PatientExtra
 import { VoiceNoteButton, PatientBriefButton } from "@/components/NovudentIA";
 import { useClinicPlan } from "@/components/PlanGate";
 import Periodontogram from "@/components/Periodontogram";
+import RecoveryCard from "@/components/RecoveryCard";
 
 type Tab = "resumen" | "odontograma" | "periodoncia" | "historial" | "presupuestos" | "recetas" | "archivos" | "ortodoncia" | "formularios" | "facturacion";
 
@@ -165,6 +166,9 @@ export default function PatientProfile() {
           </Card>
         </div>
       )}
+
+      {/* ===== MONITOR DE RECUPERACIÓN (visible en resumen) ===== */}
+      {tab === "resumen" && <RecoveryCard patient={p} />}
 
       {/* ===== ODONTOGRAMA ===== */}
       {tab === "odontograma" && (

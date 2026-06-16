@@ -65,7 +65,7 @@ export default function ConfigPage() {
               </span>
               <span className="flex-1">
                 <span className="block text-sm font-bold text-clinic-text">{u.name}</span>
-                <span className="block text-xs text-clinic-muted">{u.email}</span>
+                <span className="block text-xs text-clinic-muted">{u.email}{u.phone ? ` · ${u.phone}` : ""}</span>
               </span>
               {u.role === "dentist" && (
                 <label className="flex items-center gap-1 rounded-lg border border-clinic-border px-2 py-1" title="% de comisión sobre producción cobrada">
@@ -208,9 +208,9 @@ function NewUser({
 }: {
   firebase: boolean;
   onClose: () => void;
-  onCreate: (d: { name: string; email: string; role: Role; password: string; color: string }) => Promise<void>;
+  onCreate: (d: { name: string; email: string; role: Role; password: string; color: string; phone?: string }) => Promise<void>;
 }) {
-  const [f, setF] = useState({ name: "", email: "", role: "assistant" as Role, password: "" });
+  const [f, setF] = useState({ name: "", email: "", role: "assistant" as Role, password: "", phone: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const COLORS: Record<Role, string> = { admin: "#1769E0", dentist: "#0E9F6E", assistant: "#B45309" };
@@ -224,7 +224,7 @@ function NewUser({
           setBusy(true);
           setError(null);
           try {
-            await onCreate({ name: f.name, email: f.email, role: f.role, password: f.password, color: COLORS[f.role] });
+            await onCreate({ name: f.name, email: f.email, role: f.role, password: f.password, color: COLORS[f.role], phone: f.phone || undefined });
           } catch (err: any) {
             const code = err?.code ?? "";
             setError(
@@ -250,6 +250,9 @@ function NewUser({
             <input type="text" required minLength={6} autoComplete="new-password" className={inputCls} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder="Ej.: Clinica2026" />
           </Field>
         </div>
+        <Field label="Teléfono (WhatsApp)" hint="Opcional — el dentista recibe alertas del monitor de recuperación post-op en este número.">
+          <input type="tel" className={inputCls} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="Ej.: +595981234567" />
+        </Field>
         <Field label="Rol" hint="Define permisos según la matriz RBAC.">
           <select className={inputCls} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as Role })}>
             <option value="admin">Administrador</option>

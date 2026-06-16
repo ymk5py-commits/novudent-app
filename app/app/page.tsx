@@ -123,6 +123,17 @@ export default function Dashboard() {
       label: `${lowStock.length} insumo${lowStock.length > 1 ? "s" : ""} con stock bajo`,
       hint: lowStock.map((s) => s.name.split(" ").slice(0, 2).join(" ")).join(", "), href: "/app/inventario",
     },
+    ...db.recoveryMonitors
+      .filter((m) => m.status === "escalado" && !m.resolvedAt)
+      .map((m) => {
+        const p = db.patients.find((x) => x.id === m.patientId);
+        return {
+          icon: AlertTriangle, tone: "bg-state-errbg text-state-err",
+          label: `🔴 Recuperación: ${p ? p.firstName + " " + p.lastName : "paciente"} reporta posible complicación`,
+          hint: m.touchpoints.find((t) => t.severity === "rojo")?.summary || "Revisar y contactar",
+          href: `/app/pacientes/${m.patientId}`,
+        };
+      }),
   ].filter(Boolean) as { icon: any; tone: string; label: string; hint: string; href: string }[];
 
   const checklist = [

@@ -260,7 +260,7 @@ interface Ctx {
   backend: Backend;
   login: (userId: string) => void;
   loginWithEmail: (email: string, password: string) => Promise<void>;
-  createTeamUser: (data: { name: string; email: string; role: import("./types").Role; password: string; color: string }) => Promise<void>;
+  createTeamUser: (data: { name: string; email: string; role: import("./types").Role; password: string; color: string; phone?: string }) => Promise<void>;
   /** Cambia la contraseña del usuario actual y limpia mustChangePassword (cambio inicial obligatorio) */
   changeMyPassword: (newPassword: string) => Promise<void>;
   logout: () => void;
@@ -488,13 +488,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setSession(s);
         localStorage.setItem(SES_KEY, JSON.stringify(s));
       },
-      createTeamUser: async ({ name, email, role, password, color }) => {
+      createTeamUser: async ({ name, email, role, password, color, phone }) => {
         // límite del plan contratado (profesionales / usuarios activos)
         const limitErr = planUserLimitError(db.clinics[0], db.users, role);
         if (limitErr) throw new Error(limitErr);
         const cid = clinicIdRef.current; // clínica del admin que crea (la cargada)
         const uid = await createAuthUser(email, password); // cuenta real en Firebase Auth
-        const u: User = { id: uid, authUid: uid, clinicId: cid, name, email, role, color, active: true, mustChangePassword: true };
+        const u: User = { id: uid, authUid: uid, clinicId: cid, name, email, role, color, active: true, mustChangePassword: true, ...(phone?.trim() ? { phone: phone.trim() } : {}) };
         // Escribir el doc del usuario Y el directorio ANTES de declarar éxito:
         // si el write falla (reglas/red), el alta NO se reporta como exitosa
         // (no queda una cuenta de Auth sin doc). El directorio requiere que el
