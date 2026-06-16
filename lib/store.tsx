@@ -27,11 +27,12 @@ async function ensureAuth() {
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord,
   Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
-  OutboxTask, OutboxResult,
+  OutboxTask, OutboxResult, RecoveryMonitor,
 } from "./types";
 import { buildSeed } from "./seed";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { planUserLimitError } from "./plan";
+import { worstSeverity } from "./recovery";
 
 const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
@@ -92,9 +93,9 @@ async function loadFirestore(): Promise<DB> {
   }
   const meta = clinicSnap.data() as any;
   const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
-    col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"),
+    col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -110,7 +111,7 @@ async function loadFirestore(): Promise<DB> {
     stockMoves: stockMoves.docs.map((d) => d.data() as StockMove),
     waitlist: waitlist.docs.map((d) => d.data() as WaitlistEntry),
     outbox: outbox.docs.map((d) => d.data() as OutboxTask),
-    recoveryMonitors: [],
+    recoveryMonitors: recoveryMonitors.docs.map((d) => d.data() as RecoveryMonitor),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   /* Upgrade v3: bases creadas antes de los módulos nuevos — sembramos
@@ -212,6 +213,43 @@ function reflectOutbox(prev: DB, task: OutboxTask): { next: DB; saves: [string, 
       saves.push(["patients", up.id, up]);
     }
   }
+  if (task.type === "postop" && r.severity && task.refId) {
+    // refId = `${monitorId}#${offsetHours}` (lo setea Botika al materializar)
+    const [monitorId, offsetStr] = String(task.refId).split("#");
+    const mon = next.recoveryMonitors.find((m) => m.id === monitorId);
+    if (mon) {
+      const tps = mon.touchpoints.map((tp) =>
+        String(tp.offsetHours) === offsetStr && tp.status !== "respondido"
+          ? { ...tp, status: "respondido" as const, severity: r.severity, pain: r.pain, summary: r.summary, reply: r.comment, repliedAt: r.at }
+          : tp
+      );
+      const worst = worstSeverity(tps);
+      const escalated = tps.some((t) => t.severity === "rojo");
+      const allDone = tps.every((t) => t.status === "respondido" || t.status === "vencido");
+      const up: RecoveryMonitor = {
+        ...mon, touchpoints: tps, worstSeverity: worst,
+        status: escalated ? "escalado" : allDone ? "completado" : "activo",
+        ...(escalated && !mon.alertedAt ? { alertedAt: r.at } : {}),
+      };
+      next = { ...next, recoveryMonitors: next.recoveryMonitors.map((m) => (m.id === up.id ? up : m)) };
+      saves.push(["recoveryMonitors", up.id, up]);
+      // si escaló por primera vez, encolar la alerta al doctor
+      if (escalated && !mon.alertedAt) {
+        const dentist = next.users.find((u) => u.id === mon.dentistId);
+        const pat = next.patients.find((p) => p.id === mon.patientId);
+        if (dentist?.phone) {
+          const alertId = `postopalert_${monitorId}`;
+          const alert: OutboxTask = {
+            id: alertId, clinicId: mon.clinicId, type: "postop_alert" as const,
+            patientId: mon.patientId, phone: dentist.phone,
+            message: `🔴 ALERTA recuperación: ${pat ? pat.firstName + " " + pat.lastName : "paciente"} reporta posible complicación tras ${mon.procedure}. "${(r.summary || r.comment || "").slice(0, 140)}". Contactá al paciente.`,
+            refId: monitorId, status: "pendiente" as const, createdAt: r.at, createdBy: "Monitor recuperación",
+          };
+          saves.push(["outbox", alertId, alert]);
+        }
+      }
+    }
+  }
   return { next, saves };
 }
 
@@ -276,6 +314,9 @@ interface Ctx {
   deleteOutboxTask: (id: string) => void;
   /** Refleja el resultado que escribe Botika: actualiza tarea + cita/paciente según el tipo */
   applyOutboxResult: (taskId: string, result: OutboxResult) => void;
+  /* — Monitor de recuperación post-operatoria — */
+  addRecoveryMonitor: (m: RecoveryMonitor) => void;
+  resolveRecoveryMonitor: (id: string, by: string) => void;
 }
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -684,6 +725,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         persist(next);
         saves.forEach(([c, i, d]) => fsSave(c, i, d));
         fsSave("outbox", updated.id, updated);
+      },
+      /* — Monitor de recuperación post-operatoria — */
+      addRecoveryMonitor: (m) => {
+        persist({ ...db, recoveryMonitors: [m, ...db.recoveryMonitors] });
+        fsSave("recoveryMonitors", m.id, m);
+      },
+      resolveRecoveryMonitor: (id, by) => {
+        const mon = db.recoveryMonitors.find((m) => m.id === id);
+        if (!mon) return;
+        const up = { ...mon, status: "completado" as const, resolvedAt: new Date().toISOString(), resolvedBy: by };
+        persist({ ...db, recoveryMonitors: db.recoveryMonitors.map((m) => (m.id === id ? up : m)) });
+        fsSave("recoveryMonitors", id, up);
       },
     };
   }, [db, session, ready, backend, persist, fsSave, fsDelete, fsMeta]);
