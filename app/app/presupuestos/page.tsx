@@ -3,7 +3,7 @@
  *  Convenios con descuento, cobro en cuotas, ejecución por ítem y impresión. */
 import { useMemo, useState } from "react";
 import {
-  Plus, ShieldAlert, Printer, Check, X, Send, CircleCheck, Trash2, Pencil, FileText,
+  Plus, ShieldAlert, Printer, Check, X, Send, CircleCheck, Trash2, Pencil, FileText, Handshake,
 } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
@@ -41,6 +41,19 @@ export default function BudgetsPage() {
 
   const act = (b: Budget, action: string, next: Partial<Budget>) =>
     store.upsertBudget({ ...b, ...next, history: [...b.history, { at: new Date().toISOString(), action, by }] });
+
+  const NEGOCIACION_TONE: Record<string, "ok" | "info" | "muted" | "warn"> = {
+    listo_para_cerrar: "ok",
+    en_curso: "info",
+    sin_respuesta: "muted",
+    rechazado: "warn",
+  };
+  const NEGOCIACION_LABEL: Record<string, string> = {
+    listo_para_cerrar: "Listo para cerrar",
+    en_curso: "Negociando",
+    sin_respuesta: "Sin respuesta",
+    rechazado: "Rechazado",
+  };
 
   return (
     <div className="space-y-5">
@@ -94,7 +107,14 @@ export default function BudgetsPage() {
                       {b.convenio && <> · convenio <b>{b.convenio}</b></>}
                     </div>
                   </div>
-                  <Badge tone={info.tone} tip={info.desc}>{info.label}</Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge tone={info.tone} tip={info.desc}>{info.label}</Badge>
+                    {b.negociacion && (
+                      <Badge tone={NEGOCIACION_TONE[b.negociacion.status] ?? "muted"}>
+                        {NEGOCIACION_LABEL[b.negociacion.status] ?? b.negociacion.status}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
@@ -122,6 +142,11 @@ export default function BudgetsPage() {
                   )}
                   {b.status === "presentado" && (
                     <Btn onClick={() => act(b, "Aceptado por el paciente", { status: "aceptado" })}><Check className="h-3.5 w-3.5" /> Marcar aceptado</Btn>
+                  )}
+                  {b.status === "presentado" && b.negociacion?.status === "listo_para_cerrar" && allowed && (
+                    <Btn onClick={() => store.confirmNegociacion(b.id, by)}>
+                      <Handshake className="h-3.5 w-3.5" /> Confirmar y aceptar
+                    </Btn>
                   )}
                   {b.status === "aceptado" && done === b.items.length && (
                     <Btn

@@ -2,13 +2,19 @@
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useState } from "react";
-import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, MessageSquareText, UploadCloud, Percent } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, MessageSquareText, UploadCloud, Percent, HandCoins } from "lucide-react";
 import { useStore, fmtGs } from "@/lib/store";
 import { can, ROLE_LABEL } from "@/lib/rbac";
-import type { Role, User, Procedure } from "@/lib/types";
+import type { Role, User, Procedure, BotikaConfig } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
 import DentalinkImport from "@/components/DentalinkImport";
+
+const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> = {
+  diasGatillo: 5,
+  maxIntentos: 2,
+  financiacion: { maxCuotas: 3, sinInteres: true, anticipoMinPct: 0 },
+};
 
 export default function ConfigPage() {
   const { db, session, upsertProcedure, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser } = useStore();
@@ -118,6 +124,94 @@ export default function ConfigPage() {
           </Btn>
         </div>
       </Card>
+
+      {/* Negociación de presupuestos (Botika) */}
+      {(() => {
+        const botika = clinic.config.botika;
+        const neg = botika?.negociacion ?? NEGOCIACION_DEFAULTS;
+        const fin = neg.financiacion ?? NEGOCIACION_DEFAULTS.financiacion;
+        const isOn = botika?.automations?.negociacion ?? false;
+
+        const saveBotika = (patch: Partial<BotikaConfig>) => {
+          const existing = botika ?? { connected: false, automations: { confirmCita: false, nps: false, cobranza: false, reagendar: false, negociacion: false } };
+          updateClinicConfig({
+            botika: {
+              ...existing,
+              ...patch,
+              automations: { ...existing.automations, ...(patch.automations ?? {}) },
+              negociacion: { ...(existing.negociacion ?? NEGOCIACION_DEFAULTS), ...(patch.negociacion ?? {}) },
+            },
+          });
+        };
+
+        return (
+          <Card className="p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <HandCoins className="h-4 w-4 text-azure-600" />
+                <h2 className="font-extrabold text-clinic-text">Negociación de presupuestos</h2>
+                <Badge tone={isOn ? "ok" : "muted"}>{isOn ? "Activo" : "Inactivo"}</Badge>
+              </div>
+              <label className="flex cursor-pointer items-center gap-2 select-none">
+                <span className="text-xs font-semibold text-clinic-muted">Botika</span>
+                <button
+                  role="switch"
+                  aria-checked={isOn}
+                  onClick={() => saveBotika({ automations: { ...(botika?.automations ?? { confirmCita: false, nps: false, cobranza: false, reagendar: false, negociacion: false }), negociacion: !isOn } })}
+                  className={`relative h-5 w-9 rounded-full transition-colors ${isOn ? "bg-azure-600" : "bg-clinic-border"}`}
+                >
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${isOn ? "translate-x-4" : "translate-x-0.5"}`} />
+                </button>
+              </label>
+            </div>
+            <p className="mb-4 text-xs leading-relaxed text-clinic-muted">
+              Cuando un presupuesto lleva N días en "presentado" sin respuesta, Botika re-engancha al paciente via WhatsApp
+              y ofrece las condiciones de financiación definidas aquí.
+            </p>
+            <div className={`grid gap-4 sm:grid-cols-2 transition-opacity ${isOn ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
+              <Field label="Días antes de re-enganchar" hint="Días en estado «presentado» que disparan el bot">
+                <input
+                  type="number" min={1} max={30} className={inputCls}
+                  value={neg.diasGatillo}
+                  onChange={(e) => saveBotika({ negociacion: { ...neg, diasGatillo: Number(e.target.value) || NEGOCIACION_DEFAULTS.diasGatillo } })}
+                />
+              </Field>
+              <Field label="Máximo de intentos" hint="Tope de contactos antes de marcar «sin respuesta»">
+                <input
+                  type="number" min={1} max={5} className={inputCls}
+                  value={neg.maxIntentos}
+                  onChange={(e) => saveBotika({ negociacion: { ...neg, maxIntentos: Number(e.target.value) || NEGOCIACION_DEFAULTS.maxIntentos } })}
+                />
+              </Field>
+              <Field label="Cuotas máximas" hint="Número máximo de cuotas que el bot puede ofrecer">
+                <input
+                  type="number" min={1} max={36} className={inputCls}
+                  value={fin.maxCuotas}
+                  onChange={(e) => saveBotika({ negociacion: { ...neg, financiacion: { ...fin, maxCuotas: Number(e.target.value) || NEGOCIACION_DEFAULTS.financiacion.maxCuotas } } })}
+                />
+              </Field>
+              <Field label="Anticipo mínimo (%)" hint="0 = sin anticipo requerido">
+                <input
+                  type="number" min={0} max={100} className={inputCls}
+                  value={fin.anticipoMinPct}
+                  onChange={(e) => saveBotika({ negociacion: { ...neg, financiacion: { ...fin, anticipoMinPct: Number(e.target.value) } } })}
+                />
+              </Field>
+              <div className="sm:col-span-2">
+                <label className="flex cursor-pointer items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={fin.sinInteres}
+                    onChange={(e) => saveBotika({ negociacion: { ...neg, financiacion: { ...fin, sinInteres: e.target.checked } } })}
+                    className="h-4 w-4 rounded border-clinic-border text-azure-600 focus:ring-azure-500"
+                  />
+                  <span className="text-sm font-semibold text-clinic-text">Ofrecer cuotas sin interés</span>
+                </label>
+              </div>
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* Plantilla de recordatorio */}
       <Card className="p-5">

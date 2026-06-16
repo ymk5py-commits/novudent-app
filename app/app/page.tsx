@@ -134,6 +134,19 @@ export default function Dashboard() {
           href: `/app/pacientes/${m.patientId}`,
         };
       }),
+    ...(can(session.role, "budgets.manage")
+      ? db.budgets
+          .filter((b) => b.negociacion?.status === "listo_para_cerrar" && b.status === "presentado")
+          .map((b) => {
+            const p = db.patients.find((x) => x.id === b.patientId);
+            return {
+              icon: FileSpreadsheet, tone: "bg-state-okbg text-state-ok",
+              label: `💰 Listo para cerrar: ${p ? p.firstName + " " + p.lastName : "paciente"}`,
+              hint: b.negociacion?.financiacionElegida ? `Acordó: ${b.negociacion.financiacionElegida}` : "Confirmá las condiciones",
+              href: "/app/presupuestos",
+            };
+          })
+      : []),
   ].filter(Boolean) as { icon: any; tone: string; label: string; hint: string; href: string }[];
 
   const checklist = [
