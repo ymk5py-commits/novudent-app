@@ -134,6 +134,8 @@ service cloud.firestore {
       match /outbox/{docId}      { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       // Lock atómico de slots de reserva online (lo crea el service user).
       match /slotLocks/{docId}   { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Monitor de recuperación post-op (lo escriben miembros y el service user)
+      match /recoveryMonitors/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
     }
 
     // Todo lo demás: denegado.

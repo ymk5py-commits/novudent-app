@@ -164,3 +164,8 @@ test("serviceAccounts es inaccesible desde el cliente", async () => {
 test("colección no enumerada queda denegada por defecto", async () => {
   await assertFails(getDoc(doc(authed("adminA"), "clinics/clA/secretos/x")));
 });
+
+test("recoveryMonitors: un miembro lee/escribe los de su clínica; otra clínica NO", async () => {
+  await assertSucceeds(setDoc(doc(authed("dentA"), "clinics/clA/recoveryMonitors/m1"), { id: "m1", patientId: "p1" }));
+  await assertFails(getDoc(doc(authed("adminA"), "clinics/clB/recoveryMonitors/x")));
+});
