@@ -74,6 +74,8 @@ const TYPE_INFO: Record<OutboxTaskType, { label: string; icon: any; tone: "info"
   reagendar: { label: "Reagendamiento", icon: RefreshCcw, tone: "hold" },
   postop: { label: "Seguimiento post-op", icon: MessageCircle, tone: "info" },
   postop_alert: { label: "Alerta post-op", icon: ShieldAlert, tone: "warn" },
+  negociacion: { label: "Negociación de presupuesto", icon: Wallet, tone: "info" },
+  negociacion_listo: { label: "Presupuesto listo para cerrar", icon: CheckCircle2, tone: "ok" },
 };
 
 const AUTOMATIONS: { key: keyof BotikaConfig["automations"]; label: string; desc: string; icon: any }[] = [
@@ -102,7 +104,7 @@ export default function IntegrationsPage() {
   }
 
   const clinic = db.clinics[0];
-  const botika: BotikaConfig = clinic.config.botika ?? { connected: false, automations: { confirmCita: true, nps: true, cobranza: true, reagendar: true } };
+  const botika: BotikaConfig = clinic.config.botika ?? { connected: false, automations: { confirmCita: true, nps: true, cobranza: true, reagendar: true, negociacion: false } };
   const tasks = [...db.outbox].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const pending = tasks.filter((t) => t.status === "pendiente");
   const responded = tasks.filter((t) => t.status === "respondido");

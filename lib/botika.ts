@@ -24,6 +24,8 @@ export const DEFAULT_TEMPLATES: Record<BotikaAutoKey, string> = {
     "Hola {paciente} 👋 Te escribimos de {clinica}. Tenés un saldo pendiente de {saldo}. ¿Querés que te pase los medios de pago o coordinamos una fecha?",
   reagendar:
     "Hola {paciente} 👋 Tu cita «{titulo}» del {fecha} fue cancelada. ¿Buscamos un nuevo horario? Contame qué días y franjas te quedan cómodos 😊",
+  negociacion:
+    "Hola {paciente} 👋 Te escribimos de {clinica}. Hace unos días te presentamos un presupuesto de tratamiento. ¿Pudiste revisarlo? Con gusto te contamos sobre opciones de pago en cuotas 😊",
 };
 
 export const AUTOMATION_LABEL: Record<BotikaAutoKey, string> = {
@@ -31,6 +33,7 @@ export const AUTOMATION_LABEL: Record<BotikaAutoKey, string> = {
   nps: "Encuesta NPS",
   cobranza: "Cobranza",
   reagendar: "Reagendamiento",
+  negociacion: "Negociación de presupuestos",
 };
 
 type TemplateVars = Partial<Record<"paciente" | "clinica" | "fecha" | "hora" | "titulo" | "saldo", string>>;

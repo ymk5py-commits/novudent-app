@@ -245,7 +245,8 @@ export function buildSeed(): DB {
             "Hola {paciente} 👋 Te recordamos tu cita en {clinica} el {fecha} a las {hora}. Respondé *SI* para confirmar o avisanos si necesitás reagendar. ¡Gracias!",
           botika: {
             connected: true, // demo: conexión simulada hasta cargar credenciales reales
-            automations: { confirmCita: true, nps: true, cobranza: true, reagendar: true },
+            automations: { confirmCita: true, nps: true, cobranza: true, reagendar: true, negociacion: true },
+            negociacion: { diasGatillo: 5, maxIntentos: 2, financiacion: { maxCuotas: 3, sinInteres: true, anticipoMinPct: 0 } },
           },
         },
       },

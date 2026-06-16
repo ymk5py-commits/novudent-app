@@ -238,6 +238,14 @@ export interface Budget {
   installments?: number;
   notes?: string;
   history: { at: string; action: string; by: string }[];
+  /** Negociación de presupuesto abandonado (bot re-engancha al paciente) */
+  negociacion?: {
+    status: "en_curso" | "listo_para_cerrar" | "sin_respuesta" | "rechazado";
+    intentos: number;
+    ultimoContactoAt: string;
+    financiacionElegida?: string;
+    resumen?: string;
+  };
 }
 
 /* ===== Caja: pagos y gastos ===== */
@@ -348,7 +356,7 @@ export interface WaitlistEntry {
  * Patrón outbox/inbox sobre Firestore: Novudent encola tareas de mensajería,
  * el worker de Botika las escucha, conversa por WhatsApp y escribe `result`.
  * Contrato completo en docs/INTEGRACION-BOTIKA.md */
-export type OutboxTaskType = "confirmar_cita" | "nps" | "cobranza" | "reagendar" | "postop" | "postop_alert";
+export type OutboxTaskType = "confirmar_cita" | "nps" | "cobranza" | "reagendar" | "postop" | "postop_alert" | "negociacion" | "negociacion_listo";
 export type OutboxStatus = "pendiente" | "enviado" | "respondido" | "error";
 
 export interface OutboxResult {
@@ -364,6 +372,9 @@ export interface OutboxResult {
   severity?: "verde" | "amarillo" | "rojo";
   pain?: number;     // 0-10
   summary?: string;  // resumen IA de 1 línea
+  /** negociacion: resultado de la negociación de presupuesto */
+  negociacionStatus?: "listo_para_cerrar" | "negociando" | "rechazado";
+  financiacionElegida?: string;
 }
 
 export interface OutboxTask {
@@ -388,9 +399,16 @@ export interface BotikaConfig {
     nps: boolean; // al completar presupuesto → encuesta
     cobranza: boolean; // recordatorios de deuda conversacionales
     reagendar: boolean; // citas canceladas → reagendamiento
+    negociacion: boolean; // presupuestos presentados sin aceptar → re-engagement
   };
   /** plantillas personalizadas por automatización (vacío = default de Novudent) */
   templates?: Partial<Record<keyof BotikaConfig["automations"], string>>;
+  /** Negociación de presupuestos abandonados */
+  negociacion?: {
+    diasGatillo: number;   // días en "presentado" antes de reenganchar
+    maxIntentos: number;   // tope de contactos
+    financiacion: { maxCuotas: number; sinInteres: boolean; anticipoMinPct: number };
+  };
 }
 
 export interface Session {
