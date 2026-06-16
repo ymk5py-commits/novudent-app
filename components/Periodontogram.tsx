@@ -9,10 +9,25 @@
  * Resumen clínico automático por sesión: % BOP, sitios ≥4mm y ≥6mm.
  * Código de color: 1-3mm normal · 4-5mm ámbar · ≥6mm rojo.
  */
-import { useMemo, useState } from "react";
-import { Plus, Activity, Droplets, AlertTriangle, ChevronDown, Save, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Activity, Droplets, AlertTriangle, ChevronDown, Save, X, Mic, Square, Loader2 } from "lucide-react";
 import type { PerioSession, PerioToothRecord } from "@/lib/types";
 import { Card, Btn, Badge, Empty, inputCls } from "@/components/ui";
+import { currentIdToken } from "@/lib/firebase";
+import { validatePerioVoice } from "@/lib/perio-voice";
+
+/** POST a /api/ia/perio-voz con el Firebase ID token. */
+async function perioDictFetch(payload: unknown): Promise<Response> {
+  const token = await currentIdToken();
+  return fetch("/api/ia/perio-voz", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+}
 
 const UPPER = ["18", "17", "16", "15", "14", "13", "12", "11", "21", "22", "23", "24", "25", "26", "27", "28"];
 const LOWER = ["48", "47", "46", "45", "44", "43", "42", "41", "31", "32", "33", "34", "35", "36", "37", "38"];
@@ -74,6 +89,7 @@ export default function Periodontogram({
       {editing && (
         <PerioEditor
           authorName={authorName}
+          canWrite={canWrite}
           onCancel={() => setEditing(false)}
           onSave={(s) => {
             onSave(s);
@@ -162,12 +178,16 @@ function PerioTable({ teeth }: { teeth: Record<string, PerioToothRecord> }) {
 
 type Draft = Record<string, { pd: (number | null)[]; bop: boolean[]; mobility?: 0 | 1 | 2 | 3 }>;
 
+type VoiceState = "idle" | "recording" | "processing";
+
 function PerioEditor({
   authorName,
+  canWrite,
   onCancel,
   onSave,
 }: {
   authorName: string;
+  canWrite: boolean;
   onCancel: () => void;
   onSave: (s: PerioSession) => void;
 }) {
@@ -175,6 +195,116 @@ function PerioEditor({
   const [notes, setNotes] = useState("");
   const [arch, setArch] = useState<"upper" | "lower">("upper");
   const teethList = arch === "upper" ? UPPER : LOWER;
+
+  // Voice dictation state — all hooks before any return
+  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const [voiceMsg, setVoiceMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [voiceHighlight, setVoiceHighlight] = useState<string | null>(null);
+  const recRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (recRef.current && recRef.current.state !== "inactive") recRef.current.stop();
+      recRef.current?.stream.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  async function startVoice() {
+    setVoiceMsg(null);
+    setVoiceHighlight(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+      const rec = new MediaRecorder(stream, { mimeType: mime });
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      rec.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        void processVoice(new Blob(chunksRef.current, { type: mime }), mime);
+      };
+      rec.start(1000);
+      recRef.current = rec;
+      setVoiceState("recording");
+    } catch {
+      setVoiceMsg({ kind: "err", text: "No se pudo acceder al micrófono. Revisá los permisos del navegador." });
+    }
+  }
+
+  function stopVoice() {
+    if (timerRef.current) clearInterval(timerRef.current);
+    recRef.current?.stop();
+    setVoiceState("processing");
+  }
+
+  async function processVoice(blob: Blob, mime: string) {
+    try {
+      const buf = await blob.arrayBuffer();
+      let bin = "";
+      const bytes = new Uint8Array(buf);
+      const CHUNK = 0x8000;
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+      }
+      const b64 = btoa(bin);
+
+      const res = await perioDictFetch({ audio: b64, mimeType: mime });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok || !data.tooth) {
+        setVoiceMsg({ kind: "err", text: "No te entendí bien — repetí la pieza (decí la pieza y sus 6 profundidades)." });
+        setVoiceState("idle");
+        return;
+      }
+
+      const v = validatePerioVoice(data);
+      if (!v.ok) {
+        setVoiceMsg({ kind: "err", text: "No te entendí bien — repetí la pieza (decí la pieza y sus 6 profundidades)." });
+        setVoiceState("idle");
+        return;
+      }
+
+      // Apply validated data to draft
+      setDraft((d) => {
+        const cur = d[v.tooth] ?? { pd: Array(6).fill(null) as (number | null)[], bop: Array(6).fill(false) as boolean[] };
+
+        // pd: apply each of the 6 depths
+        const pd = [...cur.pd] as (number | null)[];
+        v.record.pd.forEach((val, i) => {
+          if (val != null) pd[i] = val;
+        });
+
+        // bop: SET to target value (not blind toggle)
+        // Only call toggle logic when the target differs from current
+        // Here we compute the new bop array directly since setDraft is a pure update
+        const bop = [...cur.bop] as boolean[];
+        v.record.bop.forEach((target, i) => {
+          bop[i] = target;
+        });
+
+        // mobility
+        const mobility = v.record.mobility !== undefined ? v.record.mobility : cur.mobility;
+
+        return { ...d, [v.tooth]: { ...cur, pd, bop, mobility } };
+      });
+
+      setVoiceMsg({ kind: "ok", text: `Pieza ${v.tooth} cargada ✓` });
+      setVoiceHighlight(v.tooth);
+      // Switch to the arch that contains the dictated tooth
+      if (UPPER.includes(v.tooth)) setArch("upper");
+      else if (LOWER.includes(v.tooth)) setArch("lower");
+      setVoiceState("idle");
+    } catch (e) {
+      setVoiceMsg({ kind: "err", text: e instanceof Error ? e.message : "Error procesando el audio." });
+      setVoiceState("idle");
+    }
+  }
 
   function setPd(tooth: string, site: number, raw: string) {
     const v = raw === "" ? null : Math.max(0, Math.min(15, parseInt(raw, 10) || 0));
@@ -226,7 +356,35 @@ function PerioEditor({
           <h3 className="font-extrabold text-clinic-text">Nueva medición</h3>
           <Badge tone="info">{measured} pieza{measured === 1 ? "" : "s"}</Badge>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {canWrite && (
+            voiceState === "idle" ? (
+              <button
+                type="button"
+                onClick={startVoice}
+                title="Dictar pieza por voz"
+                className="flex items-center gap-1.5 rounded-lg border border-azure-300 bg-azure-50 px-3 py-1.5 text-xs font-bold text-azure-700 transition hover:bg-azure-100 active:scale-95"
+              >
+                <Mic className="h-3.5 w-3.5" /> Dictar pieza
+              </button>
+            ) : voiceState === "recording" ? (
+              <button
+                type="button"
+                onClick={stopVoice}
+                className="flex items-center gap-1.5 rounded-lg bg-state-errbg px-3 py-1.5 text-xs font-bold text-state-err transition hover:opacity-80 active:scale-95"
+              >
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-state-err opacity-50" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-state-err" />
+                </span>
+                Grabando… Detener
+              </button>
+            ) : (
+              <span className="flex items-center gap-1.5 rounded-lg bg-clinic-bg px-3 py-1.5 text-xs font-bold text-clinic-muted">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Procesando…
+              </span>
+            )
+          )}
           <button
             onClick={() => setArch("upper")}
             className={`rounded-lg px-3 py-1.5 text-xs font-bold ${arch === "upper" ? "bg-azure-600 text-white" : "bg-clinic-bg text-clinic-muted"}`}
@@ -241,6 +399,26 @@ function PerioEditor({
           </button>
         </div>
       </div>
+
+      {voiceMsg && (
+        <div
+          className={`mb-2 flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold ${
+            voiceMsg.kind === "ok"
+              ? "bg-state-okbg text-state-ok"
+              : "bg-state-errbg text-state-err"
+          }`}
+        >
+          {voiceMsg.text}
+          <button
+            type="button"
+            onClick={() => setVoiceMsg(null)}
+            className="ml-auto opacity-50 hover:opacity-100"
+            aria-label="Cerrar"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       <p className="mb-2 text-[11px] text-clinic-muted">
         Profundidad en mm por sitio (vacío = no medido) · click en la gotita = sangrado · Mov. 0-3.
@@ -258,9 +436,13 @@ function PerioEditor({
           <tbody>
             {teethList.map((t) => {
               const r = draft[t];
+              const isHighlighted = voiceHighlight === t;
               return (
-                <tr key={t} className="border-t border-clinic-border/60">
-                  <td className="p-1 text-left font-mono font-extrabold text-clinic-text">{t}</td>
+                <tr
+                  key={t}
+                  className={`border-t border-clinic-border/60 transition-colors ${isHighlighted ? "bg-azure-50" : ""}`}
+                >
+                  <td className={`p-1 text-left font-mono font-extrabold ${isHighlighted ? "text-azure-700" : "text-clinic-text"}`}>{t}</td>
                   {SITES.map((_, i) => (
                     <td key={i} className="p-0.5">
                       <div className="flex items-center justify-center gap-0.5">
