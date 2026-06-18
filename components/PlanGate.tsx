@@ -13,6 +13,7 @@ const FEATURE_LABEL: Record<PlanFeature, string> = {
   integraciones: "Botika — WhatsApp con IA",
   ia: "Novudent IA",
   radiografia_ia: "Análisis IA de radiografías",
+  firma_electronica: "Firma electrónica",
 };
 
 /** Hook: plan vigente de la clínica activa */

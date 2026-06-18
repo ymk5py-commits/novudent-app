@@ -10,3 +10,11 @@ describe("radiografia_ia gating", () => {
     expect(planHas("solo", "radiografia_ia")).toBe(false);
   });
 });
+
+describe("firma_electronica gating", () => {
+  it("está en Clínica y Cadena, no en Solo", () => {
+    expect(planHas("clinica", "firma_electronica")).toBe(true);
+    expect(planHas("cadena", "firma_electronica")).toBe(true);
+    expect(planHas("solo", "firma_electronica")).toBe(false);
+  });
+});

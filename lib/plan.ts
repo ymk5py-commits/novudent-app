@@ -11,12 +11,13 @@ export type PlanId = "solo" | "clinica" | "cadena";
 
 /** Módulos/capacidades que se prenden o apagan según el plan */
 export type PlanFeature =
-  | "caja"           // financiamiento, morosidad y cuentas por cobrar
-  | "inventario"     // stock de insumos
-  | "reportes"       // informes de gestión + exportables
-  | "integraciones"  // Botika (WhatsApp con IA)
-  | "ia"             // Novudent IA: nota de voz, resumen, contralor, reportes IA
-  | "radiografia_ia"; // Análisis IA de radiografías (panorámica/bitewing/periapical)
+  | "caja"            // financiamiento, morosidad y cuentas por cobrar
+  | "inventario"      // stock de insumos
+  | "reportes"        // informes de gestión + exportables
+  | "integraciones"   // Botika (WhatsApp con IA)
+  | "ia"              // Novudent IA: nota de voz, resumen, contralor, reportes IA
+  | "radiografia_ia"  // Análisis IA de radiografías (panorámica/bitewing/periapical)
+  | "firma_electronica"; // Firma electrónica de consentimientos (consultorio o remota)
 
 export interface PlanDef {
   id: PlanId;
@@ -49,7 +50,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     tagline: "Para clínicas en crecimiento: hasta 5 sillones con todo Novudent adentro.",
     maxDentists: 5,
     maxUsers: 12,
-    features: ["caja", "inventario", "reportes", "integraciones", "ia", "radiografia_ia"],
+    features: ["caja", "inventario", "reportes", "integraciones", "ia", "radiografia_ia", "firma_electronica"],
     bullets: ["Hasta 5 profesionales", "Financiamiento y morosidad", "Inventario e informes", "Novudent IA completa", "Botika (WhatsApp IA)", "Soporte prioritario"],
   },
   cadena: {
@@ -59,7 +60,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     tagline: "Multi-sucursal: comisiones, laboratorio, integraciones propias y account manager.",
     maxDentists: Infinity,
     maxUsers: Infinity,
-    features: ["caja", "inventario", "reportes", "integraciones", "ia", "radiografia_ia"],
+    features: ["caja", "inventario", "reportes", "integraciones", "ia", "radiografia_ia", "firma_electronica"],
     bullets: ["Profesionales ilimitados", "Todo el Plan Clínica", "Integraciones a medida", "Account manager"],
   },
 };
