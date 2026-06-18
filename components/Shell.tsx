@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, LayoutDashboard, Bell, CreditCard,
   FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X,
+  Megaphone, FlaskConical, Coins, Armchair,
 } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
@@ -24,12 +25,21 @@ const SECTIONS: { label: string; items: { href: string; label: string; icon: any
     ],
   },
   {
-    label: "Gestión",
+    label: "Administración",
     items: [
       { href: "/app/caja", label: "Caja", icon: Wallet, perm: "payments.manage", feature: "caja" },
       { href: "/app/facturacion", label: "Facturación", icon: Receipt },
       { href: "/app/inventario", label: "Inventario", icon: Package, perm: "inventory.manage", feature: "inventario" },
+      { href: "/app/laboratorios", label: "Laboratorios", icon: FlaskConical, feature: "laboratorios" },
+      { href: "/app/liquidaciones", label: "Liquidaciones", icon: Coins, perm: "billing.reports", feature: "liquidaciones" },
+      { href: "/app/box", label: "Box/Sillones", icon: Armchair, perm: "practice.config", feature: "boxes" },
       { href: "/app/reportes", label: "Reportes", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/crm", label: "CRM", icon: Megaphone, feature: "crm" },
+    ],
+  },
+  {
+    label: "Configuración",
+    items: [
       { href: "/app/integraciones", label: "Integraciones", icon: Bot, perm: "practice.config", feature: "integraciones" },
       { href: "/app/suscripcion", label: "Suscripción", icon: CreditCard, perm: "practice.config" },
       { href: "/app/configuracion", label: "Configuración", icon: Settings, perm: "practice.config" },
