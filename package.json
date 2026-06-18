@@ -15,6 +15,7 @@
     "framer-motion": "11.11.7",
     "lucide-react": "0.451.0",
     "next": "14.2.15",
+    "qrcode": "^1.5.4",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "recharts": "^3.8.1"
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",
     "@types/node": "20.16.10",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "18.3.11",
     "@types/react-dom": "18.3.0",
     "autoprefixer": "10.4.20",
