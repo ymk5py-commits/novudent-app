@@ -27,7 +27,7 @@ async function ensureAuth() {
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord,
   Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
-  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec,
+  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate,
 } from "./types";
 import { buildSeed } from "./seed";
 import { submitToBilling, releaseFromHold } from "./billing";
@@ -93,9 +93,9 @@ async function loadFirestore(): Promise<DB> {
   }
   const meta = clinicSnap.data() as any;
   const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
-    col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"),
+    col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -113,6 +113,7 @@ async function loadFirestore(): Promise<DB> {
     outbox: outbox.docs.map((d) => d.data() as OutboxTask),
     recoveryMonitors: recoveryMonitors.docs.map((d) => d.data() as RecoveryMonitor),
     radiographs: radiographs.docs.map((d) => d.data() as RadiographRec),
+    signatures: signatures.docs.map((d) => d.data() as SignatureDoc),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   /* Upgrade v3: bases creadas antes de los módulos nuevos — sembramos
@@ -358,6 +359,12 @@ interface Ctx {
   addRadiograph: (r: RadiographRec) => void;
   updateRadiograph: (r: RadiographRec) => void;
   deleteRadiograph: (id: string) => void;
+  /* — Firma electrónica / consentimientos — */
+  addSignature: (s: SignatureDoc) => void;
+  updateSignature: (s: SignatureDoc) => void;
+  deleteSignature: (id: string) => void;
+  /** Guarda las plantillas de consentimiento en el config de la clínica */
+  saveConsentTemplates: (list: ConsentTemplate[]) => void;
 }
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -791,6 +798,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       deleteRadiograph: (id: string) => {
         persist({ ...db, radiographs: db.radiographs.filter((x) => x.id !== id) });
         fsDelete("radiographs", id);
+      },
+      /* — Firma electrónica / consentimientos — */
+      addSignature: (s: SignatureDoc) => {
+        persist({ ...db, signatures: [s, ...db.signatures] });
+        fsSave("signatures", s.id, s);
+      },
+      updateSignature: (s: SignatureDoc) => {
+        persist({ ...db, signatures: db.signatures.map((x) => (x.id === s.id ? s : x)) });
+        fsSave("signatures", s.id, s);
+      },
+      deleteSignature: (id: string) => {
+        persist({ ...db, signatures: db.signatures.filter((x) => x.id !== id) });
+        fsDelete("signatures", id);
+      },
+      saveConsentTemplates: (list: ConsentTemplate[]) => {
+        // Mismo mecanismo que `updateClinicConfig`: actualiza el config de la
+        // clínica y lo persiste vía `fsMeta` (setDoc clinics/{id} con merge).
+        const c = db.clinics[0];
+        const nextClinic = { ...c, config: { ...c.config, consentTemplates: list } };
+        const next = { ...db, clinics: [nextClinic] };
+        persist(next);
+        fsMeta(next);
       },
       /* — Negociación de presupuestos — */
       confirmNegociacion: (budgetId, by) => {
