@@ -357,6 +357,15 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
     recoveryMonitors: [],
     radiographs: [],
     signatures: [],
+    crmCards: [],
+    campaigns: [],
+    labOrders: [],
+    settlements: [],
+    boxes: [
+      { id: "box1", name: "Box 1" },
+      { id: "box2", name: "Box 2" },
+      { id: "box3", name: "Box 3" },
+    ],
     onboarding: { usersCreated: true, servicesDefined: true, tourDone: false },
   };
 }

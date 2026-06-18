@@ -17,7 +17,11 @@ export type PlanFeature =
   | "integraciones"   // Botika (WhatsApp con IA)
   | "ia"              // Novudent IA: nota de voz, resumen, contralor, reportes IA
   | "radiografia_ia"  // Análisis IA de radiografías (panorámica/bitewing/periapical)
-  | "firma_electronica"; // Firma electrónica de consentimientos (consultorio o remota)
+  | "firma_electronica" // Firma electrónica de consentimientos (consultorio o remota)
+  | "crm"             // CRM / embudo de pacientes + campañas (Cadena, como Titanium)
+  | "laboratorios"    // Órdenes de laboratorio
+  | "liquidaciones"   // Liquidación de comisiones a profesionales
+  | "boxes";          // Gestión de box/sillones
 
 export interface PlanDef {
   id: PlanId;
@@ -50,7 +54,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     tagline: "Para clínicas en crecimiento: hasta 5 sillones con todo Novudent adentro.",
     maxDentists: 5,
     maxUsers: 12,
-    features: ["caja", "inventario", "reportes", "integraciones", "ia", "radiografia_ia", "firma_electronica"],
+    features: ["caja", "inventario", "reportes", "integraciones", "ia", "radiografia_ia", "firma_electronica", "laboratorios", "liquidaciones", "boxes"],
     bullets: ["Hasta 5 profesionales", "Financiamiento y morosidad", "Inventario e informes", "Novudent IA completa", "Botika (WhatsApp IA)", "Soporte prioritario"],
   },
   cadena: {
@@ -60,7 +64,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     tagline: "Multi-sucursal: comisiones, laboratorio, integraciones propias y account manager.",
     maxDentists: Infinity,
     maxUsers: Infinity,
-    features: ["caja", "inventario", "reportes", "integraciones", "ia", "radiografia_ia", "firma_electronica"],
+    features: ["caja", "inventario", "reportes", "integraciones", "ia", "radiografia_ia", "firma_electronica", "crm", "laboratorios", "liquidaciones", "boxes"],
     bullets: ["Profesionales ilimitados", "Todo el Plan Clínica", "Integraciones a medida", "Account manager"],
   },
 };

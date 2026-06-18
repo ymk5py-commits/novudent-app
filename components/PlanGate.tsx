@@ -14,6 +14,10 @@ const FEATURE_LABEL: Record<PlanFeature, string> = {
   ia: "Novudent IA",
   radiografia_ia: "Análisis IA de radiografías",
   firma_electronica: "Firma electrónica",
+  crm: "CRM",
+  laboratorios: "Laboratorios",
+  liquidaciones: "Liquidaciones",
+  boxes: "Box/Sillones",
 };
 
 /** Hook: plan vigente de la clínica activa */

@@ -28,6 +28,7 @@ import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord,
   Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
   OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate,
+  CrmCard, Campaign, LabOrder, Settlement, Box,
 } from "./types";
 import { buildSeed } from "./seed";
 import { submitToBilling, releaseFromHold } from "./billing";
@@ -93,9 +94,10 @@ async function loadFirestore(): Promise<DB> {
   }
   const meta = clinicSnap.data() as any;
   const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
+    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -114,6 +116,11 @@ async function loadFirestore(): Promise<DB> {
     recoveryMonitors: recoveryMonitors.docs.map((d) => d.data() as RecoveryMonitor),
     radiographs: radiographs.docs.map((d) => d.data() as RadiographRec),
     signatures: signatures.docs.map((d) => d.data() as SignatureDoc),
+    crmCards: crmCards.docs.map((d) => d.data() as CrmCard),
+    campaigns: campaigns.docs.map((d) => d.data() as Campaign),
+    labOrders: labOrders.docs.map((d) => d.data() as LabOrder),
+    settlements: settlements.docs.map((d) => d.data() as Settlement),
+    boxes: boxes.docs.map((d) => d.data() as Box),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   /* Upgrade v3: bases creadas antes de los módulos nuevos — sembramos
@@ -365,6 +372,25 @@ interface Ctx {
   deleteSignature: (id: string) => void;
   /** Guarda las plantillas de consentimiento en el config de la clínica */
   saveConsentTemplates: (list: ConsentTemplate[]) => void;
+  /* — CRM (embudo de pacientes) — */
+  addCrmCard: (c: CrmCard) => void;
+  updateCrmCard: (c: CrmCard) => void;
+  deleteCrmCard: (id: string) => void;
+  addCampaign: (c: Campaign) => void;
+  updateCampaign: (c: Campaign) => void;
+  deleteCampaign: (id: string) => void;
+  /* — Laboratorios — */
+  addLabOrder: (o: LabOrder) => void;
+  updateLabOrder: (o: LabOrder) => void;
+  deleteLabOrder: (id: string) => void;
+  /* — Liquidaciones — */
+  addSettlement: (s: Settlement) => void;
+  updateSettlement: (s: Settlement) => void;
+  deleteSettlement: (id: string) => void;
+  /* — Box / Sillones — */
+  addBox: (b: Box) => void;
+  updateBox: (b: Box) => void;
+  deleteBox: (id: string) => void;
 }
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -820,6 +846,70 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const next = { ...db, clinics: [nextClinic] };
         persist(next);
         fsMeta(next);
+      },
+      /* — CRM (embudo de pacientes) — */
+      addCrmCard: (c: CrmCard) => {
+        persist({ ...db, crmCards: [c, ...db.crmCards] });
+        fsSave("crmCards", c.id, c);
+      },
+      updateCrmCard: (c: CrmCard) => {
+        persist({ ...db, crmCards: db.crmCards.map((x) => (x.id === c.id ? c : x)) });
+        fsSave("crmCards", c.id, c);
+      },
+      deleteCrmCard: (id: string) => {
+        persist({ ...db, crmCards: db.crmCards.filter((x) => x.id !== id) });
+        fsDelete("crmCards", id);
+      },
+      addCampaign: (c: Campaign) => {
+        persist({ ...db, campaigns: [c, ...db.campaigns] });
+        fsSave("campaigns", c.id, c);
+      },
+      updateCampaign: (c: Campaign) => {
+        persist({ ...db, campaigns: db.campaigns.map((x) => (x.id === c.id ? c : x)) });
+        fsSave("campaigns", c.id, c);
+      },
+      deleteCampaign: (id: string) => {
+        persist({ ...db, campaigns: db.campaigns.filter((x) => x.id !== id) });
+        fsDelete("campaigns", id);
+      },
+      /* — Laboratorios — */
+      addLabOrder: (o: LabOrder) => {
+        persist({ ...db, labOrders: [o, ...db.labOrders] });
+        fsSave("labOrders", o.id, o);
+      },
+      updateLabOrder: (o: LabOrder) => {
+        persist({ ...db, labOrders: db.labOrders.map((x) => (x.id === o.id ? o : x)) });
+        fsSave("labOrders", o.id, o);
+      },
+      deleteLabOrder: (id: string) => {
+        persist({ ...db, labOrders: db.labOrders.filter((x) => x.id !== id) });
+        fsDelete("labOrders", id);
+      },
+      /* — Liquidaciones — */
+      addSettlement: (s: Settlement) => {
+        persist({ ...db, settlements: [s, ...db.settlements] });
+        fsSave("settlements", s.id, s);
+      },
+      updateSettlement: (s: Settlement) => {
+        persist({ ...db, settlements: db.settlements.map((x) => (x.id === s.id ? s : x)) });
+        fsSave("settlements", s.id, s);
+      },
+      deleteSettlement: (id: string) => {
+        persist({ ...db, settlements: db.settlements.filter((x) => x.id !== id) });
+        fsDelete("settlements", id);
+      },
+      /* — Box / Sillones — */
+      addBox: (b: Box) => {
+        persist({ ...db, boxes: [b, ...db.boxes] });
+        fsSave("boxes", b.id, b);
+      },
+      updateBox: (b: Box) => {
+        persist({ ...db, boxes: db.boxes.map((x) => (x.id === b.id ? b : x)) });
+        fsSave("boxes", b.id, b);
+      },
+      deleteBox: (id: string) => {
+        persist({ ...db, boxes: db.boxes.filter((x) => x.id !== id) });
+        fsDelete("boxes", id);
       },
       /* — Negociación de presupuestos — */
       confirmNegociacion: (budgetId, by) => {

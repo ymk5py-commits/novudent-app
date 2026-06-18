@@ -67,6 +67,8 @@ export interface Appointment {
   reminderSent?: boolean;
   /** quién confirmó la cita (botika = automático por el bot) */
   confirmedVia?: "botika" | "manual";
+  /** Box/sillón asignado a la cita (módulo Box) */
+  boxId?: string;
 }
 
 export type FormStatus = "pendiente" | "completado";
@@ -509,6 +511,19 @@ export interface RecoveryMonitor {
   resolvedBy?: string;
 }
 
+// ===== Módulos de paridad Dentalink (CRM, Laboratorios, Liquidaciones, Box) =====
+export type CrmStage = "nuevo" | "contactado" | "presupuesto" | "seguimiento" | "ganado" | "perdido";
+export interface CrmCard { id: string; patientId: string; stage: CrmStage; note?: string; createdAt: string; updatedAt: string; }
+export interface Campaign { id: string; name: string; channel: "whatsapp" | "email"; message: string; audience: string; createdAt: string; sentAt?: string; sentCount?: number; }
+
+export type LabStatus = "enviado" | "en_proceso" | "recibido" | "entregado";
+export interface LabOrder { id: string; patientId: string; professionalId?: string; lab: string; workType: string; sentAt: string; dueAt?: string; cost?: number; status: LabStatus; notes?: string; createdAt: string; }
+
+export type SettlementStatus = "pendiente" | "liquidado";
+export interface Settlement { id: string; professionalId: string; periodFrom: string; periodTo: string; production: number; commissionPct: number; amount: number; status: SettlementStatus; createdAt: string; paidAt?: string; }
+
+export interface Box { id: string; name: string; color?: string; }
+
 export interface DB {
   clinics: Clinic[];
   users: User[];
@@ -526,5 +541,10 @@ export interface DB {
   recoveryMonitors: RecoveryMonitor[];
   radiographs: RadiographRec[];
   signatures: SignatureDoc[];
+  crmCards: CrmCard[];
+  campaigns: Campaign[];
+  labOrders: LabOrder[];
+  settlements: Settlement[];
+  boxes: Box[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }
