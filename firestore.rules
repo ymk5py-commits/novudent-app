@@ -136,6 +136,8 @@ service cloud.firestore {
       match /slotLocks/{docId}   { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       // Monitor de recuperación post-op (lo escriben miembros y el service user)
       match /recoveryMonitors/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Análisis IA de radiografías (lo escriben miembros y el service user)
+      match /radiographs/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
     }
 
     // Todo lo demás: denegado.
