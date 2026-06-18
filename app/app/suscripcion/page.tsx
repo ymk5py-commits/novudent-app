@@ -8,6 +8,7 @@ import { useStore } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { Card, Badge, Btn } from "@/components/ui";
 import { planOf } from "@/lib/plan";
+import { Reveal } from "@/components/motion";
 
 export default function SubscriptionPage() {
   const { session, db } = useStore();
@@ -40,7 +41,7 @@ export default function SubscriptionPage() {
         <Badge tone="warn" tip="Stripe aún no está conectado — los datos de esta página son de demostración">Modo demo · Stripe pendiente</Badge>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-5">
+      <Reveal className="grid gap-5 lg:grid-cols-5">
         {/* Plan actual */}
         <Card className="relative overflow-hidden p-7 lg:col-span-3">
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-azure-50 blur-2xl" />
@@ -81,9 +82,10 @@ export default function SubscriptionPage() {
             faltan las claves de tu cuenta Stripe.
           </p>
         </Card>
-      </div>
+      </Reveal>
 
       {/* Historial de facturas (demo) */}
+      <Reveal>
       <Card className="overflow-x-auto">
         <div className="flex items-center justify-between px-6 pt-5">
           <h2 className="font-extrabold text-clinic-text">Historial de facturas</h2>
@@ -116,6 +118,7 @@ export default function SubscriptionPage() {
         </table>
         </div>
       </Card>
+      </Reveal>
     </div>
   );
 }

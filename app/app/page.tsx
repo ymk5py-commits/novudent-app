@@ -15,6 +15,7 @@ import { ToothGlyph } from "@/components/Odontogram";
 import { ContralorCard } from "@/components/NovudentIA";
 import { WeekBarsChart, StatusDonutChart } from "@/components/Charts";
 import { useClinicPlan } from "@/components/PlanGate";
+import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 
 /* ---- count-up ---- */
 function Count({ value }: { value: number }) {
@@ -44,7 +45,7 @@ function SpikeStat({
     red: "bg-state-errbg text-state-err",
   }[tone];
   return (
-    <a href={href} className="card-3d group rounded-2xl border border-clinic-border bg-white p-5 shadow-card">
+    <a href={href} className="card-3d group block h-full rounded-2xl border border-clinic-border bg-white p-5 shadow-card">
       <span className={`icon-3d grid h-12 w-12 place-items-center rounded-2xl transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 ${tones}`}>
         <Icon className="h-5 w-5" strokeWidth={2} />
       </span>
@@ -190,6 +191,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* ===== Banner de bienvenida (malla de gradientes + glow 3D) ===== */}
+      <Reveal y={0}>
       <div className="mesh-hero ring-glow relative overflow-hidden rounded-3xl p-7 text-white sm:p-8">
         <div className="absolute -right-8 -top-12 h-56 w-56 rounded-full bg-azure-500/30 blur-3xl" />
         <div className="absolute -bottom-16 left-1/3 h-44 w-72 rounded-full bg-azure-400/15 blur-3xl" />
@@ -221,20 +223,22 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      </Reveal>
 
-      {/* ===== Stats pastel ===== */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SpikeStat label="Citas de hoy" value={todays.length} icon={CalendarDays} tone="azure" href="/app/agenda" />
-        <SpikeStat label="Pacientes activos" value={db.patients.length} icon={Users} tone="green" href="/app/pacientes" />
-        <SpikeStat label="Formularios pendientes" value={pendingForms} icon={FileText} tone={pendingForms > 0 ? "amber" : "green"} href="/app/pacientes" />
-        <SpikeStat label="Reclamos en retención" value={onHold} icon={PauseCircle} tone={onHold > 0 ? "red" : "green"} href="/app/facturacion" />
-      </div>
+      {/* ===== Stats pastel (cascadean al entrar) ===== */}
+      <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StaggerItem><SpikeStat label="Citas de hoy" value={todays.length} icon={CalendarDays} tone="azure" href="/app/agenda" /></StaggerItem>
+        <StaggerItem><SpikeStat label="Pacientes activos" value={db.patients.length} icon={Users} tone="green" href="/app/pacientes" /></StaggerItem>
+        <StaggerItem><SpikeStat label="Formularios pendientes" value={pendingForms} icon={FileText} tone={pendingForms > 0 ? "amber" : "green"} href="/app/pacientes" /></StaggerItem>
+        <StaggerItem><SpikeStat label="Reclamos en retención" value={onHold} icon={PauseCircle} tone={onHold > 0 ? "red" : "green"} href="/app/facturacion" /></StaggerItem>
+      </Stagger>
 
       {/* ===== Contralor IA — parte del día ===== */}
-      {plan.features.includes("ia") && <ContralorCard pendientes={contralorPendientes} />}
+      {plan.features.includes("ia") && <Reveal><ContralorCard pendientes={contralorPendientes} /></Reveal>}
 
       {/* ===== Panel de tareas críticas ===== */}
       {criticalTasks.length > 0 && (
+        <Reveal>
         <Card className="p-5">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-state-warn" />
@@ -254,10 +258,11 @@ export default function Dashboard() {
             ))}
           </div>
         </Card>
+        </Reveal>
       )}
 
       {/* ===== Gráficos (reportes financieros: solo admin/asistente — matriz v2) ===== */}
-      <div className="grid gap-5 lg:grid-cols-5">
+      <Reveal className="grid gap-5 lg:grid-cols-5">
         {canReports ? (
           <Card className="p-6 lg:col-span-3">
             <div className="mb-5 flex items-start justify-between">
@@ -300,10 +305,10 @@ export default function Dashboard() {
             ]}
           />
         </Card>
-      </div>
+      </Reveal>
 
       {/* ===== Agenda de hoy + Onboarding ===== */}
-      <div className="grid gap-5 lg:grid-cols-5">
+      <Reveal className="grid gap-5 lg:grid-cols-5">
         <Card className="p-6 lg:col-span-3">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-extrabold text-clinic-text">Agenda de hoy</h2>
@@ -359,7 +364,7 @@ export default function Dashboard() {
             </span>
           </div>
         </Card>
-      </div>
+      </Reveal>
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   CalendarDays, ChevronLeft, ChevronRight, Clock, User, CheckCircle2,
   Loader2, Stethoscope, MessageCircle,
 } from "lucide-react";
+import { Reveal } from "@/components/motion";
 
 type Step = "fecha" | "horario" | "datos" | "listo";
 
@@ -108,7 +109,7 @@ export default function ReservaOnline() {
     <main className="min-h-dvh bg-clinic-bg">
       {/* Header público */}
       <header className="bg-navy-800 px-5 py-6 text-white">
-        <div className="mx-auto max-w-xl">
+        <Reveal y={0} className="mx-auto max-w-xl">
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-azure-200">
             Reserva online
           </p>
@@ -118,7 +119,7 @@ export default function ReservaOnline() {
           <p className="mt-1 text-sm text-white/65">
             Elegí día y horario — te confirmamos por WhatsApp.
           </p>
-        </div>
+        </Reveal>
       </header>
 
       <div className="mx-auto max-w-xl space-y-4 px-5 py-6">
@@ -148,6 +149,7 @@ export default function ReservaOnline() {
 
         {/* ===== Paso 1: fecha ===== */}
         {step === "fecha" && (
+          <Reveal>
           <section className="rounded-3xl bg-white p-5 shadow-card">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="flex items-center gap-2 font-extrabold text-clinic-text">
@@ -197,10 +199,12 @@ export default function ReservaOnline() {
               </p>
             )}
           </section>
+          </Reveal>
         )}
 
         {/* ===== Paso 2: profesional + horario ===== */}
         {step === "horario" && avail && (
+          <Reveal>
           <section className="space-y-4">
             {avail.dentists.length === 0 && (
               <p className="rounded-xl bg-state-warnbg px-3.5 py-2.5 text-xs font-semibold text-state-warn">
@@ -243,10 +247,12 @@ export default function ReservaOnline() {
               <ChevronLeft className="h-3.5 w-3.5" /> Cambiar fecha
             </button>
           </section>
+          </Reveal>
         )}
 
         {/* ===== Paso 3: datos ===== */}
         {step === "datos" && (
+          <Reveal>
           <section className="rounded-3xl bg-white p-5 shadow-card">
             <p className="mb-4 flex items-center gap-2 rounded-xl bg-azure-50 px-3.5 py-2.5 text-xs font-semibold text-azure-700">
               <Clock className="h-4 w-4" />
@@ -280,10 +286,12 @@ export default function ReservaOnline() {
               </div>
             </form>
           </section>
+          </Reveal>
         )}
 
         {/* ===== Listo ===== */}
         {step === "listo" && (
+          <Reveal>
           <section className="rounded-3xl bg-white p-8 text-center shadow-card">
             <CheckCircle2 className="mx-auto h-12 w-12 text-state-ok" />
             <h2 className="mt-3 text-xl font-extrabold text-clinic-text">¡Reserva recibida!</h2>
@@ -301,6 +309,7 @@ export default function ReservaOnline() {
               </p>
             )}
           </section>
+          </Reveal>
         )}
       </div>
     </main>

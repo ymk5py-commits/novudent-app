@@ -7,6 +7,7 @@ import { can } from "@/lib/rbac";
 import { validatePairings, validateExtras, recordTotal, canSubmit, canRelease, CPT_DX, CPT_POS, CPT_MOD } from "@/lib/billing";
 import type { BillingRecord, ClaimType, BillingExtra } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, FlagBadge, Empty } from "@/components/ui";
+import { Reveal } from "@/components/motion";
 
 type Filter = "todos" | "sin-enviar" | "en-retencion" | "facturado";
 
@@ -39,6 +40,7 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-5">
+      <Reveal y={0}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-clinic-text">Facturación</h1>
@@ -56,8 +58,10 @@ export default function BillingPage() {
           <Badge tone="muted" tip="Permiso de Administrador/Asistente"><Lock className="mr-1 inline h-3 w-3" /> Solo lectura para tu rol</Badge>
         )}
       </div>
+      </Reveal>
 
       {/* Filtros */}
+      <Reveal>
       <div className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
         {FILTERS.map((f) => (
           <button
@@ -69,7 +73,9 @@ export default function BillingPage() {
           </button>
         ))}
       </div>
+      </Reveal>
 
+      <Reveal>
       {list.length === 0 ? (
         <Empty title="Sin registros en este filtro" />
       ) : (
@@ -154,6 +160,7 @@ export default function BillingPage() {
           })}
         </div>
       )}
+      </Reveal>
 
       {/* Historial */}
       {historyFor && (

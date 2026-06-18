@@ -11,6 +11,7 @@ import { useStore, fullName } from "@/lib/store";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
 import { planOf, type PlanFeature } from "@/lib/plan";
 import ChangePasswordGate from "@/components/ChangePasswordGate";
+import { PageTransition } from "@/components/motion";
 
 const SECTIONS: { label: string; items: { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature }[] }[] = [
   {
@@ -242,7 +243,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-7">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-7">
+          <PageTransition>{children}</PageTransition>
+        </main>
       </div>
     </div>
   );

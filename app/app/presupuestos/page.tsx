@@ -11,6 +11,7 @@ import { can } from "@/lib/rbac";
 import { budgetTotal, budgetSubtotal, budgetPaid, budgetBalance, installmentValue, BUDGET_STATUS_INFO } from "@/lib/budgets";
 import type { Budget, BudgetItem, BudgetStatus } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
+import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 
 const FILTERS: ("todos" | BudgetStatus)[] = ["todos", "borrador", "presentado", "aceptado", "completado", "anulado"];
 
@@ -57,16 +58,16 @@ export default function BudgetsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <Reveal className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-clinic-text">Presupuestos</h1>
           <p className="text-sm text-clinic-muted">Planes de tratamiento, convenios y cobro en cuotas.</p>
         </div>
         <Btn onClick={() => setEditing("new")}><Plus className="h-4 w-4" /> Nuevo presupuesto</Btn>
-      </div>
+      </Reveal>
 
       {/* filtros por estado */}
-      <div className="flex flex-wrap gap-2">
+      <Reveal className="flex flex-wrap gap-2">
         {FILTERS.map((f) => {
           const n = f === "todos" ? db.budgets.length : db.budgets.filter((b) => b.status === f).length;
           return (
@@ -81,12 +82,12 @@ export default function BudgetsPage() {
             </button>
           );
         })}
-      </div>
+      </Reveal>
 
       {list.length === 0 ? (
         <Empty title="Sin presupuestos en este estado" desc="Creá un presupuesto desde el botón superior o desde la ficha del paciente." />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <Stagger className="grid gap-4 lg:grid-cols-2">
           {list.map((b) => {
             const patient = db.patients.find((p) => p.id === b.patientId);
             const dentist = db.users.find((u) => u.id === b.dentistId);
@@ -96,7 +97,8 @@ export default function BudgetsPage() {
             const done = b.items.filter((i) => i.status === "realizado").length;
             const cuota = installmentValue(b);
             return (
-              <Card key={b.id} className="p-5">
+              <StaggerItem key={b.id} className="h-full">
+              <Card className="flex h-full flex-col p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <button onClick={() => setDetail(b)} className="block truncate text-left text-[15px] font-extrabold text-clinic-text hover:text-azure-700">
@@ -133,7 +135,7 @@ export default function BudgetsPage() {
                   )}
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-clinic-border pt-3">
+                <div className="mt-auto flex flex-wrap gap-2 border-t border-clinic-border pt-3">
                   {b.status === "borrador" && (
                     <>
                       <Btn onClick={() => act(b, "Presentado al paciente", { status: "presentado" })}><Send className="h-3.5 w-3.5" /> Presentar</Btn>
@@ -172,9 +174,10 @@ export default function BudgetsPage() {
                   )}
                 </div>
               </Card>
+              </StaggerItem>
             );
           })}
-        </div>
+        </Stagger>
       )}
 
       {editing && (

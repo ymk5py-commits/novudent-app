@@ -12,6 +12,7 @@ import { budgetTotal, budgetBalance, patientBalance, PAYMENT_METHOD_LABEL } from
 import type { Payment, PaymentMethod, Expense } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
+import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 
 const METHOD_ICON: Record<PaymentMethod, any> = { efectivo: Banknote, tarjeta: CreditCard, transferencia: Landmark, qr: QrCode };
 const EXPENSE_CATS = ["Insumos", "Laboratorio", "Servicios", "Sueldos", "Alquiler", "Equipamiento", "Otros"];
@@ -57,6 +58,7 @@ export default function CashPage() {
 
   return (
     <div className="space-y-5">
+      <Reveal y={0}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-clinic-text">Caja</h1>
@@ -68,10 +70,11 @@ export default function CashPage() {
           {canExpenses && <Btn variant="outline" onClick={() => setNewExp(true)}><TrendingDown className="h-4 w-4" /> Gasto</Btn>}
         </div>
       </div>
+      </Reveal>
 
       {/* arqueo del día */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="p-5">
+      <Stagger className="grid gap-4 sm:grid-cols-3">
+        <StaggerItem><Card className="h-full p-5">
           <div className="flex items-center gap-2 text-state-ok"><Wallet className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Ingresos del día</span></div>
           <div className="mt-1 font-mono text-2xl font-extrabold text-clinic-text">{fmtGs(income)}</div>
           <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] text-clinic-muted">
@@ -79,20 +82,20 @@ export default function CashPage() {
               <span key={m} className="flex justify-between"><span>{PAYMENT_METHOD_LABEL[m]}</span><span className="font-mono font-bold">{fmtGs(byMethod(m))}</span></span>
             ))}
           </div>
-        </Card>
-        <Card className="p-5">
+        </Card></StaggerItem>
+        <StaggerItem><Card className="h-full p-5">
           <div className="flex items-center gap-2 text-state-err"><TrendingDown className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Gastos del día</span></div>
           <div className="mt-1 font-mono text-2xl font-extrabold text-clinic-text">{fmtGs(spent)}</div>
           <div className="mt-2 text-[11px] text-clinic-muted">{dayExpenses.length} registro{dayExpenses.length !== 1 && "s"}</div>
-        </Card>
-        <Card className="p-5">
+        </Card></StaggerItem>
+        <StaggerItem><Card className="h-full p-5">
           <div className="flex items-center gap-2 text-azure-600"><Scale className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Balance del día</span></div>
           <div className={`mt-1 font-mono text-2xl font-extrabold ${income - spent >= 0 ? "text-state-ok" : "text-state-err"}`}>{fmtGs(income - spent)}</div>
           <div className="mt-2 text-[11px] text-clinic-muted">ingresos − gastos</div>
-        </Card>
-      </div>
+        </Card></StaggerItem>
+      </Stagger>
 
-      <div className="grid gap-5 lg:grid-cols-5">
+      <Reveal className="grid gap-5 lg:grid-cols-5">
         {/* movimientos */}
         <Card className="p-5 lg:col-span-3">
           <h2 className="font-extrabold text-clinic-text">Movimientos del día</h2>
@@ -180,7 +183,7 @@ export default function CashPage() {
             </ul>
           )}
         </Card>
-      </div>
+      </Reveal>
 
       {newPay && <PaymentForm onClose={() => setNewPay(false)} />}
       {newExp && <ExpenseForm onClose={() => setNewExp(false)} />}

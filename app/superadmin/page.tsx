@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Field, inputCls } from "@/components/ui";
 import { PLANS, type PlanId } from "@/lib/plan";
+import { Reveal } from "@/components/motion";
 
 type Created = {
   clinicId: string;
@@ -86,14 +87,14 @@ export default function SuperAdminPage() {
   return (
     <div className="grid min-h-screen place-items-center bg-clinic-bg p-6" style={{ background: "linear-gradient(160deg,#0F1F3D 0%,#07142C 75%)" }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-lg">
-        <div className="mb-6 text-center">
+        <Reveal y={0} className="mb-6 text-center">
           <div className="font-logo text-3xl tracking-[0.22em] text-white">NOVUdent</div>
           <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-azure-500/20 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-azure-200">
             <ShieldCheck className="h-3 w-3" /> Panel del propietario
           </div>
-        </div>
+        </Reveal>
 
-        <div className="rounded-3xl border border-white/10 bg-white p-7 shadow-pop">
+        <Reveal delay={0.08} className="rounded-3xl border border-white/10 bg-white p-7 shadow-pop">
           {created ? (
             <div className="space-y-4">
               <div className="text-center">
@@ -233,7 +234,7 @@ export default function SuperAdminPage() {
               </button>
             </form>
           )}
-        </div>
+        </Reveal>
         <p className="mt-4 text-center text-[11px] text-white/40">Solo para el propietario de Novudent. Las clínicas gestionan sus propios usuarios.</p>
       </motion.div>
     </div>

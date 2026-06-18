@@ -5,6 +5,7 @@ import { Search, FileText, ClipboardList, Plus, ChevronRight } from "lucide-reac
 import { useStore, fullName } from "@/lib/store";
 import type { Patient } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
+import { Reveal } from "@/components/motion";
 
 export default function PatientsPage() {
   const { db, session, upsertPatient } = useStore();
@@ -21,7 +22,7 @@ export default function PatientsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <Reveal y={0} className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-clinic-text">Pacientes</h1>
           <p className="text-sm text-clinic-muted">
@@ -30,9 +31,9 @@ export default function PatientsPage() {
           </p>
         </div>
         <Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Nuevo paciente</Btn>
-      </div>
+      </Reveal>
 
-      <div className="relative max-w-md">
+      <Reveal delay={0.05} className="relative max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
         <input
           value={q}
@@ -40,11 +41,12 @@ export default function PatientsPage() {
           placeholder="Buscar por nombre, CI o teléfono…"
           className="w-full rounded-xl border border-clinic-border bg-white py-2.5 pl-9 pr-3 text-sm focus:border-azure-500 focus:outline-none"
         />
-      </div>
+      </Reveal>
 
       {list.length === 0 ? (
-        <Empty title="Sin resultados" desc="Probá con otro nombre o número de documento." />
+        <Reveal><Empty title="Sin resultados" desc="Probá con otro nombre o número de documento." /></Reveal>
       ) : (
+        <Reveal>
         <Card className="divide-y divide-clinic-border">
           {list.map((p) => {
             const pendingForms = p.forms.filter((f) => f.status === "pendiente").length;
@@ -75,6 +77,7 @@ export default function PatientsPage() {
             );
           })}
         </Card>
+        </Reveal>
       )}
 
       {creating && (

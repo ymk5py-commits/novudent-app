@@ -8,6 +8,7 @@ import { can } from "@/lib/rbac";
 import type { StockItem, StockMove } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
+import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 
 export default function InventoryPage() {
   const store = useStore();
@@ -34,6 +35,7 @@ export default function InventoryPage() {
 
   return (
     <div className="space-y-5">
+      <Reveal y={0}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-clinic-text">Inventario</h1>
@@ -41,24 +43,25 @@ export default function InventoryPage() {
         </div>
         <Btn onClick={() => setEditing("new")}><Plus className="h-4 w-4" /> Nuevo ítem</Btn>
       </div>
+      </Reveal>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="p-5">
+      <Stagger className="grid gap-4 sm:grid-cols-3">
+        <StaggerItem><Card className="h-full p-5">
           <div className="flex items-center gap-2 text-azure-600"><Package className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Ítems</span></div>
           <div className="mt-1 font-mono text-2xl font-extrabold text-clinic-text">{db.stock.length}</div>
-        </Card>
-        <Card className="p-5">
+        </Card></StaggerItem>
+        <StaggerItem><Card className="h-full p-5">
           <div className="flex items-center gap-2 text-state-warn"><AlertTriangle className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Stock bajo</span></div>
           <div className={`mt-1 font-mono text-2xl font-extrabold ${low.length ? "text-state-err" : "text-clinic-text"}`}>{low.length}</div>
           {low.length > 0 && <div className="mt-1 truncate text-[11px] text-clinic-muted">{low.map((s) => s.name.split(" ")[0]).join(", ")}</div>}
-        </Card>
-        <Card className="p-5">
+        </Card></StaggerItem>
+        <StaggerItem><Card className="h-full p-5">
           <div className="flex items-center gap-2 text-state-ok"><Coins className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Valorización</span></div>
           <div className="mt-1 font-mono text-2xl font-extrabold text-clinic-text">{fmtGs(totalValue)}</div>
-        </Card>
-      </div>
+        </Card></StaggerItem>
+      </Stagger>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <Reveal className="grid gap-5 lg:grid-cols-3">
         <Card className="overflow-x-auto lg:col-span-2">
           <table className="w-full text-sm">
             <thead>
@@ -129,7 +132,7 @@ export default function InventoryPage() {
             </ul>
           )}
         </Card>
-      </div>
+      </Reveal>
 
       {editing && (
         <ItemForm

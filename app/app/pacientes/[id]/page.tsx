@@ -18,6 +18,7 @@ import { VoiceNoteButton, PatientBriefButton } from "@/components/NovudentIA";
 import { useClinicPlan } from "@/components/PlanGate";
 import Periodontogram from "@/components/Periodontogram";
 import RecoveryCard from "@/components/RecoveryCard";
+import { Reveal } from "@/components/motion";
 
 type Tab = "resumen" | "odontograma" | "periodoncia" | "historial" | "presupuestos" | "recetas" | "archivos" | "ortodoncia" | "formularios" | "facturacion";
 
@@ -58,6 +59,7 @@ export default function PatientProfile() {
   return (
     <div className="space-y-5">
       {/* Cabecera */}
+      <Reveal y={0}>
       <Card className="p-5">
         <div className="flex flex-wrap items-center gap-4">
           <span className="grid h-14 w-14 place-items-center rounded-2xl bg-azure-100 text-lg font-extrabold text-azure-700">
@@ -111,9 +113,10 @@ export default function PatientProfile() {
           </div>
         </div>
       </Card>
+      </Reveal>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
+      <Reveal delay={0.05} className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -126,11 +129,11 @@ export default function PatientProfile() {
             {t.badge && <span className="ml-0.5 rounded-full bg-state-warn px-1.5 text-[10px] font-bold text-white">{t.badge}</span>}
           </button>
         ))}
-      </div>
+      </Reveal>
 
       {/* ===== RESUMEN ===== */}
       {tab === "resumen" && (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <Reveal className="grid gap-5 lg:grid-cols-2">
           <Card className="p-5">
             <h2 className="mb-3 font-extrabold text-clinic-text">Próximas citas</h2>
             {appts.filter((a) => new Date(a.start) >= new Date()).length === 0 ? (
@@ -164,15 +167,15 @@ export default function PatientProfile() {
               </div>
             )}
           </Card>
-        </div>
+        </Reveal>
       )}
 
       {/* ===== MONITOR DE RECUPERACIÓN (visible en resumen) ===== */}
-      {tab === "resumen" && <RecoveryCard patient={p} />}
+      {tab === "resumen" && <Reveal><RecoveryCard patient={p} /></Reveal>}
 
       {/* ===== ODONTOGRAMA ===== */}
       {tab === "odontograma" && (
-        <div className="space-y-3">
+        <Reveal className="space-y-3">
           {!canWriteEmr && (
             <p className="rounded-xl bg-clinic-bg p-3 text-sm text-clinic-muted">
               <Lock className="mr-1 inline h-3.5 w-3.5" /> Solo el dentista o administrador puede editar el odontograma. Hacé clic en una pieza para ver su detalle.
@@ -184,22 +187,24 @@ export default function PatientProfile() {
             authorName={session.name}
             onChange={(tooth, rec) => setTooth(p.id, tooth, rec)}
           />
-        </div>
+        </Reveal>
       )}
 
       {/* ===== PERIODONCIA ===== */}
       {tab === "periodoncia" && (
+        <Reveal>
         <Periodontogram
           sessions={p.perio ?? []}
           canWrite={canWriteEmr}
           authorName={session.name}
           onSave={(s) => addPerioSession(p.id, s)}
         />
+        </Reveal>
       )}
 
       {/* ===== HISTORIAL CLÍNICO (EMR) ===== */}
       {tab === "historial" && (
-        <div className="space-y-4">
+        <Reveal className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-clinic-muted">
               {canWriteEmr ? "Diagnósticos, notas de tratamiento y planificación clínica." : (
@@ -233,18 +238,18 @@ export default function PatientProfile() {
               ))}
             </div>
           )}
-        </div>
+        </Reveal>
       )}
 
       {/* ===== PRESUPUESTOS / RECETAS / ARCHIVOS / ORTODONCIA ===== */}
-      {tab === "presupuestos" && <BudgetsTab patient={p} />}
-      {tab === "recetas" && <RxTab patient={p} />}
-      {tab === "archivos" && <FilesTab patient={p} />}
-      {tab === "ortodoncia" && <OrthoTab patient={p} />}
+      {tab === "presupuestos" && <Reveal><BudgetsTab patient={p} /></Reveal>}
+      {tab === "recetas" && <Reveal><RxTab patient={p} /></Reveal>}
+      {tab === "archivos" && <Reveal><FilesTab patient={p} /></Reveal>}
+      {tab === "ortodoncia" && <Reveal><OrthoTab patient={p} /></Reveal>}
 
       {/* ===== FORMULARIOS (Engagement) ===== */}
       {tab === "formularios" && (
-        <div className="space-y-4">
+        <Reveal className="space-y-4">
           {!canForms && (
             <p className="rounded-xl bg-clinic-bg p-3 text-sm text-clinic-muted">
               <Lock className="mr-1 inline h-3.5 w-3.5" /> Tu rol no gestiona formularios (permiso de Administrador/Asistente). Vista de solo lectura.
@@ -278,12 +283,12 @@ export default function PatientProfile() {
               ))}
             </Card>
           )}
-        </div>
+        </Reveal>
       )}
 
       {/* ===== FACTURACIÓN del paciente ===== */}
       {tab === "facturacion" && (
-        <div className="space-y-3">
+        <Reveal className="space-y-3">
           {bills.length === 0 ? (
             <Empty title="Sin registros de facturación" />
           ) : (
@@ -297,7 +302,7 @@ export default function PatientProfile() {
               </Card>
             ))
           )}
-        </div>
+        </Reveal>
       )}
 
       {/* Modal: completar formulario (pencil flow) */}

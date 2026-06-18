@@ -9,6 +9,7 @@ import type { Role, User, Procedure, BotikaConfig } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
 import DentalinkImport from "@/components/DentalinkImport";
+import { Reveal } from "@/components/motion";
 
 const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> = {
   diasGatillo: 5,
@@ -47,6 +48,7 @@ export default function ConfigPage() {
       </div>
 
       {/* Clínica */}
+      <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex items-center gap-2"><Building2 className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Clínica</h2></div>
         <div className="grid gap-3 text-sm sm:grid-cols-2">
@@ -56,8 +58,10 @@ export default function ConfigPage() {
           <div><span className="text-clinic-muted">Teléfono:</span> <b>{clinic?.config.phone}</b></div>
         </div>
       </Card>
+      </Reveal>
 
       {/* Usuarios */}
+      <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2"><UserCog className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Usuarios del equipo</h2><span data-tip={`Tu Plan ${plan.label} incluye hasta ${plan.maxUsers === Infinity ? "usuarios ilimitados" : `${plan.maxUsers} usuarios`} y ${plan.maxDentists === Infinity ? "profesionales ilimitados" : `${plan.maxDentists} profesional${plan.maxDentists > 1 ? "es" : ""}`}`} className="rounded-full bg-clinic-bg px-2 py-0.5 font-mono text-[10px] font-bold text-clinic-muted">{db.users.filter((u) => u.active).length}{plan.maxUsers === Infinity ? "" : ` / ${plan.maxUsers}`}</span></div>
@@ -90,8 +94,10 @@ export default function ConfigPage() {
         </div>
         <p className="mt-2 text-[11px] text-clinic-muted">El % de comisión de cada dentista alimenta el cálculo de pago en <a href="/app/reportes" className="font-bold text-azure-700">Reportes</a>.</p>
       </Card>
+      </Reveal>
 
       {/* Convenios */}
+      <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex items-center gap-2"><Handshake className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Gestión de convenios</h2></div>
         <p className="mb-3 text-xs text-clinic-muted">Acuerdos con empresas/aseguradoras — el descuento se aplica automáticamente en los presupuestos.</p>
@@ -124,6 +130,7 @@ export default function ConfigPage() {
           </Btn>
         </div>
       </Card>
+      </Reveal>
 
       {/* Negociación de presupuestos (Botika) */}
       {(() => {
@@ -145,6 +152,7 @@ export default function ConfigPage() {
         };
 
         return (
+          <Reveal>
           <Card className="p-5">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -210,10 +218,12 @@ export default function ConfigPage() {
               </div>
             </div>
           </Card>
+          </Reveal>
         );
       })()}
 
       {/* Plantilla de recordatorio */}
+      <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex items-center gap-2"><MessageSquareText className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Confirmación de citas — plantilla WhatsApp</h2></div>
         <p className="mb-2 text-xs text-clinic-muted">Variables disponibles: <code className="font-mono">{"{paciente} {fecha} {hora} {clinica}"}</code>. Se usa desde la Agenda al enviar recordatorios.</p>
@@ -229,8 +239,10 @@ export default function ConfigPage() {
           </div>
         )}
       </Card>
+      </Reveal>
 
       {/* Migración desde Dentalink / carga masiva */}
+      <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2"><UploadCloud className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Migración desde Dentalink</h2></div>
@@ -242,8 +254,10 @@ export default function ConfigPage() {
           Sirve también para cualquier otro software o planilla propia.
         </p>
       </Card>
+      </Reveal>
 
       {/* Servicios / aranceles */}
+      <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2"><Stethoscope className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Servicios y aranceles</h2></div>
@@ -272,6 +286,7 @@ export default function ConfigPage() {
           </div>
         )}
       </Card>
+      </Reveal>
 
       {addingUser && (
         <NewUser

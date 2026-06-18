@@ -12,13 +12,7 @@ import { useStore } from "@/lib/store";
 import type { ToothRecord } from "@/lib/types";
 import Odontogram, { ToothGlyph } from "./Odontogram";
 import { FlagBadge } from "./ui";
-
-const reveal = {
-  initial: { opacity: 0, y: 24 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: "-70px" },
-  transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const },
-};
+import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 
 /* count-up editorial (sin card) */
 function Count({ value, suffix = "" }: { value: number; suffix?: string }) {
@@ -198,7 +192,7 @@ export default function Landing() {
       {/* ===== CAPACIDADES (índice editorial, sin cards) ===== */}
       <section id="capacidades" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
         <div className="grid gap-12 lg:grid-cols-12">
-          <motion.div {...reveal} className="lg:col-span-4">
+          <Reveal y={24} className="lg:col-span-4">
             <div className="lg:sticky lg:top-28">
               <div className="flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-clinic-muted">
                 <span className="h-px w-10 bg-azure-500" /> Capacidades
@@ -216,14 +210,12 @@ export default function Landing() {
                 <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-clinic-muted">herramientas<br />de trabajo</span>
               </div>
             </div>
-          </motion.div>
+          </Reveal>
           <div className="lg:col-span-8">
-            <div className="border-t border-clinic-border">
-              {CAPACIDADES.map((c, i) => (
-                <motion.div
+            <Stagger className="border-t border-clinic-border">
+              {CAPACIDADES.map((c) => (
+                <StaggerItem
                   key={c.n}
-                  {...reveal}
-                  transition={{ ...reveal.transition, delay: i * 0.04 }}
                   className="group relative grid grid-cols-12 items-baseline gap-x-4 gap-y-2 border-b border-clinic-border py-7"
                 >
                   <span className="pointer-events-none absolute inset-x-[-12px] inset-y-0 rounded-2xl bg-gradient-to-r from-azure-50 via-azure-50/40 to-transparent opacity-0 transition-opacity duration-400 group-hover:opacity-100" />
@@ -241,9 +233,9 @@ export default function Landing() {
                   <div className="relative col-span-1 hidden justify-end self-center sm:flex">
                     <ArrowUpRight className="h-4 w-4 text-clinic-border transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-azure-600" />
                   </div>
-                </motion.div>
+                </StaggerItem>
               ))}
-            </div>
+            </Stagger>
           </div>
         </div>
       </section>
@@ -251,17 +243,17 @@ export default function Landing() {
       {/* ===== CÓMO SE TRABAJA (showcase zigzag) ===== */}
       <section id="flujo" className="border-y border-clinic-border bg-clinic-bg py-20 sm:py-28">
         <div className="mx-auto max-w-6xl space-y-20 px-5">
-          <motion.div {...reveal}>
+          <Reveal y={24}>
             <div className="flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-clinic-muted">
               <span className="h-px w-10 bg-azure-500" /> Cómo se trabaja
             </div>
             <h2 className="mt-4 max-w-2xl font-logo text-4xl leading-tight text-navy-800 sm:text-5xl">
               Un día en tu clínica, <span className="text-azure-600">sin fricción</span>.
             </h2>
-          </motion.div>
+          </Reveal>
 
           {/* 01 agenda */}
-          <motion.div {...reveal} className="grid items-center gap-10 lg:grid-cols-12">
+          <Reveal y={24} className="grid items-center gap-10 lg:grid-cols-12">
             <div className="lg:col-span-5">
               <span className="font-logo text-7xl text-clinic-border">01</span>
               <h3 className="-mt-4 font-logo text-3xl text-navy-800">La mañana arranca sola</h3>
@@ -288,10 +280,10 @@ export default function Landing() {
                 ))}
               </div>
             </div>
-          </motion.div>
+          </Reveal>
 
           {/* 02 ficha + odontograma (invertido) */}
-          <motion.div {...reveal} className="grid items-center gap-10 lg:grid-cols-12">
+          <Reveal y={24} className="grid items-center gap-10 lg:grid-cols-12">
             <div className="order-1 lg:order-2 lg:col-span-5">
               <span className="font-logo text-7xl text-clinic-border">02</span>
               <h3 className="-mt-4 font-logo text-3xl text-navy-800">El hallazgo queda en la pieza</h3>
@@ -315,10 +307,10 @@ export default function Landing() {
                 </p>
               </div>
             </div>
-          </motion.div>
+          </Reveal>
 
           {/* 03 facturación */}
-          <motion.div {...reveal} className="grid items-center gap-10 lg:grid-cols-12">
+          <Reveal y={24} className="grid items-center gap-10 lg:grid-cols-12">
             <div className="lg:col-span-5">
               <span className="font-logo text-7xl text-clinic-border">03</span>
               <h3 className="-mt-4 font-logo text-3xl text-navy-800">El cobro no se escapa</h3>
@@ -349,24 +341,24 @@ export default function Landing() {
                 ))}
               </div>
             </div>
-          </motion.div>
+          </Reveal>
         </div>
       </section>
 
       {/* ===== PRECIOS (panel asimétrico) ===== */}
       <section id="precios" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
-        <motion.div {...reveal}>
+        <Reveal y={24}>
           <div className="flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-clinic-muted">
             <span className="h-px w-10 bg-azure-500" /> Precios
           </div>
           <h2 className="mt-4 font-logo text-4xl leading-tight text-navy-800 sm:text-5xl">
             Claros. <span className="text-azure-600">Sin sorpresas.</span>
           </h2>
-        </motion.div>
+        </Reveal>
 
         <div className="mt-10 grid gap-5 lg:grid-cols-12">
           {/* plan principal */}
-          <motion.div {...reveal} className="relative overflow-hidden rounded-[2rem] bg-navy-800 p-8 text-white lg:col-span-7 sm:p-10">
+          <Reveal y={24} className="relative overflow-hidden rounded-[2rem] bg-navy-800 p-8 text-white lg:col-span-7 sm:p-10">
             <span className="border-beam-light rounded-[2rem]" />
             <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-azure-500/20 blur-3xl" />
             <div className="relative">
@@ -391,29 +383,31 @@ export default function Landing() {
                 Probar gratis <ArrowRight className="h-4 w-4" />
               </a>
             </div>
-          </motion.div>
+          </Reveal>
 
           {/* planes secundarios apilados */}
-          <div className="grid gap-5 lg:col-span-5">
+          <Stagger className="grid gap-5 lg:col-span-5">
             {[
               { name: "Solo", price: "$45", per: "USD / mes", blurb: "Odontólogo independiente: 1 sillón, odontograma, agenda y facturación básica." },
               { name: "Cadena", price: "A medida", per: "", blurb: "Multi-sucursal: comisiones, laboratorio, integraciones propias y account manager." },
-            ].map((p, i) => (
-              <motion.div key={p.name} {...reveal} transition={{ ...reveal.transition, delay: i * 0.07 }} className="flex flex-col justify-between rounded-[2rem] border border-clinic-border bg-white p-7 shadow-card transition-all hover:-translate-y-1 hover:shadow-pop">
-                <div>
-                  <div className="flex items-baseline justify-between">
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-clinic-muted">Plan {p.name}</span>
-                    <span className="font-logo text-3xl text-navy-800">{p.price}<span className="ml-1 text-xs font-sans text-clinic-muted">{p.per}</span></span>
+            ].map((p) => (
+              <StaggerItem key={p.name} className="h-full">
+                <div className="flex h-full flex-col justify-between rounded-[2rem] border border-clinic-border bg-white p-7 shadow-card transition-all hover:-translate-y-1 hover:shadow-pop">
+                  <div>
+                    <div className="flex items-baseline justify-between">
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-clinic-muted">Plan {p.name}</span>
+                      <span className="font-logo text-3xl text-navy-800">{p.price}<span className="ml-1 text-xs font-sans text-clinic-muted">{p.per}</span></span>
+                    </div>
+                    <p className="mt-3 text-sm leading-relaxed text-clinic-muted">{p.blurb}</p>
                   </div>
-                  <p className="mt-3 text-sm leading-relaxed text-clinic-muted">{p.blurb}</p>
+                  <a href={appHref} className="group mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-azure-600 hover:text-azure-700">
+                    {p.price === "A medida" ? "Hablar con ventas" : "Probar gratis"}
+                    <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                  </a>
                 </div>
-                <a href={appHref} className="group mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-azure-600 hover:text-azure-700">
-                  {p.price === "A medida" ? "Hablar con ventas" : "Probar gratis"}
-                  <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                </a>
-              </motion.div>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         </div>
         <p className="mt-6 font-mono text-[10px] font-bold uppercase tracking-wide text-clinic-muted">
           Precios referenciales · Sin contratos largos · Migración de datos incluida
@@ -423,13 +417,13 @@ export default function Landing() {
       {/* ===== FAQ ===== */}
       <section className="border-t border-clinic-border bg-clinic-bg py-20 sm:py-24">
         <div className="mx-auto grid max-w-6xl gap-10 px-5 lg:grid-cols-12">
-          <motion.div {...reveal} className="lg:col-span-4">
+          <Reveal y={24} className="lg:col-span-4">
             <div className="flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-clinic-muted">
               <span className="h-px w-10 bg-azure-500" /> FAQ
             </div>
             <h2 className="mt-4 font-logo text-4xl leading-tight text-navy-800">Lo que todos preguntan.</h2>
-          </motion.div>
-          <div className="space-y-3 lg:col-span-8">
+          </Reveal>
+          <Stagger className="space-y-3 lg:col-span-8">
             {[
               { q: "¿Necesito instalar algo?", a: "No. Novudent es 100% web: navegador de computadora, tablet o celular, con tus datos seguros en la nube (Firebase)." },
               { q: "¿El odontograma marca superficies?", a: "Sí: cada pieza tiene su vista oclusal de 5 superficies (M·D·V·L·O). Marcás caries en mesial o una restauración en vestibular y queda pintado en el tablero, con autor y fecha." },
@@ -437,25 +431,27 @@ export default function Landing() {
               { q: "¿Quién crea los usuarios?", a: "Solo el administrador de la clínica, desde Configuración. Cada usuario entra con su email y contraseña, con los permisos de su rol." },
               { q: "¿Puedo probarlo gratis?", a: "Sí: la demo está abierta con datos de ejemplo y sin tarjeta. Elegí un rol y usala como si fuera tu clínica." },
             ].map((f, i) => (
-              <motion.details key={f.q} {...reveal} transition={{ ...reveal.transition, delay: i * 0.04 }} className="group rounded-2xl border border-clinic-border bg-white shadow-card">
-                <summary className="flex cursor-pointer list-none items-center gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
-                  <span className="font-mono text-xs font-bold text-azure-600">{String(i + 1).padStart(2, "0")}</span>
-                  <h3 className="flex-1 text-sm font-extrabold text-navy-800 sm:text-base">{f.q}</h3>
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-clinic-bg">
-                    <Plus className="h-3.5 w-3.5 text-clinic-muted transition-transform duration-300 group-open:rotate-45" />
-                  </span>
-                </summary>
-                <p className="px-5 pb-5 pl-[3.25rem] text-sm leading-relaxed text-clinic-muted">{f.a}</p>
-              </motion.details>
+              <StaggerItem key={f.q}>
+                <details className="group rounded-2xl border border-clinic-border bg-white shadow-card">
+                  <summary className="flex cursor-pointer list-none items-center gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
+                    <span className="font-mono text-xs font-bold text-azure-600">{String(i + 1).padStart(2, "0")}</span>
+                    <h3 className="flex-1 text-sm font-extrabold text-navy-800 sm:text-base">{f.q}</h3>
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-clinic-bg">
+                      <Plus className="h-3.5 w-3.5 text-clinic-muted transition-transform duration-300 group-open:rotate-45" />
+                    </span>
+                  </summary>
+                  <p className="px-5 pb-5 pl-[3.25rem] text-sm leading-relaxed text-clinic-muted">{f.a}</p>
+                </details>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         </div>
       </section>
 
       {/* ===== CTA FINAL ===== */}
       <section className="bg-navy-800">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 sm:py-20 lg:grid-cols-12">
-          <motion.div {...reveal} className="lg:col-span-8">
+          <Reveal y={24} className="lg:col-span-8">
             <h2 className="font-logo text-4xl leading-tight text-white sm:text-5xl">
               La demo está lista.
               <br /><span className="text-azure-200">Tu clínica también.</span>
@@ -468,14 +464,16 @@ export default function Landing() {
               {session ? "Ir al panel" : "Probar la demo gratis"}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-          </motion.div>
-          <motion.div {...reveal} aria-hidden className="hidden justify-end gap-5 opacity-40 lg:col-span-4 lg:flex">
-            {[{ n: "13" }, { n: "11", rec: { condition: "restaurado" as const, updatedAt: "", updatedBy: "" } }, { n: "16" }].map((t) => (
-              <span key={t.n} className="[&_svg]:h-24 [&_svg]:w-14 [&_*]:!stroke-white/60">
-                <ToothGlyph n={t.n} rec={t.rec} upper />
-              </span>
-            ))}
-          </motion.div>
+          </Reveal>
+          <Reveal y={24} className="hidden justify-end gap-5 opacity-40 lg:col-span-4 lg:flex">
+            <div aria-hidden className="flex gap-5">
+              {[{ n: "13" }, { n: "11", rec: { condition: "restaurado" as const, updatedAt: "", updatedBy: "" } }, { n: "16" }].map((t) => (
+                <span key={t.n} className="[&_svg]:h-24 [&_svg]:w-14 [&_*]:!stroke-white/60">
+                  <ToothGlyph n={t.n} rec={t.rec} upper />
+                </span>
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 

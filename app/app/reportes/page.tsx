@@ -10,6 +10,7 @@ import { Card, Btn, Badge } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { ReportsIAPanel } from "@/components/NovudentIA";
 import { CashflowAreaChart, ProductionBarsChart } from "@/components/Charts";
+import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 
 /** Descarga CSV con BOM UTF-8 (abre directo en Excel) */
 function downloadCsv(filename: string, rows: (string | number)[][]) {
@@ -187,33 +188,42 @@ export default function ReportsPage() {
       </div>
 
       {/* Novudent IA — pregúntale a tus datos */}
-      <ReportsIAPanel datos={iaDatos} />
+      <Reveal><ReportsIAPanel datos={iaDatos} /></Reveal>
 
       {/* KPIs 30 días */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StaggerItem className="block h-full">
         <Card className="p-5">
           <div className="flex items-center gap-2 text-state-ok"><TrendingUp className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Cobrado 30d</span></div>
           <div className="mt-1 font-mono text-xl font-extrabold text-clinic-text">{fmtGs(data.collected)}</div>
           <div className="mt-1 text-[11px] text-clinic-muted">{data.pays.length} pagos</div>
         </Card>
+        </StaggerItem>
+        <StaggerItem className="block h-full">
         <Card className="p-5">
           <div className="flex items-center gap-2 text-state-err"><TrendingDown className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Gastos 30d</span></div>
           <div className="mt-1 font-mono text-xl font-extrabold text-clinic-text">{fmtGs(data.spent)}</div>
           <div className="mt-1 text-[11px] text-clinic-muted">{data.exps.length} registros</div>
         </Card>
+        </StaggerItem>
+        <StaggerItem className="block h-full">
         <Card className="p-5">
           <div className="flex items-center gap-2 text-azure-600"><Scale className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Resultado</span></div>
           <div className={`mt-1 font-mono text-xl font-extrabold ${data.collected - data.spent >= 0 ? "text-state-ok" : "text-state-err"}`}>{fmtGs(data.collected - data.spent)}</div>
           <div className="mt-1 text-[11px] text-clinic-muted">cobrado − gastos</div>
         </Card>
+        </StaggerItem>
+        <StaggerItem className="block h-full">
         <Card className="p-5">
           <div className="flex items-center gap-2 text-azure-600"><Percent className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Aceptación</span></div>
           <div className="mt-1 font-mono text-xl font-extrabold text-clinic-text">{data.acceptRate}%</div>
           <div className="mt-1 text-[11px] text-clinic-muted">{data.accepted.length} de {data.presented.length} presupuestos</div>
         </Card>
-      </div>
+        </StaggerItem>
+      </Stagger>
 
       {/* flujo de caja 30 días — cobrado vs gastos */}
+      <Reveal>
       <Card className="p-5">
         <h2 className="font-extrabold text-clinic-text">Flujo de caja — últimos 30 días</h2>
         <p className="text-[11px] text-clinic-muted">Cobros y gastos por día. Pasá el mouse para ver el detalle.</p>
@@ -221,8 +231,9 @@ export default function ReportsPage() {
           <CashflowAreaChart data={data.cashflow} />
         </div>
       </Card>
+      </Reveal>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <Reveal className="grid gap-5 lg:grid-cols-2">
         {/* producción + comisiones */}
         <Card className="p-5">
           <h2 className="font-extrabold text-clinic-text">Producción y comisiones por profesional</h2>
@@ -266,9 +277,10 @@ export default function ReportsPage() {
             Las tareas de cobro con recordatorio por WhatsApp están en <a className="font-bold text-azure-700" href="/app/caja">Caja → Cuentas por cobrar</a>.
           </p>
         </Card>
-      </div>
+      </Reveal>
 
       {/* NPS — encuestas vía Botika */}
+      <Reveal>
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -317,8 +329,10 @@ export default function ReportsPage() {
           </div>
         )}
       </Card>
+      </Reveal>
 
       {/* exportables */}
+      <Reveal>
       <Card className="p-5">
         <div className="flex items-center gap-2"><FileSpreadsheet className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Reportes descargables (Excel)</h2></div>
         <p className="text-[11px] text-clinic-muted">CSV con codificación UTF-8 — se abren directamente en Excel o Google Sheets.</p>
@@ -330,6 +344,7 @@ export default function ReportsPage() {
           ))}
         </div>
       </Card>
+      </Reveal>
     </div>
   );
 }

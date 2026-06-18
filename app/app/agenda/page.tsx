@@ -9,6 +9,7 @@ import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } fro
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import type { Appointment, AppointmentStatus } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, StatusBadge, Badge, Empty } from "@/components/ui";
+import { Reveal } from "@/components/motion";
 
 /* ===== helpers de semana ===== */
 function mondayOf(d: Date): Date {
@@ -88,7 +89,7 @@ export default function AgendaPage() {
   return (
     <div className="space-y-5">
       {/* Header: navegación + toggle de vista */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <Reveal className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-clinic-text">Agenda</h1>
           <p className="text-sm text-clinic-muted">
@@ -129,8 +130,9 @@ export default function AgendaPage() {
             <Plus className="h-4 w-4" /> Nueva cita
           </Btn>
         </div>
-      </div>
+      </Reveal>
 
+      <Reveal>
       {view === "calendar" ? (
         /* ===== VISTA CALENDARIO SEMANAL (00:00–23:59) ===== */
         <Card className="overflow-hidden">
@@ -263,6 +265,7 @@ export default function AgendaPage() {
           )}
         </Card>
       )}
+      </Reveal>
 
       {/* Modal VER */}
       {viewing && (

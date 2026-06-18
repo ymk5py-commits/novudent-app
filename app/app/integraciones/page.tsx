@@ -11,6 +11,7 @@ import { DEFAULT_TEMPLATES, AUTOMATION_LABEL, BOTIKA_TEMPLATE_VARS, type BotikaA
 import type { OutboxTask, OutboxTaskType, BotikaConfig } from "@/lib/types";
 import { Card, Btn, Badge, Empty, Field, inputCls } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
+import { Reveal } from "@/components/motion";
 
 /* ===== Editor de plantillas por automatización ===== */
 function TemplatesEditor({ botika, onSave }: { botika: BotikaConfig; onSave: (t: BotikaConfig["templates"]) => void }) {
@@ -136,6 +137,7 @@ export default function IntegrationsPage() {
       </div>
 
       {/* ===== Botika ===== */}
+      <Reveal>
       <Card className="relative overflow-hidden p-6">
         <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-azure-50 blur-2xl" />
         <div className="relative flex flex-wrap items-start justify-between gap-4">
@@ -198,11 +200,13 @@ export default function IntegrationsPage() {
           aparece solo en tu agenda y en las fichas — <b>en vivo, sin recargar</b>. No tenés que hacer nada más.
         </p>
       </Card>
+      </Reveal>
 
       {/* ===== Plantillas de mensajes ===== */}
-      {botika.connected && <TemplatesEditor botika={botika} onSave={(templates) => setBotika({ templates })} />}
+      {botika.connected && <Reveal><TemplatesEditor botika={botika} onSave={(templates) => setBotika({ templates })} /></Reveal>}
 
       {/* ===== Cola de mensajería (outbox) ===== */}
+      <Reveal>
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -269,6 +273,7 @@ export default function IntegrationsPage() {
           </ul>
         )}
       </Card>
+      </Reveal>
     </div>
   );
 }
