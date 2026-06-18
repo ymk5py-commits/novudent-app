@@ -11,11 +11,12 @@ export type PlanId = "solo" | "clinica" | "cadena";
 
 /** Módulos/capacidades que se prenden o apagan según el plan */
 export type PlanFeature =
-  | "caja"          // financiamiento, morosidad y cuentas por cobrar
-  | "inventario"    // stock de insumos
-  | "reportes"      // informes de gestión + exportables
-  | "integraciones" // Botika (WhatsApp con IA)
-  | "ia";           // Novudent IA: nota de voz, resumen, contralor, reportes IA
+  | "caja"           // financiamiento, morosidad y cuentas por cobrar
+  | "inventario"     // stock de insumos
+  | "reportes"       // informes de gestión + exportables
+  | "integraciones"  // Botika (WhatsApp con IA)
+  | "ia"             // Novudent IA: nota de voz, resumen, contralor, reportes IA
+  | "radiografia_ia"; // Análisis IA de radiografías (panorámica/bitewing/periapical)
 
 export interface PlanDef {
   id: PlanId;
@@ -48,7 +49,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     tagline: "Para clínicas en crecimiento: hasta 5 sillones con todo Novudent adentro.",
     maxDentists: 5,
     maxUsers: 12,
-    features: ["caja", "inventario", "reportes", "integraciones", "ia"],
+    features: ["caja", "inventario", "reportes", "integraciones", "ia", "radiografia_ia"],
     bullets: ["Hasta 5 profesionales", "Financiamiento y morosidad", "Inventario e informes", "Novudent IA completa", "Botika (WhatsApp IA)", "Soporte prioritario"],
   },
   cadena: {
@@ -58,18 +59,19 @@ export const PLANS: Record<PlanId, PlanDef> = {
     tagline: "Multi-sucursal: comisiones, laboratorio, integraciones propias y account manager.",
     maxDentists: Infinity,
     maxUsers: Infinity,
-    features: ["caja", "inventario", "reportes", "integraciones", "ia"],
+    features: ["caja", "inventario", "reportes", "integraciones", "ia", "radiografia_ia"],
     bullets: ["Profesionales ilimitados", "Todo el Plan Clínica", "Integraciones a medida", "Account manager"],
   },
 };
 
-/** Normaliza el plan guardado (clínicas viejas sin campo → clinica) */
-export function planOf(clinic?: { plan?: string } | null): PlanDef {
-  const id = (clinic?.plan ?? "clinica") as PlanId;
+/** Normaliza el plan guardado (clínicas viejas sin campo → clinica).
+ *  Acepta un objeto { plan? } o directamente un PlanId string. */
+export function planOf(clinic?: { plan?: string } | string | null): PlanDef {
+  const id = (typeof clinic === "string" ? clinic : (clinic?.plan ?? "clinica")) as PlanId;
   return PLANS[id] ?? PLANS.clinica;
 }
 
-export function planHas(clinic: { plan?: string } | null | undefined, feature: PlanFeature): boolean {
+export function planHas(clinic: { plan?: string } | string | null | undefined, feature: PlanFeature): boolean {
   return planOf(clinic).features.includes(feature);
 }
 
