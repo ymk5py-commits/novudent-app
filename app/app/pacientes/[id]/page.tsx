@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2, Smile,
-  FileSpreadsheet, Pill, FolderOpen, Braces, Activity, ScanLine,
+  FileSpreadsheet, Pill, FolderOpen, Braces, Activity, ScanLine, FileSignature,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fullName } from "@/lib/store";
 import { recordTotal } from "@/lib/billing";
@@ -15,13 +15,14 @@ import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, FlagBadge, Empty
 import Odontogram from "@/components/Odontogram";
 import { BudgetsTab, RxTab, FilesTab, OrthoTab } from "@/components/PatientExtras";
 import { RadiografiasTab } from "@/components/Radiografias";
+import { ConsentimientosTab } from "@/components/Consentimientos";
 import { VoiceNoteButton, PatientBriefButton } from "@/components/NovudentIA";
 import { useClinicPlan } from "@/components/PlanGate";
 import Periodontogram from "@/components/Periodontogram";
 import RecoveryCard from "@/components/RecoveryCard";
 import { Reveal } from "@/components/motion";
 
-type Tab = "resumen" | "odontograma" | "periodoncia" | "historial" | "presupuestos" | "recetas" | "archivos" | "radiografias" | "ortodoncia" | "formularios" | "facturacion";
+type Tab = "resumen" | "odontograma" | "periodoncia" | "historial" | "presupuestos" | "recetas" | "archivos" | "radiografias" | "ortodoncia" | "consentimientos" | "formularios" | "facturacion";
 
 export default function PatientProfile() {
   const { id } = useParams<{ id: string }>();
@@ -54,6 +55,7 @@ export default function PatientProfile() {
     { key: "archivos", label: "Archivos", icon: FolderOpen, badge: p.files?.length || undefined },
     { key: "radiografias", label: "Radiografías", icon: ScanLine },
     { key: "ortodoncia", label: "Ortodoncia", icon: Braces },
+    { key: "consentimientos", label: "Consentimientos", icon: FileSignature },
     { key: "formularios", label: "Formularios", icon: FileText, badge: pendingForms.length || undefined },
     { key: "facturacion", label: "Facturación", icon: Receipt },
   ];
@@ -249,6 +251,7 @@ export default function PatientProfile() {
       {tab === "archivos" && <Reveal><FilesTab patient={p} /></Reveal>}
       {tab === "radiografias" && <Reveal><RadiografiasTab patient={p} /></Reveal>}
       {tab === "ortodoncia" && <Reveal><OrthoTab patient={p} /></Reveal>}
+      {tab === "consentimientos" && <Reveal><ConsentimientosTab patient={p} /></Reveal>}
 
       {/* ===== FORMULARIOS (Engagement) ===== */}
       {tab === "formularios" && (
