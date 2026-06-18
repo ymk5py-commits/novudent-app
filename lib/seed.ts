@@ -319,6 +319,7 @@ export function buildSeed(): DB {
     waitlist,
     outbox,
     recoveryMonitors: [],
+    radiographs: [],
     onboarding: { usersCreated: true, servicesDefined: true, tourDone: false },
   };
 }

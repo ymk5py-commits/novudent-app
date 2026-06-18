@@ -27,7 +27,7 @@ async function ensureAuth() {
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord,
   Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
-  OutboxTask, OutboxResult, RecoveryMonitor,
+  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec,
 } from "./types";
 import { buildSeed } from "./seed";
 import { submitToBilling, releaseFromHold } from "./billing";
@@ -93,9 +93,9 @@ async function loadFirestore(): Promise<DB> {
   }
   const meta = clinicSnap.data() as any;
   const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
-    col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"),
+    col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -112,6 +112,7 @@ async function loadFirestore(): Promise<DB> {
     waitlist: waitlist.docs.map((d) => d.data() as WaitlistEntry),
     outbox: outbox.docs.map((d) => d.data() as OutboxTask),
     recoveryMonitors: recoveryMonitors.docs.map((d) => d.data() as RecoveryMonitor),
+    radiographs: radiographs.docs.map((d) => d.data() as RadiographRec),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   /* Upgrade v3: bases creadas antes de los módulos nuevos — sembramos
@@ -353,6 +354,10 @@ interface Ctx {
   /* — Monitor de recuperación post-operatoria — */
   addRecoveryMonitor: (m: RecoveryMonitor) => void;
   resolveRecoveryMonitor: (id: string, by: string) => void;
+  /* — Análisis IA de radiografías — */
+  addRadiograph: (r: RadiographRec) => void;
+  updateRadiograph: (r: RadiographRec) => void;
+  deleteRadiograph: (id: string) => void;
 }
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -773,6 +778,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const up = { ...mon, status: "completado" as const, resolvedAt: new Date().toISOString(), resolvedBy: by };
         persist({ ...db, recoveryMonitors: db.recoveryMonitors.map((m) => (m.id === id ? up : m)) });
         fsSave("recoveryMonitors", id, up);
+      },
+      /* — Análisis IA de radiografías — */
+      addRadiograph: (r: RadiographRec) => {
+        persist({ ...db, radiographs: [r, ...db.radiographs] });
+        fsSave("radiographs", r.id, r);
+      },
+      updateRadiograph: (r: RadiographRec) => {
+        persist({ ...db, radiographs: db.radiographs.map((x) => (x.id === r.id ? r : x)) });
+        fsSave("radiographs", r.id, r);
+      },
+      deleteRadiograph: (id: string) => {
+        persist({ ...db, radiographs: db.radiographs.filter((x) => x.id !== id) });
+        fsDelete("radiographs", id);
       },
       /* — Negociación de presupuestos — */
       confirmNegociacion: (budgetId, by) => {
