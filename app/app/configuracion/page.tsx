@@ -2,7 +2,7 @@
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useState } from "react";
-import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, MessageSquareText, UploadCloud, Percent, HandCoins } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles } from "lucide-react";
 import { useStore, fmtGs } from "@/lib/store";
 import { can, ROLE_LABEL } from "@/lib/rbac";
 import type { Role, User, Procedure, BotikaConfig } from "@/lib/types";
@@ -285,6 +285,25 @@ export default function ConfigPage() {
           </table>
           </div>
         )}
+      </Card>
+      </Reveal>
+
+      {/* Servicios adicionales */}
+      <Reveal>
+      <Card className="p-5">
+        <div className="mb-3 flex items-center gap-2"><Sparkles className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Servicios adicionales</h2></div>
+        <p className="mb-4 text-xs text-clinic-muted">Capacidades extra de Novudent según tu plan. La activación real vive dentro de la ficha del paciente.</p>
+        <div className="flex items-start gap-3 rounded-2xl border border-clinic-border bg-clinic-bg p-4">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-azure-100 text-azure-700"><ScanLine className="h-5 w-5" /></span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-bold text-clinic-text">Análisis IA de radiografías</span>
+              <Badge tone={plan.features.includes("radiografia_ia") ? "ok" : "muted"}>{plan.features.includes("radiografia_ia") ? "Activo" : "No incluido en tu plan"}</Badge>
+            </div>
+            <p className="mt-0.5 text-xs leading-relaxed text-clinic-muted">Lectura asistida por IA de panorámicas, bitewing y periapicales — editable por el profesional.</p>
+          </div>
+        </div>
+        {/* Próximamente: Firma electrónica · WhatsApp */}
       </Card>
       </Reveal>
 
