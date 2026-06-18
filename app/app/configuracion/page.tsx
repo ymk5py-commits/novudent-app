@@ -2,10 +2,10 @@
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useState } from "react";
-import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature } from "lucide-react";
 import { useStore, fmtGs } from "@/lib/store";
 import { can, ROLE_LABEL } from "@/lib/rbac";
-import type { Role, User, Procedure, BotikaConfig } from "@/lib/types";
+import type { Role, User, Procedure, BotikaConfig, ConsentTemplate } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
 import DentalinkImport from "@/components/DentalinkImport";
@@ -18,7 +18,7 @@ const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> =
 };
 
 export default function ConfigPage() {
-  const { db, session, upsertProcedure, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser } = useStore();
+  const { db, session, upsertProcedure, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, saveConsentTemplates } = useStore();
   const plan = useClinicPlan();
   const [addingUser, setAddingUser] = useState(false);
   const [addingProc, setAddingProc] = useState(false);
@@ -293,18 +293,37 @@ export default function ConfigPage() {
       <Card className="p-5">
         <div className="mb-3 flex items-center gap-2"><Sparkles className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Servicios adicionales</h2></div>
         <p className="mb-4 text-xs text-clinic-muted">Capacidades extra de Novudent según tu plan. La activación real vive dentro de la ficha del paciente.</p>
-        <div className="flex items-start gap-3 rounded-2xl border border-clinic-border bg-clinic-bg p-4">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-azure-100 text-azure-700"><ScanLine className="h-5 w-5" /></span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-bold text-clinic-text">Análisis IA de radiografías</span>
-              <Badge tone={plan.features.includes("radiografia_ia") ? "ok" : "muted"}>{plan.features.includes("radiografia_ia") ? "Activo" : "No incluido en tu plan"}</Badge>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-start gap-3 rounded-2xl border border-clinic-border bg-clinic-bg p-4">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-azure-100 text-azure-700"><ScanLine className="h-5 w-5" /></span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold text-clinic-text">Análisis IA de radiografías</span>
+                <Badge tone={plan.features.includes("radiografia_ia") ? "ok" : "muted"}>{plan.features.includes("radiografia_ia") ? "Activo" : "No incluido en tu plan"}</Badge>
+              </div>
+              <p className="mt-0.5 text-xs leading-relaxed text-clinic-muted">Lectura asistida por IA de panorámicas, bitewing y periapicales — editable por el profesional.</p>
             </div>
-            <p className="mt-0.5 text-xs leading-relaxed text-clinic-muted">Lectura asistida por IA de panorámicas, bitewing y periapicales — editable por el profesional.</p>
+          </div>
+          <div className="flex items-start gap-3 rounded-2xl border border-clinic-border bg-clinic-bg p-4">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-azure-100 text-azure-700"><FileSignature className="h-5 w-5" /></span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold text-clinic-text">Firma electrónica</span>
+                <Badge tone={plan.features.includes("firma_electronica") ? "ok" : "muted"}>{plan.features.includes("firma_electronica") ? "Activo" : "No incluido en tu plan"}</Badge>
+              </div>
+              <p className="mt-0.5 text-xs leading-relaxed text-clinic-muted">Consentimientos firmados en el consultorio o por QR desde el celular del paciente — guardados e imprimibles.</p>
+            </div>
           </div>
         </div>
-        {/* Próximamente: Firma electrónica · WhatsApp */}
       </Card>
+      </Reveal>
+
+      {/* Plantillas de consentimiento */}
+      <Reveal>
+      <ConsentTemplatesCard
+        templates={clinic.config.consentTemplates ?? []}
+        onSave={saveConsentTemplates}
+      />
       </Reveal>
 
       {addingUser && (
@@ -395,6 +414,68 @@ function NewUser({
         </div>
       </form>
     </Modal>
+  );
+}
+
+function ConsentTemplatesCard({ templates, onSave }: { templates: ConsentTemplate[]; onSave: (list: ConsentTemplate[]) => void }) {
+  // Copia editable local; se persiste con "Guardar plantillas" (mismo patrón que
+  // la plantilla de recordatorio). Agregar/borrar mutan la copia local también,
+  // así un solo guardado consolida todos los cambios.
+  const [list, setList] = useState<ConsentTemplate[]>(templates);
+  const dirty = JSON.stringify(list) !== JSON.stringify(templates);
+
+  const update = (id: string, patch: Partial<ConsentTemplate>) =>
+    setList((xs) => xs.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  const remove = (id: string) => setList((xs) => xs.filter((t) => t.id !== id));
+  const add = () =>
+    setList((xs) => [...xs, { id: crypto.randomUUID(), title: "Nuevo consentimiento", body: "" }]);
+
+  return (
+    <Card className="p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2"><FileSignature className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Plantillas de consentimiento</h2></div>
+        <Btn variant="outline" onClick={add}><Plus className="h-3.5 w-3.5" /> Nueva plantilla</Btn>
+      </div>
+      <p className="mb-4 text-xs leading-relaxed text-clinic-muted">
+        Textos base que la clínica hace firmar al paciente (en el consultorio o por QR). Al crear un consentimiento
+        desde la ficha se guarda una copia del texto, así editar una plantilla no altera los documentos ya firmados.
+      </p>
+      {list.length === 0 ? (
+        <Empty title="Sin plantillas" desc="Agregá una plantilla para empezar a hacer firmar consentimientos." />
+      ) : (
+        <div className="space-y-3">
+          {list.map((t) => (
+            <div key={t.id} className="rounded-2xl border border-clinic-border bg-clinic-bg p-4">
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Field label="Título">
+                    <input className={inputCls} value={t.title} onChange={(e) => update(t.id, { title: e.target.value })} placeholder="Ej.: Consentimiento informado general" />
+                  </Field>
+                </div>
+                <button
+                  onClick={() => remove(t.id)}
+                  className="mb-1 grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-clinic-border text-clinic-muted hover:border-state-err hover:text-state-err"
+                  aria-label={`Eliminar ${t.title}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="mt-2">
+                <Field label="Cuerpo del consentimiento">
+                  <textarea rows={4} className={inputCls} value={t.body} onChange={(e) => update(t.id, { body: e.target.value })} placeholder="Texto que el paciente lee y firma…" />
+                </Field>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {dirty && (
+        <div className="mt-3 flex justify-end gap-2">
+          <Btn variant="outline" onClick={() => setList(templates)}>Descartar</Btn>
+          <Btn onClick={() => onSave(list)}>Guardar plantillas</Btn>
+        </div>
+      )}
+    </Card>
   );
 }
 
