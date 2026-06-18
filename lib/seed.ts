@@ -1,4 +1,4 @@
-import type { DB, Appointment, Patient, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, OutboxTask } from "./types";
+import type { DB, Appointment, Patient, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, OutboxTask, ConsentTemplate } from "./types";
 
 /** Devuelve el lunes de la semana actual a las 00:00 */
 function monday(): Date {
@@ -248,6 +248,42 @@ export function buildSeed(): DB {
             automations: { confirmCita: true, nps: true, cobranza: true, reagendar: true, negociacion: true },
             negociacion: { diasGatillo: 5, maxIntentos: 2, financiacion: { maxCuotas: 3, sinInteres: true, anticipoMinPct: 0 } },
           },
+          consentTemplates: [
+            {
+              id: "ct_consentimiento_general",
+              title: "Consentimiento informado general",
+              body: `Yo, el/la abajo firmante, paciente de esta clínica odontológica, declaro haber sido informado/a de manera clara y comprensible sobre mi estado de salud bucal, el diagnóstico realizado, los tratamientos propuestos y sus posibles alternativas, así como los riesgos, beneficios y eventuales complicaciones inherentes a los procedimientos indicados.
+
+He tenido la oportunidad de realizar todas las preguntas que he considerado oportunas, las cuales han sido respondidas satisfactoriamente por el/la profesional tratante.
+
+Entiendo que el equipo profesional puede presentarse ante circunstancias imprevistas durante el desarrollo del tratamiento que requieran decisiones clínicas en el momento, actuando siempre en beneficio de mi salud.
+
+Doy mi consentimiento libre, voluntario e informado para que se me realicen los procedimientos diagnósticos y terapéuticos que el/la profesional tratante considere necesarios según su criterio clínico.
+
+Asimismo, autorizo el uso de mis datos clínicos con fines estrictamente asistenciales, garantizando la confidencialidad de los mismos conforme a la normativa vigente en materia de protección de datos personales.
+
+Me reservo el derecho de revocar este consentimiento en cualquier momento, entendiéndose que dicha revocación no tendrá efectos retroactivos sobre los procedimientos ya realizados.`,
+            } satisfies ConsentTemplate,
+            {
+              id: "ct_consentimiento_odontologico",
+              title: "Consentimiento para tratamiento odontológico",
+              body: `Yo, el/la abajo firmante, declaro que he sido informado/a detalladamente sobre el tratamiento odontológico que se me realizará, incluyendo:
+
+1. DIAGNÓSTICO Y TRATAMIENTO PROPUESTO: El/la profesional me ha explicado la condición clínica detectada, los procedimientos a realizar (restauraciones, extracciones, endodoncias, cirugías u otros según indique el plan de tratamiento), y el tiempo estimado de atención.
+
+2. RIESGOS ESPECÍFICOS: Comprendo que los tratamientos dentales pueden tener riesgos como sangrado, inflamación, sensibilidad postoperatoria, necesidad de tratamientos adicionales, reacciones a anestésicos, o complicaciones propias de cada procedimiento, cuya probabilidad es baja pero no nula.
+
+3. ANESTESIA LOCAL: Autorizo la aplicación de anestesia local en las dosis necesarias para realizar el tratamiento sin dolor. He comunicado al profesional mis antecedentes de alud, alergias y medicaciones actuales.
+
+4. RADIOGRAFÍAS E IMÁGENES: Autorizo la toma de radiografías y fotografías clínicas necesarias para el diagnóstico y seguimiento del tratamiento, las cuales serán resguardadas en mi historia clínica.
+
+5. ALTERNATIVAS: He sido informado/a de que existen alternativas terapéuticas y que la no realización del tratamiento podría implicar el agravamiento de la condición diagnosticada.
+
+6. POSTOPERATORIO: He recibido las instrucciones de cuidado postoperatorio y me comprometo a seguirlas para favorecer mi recuperación.
+
+Doy libremente mi consentimiento para la realización del tratamiento odontológico planificado, habiendo comprendido toda la información proporcionada.`,
+            } satisfies ConsentTemplate,
+          ],
         },
       },
     ],
@@ -320,6 +356,7 @@ export function buildSeed(): DB {
     outbox,
     recoveryMonitors: [],
     radiographs: [],
+    signatures: [],
     onboarding: { usersCreated: true, servicesDefined: true, tourDone: false },
   };
 }

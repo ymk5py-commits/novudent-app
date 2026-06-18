@@ -25,6 +25,8 @@ export interface Clinic {
     reminderTemplate?: string;
     /** Integración Botika (bot de WhatsApp con IA) */
     botika?: BotikaConfig;
+    /** Plantillas de consentimiento informado configurables por la clínica */
+    consentTemplates?: ConsentTemplate[];
   };
 }
 
@@ -326,6 +328,31 @@ export interface PatientFileRec {
   by: string;
 }
 
+/* ===== Firma electrónica / consentimientos ===== */
+export interface ConsentTemplate {
+  id: string;
+  title: string;
+  body: string;
+}
+
+export type SignatureStatus = "pendiente" | "firmado" | "anulado";
+
+export interface SignatureDoc {
+  id: string;
+  patientId: string;
+  templateId?: string;
+  title: string;
+  body: string;            // snapshot inmutable
+  status: SignatureStatus;
+  token: string;
+  signatureImage?: string; // PNG base64
+  signedAt?: string;
+  signedByName?: string;
+  channel?: "consultorio" | "remoto";
+  createdBy: string;
+  createdAt: string;
+}
+
 /* ===== Análisis IA de radiografías ===== */
 export type RxKind = "panoramica" | "bitewing" | "periapical" | "otra";
 export type RxSeverity = "observacion" | "leve" | "moderado" | "severo";
@@ -492,5 +519,6 @@ export interface DB {
   outbox: OutboxTask[];
   recoveryMonitors: RecoveryMonitor[];
   radiographs: RadiographRec[];
+  signatures: SignatureDoc[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }
