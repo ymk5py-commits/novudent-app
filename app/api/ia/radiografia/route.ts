@@ -7,7 +7,7 @@ import { validateRadiografiaAI } from "@/lib/radiografia";
  * Análisis IA de radiografías — Novudent IA.
  * POST { image: base64, mimeType, kind } → { ok, findings, summary, patientExplanation, aiModel }
  * La key de Gemini vive SOLO acá (server). Es apoyo, no diagnóstico.
- * Env: GEMINI_API_KEY, GEMINI_VISION_MODEL (default gemini-2.5-flash).
+ * Env: GEMINI_API_KEY, GEMINI_VISION_MODEL (default gemini-2.5-pro).
  */
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -28,6 +28,27 @@ Reglas:
 - "severity": uno de "observacion","leve","moderado","severo".
 - No inventes hallazgos. Si la imagen no es una radiografía dental legible: {"findings":[],"summary":"","patientExplanation":""}.
 - Esto es APOYO al diagnóstico, no reemplaza al profesional.`;
+
+/** Parse JSON tolerante: directo, o extrayendo el primer bloque {...} si el modelo
+ *  agregó texto/markdown. Devuelve undefined si no hay JSON parseable. */
+function parseJsonLoose(raw: string): unknown {
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    /* probamos extraer el bloque */
+  }
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(cleaned.slice(start, end + 1));
+    } catch {
+      /* sin suerte */
+    }
+  }
+  return undefined;
+}
 
 export async function POST(req: NextRequest) {
   let _user;
@@ -62,7 +83,7 @@ export async function POST(req: NextRequest) {
   }
   const mime = String(body.mimeType || "image/jpeg").split(";")[0].trim();
 
-  const model = process.env.GEMINI_VISION_MODEL || "gemini-2.5-flash";
+  const model = process.env.GEMINI_VISION_MODEL || "gemini-2.5-pro";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   try {
@@ -71,9 +92,10 @@ export async function POST(req: NextRequest) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: mime, data: b64 } }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
+        // responseMimeType fuerza JSON válido (sin markdown ni prosa) → evita los 422.
+        generationConfig: { temperature: 0.2, maxOutputTokens: 4096, responseMimeType: "application/json" },
       }),
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(60_000),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -82,12 +104,18 @@ export async function POST(req: NextRequest) {
     }
     const raw: string =
       data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") || "";
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      console.error("[Radiografia] JSON parse error. Raw:", cleaned.slice(0, 300));
+    // Respuesta vacía (p.ej. bloqueo de seguridad o truncado) → mensaje claro.
+    if (!raw.trim()) {
+      const reason = data?.candidates?.[0]?.finishReason || data?.promptFeedback?.blockReason || "desconocido";
+      console.error("[Radiografia] respuesta vacía. finishReason:", reason);
+      return NextResponse.json(
+        { ok: false, error: "El modelo no devolvió un análisis para esta imagen. Probá con otra radiografía o de nuevo." },
+        { status: 422 }
+      );
+    }
+    const parsed = parseJsonLoose(raw);
+    if (parsed === undefined) {
+      console.error("[Radiografia] JSON parse error. Raw:", raw.slice(0, 400));
       return NextResponse.json({ ok: false, error: "No se pudo interpretar el análisis. Intentá de nuevo." }, { status: 422 });
     }
     const result = validateRadiografiaAI(parsed);
