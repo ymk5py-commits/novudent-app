@@ -120,6 +120,12 @@ export interface Patient {
   email?: string;
   birthDate?: string;
   insurer?: string;
+  /** Foto del paciente (data URL base64, redimensionada) */
+  photo?: string;
+  /** Datos médicos destacados de la cabecera (estilo Dentalink) */
+  medicalAlerts?: string;
+  conditions?: string;
+  medications?: string;
   /* Flags de engagement (íconos del Patient Finder) */
   forms: PatientForm[];
   historyUpdatePending: boolean;

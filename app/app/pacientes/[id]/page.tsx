@@ -1,16 +1,17 @@
 "use client";
 /** Perfil del paciente: Resumen · Odontograma · Historial (EMR) · Presupuestos · Recetas ·
  *  Archivos · Ortodoncia · Formularios (pencil-flow) · Facturación. */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams } from "next/navigation";
 import {
   FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2, Smile,
-  FileSpreadsheet, Pill, FolderOpen, Braces, Activity, ScanLine, FileSignature,
+  FileSpreadsheet, Pill, FolderOpen, Braces, Activity, ScanLine, FileSignature, Camera, AlertTriangle, HeartPulse,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fullName } from "@/lib/store";
 import { recordTotal } from "@/lib/billing";
+import { resizeToDataUrl } from "@/lib/image";
 import { can } from "@/lib/rbac";
-import type { EmrNote, PatientForm } from "@/lib/types";
+import type { EmrNote, PatientForm, Patient } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, FlagBadge, Empty } from "@/components/ui";
 import Odontogram from "@/components/Odontogram";
 import { BudgetsTab, RxTab, FilesTab, OrthoTab } from "@/components/PatientExtras";
@@ -26,13 +27,15 @@ type Tab = "resumen" | "odontograma" | "periodoncia" | "historial" | "presupuest
 
 export default function PatientProfile() {
   const { id } = useParams<{ id: string }>();
-  const { db, session, completeForm, addEmrNote, addPerioSession, setTooth, markHistoryUpdate } = useStore();
+  const { db, session, completeForm, addEmrNote, addPerioSession, setTooth, markHistoryUpdate, upsertPatient } = useStore();
   const hasIA = useClinicPlan().features.includes("ia"); // Novudent IA: Plan Clínica+
   const [tab, setTab] = useState<Tab>("resumen");
   const [fillingForm, setFillingForm] = useState<PatientForm | null>(null);
   const [writingNote, setWritingNote] = useState(false);
   const [clipOpen, setClipOpen] = useState(false);
   const [clipDate, setClipDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [medOpen, setMedOpen] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const p = db.patients.find((x) => x.id === id);
   const appts = useMemo(() => db.appointments.filter((a) => a.patientId === id).sort((a, b) => b.start.localeCompare(a.start)), [db.appointments, id]);
@@ -43,6 +46,19 @@ export default function PatientProfile() {
 
   const pendingForms = p.forms.filter((f) => f.status === "pendiente");
   const canForms = can(session.role, "engagement.forms");
+  const canEditPatient = canForms || can(session.role, "emr.write");
+  const age = p.birthDate ? Math.max(0, Math.floor((Date.now() - new Date(p.birthDate).getTime()) / 31557600000)) : null;
+  const onPhoto = async (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      const url = await resizeToDataUrl(f, { maxDim: 512, quality: 0.85 });
+      upsertPatient({ ...p, photo: url });
+    } catch {
+      /* imagen inválida — ignorar */
+    }
+  };
   const canWriteEmr = can(session.role, "emr.write");
 
   const TABS: { key: Tab; label: string; icon: any; badge?: number }[] = [
@@ -64,60 +80,101 @@ export default function PatientProfile() {
     <div className="space-y-5">
       {/* Cabecera */}
       <Reveal y={0}>
-      <Card className="p-5">
-        <div className="flex flex-wrap items-center gap-4">
-          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-azure-100 text-lg font-extrabold text-azure-700">
-            {p.firstName[0]}{p.lastName[0]}
-          </span>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-extrabold text-clinic-text">{fullName(p)}</h1>
-            <p className="text-sm text-clinic-muted">
-              CI {p.document} · {p.phone}{p.email ? ` · ${p.email}` : ""}{p.insurer ? ` · ${p.insurer}` : ""}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {hasIA && <PatientBriefButton
-              patient={p}
-              context={{
-                appointments: appts.slice(0, 6).map((a) => ({
-                  fecha: a.start, estado: a.status, titulo: a.title,
-                })),
-                budgets: db.budgets
-                  .filter((b) => b.patientId === p.id)
-                  .slice(0, 6)
-                  .map((b) => ({
-                    estado: b.status,
-                    items: b.items.length,
-                    cuotas: b.installments || null,
-                    fecha: b.createdAt?.slice(0, 10),
-                  })),
-                billing: bills.slice(0, 6).map((b) => ({ flags: b.flags, total: recordTotal(b) })),
-              }}
-            />}
-            {pendingForms.length > 0 && (
-              <button onClick={() => setTab("formularios")} data-tip="Formularios pendientes — clic para gestionar" className="grid h-9 w-9 place-items-center rounded-xl bg-state-warnbg">
-                <FileText className="h-4.5 w-4.5 h-5 w-5 text-state-warn" />
-              </button>
-            )}
-            {p.historyUpdatePending &&
-              (canForms ? (
-                <button
-                  onClick={() => setClipOpen(true)}
-                  data-tip="Actualización de historial pendiente — clic para marcarla como recibida"
-                  className="grid h-9 w-9 place-items-center rounded-xl bg-state-infobg transition-transform hover:scale-105"
-                >
-                  <ClipboardList className="h-5 w-5 text-state-info" />
-                </button>
+      <Card className="overflow-hidden p-0">
+        {/* Banda superior estilo Dentalink: foto + datos + alertas médicas */}
+        <div className="mesh-hero relative px-5 py-5 sm:px-6">
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Foto del paciente (clic para cambiar) */}
+            <button
+              type="button"
+              onClick={() => canEditPatient && fileRef.current?.click()}
+              title={canEditPatient ? "Cambiar foto del paciente" : undefined}
+              className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full ring-2 ring-white/40"
+            >
+              {p.photo ? (
+                <img src={p.photo} alt="" className="h-16 w-16 rounded-full object-cover" />
               ) : (
-                <span data-tip="Actualización de historial médico pendiente" className="grid h-9 w-9 place-items-center rounded-xl bg-state-infobg">
-                  <ClipboardList className="h-5 w-5 text-state-info" />
+                <span className="grid h-16 w-16 place-items-center bg-white/15 text-xl font-extrabold text-white">
+                  {p.firstName[0]}{p.lastName[0]}
                 </span>
-              ))}
-            <a href="/app/agenda"><Btn variant="outline"><CalendarDays className="h-4 w-4" /> Ver agenda</Btn></a>
+              )}
+              {canEditPatient && (
+                <span className="absolute inset-0 grid place-items-center bg-navy-950/55 opacity-0 transition-opacity group-hover:opacity-100">
+                  <Camera className="h-5 w-5 text-white" />
+                </span>
+              )}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPhoto} />
+
+            {/* Identificación */}
+            <div className="min-w-0 flex-1 text-white">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-azure-200">ID {p.document}</div>
+              <h1 className="font-logo text-2xl leading-tight sm:text-3xl">{fullName(p)}</h1>
+              <p className="mt-0.5 truncate text-sm text-white/70">
+                CI {p.document}{age != null ? ` · ${age} años` : ""}{p.phone ? ` · ${p.phone}` : ""}{p.insurer ? ` · ${p.insurer}` : ""}
+              </p>
+            </div>
+
+            {/* Alertas médicas · Enfermedades · Medicamentos */}
+            <div className="flex flex-wrap gap-2">
+              <MedBadge icon={AlertTriangle} label="Alertas médicas" value={p.medicalAlerts} editable={canEditPatient} onClick={() => setMedOpen(true)} />
+              <MedBadge icon={HeartPulse} label="Enfermedades" value={p.conditions} editable={canEditPatient} onClick={() => setMedOpen(true)} />
+              <MedBadge icon={Pill} label="Medicamentos" value={p.medications} editable={canEditPatient} onClick={() => setMedOpen(true)} />
+            </div>
           </div>
+        </div>
+
+        {/* Barra de acciones */}
+        <div className="flex flex-wrap items-center justify-end gap-2 px-5 py-3 sm:px-6">
+          {hasIA && <PatientBriefButton
+            patient={p}
+            context={{
+              appointments: appts.slice(0, 6).map((a) => ({
+                fecha: a.start, estado: a.status, titulo: a.title,
+              })),
+              budgets: db.budgets
+                .filter((b) => b.patientId === p.id)
+                .slice(0, 6)
+                .map((b) => ({
+                  estado: b.status,
+                  items: b.items.length,
+                  cuotas: b.installments || null,
+                  fecha: b.createdAt?.slice(0, 10),
+                })),
+              billing: bills.slice(0, 6).map((b) => ({ flags: b.flags, total: recordTotal(b) })),
+            }}
+          />}
+          {pendingForms.length > 0 && (
+            <button onClick={() => setTab("formularios")} data-tip="Formularios pendientes — clic para gestionar" className="grid h-9 w-9 place-items-center rounded-xl bg-state-warnbg">
+              <FileText className="h-5 w-5 text-state-warn" />
+            </button>
+          )}
+          {p.historyUpdatePending &&
+            (canForms ? (
+              <button
+                onClick={() => setClipOpen(true)}
+                data-tip="Actualización de historial pendiente — clic para marcarla como recibida"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-state-infobg transition-transform hover:scale-105"
+              >
+                <ClipboardList className="h-5 w-5 text-state-info" />
+              </button>
+            ) : (
+              <span data-tip="Actualización de historial médico pendiente" className="grid h-9 w-9 place-items-center rounded-xl bg-state-infobg">
+                <ClipboardList className="h-5 w-5 text-state-info" />
+              </span>
+            ))}
+          <a href="/app/agenda"><Btn variant="outline"><CalendarDays className="h-4 w-4" /> Ver agenda</Btn></a>
         </div>
       </Card>
       </Reveal>
+
+      {medOpen && (
+        <MedicalModal
+          patient={p}
+          onClose={() => setMedOpen(false)}
+          onSave={(fields) => { upsertPatient({ ...p, ...fields }); setMedOpen(false); }}
+        />
+      )}
 
       {/* Tabs */}
       <Reveal delay={0.05} className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
@@ -355,6 +412,44 @@ export default function PatientProfile() {
         />
       )}
     </div>
+  );
+}
+
+/* Pastilla de dato médico sobre la banda navy (estilo Dentalink). */
+function MedBadge({ icon: Icon, label, value, editable, onClick }: { icon: any; label: string; value?: string; editable: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={editable ? onClick : undefined}
+      className={`glass-dark min-w-[116px] max-w-[190px] rounded-xl px-3 py-2 text-left ${editable ? "transition-colors hover:bg-white/15" : "cursor-default"}`}
+    >
+      <span className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wide text-white/80">
+        <Icon className="h-3.5 w-3.5" /> {label}
+      </span>
+      <span className={`mt-0.5 block truncate text-xs ${value ? "text-white" : "text-white/45"}`}>
+        {value || "Sin información"}
+      </span>
+    </button>
+  );
+}
+
+/* Modal para editar los datos médicos destacados de la cabecera. */
+function MedicalModal({ patient, onClose, onSave }: { patient: Patient; onClose: () => void; onSave: (fields: Pick<Patient, "medicalAlerts" | "conditions" | "medications">) => void }) {
+  const [a, setA] = useState(patient.medicalAlerts ?? "");
+  const [c, setC] = useState(patient.conditions ?? "");
+  const [m, setM] = useState(patient.medications ?? "");
+  return (
+    <Modal title="Datos médicos del paciente" onClose={onClose}>
+      <div className="space-y-3">
+        <Field label="Alertas médicas"><textarea rows={2} className={inputCls} value={a} onChange={(e) => setA(e.target.value)} placeholder="Alergias, condiciones críticas…" /></Field>
+        <Field label="Enfermedades"><textarea rows={2} className={inputCls} value={c} onChange={(e) => setC(e.target.value)} placeholder="Diabetes, hipertensión…" /></Field>
+        <Field label="Medicamentos"><textarea rows={2} className={inputCls} value={m} onChange={(e) => setM(e.target.value)} placeholder="Anticoagulantes, etc." /></Field>
+        <div className="flex justify-end gap-2 pt-1">
+          <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
+          <Btn onClick={() => onSave({ medicalAlerts: a.trim() || undefined, conditions: c.trim() || undefined, medications: m.trim() || undefined })}>Guardar</Btn>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
