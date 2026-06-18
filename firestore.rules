@@ -138,6 +138,9 @@ service cloud.firestore {
       match /recoveryMonitors/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       // Análisis IA de radiografías (lo escriben miembros y el service user)
       match /radiographs/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Firma electrónica de consentimientos. La firma remota (página pública
+      // /firmar) la escribe el service user vía /api/firmar → cubierta por isService().
+      match /signatures/{sid} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
     }
 
     // Todo lo demás: denegado.
