@@ -326,6 +326,38 @@ export interface PatientFileRec {
   by: string;
 }
 
+/* ===== Análisis IA de radiografías ===== */
+export type RxKind = "panoramica" | "bitewing" | "periapical" | "otra";
+export type RxSeverity = "observacion" | "leve" | "moderado" | "severo";
+
+export interface RadiographFinding {
+  id: string;
+  /** Caja normalizada 0..1 sobre la imagen. */
+  box: { x: number; y: number; w: number; h: number };
+  label: string;
+  tooth?: string;            // FDI si aplica
+  severity: RxSeverity;
+  note?: string;
+  source: "ia" | "profesional";
+}
+
+export interface RadiographRec {
+  id: string;
+  patientId: string;
+  kind: RxKind;
+  image: string;             // data URL base64 JPEG (redimensionado)
+  takenAt?: string;
+  createdAt: string;
+  createdBy: string;
+  findings: RadiographFinding[];
+  aiSummary?: string;
+  patientExplanation?: string;
+  aiModel?: string;
+  status: "borrador" | "revisado";
+  reviewedBy?: string;
+  reviewedAt?: string;
+}
+
 /* ===== Módulo de ortodoncia ===== */
 export interface OrthoControl {
   date: string;
@@ -459,5 +491,6 @@ export interface DB {
   waitlist: WaitlistEntry[];
   outbox: OutboxTask[];
   recoveryMonitors: RecoveryMonitor[];
+  radiographs: RadiographRec[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }
