@@ -15,7 +15,7 @@
  * - Coordenadas normalizadas 0..1 → las cajas escalan con cualquier tamaño de
  *   render (mismo contrato si después se enchufa un modelo CV dedicado).
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ScanLine, Upload, Sparkles, Loader2, Save, Trash2, Plus, Eye, EyeOff, X, Lock, ShieldAlert,
 } from "lucide-react";
@@ -143,14 +143,28 @@ function RadiografiasInner({ patient, canEdit }: { patient: Patient; canEdit: bo
         setError("La imagen sigue siendo muy pesada tras comprimir. Probá con una versión más liviana o de menor resolución.");
         return;
       }
-      setDraft({
-        recId: null,
-        image: url,
-        kind,
-        findings: [],
-        aiSummary: "",
-        patientExplanation: "",
-      });
+      setDraft((prev) =>
+        prev
+          ? // Cambiar imagen sobre un estudio abierto: preservar su identidad
+            // (recId/createdAt/createdBy) para que el guardado actualice el mismo
+            // registro; las cajas viejas no calzan con la nueva imagen → se limpian.
+            {
+              ...prev,
+              image: url,
+              findings: [],
+              aiSummary: "",
+              patientExplanation: "",
+            }
+          : // Subida nueva: registro nuevo, tipo tomado del selector.
+            {
+              recId: null,
+              image: url,
+              kind,
+              findings: [],
+              aiSummary: "",
+              patientExplanation: "",
+            },
+      );
       setPatientView(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo procesar la imagen.");
@@ -240,8 +254,14 @@ function RadiografiasInner({ patient, canEdit }: { patient: Patient; canEdit: bo
     else addRadiograph(rec);
     setDraft({ ...draft, recId: rec.id, createdAt: rec.createdAt, createdBy: rec.createdBy });
     setSavedToast(true);
-    setTimeout(() => setSavedToast(false), 2200);
   }
+
+  // Auto-oculta el toast de guardado y limpia el timer al desmontar.
+  useEffect(() => {
+    if (!savedToast) return;
+    const t = setTimeout(() => setSavedToast(false), 2200);
+    return () => clearTimeout(t);
+  }, [savedToast]);
 
   /* ---- Abrir un estudio guardado ---- */
   function openStudy(r: RadiographRec) {
@@ -575,8 +595,11 @@ function AnnotationCanvas({
       onPointerUp={endDrag}
       onPointerLeave={endDrag}
     >
+      {/* La imagen en flujo normal define el alto del contenedor (sin
+          object-contain ni alto fijo): así no hay letterbox y las cajas
+          en % calzan exactamente sobre la imagen renderizada. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={image} alt="Radiografía" className="block max-h-[60vh] w-full object-contain" draggable={false} />
+      <img src={image} alt="Radiografía" className="block h-auto w-full" draggable={false} />
       {findings.map((f) => {
         const st = SEVERITY_STYLE[f.severity];
         return (
@@ -716,8 +739,11 @@ function PatientView({
 
       <Card className="overflow-hidden p-0">
         <div className="relative w-full bg-navy-950">
+          {/* Igual que el lienzo editable: la imagen en flujo normal define el
+              alto (sin object-contain ni alto fijo) para que las cajas en %
+              calcen sobre la imagen, sin letterbox. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={image} alt="Radiografía" className="block max-h-[65vh] w-full object-contain" draggable={false} />
+          <img src={image} alt="Radiografía" className="block h-auto w-full" draggable={false} />
           {findings.map((f) => {
             const st = SEVERITY_STYLE[f.severity];
             return (
