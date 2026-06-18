@@ -141,6 +141,12 @@ service cloud.firestore {
       // Firma electrónica de consentimientos. La firma remota (página pública
       // /firmar) la escribe el service user vía /api/firmar → cubierta por isService().
       match /signatures/{sid} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Módulos de paridad Dentalink (CRM, Laboratorios, Liquidaciones, Box/Sillones)
+      match /crmCards/{docId}    { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /campaigns/{docId}   { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /labOrders/{docId}   { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /settlements/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /boxes/{docId}       { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
     }
 
     // Todo lo demás: denegado.
