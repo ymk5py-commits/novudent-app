@@ -8,6 +8,13 @@ export interface Convenio {
   discountPct: number;
 }
 
+/** Configuración de campos del paciente (paridad Dentalink): por contexto, presente/requerido. */
+export type FieldContext = "nuevo" | "agenda" | "online" | "checkin";
+export interface FieldConfig {
+  present?: Partial<Record<FieldContext, boolean>>;
+  required?: Partial<Record<FieldContext, boolean>>;
+}
+
 export interface Clinic {
   id: string;
   name: string;
@@ -27,6 +34,8 @@ export interface Clinic {
     botika?: BotikaConfig;
     /** Plantillas de consentimiento informado configurables por la clínica */
     consentTemplates?: ConsentTemplate[];
+    /** Config de campos del paciente: presente/requerido por contexto */
+    patientFields?: Record<string, FieldConfig>;
   };
 }
 

@@ -10,12 +10,13 @@ import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui
 import { Reveal } from "@/components/motion";
 import { AnalisisConversion } from "@/components/AnalisisConversion";
 import { PacientesOrtodoncia } from "@/components/PacientesOrtodoncia";
+import { ConfiguracionCampos } from "@/components/ConfiguracionCampos";
 
 export default function PatientsPage() {
   const { db, session, upsertPatient } = useStore();
   const [q, setQ] = useState("");
   const [creating, setCreating] = useState(false);
-  const [tab, setTab] = useState<"lista" | "analisis" | "ortodoncia">("lista");
+  const [tab, setTab] = useState<"lista" | "analisis" | "ortodoncia" | "configuracion">("lista");
 
   const list = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -30,6 +31,7 @@ export default function PatientsPage() {
     { k: "lista", label: "Pacientes" },
     { k: "analisis", label: "Análisis" },
     { k: "ortodoncia", label: `Pacientes de Ortodoncia (${orthoCount})` },
+    { k: "configuracion", label: "Configuración" },
   ] as const;
 
   return (
@@ -53,6 +55,7 @@ export default function PatientsPage() {
 
       {tab === "analisis" && <Reveal><AnalisisConversion /></Reveal>}
       {tab === "ortodoncia" && <Reveal><PacientesOrtodoncia /></Reveal>}
+      {tab === "configuracion" && <Reveal><ConfiguracionCampos /></Reveal>}
 
       {tab === "lista" && (
         <Reveal className="space-y-4">
