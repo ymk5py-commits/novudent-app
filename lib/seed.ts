@@ -116,9 +116,9 @@ const budgets: Budget[] = [
   {
     id: "g1", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", createdAt: at(-5, 11), status: "presentado",
     items: [
-      { id: "gi1", cpt: "D2330", description: "Resina compuesta — 1 superficie", tooth: "16", price: 420000, status: "pendiente" },
-      { id: "gi2", cpt: "D2330", description: "Resina compuesta — 1 superficie", tooth: "24", price: 420000, status: "pendiente" },
-      { id: "gi3", cpt: "D1110", description: "Profilaxis (adulto)", price: 250000, status: "pendiente" },
+      { id: "gi1", cpt: "D2330", description: "Resina compuesta — 1 superficie", tooth: "16", price: 420000, status: "pendiente", section: "Restauraciones" },
+      { id: "gi2", cpt: "D2330", description: "Resina compuesta — 1 superficie", tooth: "24", price: 420000, status: "pendiente", section: "Restauraciones" },
+      { id: "gi3", cpt: "D1110", description: "Profilaxis (adulto)", price: 250000, status: "pendiente", section: "Prevención e higiene" },
     ],
     discountPct: 15, convenio: "Asismed", installments: 2,
     notes: "Iniciar por pieza 16 (sintomática).",
@@ -133,6 +133,7 @@ const budgets: Budget[] = [
     items: [{ id: "gi4", cpt: "D8080", description: "Ortodoncia integral (adolescente/adulto)", price: 4500000, status: "pendiente" }],
     installments: 12,
     notes: "Ortodoncia integral — entrega inicial + 12 cuotas mensuales.",
+    patientComments: "Tiempo estimado 24 meses (entrega inicial + 12 cuotas). No incluye micro-tornillos ni exodoncias. La pérdida o despegue de brackets por falta de cuidado del paciente tiene costo adicional.",
     history: [
       { at: at(-30, 10), action: "Presupuesto creado", by: "Dra. Sofía Benítez" },
       { at: at(-30, 11), action: "Aceptado por el paciente", by: "Paola Asistente" },
@@ -229,12 +230,12 @@ const outbox: OutboxTask[] = [
 ];
 
 const appointments: Appointment[] = [
-  { id: "a1", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", title: "Resina pieza 16", start: at(0, 9), end: at(0, 10), status: "confirmada", amount: 420000, discount: 0 },
+  { id: "a1", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", title: "Resina pieza 16", start: at(0, 9), end: at(0, 10), status: "confirmada", amount: 420000, discount: 0, budgetId: "g1" },
   { id: "a2", clinicId: CLINIC_ID, patientId: "p2", dentistId: "u2", title: "Primera consulta", start: at(0, 11), end: at(0, 11, 40), status: "pendiente", amount: 150000, discount: 0 },
   { id: "a3", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", title: "Profilaxis", start: at(1, 10), end: at(1, 10, 45), status: "completada", amount: 250000, discount: 25000 },
   { id: "a4", clinicId: CLINIC_ID, patientId: "p4", dentistId: "u2", title: "Exodoncia 28", start: at(2, 9, 30), end: at(2, 10, 30), status: "confirmada", amount: 600000, discount: 0 },
   { id: "a5", clinicId: CLINIC_ID, patientId: "p5", dentistId: "u2", title: "Control + limpieza", start: at(2, 15), end: at(2, 16), status: "pendiente", amount: 250000, discount: 0 },
-  { id: "a6", clinicId: CLINIC_ID, patientId: "p6", dentistId: "u2", title: "Control ortodoncia", start: at(3, 17), end: at(3, 17, 30), status: "confirmada", amount: 350000, discount: 0, reminderSent: true, confirmedVia: "botika" },
+  { id: "a6", clinicId: CLINIC_ID, patientId: "p6", dentistId: "u2", title: "Control ortodoncia", start: at(3, 17), end: at(3, 17, 30), status: "confirmada", amount: 350000, discount: 0, reminderSent: true, confirmedVia: "botika", budgetId: "g2" },
   { id: "a7", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", title: "Blanqueamiento — evaluación", start: at(4, 14), end: at(4, 14, 30), status: "pendiente", amount: 0, discount: 0 },
   { id: "a8", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", title: "Control post-operatorio", start: at(4, 9), end: at(4, 9, 20), status: "cancelada", amount: 0, discount: 0 },
 ];

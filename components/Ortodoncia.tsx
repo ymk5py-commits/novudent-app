@@ -10,7 +10,7 @@ import {
 import { useStore, fmtGs, fmtDate } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { orthoProgress } from "@/lib/ortho";
-import { budgetTotal } from "@/lib/budgets";
+import { PrestacionesList } from "@/components/Prestaciones";
 import { resizeToDataUrl } from "@/lib/image";
 import type { Patient, Budget, OrthoRecord } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
@@ -327,30 +327,13 @@ function OrthoDiagnostico({ patient, canWrite }: { patient: Patient; canWrite: b
 /* ---------- Plan de tratamiento (ítems del presupuesto) ---------- */
 function OrthoPlan({ budget }: { budget: Budget }) {
   return (
-    <Card className="p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-extrabold text-clinic-text">Aparatología y procedimientos</h3>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-extrabold text-clinic-text">Plan de tratamiento</h3>
         <a href="/app/presupuestos" className="text-xs font-bold text-azure-600 hover:underline">Gestionar →</a>
       </div>
-      {budget.items.length === 0 ? (
-        <Empty title="Sin ítems en el plan" />
-      ) : (
-        <div className="divide-y divide-clinic-border">
-          {budget.items.map((it) => (
-            <div key={it.id} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">
-              <span className="font-mono text-xs font-bold text-clinic-muted">{it.cpt}</span>
-              <span className="flex-1 text-clinic-text">{it.description}{it.tooth && <span className="text-clinic-muted"> · pieza {it.tooth}</span>}</span>
-              <span className="font-mono font-bold">{fmtGs(it.price)}</span>
-              <Badge tone={it.status === "realizado" ? "ok" : "warn"}>{it.status === "realizado" ? "Realizado" : "Pendiente"}</Badge>
-            </div>
-          ))}
-          <div className="flex items-center justify-between pt-3 text-sm font-extrabold">
-            <span>Total {budget.discountPct ? `(−${budget.discountPct}%)` : ""}</span>
-            <span className="font-mono">{fmtGs(budgetTotal(budget))}</span>
-          </div>
-        </div>
-      )}
-    </Card>
+      <PrestacionesList budget={budget} />
+    </div>
   );
 }
 

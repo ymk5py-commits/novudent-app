@@ -69,6 +69,8 @@ export interface Appointment {
   confirmedVia?: "botika" | "manual";
   /** Box/sillón asignado a la cita (módulo Box) */
   boxId?: string;
+  /** Plan de tratamiento al que pertenece la cita (paridad Dentalink) */
+  budgetId?: string;
 }
 
 export type FormStatus = "pendiente" | "completado";
@@ -252,6 +254,10 @@ export interface BudgetItem {
   /** pieza FDI opcional (11–48) */
   tooth?: string;
   price: number;
+  /** agrupación en secciones del plan (paridad Dentalink) */
+  section?: string;
+  /** descuento por ítem (DSCTO); si falta, aplica el del presupuesto */
+  discountPct?: number;
   status: "pendiente" | "realizado";
   doneAt?: string;
   doneBy?: string;
@@ -275,6 +281,8 @@ export interface Budget {
   /** cobro en cuotas: nº de cuotas pactadas */
   installments?: number;
   notes?: string;
+  /** Comentarios para el paciente (se imprimen en el presupuesto) */
+  patientComments?: string;
   history: { at: string; action: string; by: string }[];
   /** Negociación de presupuesto abandonado (bot re-engancha al paciente) */
   negociacion?: {

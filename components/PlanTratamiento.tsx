@@ -1,18 +1,19 @@
 "use client";
 /** Vista "Plan de tratamiento" estilo Dentalink: LISTA de planes (En ejecución / Otros)
- *  → DETALLE de 2 columnas (panel financiero + seguimiento de la especialidad). */
+ *  → DETALLE de 2 columnas (panel financiero + seguimiento) + prestaciones + comentarios. */
 import { useState } from "react";
-import { Copy, UserRound, Braces, Smile, ChevronLeft, ChevronRight } from "lucide-react";
+import { Copy, UserRound, Braces, Smile, ChevronLeft, ChevronRight, FileSpreadsheet, Save } from "lucide-react";
 import { useStore, fmtGs, fmtDate } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, financialStatus, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { orthoProgress } from "@/lib/ortho";
-import type { Patient, Budget, Payment } from "@/lib/types";
-import { Card, Badge, Empty } from "@/components/ui";
+import type { Patient, Budget, Payment, Appointment } from "@/lib/types";
+import { Card, Badge, Empty, Btn, StatusBadge, inputCls } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
 import { PatientBriefButton } from "@/components/NovudentIA";
 import Odontogram from "@/components/Odontogram";
 import { OrtodonciaPanel } from "@/components/Ortodoncia";
+import { PrestacionesList } from "@/components/Prestaciones";
 
 function planProgress(budget: Budget, patient: Patient): number {
   if (budget.planType === "ortodoncia" && patient.ortho?.active) return orthoProgress(patient.ortho).calendarPct;
@@ -102,6 +103,7 @@ function PlanDetalle({
   const budget = budgets.find((b) => b.id === selId) ?? budgets[0];
   const isOrtho = budget.planType === "ortodoncia";
   const professional = db.users.find((u) => u.id === budget.dentistId);
+  const citas = db.appointments.filter((a) => a.budgetId === budget.id).sort((a, b) => b.start.localeCompare(a.start));
 
   return (
     <div className="space-y-4">
@@ -121,17 +123,19 @@ function PlanDetalle({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[330px_1fr]">
-        <PlanFinanciero budget={budget} payments={db.payments} professional={professional?.name} hasIA={hasIA} patient={patient} />
+        <PlanFinanciero budget={budget} payments={db.payments} citas={citas} professional={professional?.name} hasIA={hasIA} patient={patient} />
         <PlanClinico key={budget.id} budget={budget} patient={patient} isOrtho={isOrtho} />
       </div>
+
+      <ComentariosPaciente budget={budget} />
     </div>
   );
 }
 
 /* ---------- Columna financiera (izquierda, panel navy) ---------- */
 function PlanFinanciero({
-  budget, payments, professional, hasIA, patient,
-}: { budget: Budget; payments: Payment[]; professional?: string; hasIA: boolean; patient: Patient }) {
+  budget, payments, citas, professional, hasIA, patient,
+}: { budget: Budget; payments: Payment[]; citas: Appointment[]; professional?: string; hasIA: boolean; patient: Patient }) {
   const [copied, setCopied] = useState(false);
   const total = budgetTotal(budget);
   const realizado = budgetRealizado(budget);
@@ -195,6 +199,20 @@ function PlanFinanciero({
           <span className="text-clinic-muted">Profesional a cargo:</span>
           <span className="font-bold text-clinic-text">{professional ?? "—"}</span>
         </div>
+
+        {citas.length > 0 && (
+          <div className="border-t border-clinic-border pt-3">
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Citas del paciente</div>
+            <ul className="space-y-1">
+              {citas.map((a) => (
+                <li key={a.id} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="min-w-0 flex-1 truncate text-clinic-muted">{fmtDate(a.start)} · {a.title}</span>
+                  <StatusBadge status={a.status} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -209,19 +227,42 @@ function Money({ label, value, strong }: { label: string; value: number; strong?
   );
 }
 
+/* ---------- Comentarios para el paciente ---------- */
+function ComentariosPaciente({ budget }: { budget: Budget }) {
+  const { session, upsertBudget } = useStore();
+  const canWrite = session ? can(session.role, "emr.write") : false;
+  const [text, setText] = useState(budget.patientComments ?? "");
+  const dirty = text.trim() !== (budget.patientComments ?? "").trim();
+  return (
+    <Card className="p-5">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="font-extrabold text-clinic-text">Comentarios para el paciente</h3>
+        {canWrite && dirty && <Btn onClick={() => upsertBudget({ ...budget, patientComments: text.trim() || undefined })}><Save className="h-4 w-4" /> Guardar</Btn>}
+      </div>
+      <p className="mb-2 text-[11px] text-clinic-muted">Se incluyen en la impresión del presupuesto.</p>
+      <textarea rows={3} className={inputCls} value={text} disabled={!canWrite} onChange={(e) => setText(e.target.value)} placeholder="Indicaciones, forma de pago, observaciones para el paciente…" />
+    </Card>
+  );
+}
+
 /* ---------- Columna clínica (derecha) ---------- */
 function PlanClinico({ budget, patient, isOrtho }: { budget: Budget; patient: Patient; isOrtho: boolean }) {
   const { session, setTooth } = useStore();
   const canWriteEmr = session ? can(session.role, "emr.write") : false;
-  const [tab, setTab] = useState<"esp" | "odo">(isOrtho ? "esp" : "odo");
+  const [tab, setTab] = useState<"esp" | "plan" | "odo">(isOrtho ? "esp" : "plan");
 
   return (
     <div className="space-y-4">
       <div className="flex gap-1 rounded-xl border border-clinic-border bg-white p-1">
-        {isOrtho && <TabBtn active={tab === "esp"} onClick={() => setTab("esp")} icon={Braces} label="Ortodoncia" />}
+        {isOrtho ? (
+          <TabBtn active={tab === "esp"} onClick={() => setTab("esp")} icon={Braces} label="Ortodoncia" />
+        ) : (
+          <TabBtn active={tab === "plan"} onClick={() => setTab("plan")} icon={FileSpreadsheet} label="Plan de tratamiento" />
+        )}
         <TabBtn active={tab === "odo"} onClick={() => setTab("odo")} icon={Smile} label="Odontograma" />
       </div>
       {tab === "esp" && isOrtho && <OrtodonciaPanel patient={patient} budget={budget} />}
+      {tab === "plan" && !isOrtho && <PrestacionesList budget={budget} />}
       {tab === "odo" && (
         <Odontogram
           value={patient.odontogram ?? {}}
