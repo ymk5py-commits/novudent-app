@@ -2,7 +2,7 @@
 /** Sub-tab "Recibir pago" (paridad Dentalink): tabla multi-plan con checkbox + "Pagar
  *  tratamiento(s)", y sección "Por cuotas de financiamiento" (cuotas con pagado/saldo). */
 import { useState } from "react";
-import { Wallet, CheckCircle2 } from "lucide-react";
+import { Wallet, CheckCircle2, MessageCircle } from "lucide-react";
 import { useStore, fmtGs, fmtDate } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, financialStatus } from "@/lib/budgets";
@@ -57,6 +57,13 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
     setConcept("");
   };
 
+  const linkPago = () => {
+    const tel = patient.phone.replace(/\D/g, "");
+    const saldo = pagables.reduce((s, b) => s + budgetBalance(b, db.payments), 0);
+    const msg = encodeURIComponent(`Hola ${patient.firstName}, te compartimos tu saldo pendiente en la clínica: ${fmtGs(saldo)}. Podés abonarlo en la clínica o por transferencia. ¡Gracias!`);
+    window.open(`https://wa.me/${tel}?text=${msg}`, "_blank");
+  };
+
   const pagarCuota = (b: Budget, c: InstallmentStatus) => {
     if (!session || c.saldo <= 0) return;
     addPayment({
@@ -74,7 +81,10 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
 
       {pagables.length > 0 && (
         <div className="space-y-4">
-          <p className="text-sm text-clinic-muted">Seleccioná uno o varios planes de tratamiento a pagar.</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-clinic-muted">Seleccioná uno o varios planes de tratamiento a pagar.</p>
+            <button onClick={linkPago} className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-1.5 text-xs font-bold text-clinic-text hover:border-azure-300 hover:text-azure-700"><MessageCircle className="h-3.5 w-3.5" /> Link de pago (WhatsApp)</button>
+          </div>
           <Card className="overflow-x-auto p-0">
             <table className="w-full min-w-[720px] text-sm">
               <thead>

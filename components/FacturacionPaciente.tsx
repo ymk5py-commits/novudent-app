@@ -2,7 +2,7 @@
 /** "Facturación y pagos" del paciente (paridad Dentalink): sub-tabs
  *  Pagos / Documentos emitidos / Devoluciones / Pagos eliminados / Balance. */
 import { useState } from "react";
-import { Trash2, RotateCcw } from "lucide-react";
+import { Trash2, RotateCcw, Receipt } from "lucide-react";
 import { useStore, fmtGs, fmtDate } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, patientBalance, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
@@ -38,6 +38,11 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
     if (!session) return;
     addFiscalDoc({ id: `fd_${Date.now()}_${p.id}`, clinicId: patient.clinicId, patientId: patient.id, kind: "devolucion", amount: p.amount, date: new Date().toISOString(), paymentId: p.id, reason: "Devolución de pago", by: session.name });
   };
+  const emitirBoleta = (p: Payment) => {
+    if (!session) return;
+    const num = `0001-${String(boletas.length + 1).padStart(4, "0")}`;
+    addFiscalDoc({ id: `bol_${Date.now()}_${p.id}`, clinicId: patient.clinicId, patientId: patient.id, kind: "boleta", number: num, amount: p.amount, date: new Date().toISOString(), paymentId: p.id, by: session.name });
+  };
 
   return (
     <div className="space-y-4">
@@ -67,6 +72,7 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
                   <td className="px-2 py-2.5 text-right">
                     {canManage && (
                       <span className="flex items-center justify-end gap-1">
+                        {!boletas.some((d) => d.paymentId === p.id) && <button onClick={() => emitirBoleta(p)} title="Emitir boleta" className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-azure-50 hover:text-azure-700"><Receipt className="h-3.5 w-3.5" /></button>}
                         <button onClick={() => devolver(p)} title="Registrar devolución" className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-state-warnbg hover:text-state-warn"><RotateCcw className="h-3.5 w-3.5" /></button>
                         <button onClick={() => anular(p.id)} title="Anular pago" className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err"><Trash2 className="h-3.5 w-3.5" /></button>
                       </span>
