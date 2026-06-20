@@ -223,7 +223,7 @@ function RxPrint({ rx, patient, onClose }: { rx: Prescription; patient: Patient;
 }
 
 /* ===================== ARCHIVOS ===================== */
-const MAX_FILES = 6;
+export const MAX_FILES = 6;
 const MAX_DATAURL = 250_000; // ~250 KB por archivo (límite doc Firestore 1 MB)
 
 function compressImage(file: File): Promise<string> {

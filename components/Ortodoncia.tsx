@@ -15,6 +15,7 @@ import { resizeToDataUrl } from "@/lib/image";
 import type { Patient, Budget, OrthoRecord } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { RadiografiasTab } from "@/components/Radiografias";
+import { MAX_FILES } from "@/components/PatientExtras";
 
 type OrthoSub = "resumen" | "fotografica" | "diagnostico" | "plan" | "rx";
 
@@ -246,6 +247,10 @@ function OrthoFotos({ patient, canWrite }: { patient: Patient; canWrite: boolean
 
   const onPick = async (file: File) => {
     setError("");
+    if ((patient.files ?? []).length >= MAX_FILES) {
+      setError(`Máximo ${MAX_FILES} archivos por paciente en el plan actual (incluye Archivos).`);
+      return;
+    }
     try {
       const dataUrl = await resizeToDataUrl(file, { maxDim: 1000, quality: 0.72 });
       addPatientFile(patient.id, { id: `file_${Date.now()}`, name: file.name, kind: "imagen", dataUrl, uploadedAt: new Date().toISOString(), by: session!.name });
