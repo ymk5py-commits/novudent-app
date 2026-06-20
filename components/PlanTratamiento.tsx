@@ -141,7 +141,7 @@ function PlanFinanciero({
   const realizado = budgetRealizado(budget);
   const abonado = budgetPaid(budget.id, payments);
   const saldo = budgetBalance(budget, payments);
-  const pagos = payments.filter((p) => p.budgetId === budget.id).sort((a, b) => b.date.localeCompare(a.date));
+  const pagos = payments.filter((p) => p.budgetId === budget.id && !p.voidedAt).sort((a, b) => b.date.localeCompare(a.date));
   const copyId = () => {
     try { navigator.clipboard?.writeText(`Plan #${budget.id}`); } catch { /* sin portapapeles */ }
     setCopied(true);

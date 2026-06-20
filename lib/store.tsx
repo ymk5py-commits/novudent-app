@@ -27,7 +27,7 @@ async function ensureAuth() {
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord,
   Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
-  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote,
+  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc,
   CrmCard, Campaign, LabOrder, Settlement, Box,
 } from "./types";
 import { buildSeed } from "./seed";
@@ -80,6 +80,7 @@ async function seedFirestore(seed: DB) {
   for (const w of seed.waitlist) batch.set(doc(fsdb, "clinics", CLINIC_ID, "waitlist", w.id), clean(w));
   for (const t of seed.outbox) batch.set(doc(fsdb, "clinics", CLINIC_ID, "outbox", t.id), clean(t));
   for (const n of seed.patientNotes) batch.set(doc(fsdb, "clinics", CLINIC_ID, "patientNotes", n.id), clean(n));
+  for (const d of seed.fiscalDocs) batch.set(doc(fsdb, "clinics", CLINIC_ID, "fiscalDocs", d.id), clean(d));
   await batch.commit();
 }
 
@@ -95,10 +96,10 @@ async function loadFirestore(): Promise<DB> {
   }
   const meta = clinicSnap.data() as any;
   const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
-    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"),
+    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -123,6 +124,7 @@ async function loadFirestore(): Promise<DB> {
     settlements: settlements.docs.map((d) => d.data() as Settlement),
     boxes: boxes.docs.map((d) => d.data() as Box),
     patientNotes: patientNotes.docs.map((d) => d.data() as PatientNote),
+    fiscalDocs: fiscalDocs.docs.map((d) => d.data() as FiscalDoc),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   /* Upgrade v3: bases creadas antes de los módulos nuevos — sembramos
@@ -371,6 +373,9 @@ interface Ctx {
   addPatientNote: (n: PatientNote) => void;
   updatePatientNote: (n: PatientNote) => void;
   deletePatientNote: (id: string) => void;
+  addFiscalDoc: (d: FiscalDoc) => void;
+  deleteFiscalDoc: (id: string) => void;
+  voidPayment: (id: string, by: string) => void;
   /* — Firma electrónica / consentimientos — */
   addSignature: (s: SignatureDoc) => void;
   updateSignature: (s: SignatureDoc) => void;
@@ -829,6 +834,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       deletePatientNote: (id: string) => {
         persist({ ...db, patientNotes: db.patientNotes.filter((x) => x.id !== id) });
         fsDelete("patientNotes", id);
+      },
+      addFiscalDoc: (d: FiscalDoc) => {
+        persist({ ...db, fiscalDocs: [d, ...db.fiscalDocs] });
+        fsSave("fiscalDocs", d.id, d);
+      },
+      deleteFiscalDoc: (id: string) => {
+        persist({ ...db, fiscalDocs: db.fiscalDocs.filter((x) => x.id !== id) });
+        fsDelete("fiscalDocs", id);
+      },
+      voidPayment: (id: string, by: string) => {
+        const p = db.payments.find((x) => x.id === id);
+        if (!p) return;
+        const up = { ...p, voidedAt: new Date().toISOString(), voidedBy: by };
+        persist({ ...db, payments: db.payments.map((x) => (x.id === id ? up : x)) });
+        fsSave("payments", id, up);
       },
       addRadiograph: (r: RadiographRec) => {
         persist({ ...db, radiographs: [r, ...db.radiographs] });

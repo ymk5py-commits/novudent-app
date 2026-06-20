@@ -27,7 +27,7 @@ export function budgetRealizado(b: Pick<Budget, "items" | "discountPct">): numbe
 }
 
 export function budgetPaid(budgetId: string, payments: Payment[]): number {
-  return payments.filter((p) => p.budgetId === budgetId).reduce((s, p) => s + p.amount, 0);
+  return payments.filter((p) => p.budgetId === budgetId && !p.voidedAt).reduce((s, p) => s + p.amount, 0);
 }
 
 export function budgetBalance(b: Budget, payments: Payment[]): number {
@@ -53,7 +53,7 @@ export function patientBalance(patientId: string, budgets: Budget[], payments: P
   const owed = budgets
     .filter((b) => b.patientId === patientId && (b.status === "aceptado" || b.status === "completado"))
     .reduce((s, b) => s + budgetTotal(b), 0);
-  const paid = payments.filter((p) => p.patientId === patientId).reduce((s, p) => s + p.amount, 0);
+  const paid = payments.filter((p) => p.patientId === patientId && !p.voidedAt).reduce((s, p) => s + p.amount, 0);
   return owed - paid;
 }
 

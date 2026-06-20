@@ -149,6 +149,8 @@ service cloud.firestore {
       match /boxes/{docId}       { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       // Notas del paciente: comentarios administrativos / tareas de gestión / emails
       match /patientNotes/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Documentos fiscales: boletas emitidas / devoluciones
+      match /fiscalDocs/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
     }
 
     // Todo lo demás: denegado.

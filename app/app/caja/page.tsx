@@ -44,7 +44,7 @@ export default function CashPage() {
   const canExpenses = can(session.role, "expenses.manage");
   const isAdmin = session.role === "admin";
 
-  const dayPayments = db.payments.filter((p) => dayKey(p.date) === day).sort((a, b) => b.date.localeCompare(a.date));
+  const dayPayments = db.payments.filter((p) => dayKey(p.date) === day && !p.voidedAt).sort((a, b) => b.date.localeCompare(a.date));
   const dayExpenses = db.expenses.filter((e) => dayKey(e.date) === day).sort((a, b) => b.date.localeCompare(a.date));
   const income = dayPayments.reduce((s, p) => s + p.amount, 0);
   const spent = dayExpenses.reduce((s, e) => s + e.amount, 0);

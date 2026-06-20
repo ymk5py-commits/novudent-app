@@ -330,6 +330,9 @@ export interface Payment {
   paymentNumber?: string;   // N° de pago visible
   receiptNumber?: string;   // N° de boleta/comprobante
   dueDate?: string;         // vencimiento (ISO o YYYY-MM-DD)
+  /** Anulación (soft-delete) → "Pagos eliminados" */
+  voidedAt?: string;
+  voidedBy?: string;
 }
 
 export interface Expense {
@@ -615,6 +618,21 @@ export interface PatientNote {
   createdBy: string;
 }
 
+export type FiscalDocKind = "boleta" | "devolucion";
+/** Documento fiscal del paciente: boleta/factura emitida o devolución (paridad Dentalink). */
+export interface FiscalDoc {
+  id: string;
+  clinicId: string;
+  patientId: string;
+  kind: FiscalDocKind;
+  number?: string;      // N° de boleta/factura
+  amount: number;
+  date: string;
+  paymentId?: string;   // pago asociado
+  reason?: string;      // motivo (devoluciones)
+  by: string;
+}
+
 export interface DB {
   clinics: Clinic[];
   users: User[];
@@ -638,5 +656,6 @@ export interface DB {
   settlements: Settlement[];
   boxes: Box[];
   patientNotes: PatientNote[];
+  fiscalDocs: FiscalDoc[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }

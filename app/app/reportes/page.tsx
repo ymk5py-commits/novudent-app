@@ -34,7 +34,7 @@ export default function ReportsPage() {
     const since = Date.now() - DAYS30;
     const inWindow = (iso: string) => new Date(iso).getTime() >= since;
 
-    const pays = db.payments.filter((p) => inWindow(p.date));
+    const pays = db.payments.filter((p) => inWindow(p.date) && !p.voidedAt);
     const exps = db.expenses.filter((e) => inWindow(e.date));
     const collected = pays.reduce((s, p) => s + p.amount, 0);
     const spent = exps.reduce((s, e) => s + e.amount, 0);
