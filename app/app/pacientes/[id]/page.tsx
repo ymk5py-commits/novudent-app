@@ -20,6 +20,7 @@ import { ConsentimientosTab } from "@/components/Consentimientos";
 import { PlanTratamiento } from "@/components/PlanTratamiento";
 import { DatosTab } from "@/components/PatientDatos";
 import { RecibirPagoTab } from "@/components/RecibirPago";
+import { HistorialTimeline } from "@/components/Historial";
 import { VoiceNoteButton, PatientBriefButton } from "@/components/NovudentIA";
 import { useClinicPlan } from "@/components/PlanGate";
 import Periodontogram from "@/components/Periodontogram";
@@ -328,22 +329,7 @@ export default function PatientProfile() {
               </div>
             )}
           </div>
-          {p.emr.length === 0 ? (
-            <Empty title="Historial vacío" desc="Las notas del dentista aparecerán aquí." />
-          ) : (
-            <div className="space-y-3">
-              {p.emr.map((n) => (
-                <Card key={n.id} className="p-4">
-                  <div className="mb-1.5 flex flex-wrap items-center gap-2 text-[11px] text-clinic-muted">
-                    <Badge tone="info">{n.kind}</Badge>
-                    <span className="font-semibold text-clinic-text">{n.authorName}</span>
-                    · {new Date(n.createdAt).toLocaleString("es-PY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                  </div>
-                  <p className="text-sm leading-relaxed text-clinic-text">{n.text}</p>
-                </Card>
-              ))}
-            </div>
-          )}
+          <HistorialTimeline patient={p} />
         </Reveal>
       )}
 
