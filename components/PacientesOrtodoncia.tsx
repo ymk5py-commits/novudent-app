@@ -2,10 +2,11 @@
 /** Reporte "Pacientes de Ortodoncia" (paridad Dentalink): KPIs + tabla con
  *  progreso calendario. Reusa orthoProgress (lib/ortho.ts). */
 import { useMemo } from "react";
-import { Braces, AlertTriangle, CalendarX, Baby, Users, UserCheck } from "lucide-react";
+import { Braces, AlertTriangle, CalendarX, Baby, Users, UserCheck, Download } from "lucide-react";
 import { useStore, fmtDate } from "@/lib/store";
 import { orthoProgress } from "@/lib/ortho";
-import { Card, Empty } from "@/components/ui";
+import { downloadCsv } from "@/lib/csv";
+import { Card, Empty, Btn } from "@/components/ui";
 
 export function PacientesOrtodoncia() {
   const { db } = useStore();
@@ -51,8 +52,19 @@ export function PacientesOrtodoncia() {
     return { rows, kpis };
   }, [db]);
 
+  const descargar = () => {
+    downloadCsv("pacientes-ortodoncia.csv", [
+      ["Nombre", "Apellidos", "Sexo", "Edad", "Tel. móvil", "Inicio tratamiento", "Dr(a) tratante", "Progreso calendario %"],
+      ...data.rows.map((r) => [r.p.firstName, r.p.lastName, r.p.sex ?? r.p.gender ?? "", r.age ?? "", r.p.phone, fmtDate(r.o.startDate), r.dr, r.prog.calendarPct]),
+    ]);
+  };
+
   return (
     <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-extrabold text-clinic-text">Pacientes en tratamiento de ortodoncia</h3>
+        {data.rows.length > 0 && <Btn variant="outline" onClick={descargar}><Download className="h-3.5 w-3.5" /> Descargar reporte</Btn>}
+      </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Kpi label="En tratamiento activo" value={data.kpis.activos} icon={Braces} tone="azure" />
         <Kpi label="Atrasados" value={data.kpis.atrasados} icon={AlertTriangle} tone={data.kpis.atrasados ? "err" : "muted"} />

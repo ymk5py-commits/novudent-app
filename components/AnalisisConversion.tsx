@@ -6,7 +6,9 @@ import { useStore } from "@/lib/store";
 import { conversionFunnel, conversionTimeline } from "@/lib/conversion";
 import { ageBucket, procedureCategory, CATEGORY_LABEL, GENDER_LABEL } from "@/lib/categorias";
 import { PAYMENT_METHOD_LABEL } from "@/lib/budgets";
+import { Download } from "lucide-react";
 import { Card, inputCls } from "@/components/ui";
+import { downloadCsv } from "@/lib/csv";
 import { FunnelChart, ConversionLineChart, StatusDonutChart } from "@/components/Charts";
 import { Reveal } from "@/components/motion";
 
@@ -66,6 +68,19 @@ export function AnalisisConversion() {
     { label: "Presupuestos aceptados", pct: f.pctAceptados, v: f.aceptados, color: "text-state-warn" },
   ];
 
+  const descargar = () => {
+    const rows: (string | number)[][] = [
+      ["Embudo de conversión", "Cantidad", "%"],
+      ["Citas agendadas", f.agendadas, 100],
+      ["Citas confirmadas", f.confirmadas, f.pctConfirmadas],
+      ["Presupuestos aceptados", f.aceptados, f.pctAceptados],
+      [],
+      ["Donut", "Categoría", "Cantidad"],
+      ...data.donuts.flatMap((d) => d.parts.map((p) => [d.title, p.label, p.v] as (string | number)[])),
+    ];
+    downloadCsv("analisis-conversion.csv", rows);
+  };
+
   return (
     <Reveal className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -77,6 +92,7 @@ export function AnalisisConversion() {
           <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className={`${inputCls} w-auto`} />
           <span className="text-clinic-muted">→</span>
           <input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} className={`${inputCls} w-auto`} />
+          <button onClick={descargar} className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-1.5 text-xs font-bold text-clinic-text hover:border-azure-300 hover:text-azure-700"><Download className="h-3.5 w-3.5" /> Descargar</button>
         </div>
       </div>
 
