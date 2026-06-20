@@ -21,7 +21,7 @@ const CLINIC_ID = "cl_demo";
 const patients: Patient[] = [
   {
     id: "p1", clinicId: CLINIC_ID, firstName: "María", lastName: "González", document: "3.456.789",
-    phone: "+595 981 111 111", email: "maria@example.com", birthDate: "1988-04-12", insurer: "Asismed", gender: "F", city: "Asunción",
+    phone: "+595 981 111 111", email: "maria@example.com", birthDate: "1988-04-12", insurer: "Asismed", sex: "F", gender: "F", city: "Asunción", municipio: "Asunción",
     forms: [
       { id: "f1", templateName: "Anamnesis inicial", status: "pendiente", fields: [{ label: "Alergias", value: "" }, { label: "Medicación actual", value: "" }, { label: "Antecedentes", value: "" }] },
       { id: "f2", templateName: "Consentimiento informado", status: "completado", completedAt: "2026-05-20", fields: [{ label: "Firmado por", value: "María González" }] },
@@ -52,14 +52,14 @@ const patients: Patient[] = [
   },
   {
     id: "p2", clinicId: CLINIC_ID, firstName: "Juan", lastName: "Ríos", document: "4.567.890",
-    phone: "+595 982 222 222", birthDate: "1995-09-03", gender: "M", city: "Lambaré",
+    phone: "+595 982 222 222", birthDate: "1995-09-03", sex: "M", gender: "M", city: "Lambaré", municipio: "Lambaré",
     forms: [{ id: "f3", templateName: "Anamnesis inicial", status: "pendiente", fields: [{ label: "Alergias", value: "" }, { label: "Medicación actual", value: "" }] }],
     historyUpdatePending: false,
     emr: [],
   },
   {
     id: "p3", clinicId: CLINIC_ID, firstName: "Camila", lastName: "Ortega", document: "5.678.901",
-    phone: "+595 983 333 333", email: "cami@example.com", birthDate: "2001-01-26", insurer: "OSDE PY", gender: "F", city: "San Lorenzo",
+    phone: "+595 983 333 333", email: "cami@example.com", birthDate: "2001-01-26", insurer: "OSDE PY", sex: "F", gender: "F", city: "San Lorenzo", municipio: "San Lorenzo",
     forms: [],
     historyUpdatePending: false,
     emr: [{ id: "n3", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-14, 9), kind: "tratamiento", text: "Profilaxis realizada (D1110). Encías saludables, leve gingivitis en sector anteroinferior." }],
@@ -67,7 +67,7 @@ const patients: Patient[] = [
   },
   {
     id: "p4", clinicId: CLINIC_ID, firstName: "Andrés", lastName: "Mejía", document: "2.345.678",
-    phone: "+595 984 444 444", birthDate: "1979-11-30", gender: "M", city: "Asunción",
+    phone: "+595 984 444 444", birthDate: "1979-11-30", sex: "M", gender: "M", city: "Asunción", municipio: "Asunción",
     forms: [{ id: "f4", templateName: "Historia médica (actualización)", status: "pendiente", fields: [{ label: "Cambios de salud", value: "" }, { label: "Nueva medicación", value: "" }] }],
     historyUpdatePending: true,
     emr: [{ id: "n4", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-3, 11), kind: "diagnostico", text: "Resto radicular pieza 28 (K08.3). Indicada exodoncia simple." }],
@@ -80,12 +80,12 @@ const patients: Patient[] = [
   },
   {
     id: "p5", clinicId: CLINIC_ID, firstName: "Lucía", lastName: "Ferreira", document: "6.789.012",
-    phone: "+595 985 555 555", birthDate: "1992-06-17", insurer: "Asismed", gender: "F", city: "Luque",
+    phone: "+595 985 555 555", birthDate: "1992-06-17", insurer: "Asismed", sex: "F", gender: "F", city: "Luque", municipio: "Luque",
     forms: [], historyUpdatePending: false, emr: [],
   },
   {
     id: "p6", clinicId: CLINIC_ID, firstName: "Marco", lastName: "Giménez", document: "1.234.567",
-    phone: "+595 986 666 666", birthDate: "1985-02-08", gender: "M", city: "Fernando de la Mora",
+    phone: "+595 986 666 666", birthDate: "1985-02-08", sex: "M", gender: "M", city: "Fernando de la Mora", municipio: "Fernando de la Mora",
     forms: [], historyUpdatePending: false,
     emr: [{ id: "n5", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-1, 16), kind: "plan", text: "Inicio de ortodoncia (D8080). Estudio cefalométrico solicitado." }],
     ortho: {

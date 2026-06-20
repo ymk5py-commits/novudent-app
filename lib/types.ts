@@ -125,6 +125,21 @@ export interface Patient {
   /** Datos demográficos (Análisis & Conversión): género y ciudad/localidad */
   gender?: "F" | "M" | "otro";
   city?: string;
+  /** Datos personales completos (paridad Dentalink) */
+  sex?: "M" | "F";              // sexo biológico (separado de género)
+  tipo?: string;                // tipo/clasificación del paciente
+  socialName?: string;          // nombre social (distinto del legal)
+  foreigner?: boolean;          // extranjero (junto al documento)
+  internalNumber?: string;      // número interno
+  municipio?: string;           // municipio/comuna (separado de ciudad)
+  address?: string;             // dirección
+  activity?: string;            // actividad o profesión
+  employer?: string;            // empleador
+  landline?: string;            // teléfono fijo (phone = móvil)
+  guardian?: string;            // apoderado
+  referencia?: string;          // cómo nos conoció
+  observaciones?: string;       // observaciones (demográfico, no clínico)
+  legalRepDoc?: string;         // DNI representante legal
   /** Foto del paciente (data URL base64, redimensionada) */
   photo?: string;
   /** Datos médicos destacados de la cabecera (estilo Dentalink) */
