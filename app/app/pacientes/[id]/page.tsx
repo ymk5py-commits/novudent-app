@@ -1,11 +1,11 @@
 "use client";
 /** Perfil del paciente: Resumen · Odontograma · Historial (EMR) · Presupuestos · Recetas ·
  *  Archivos · Ortodoncia · Formularios (pencil-flow) · Facturación. */
-import { useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams } from "next/navigation";
 import {
   FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2, Smile,
-  Pill, FolderOpen, Activity, ScanLine, FileSignature, Camera, AlertTriangle, HeartPulse, User, Wallet, Layers, MessageSquare, CheckSquare, Mail,
+  Pill, FolderOpen, Activity, ScanLine, FileSignature, Camera, AlertTriangle, HeartPulse, User, Wallet, Layers, MessageSquare, CheckSquare, Mail, ChevronDown,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fullName } from "@/lib/store";
 import { recordTotal } from "@/lib/billing";
@@ -101,8 +101,6 @@ export default function PatientProfile() {
     }
   };
   const canWriteEmr = can(session.role, "emr.write");
-
-  const activeGroup = GROUPS.find((g) => g.tabs.some((t) => t.key === tab)) ?? GROUPS[0];
 
   return (
     <div className="space-y-5">
@@ -204,45 +202,10 @@ export default function PatientProfile() {
         />
       )}
 
-      {/* Navegación 2 niveles estilo Dentalink: grupos (N1) + sub-tabs (N2) */}
-      <Reveal delay={0.05} className="space-y-2">
-        <div className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
-          {GROUPS.map((g) => {
-            const active = g.key === activeGroup.key;
-            return (
-              <button
-                key={g.key}
-                onClick={() => setTab(g.tabs[0].key)}
-                className={`rounded-xl px-3.5 py-2 text-sm font-bold transition-colors ${
-                  active ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"
-                }`}
-              >
-                {g.label}
-              </button>
-            );
-          })}
-        </div>
-        {activeGroup.tabs.length > 1 && (
-          <div className="flex flex-wrap gap-1 px-1">
-            {activeGroup.tabs.map((t) => {
-              const active = t.key === tab;
-              const badge = t.key === "formularios" ? pendingForms.length : 0;
-              return (
-                <button
-                  key={t.key}
-                  onClick={() => setTab(t.key)}
-                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors ${
-                    active ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"
-                  }`}
-                >
-                  <t.icon className="h-4 w-4" /> {t.label}
-                  {badge > 0 && <span className="ml-0.5 rounded-full bg-state-warn px-1.5 text-[10px] font-bold text-white">{badge}</span>}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </Reveal>
+      {/* Layout 2 columnas: sidebar acordeón estilo Dentalink + contenido */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <FichaNav tab={tab} setTab={setTab} pendingForms={pendingForms.length} />
+        <div className="min-w-0 flex-1 space-y-5">
 
       {/* ===== RESUMEN ===== */}
       {tab === "resumen" && (
@@ -422,6 +385,8 @@ export default function PatientProfile() {
 
       {/* ===== FACTURACIÓN del paciente ===== */}
       {tab === "facturacion" && <Reveal><FacturacionPaciente patient={p} /></Reveal>}
+        </div>
+      </div>
 
       {/* Modal: completar formulario (pencil flow) */}
       {fillingForm && (
@@ -485,6 +450,62 @@ function MedBadge({ icon: Icon, label, value, editable, onClick }: { icon: any; 
         {value || "Sin información"}
       </span>
     </button>
+  );
+}
+
+/* Sidebar acordeón estilo Dentalink: grupos colapsables (N1) + sub-tabs (N2).
+   Grupos de un solo sub-tab actúan como link directo (sin desplegar). */
+function FichaNav({ tab, setTab, pendingForms }: { tab: SubTab; setTab: (t: SubTab) => void; pendingForms: number }) {
+  const activeGroupKey = (GROUPS.find((g) => g.tabs.some((t) => t.key === tab)) ?? GROUPS[0]).key;
+  const [open, setOpen] = useState(activeGroupKey);
+  // Al cambiar el tab activo desde afuera (p.ej. botón de formularios), abrir su grupo.
+  useEffect(() => { setOpen(activeGroupKey); }, [activeGroupKey]);
+  return (
+    <aside className="w-full shrink-0 lg:sticky lg:top-4 lg:w-60">
+      <nav className="overflow-hidden rounded-2xl border border-clinic-border bg-white">
+        {GROUPS.map((g) => {
+          const single = g.tabs.length === 1;
+          const isOpen = !single && open === g.key;
+          const hasActive = g.key === activeGroupKey;
+          return (
+            <div key={g.key} className="border-b border-clinic-border last:border-b-0">
+              <button
+                onClick={() => (single ? setTab(g.tabs[0].key) : setOpen(isOpen ? "" : g.key))}
+                className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-bold transition-colors ${
+                  hasActive ? "bg-navy-800/5 text-navy-800" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <span className={`h-1.5 w-1.5 rounded-full transition-colors ${hasActive ? "bg-azure-600" : "bg-transparent"}`} />
+                  {g.label}
+                </span>
+                {!single && <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />}
+              </button>
+              {isOpen && (
+                <div className="space-y-0.5 px-2 pb-2">
+                  {g.tabs.map((t) => {
+                    const active = t.key === tab;
+                    const badge = t.key === "formularios" ? pendingForms : 0;
+                    return (
+                      <button
+                        key={t.key}
+                        onClick={() => setTab(t.key)}
+                        className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold transition-colors ${
+                          active ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"
+                        }`}
+                      >
+                        <t.icon className="h-4 w-4 shrink-0" /> <span className="flex-1 truncate">{t.label}</span>
+                        {badge > 0 && <span className="rounded-full bg-state-warn px-1.5 text-[10px] font-bold text-white">{badge}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+    </aside>
   );
 }
 
