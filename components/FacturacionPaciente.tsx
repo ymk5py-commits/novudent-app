@@ -51,7 +51,7 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
               <tbody className="divide-y divide-clinic-border">
                 {pagos.map((p) => (
                   <tr key={p.id} className="hover:bg-clinic-bg/60">
-                    <td className="px-4 py-2.5 font-mono text-xs text-clinic-muted">{p.paymentNumber ?? p.id.replace(/^pay_/, "#")}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-clinic-muted">{p.paymentNumber ?? "—"}</td>
                     <td className="px-2 py-2.5">{p.budgetId ? <span className="font-semibold text-azure-700">#{p.budgetId}</span> : <span className="text-clinic-muted">Libre</span>}</td>
                     <td className="px-2 py-2.5">
                       <div className="text-clinic-text">{PAYMENT_METHOD_LABEL[p.method] ?? p.method}</div>

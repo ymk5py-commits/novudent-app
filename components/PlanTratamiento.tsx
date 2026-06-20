@@ -127,7 +127,7 @@ function PlanDetalle({
         <PlanClinico key={budget.id} budget={budget} patient={patient} isOrtho={isOrtho} />
       </div>
 
-      <ComentariosPaciente budget={budget} />
+      <ComentariosPaciente key={budget.id} budget={budget} />
     </div>
   );
 }

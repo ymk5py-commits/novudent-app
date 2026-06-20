@@ -64,7 +64,7 @@ export function OrtodonciaPanel({ patient, budget }: { patient: Patient; budget:
       </div>
       {sub === "resumen" && <OrthoResumen patient={patient} canWrite={canWrite} />}
       {sub === "fotografica" && <OrthoFotos patient={patient} canWrite={canWrite} />}
-      {sub === "diagnostico" && <OrthoDiagnostico patient={patient} canWrite={canWrite} />}
+      {sub === "diagnostico" && <OrthoDiagnostico key={patient.id} patient={patient} canWrite={canWrite} />}
       {sub === "plan" && <OrthoPlan budget={budget} />}
       {sub === "rx" && <RadiografiasTab patient={patient} />}
     </div>
