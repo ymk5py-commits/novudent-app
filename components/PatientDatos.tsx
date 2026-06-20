@@ -18,12 +18,14 @@ export function DatosTab({ patient }: { patient: Patient }) {
     email: patient.email ?? "",
     birthDate: patient.birthDate ?? "",
     insurer: patient.insurer ?? "",
+    gender: patient.gender ?? "",
+    city: patient.city ?? "",
   });
   const set = (patch: Partial<typeof f>) => setF((x) => ({ ...x, ...patch }));
   const dirty =
     f.firstName !== patient.firstName || f.lastName !== patient.lastName || f.document !== patient.document ||
     f.phone !== patient.phone || f.email !== (patient.email ?? "") || f.birthDate !== (patient.birthDate ?? "") ||
-    f.insurer !== (patient.insurer ?? "");
+    f.insurer !== (patient.insurer ?? "") || f.gender !== (patient.gender ?? "") || f.city !== (patient.city ?? "");
 
   const save = () =>
     upsertPatient({
@@ -35,6 +37,8 @@ export function DatosTab({ patient }: { patient: Patient }) {
       email: f.email.trim() || undefined,
       birthDate: f.birthDate || undefined,
       insurer: f.insurer.trim() || undefined,
+      gender: (f.gender || undefined) as Patient["gender"],
+      city: f.city.trim() || undefined,
     });
 
   return (
@@ -55,6 +59,15 @@ export function DatosTab({ patient }: { patient: Patient }) {
         <Field label="Email"><input type="email" className={inputCls} value={f.email} disabled={!canEdit} onChange={(e) => set({ email: e.target.value })} /></Field>
         <Field label="Fecha de nacimiento"><input type="date" className={inputCls} value={f.birthDate} disabled={!canEdit} onChange={(e) => set({ birthDate: e.target.value })} /></Field>
         <Field label="Seguro / convenio"><input className={inputCls} value={f.insurer} disabled={!canEdit} onChange={(e) => set({ insurer: e.target.value })} /></Field>
+        <Field label="Género">
+          <select className={inputCls} value={f.gender} disabled={!canEdit} onChange={(e) => set({ gender: e.target.value })}>
+            <option value="">Sin especificar</option>
+            <option value="F">Femenino</option>
+            <option value="M">Masculino</option>
+            <option value="otro">Otro</option>
+          </select>
+        </Field>
+        <Field label="Ciudad"><input className={inputCls} value={f.city} disabled={!canEdit} onChange={(e) => set({ city: e.target.value })} placeholder="Asunción, Lambaré…" /></Field>
       </div>
       {!canEdit && <p className="mt-3 text-xs text-clinic-muted">Tu rol tiene acceso de solo lectura a los datos del paciente.</p>}
     </Card>
