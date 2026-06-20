@@ -170,6 +170,9 @@ export function CashflowAreaChart({ data }: { data: { d: string; cobrado: number
 
 /* ---------- embudo de conversión (trapecios apilados, CSS) ---------- */
 export function FunnelChart({ stages }: { stages: { label: string; value: number; pct: number; color: string }[] }) {
+  if (!stages.length || stages[0].value === 0) {
+    return <p className="py-10 text-center text-sm text-clinic-muted">Sin citas en el período.</p>;
+  }
   return (
     <div className="mx-auto flex max-w-xs flex-col gap-0.5">
       {stages.map((s, i) => {
