@@ -94,6 +94,15 @@ const patients: Patient[] = [
       diagnosis: "Clase II división 1 — apiñamiento moderado superior e inferior",
       startDate: at(-30, 10),
       monthlyFee: 375000,
+      totalMonths: 24,
+      progressReal: 12,
+      upperArch: "NiTi 0.016",
+      lowerArch: "NiTi 0.014",
+      elasticType: "Clase II (3/16\", 4.5 oz)",
+      elasticConfig: "16→26, uso nocturno",
+      nextControlDate: at(26, 17),
+      hygieneCurve: 2.0,
+      nextSessionNotes: "Cambio a arco 0.018. Reforzar higiene en sector anteroinferior (31-41).",
       controls: [
         { date: at(-30, 10), note: "Instalación de aparatología superior. Indicaciones de higiene entregadas.", by: "Dra. Sofía Benítez" },
         { date: at(-2, 17), note: "Activación + cambio de ligaduras. Buena higiene, leve gingivitis en 31-41.", by: "Dra. Sofía Benítez" },
@@ -120,6 +129,7 @@ const budgets: Budget[] = [
   },
   {
     id: "g2", clinicId: CLINIC_ID, patientId: "p6", dentistId: "u2", createdAt: at(-30, 10), status: "aceptado",
+    planType: "ortodoncia",
     items: [{ id: "gi4", cpt: "D8080", description: "Ortodoncia integral (adolescente/adulto)", price: 4500000, status: "pendiente" }],
     installments: 12,
     notes: "Ortodoncia integral — entrega inicial + 12 cuotas mensuales.",

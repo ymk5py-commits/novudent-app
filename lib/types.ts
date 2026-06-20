@@ -240,6 +240,9 @@ export interface Budget {
   createdAt: string;
   status: BudgetStatus;
   items: BudgetItem[];
+  /** Tipo de plan (Dentalink): general u ortodoncia. El seguimiento clínico de
+   *  ortodoncia vive en `patient.ortho` (un tratamiento de ortodoncia por paciente). */
+  planType?: "general" | "ortodoncia";
   /** descuento % (manual o por convenio) */
   discountPct?: number;
   /** convenio aplicado (nombre) */
@@ -407,6 +410,23 @@ export interface OrthoRecord {
   startDate: string;
   monthlyFee: number;
   controls: OrthoControl[];
+  /* ===== Seguimiento clínico (vista Plan de tratamiento estilo Dentalink) ===== */
+  /** Duración estimada del tratamiento en meses (ej. 24) → "X de N meses" */
+  totalMonths?: number;
+  /** Avance clínico real 0–100 (lo carga el profesional) → donut "Progreso Real" */
+  progressReal?: number;
+  /** Último arco superior / inferior colocado */
+  upperArch?: string;
+  lowerArch?: string;
+  /** Elásticos: tipo y configuración */
+  elasticType?: string;
+  elasticConfig?: string;
+  /** Próximo control (ISO o YYYY-MM-DD) */
+  nextControlDate?: string;
+  /** Curva de higiene (promedio, ej. 2.0) */
+  hygieneCurve?: number;
+  /** Indicaciones para la próxima sesión */
+  nextSessionNotes?: string;
 }
 
 /* ===== Lista de espera ===== */
