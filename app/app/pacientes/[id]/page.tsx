@@ -29,7 +29,7 @@ import RecoveryCard from "@/components/RecoveryCard";
 import { Reveal } from "@/components/motion";
 
 type SubTab =
-  | "datos" | "formularios" | "archivos" | "consentimientos"
+  | "datos" | "citas" | "formularios" | "archivos" | "consentimientos"
   | "resumen" | "odontograma" | "periodoncia" | "historial" | "radiografias" | "recetas"
   | "planes" | "facturacion" | "recibir-pago";
 
@@ -38,6 +38,7 @@ type GroupDef = { key: string; label: string; tabs: { key: SubTab; label: string
 const GROUPS: GroupDef[] = [
   { key: "datos-personales", label: "Datos personales", tabs: [
     { key: "datos", label: "Datos", icon: User },
+    { key: "citas", label: "Citas", icon: CalendarDays },
     { key: "formularios", label: "Formularios", icon: FileText },
     { key: "archivos", label: "Archivos", icon: FolderOpen },
     { key: "consentimientos", label: "Consentimientos", icon: FileSignature },
@@ -336,6 +337,36 @@ export default function PatientProfile() {
 
       {/* ===== DATOS / PLANES / RECIBIR PAGO / RECETAS / ARCHIVOS / RADIOGRAFÍAS / CONSENTIMIENTOS ===== */}
       {tab === "datos" && <Reveal><DatosTab patient={p} /></Reveal>}
+      {tab === "citas" && (
+        <Reveal>
+          {appts.length === 0 ? (
+            <Empty title="Sin citas" desc="Las citas del paciente aparecerán acá." />
+          ) : (
+            <Card className="overflow-x-auto p-0">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead>
+                  <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                    <th className="px-4 py-3">Fecha</th>
+                    <th className="px-2 py-3">Motivo</th>
+                    <th className="px-2 py-3">Profesional</th>
+                    <th className="px-2 py-3">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-clinic-border">
+                  {appts.map((a) => (
+                    <tr key={a.id} className="hover:bg-clinic-bg/50">
+                      <td className="px-4 py-2.5 font-mono text-xs text-clinic-muted">{new Date(a.start).toLocaleString("es-PY", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
+                      <td className="px-2 py-2.5 text-clinic-text">{a.title}</td>
+                      <td className="px-2 py-2.5 text-clinic-muted">{db.users.find((u) => u.id === a.dentistId)?.name ?? "—"}</td>
+                      <td className="px-2 py-2.5"><StatusBadge status={a.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
+        </Reveal>
+      )}
       {tab === "planes" && <Reveal><PlanTratamiento patient={p} /></Reveal>}
       {tab === "recibir-pago" && <Reveal><RecibirPagoTab patient={p} /></Reveal>}
       {tab === "recetas" && <Reveal><RxTab patient={p} /></Reveal>}
