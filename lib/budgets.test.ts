@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { budgetRealizado } from "./budgets";
+import { budgetRealizado, financialStatus } from "./budgets";
 import type { BudgetItem } from "./types";
 
 const item = (price: number, status: "pendiente" | "realizado"): BudgetItem => ({
@@ -16,5 +16,17 @@ describe("budgetRealizado", () => {
   it("es 0 sin ítems realizados o sin ítems", () => {
     expect(budgetRealizado({ items: [item(500, "pendiente")] })).toBe(0);
     expect(budgetRealizado({ items: [] })).toBe(0);
+  });
+});
+
+describe("financialStatus", () => {
+  it("'No hay saldo' cuando está saldado", () => {
+    expect(financialStatus({ id: "b", items: [item(1000, "realizado")] } as any, [{ budgetId: "b", amount: 1000 } as any]).label).toBe("No hay saldo");
+  });
+  it("'Deudas' cuando debe por trabajo realizado", () => {
+    expect(financialStatus({ id: "b", items: [item(1000, "realizado")] } as any, []).label).toBe("Deudas");
+  });
+  it("'Hay saldo' cuando hay saldo pero nada realizado aún", () => {
+    expect(financialStatus({ id: "b", items: [item(1000, "pendiente")] } as any, []).label).toBe("Hay saldo");
   });
 });

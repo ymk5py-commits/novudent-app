@@ -1,49 +1,124 @@
 "use client";
-/** Vista "Plan de tratamiento" estilo Dentalink: panel financiero (izq) + seguimiento
- *  clínico de la especialidad (der). El plan ES el presupuesto (Budget). */
+/** Vista "Plan de tratamiento" estilo Dentalink: LISTA de planes (En ejecución / Otros)
+ *  → DETALLE de 2 columnas (panel financiero + seguimiento de la especialidad). */
 import { useState } from "react";
-import { Copy, UserRound, Braces, Smile } from "lucide-react";
+import { Copy, UserRound, Braces, Smile, ChevronLeft, ChevronRight } from "lucide-react";
 import { useStore, fmtGs, fmtDate } from "@/lib/store";
 import { can } from "@/lib/rbac";
-import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
+import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, financialStatus, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
+import { orthoProgress } from "@/lib/ortho";
 import type { Patient, Budget, Payment } from "@/lib/types";
-import { Card, Empty } from "@/components/ui";
+import { Card, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
 import { PatientBriefButton } from "@/components/NovudentIA";
 import Odontogram from "@/components/Odontogram";
 import { OrtodonciaPanel } from "@/components/Ortodoncia";
 
+function planProgress(budget: Budget, patient: Patient): number {
+  if (budget.planType === "ortodoncia" && patient.ortho?.active) return orthoProgress(patient.ortho).calendarPct;
+  const total = budget.items.length;
+  if (!total) return 0;
+  return Math.round((budget.items.filter((i) => i.status === "realizado").length / total) * 100);
+}
+
 export function PlanTratamiento({ patient }: { patient: Patient }) {
   const { db } = useStore();
-  const hasIA = useClinicPlan().features.includes("ia");
   const budgets = db.budgets.filter((b) => b.patientId === patient.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const [selId, setSelId] = useState(budgets[0]?.id ?? "");
-  const budget = budgets.find((b) => b.id === selId) ?? budgets[0];
+  const [selId, setSelId] = useState<string | null>(null);
 
-  if (!budget) {
+  if (!budgets.length) {
     return <Empty title="Sin planes de tratamiento" desc="Creá un presupuesto en la sección Presupuestos para iniciar un plan." />;
   }
+  if (selId && budgets.some((b) => b.id === selId)) {
+    return <PlanDetalle patient={patient} budgets={budgets} selId={selId} onSelect={setSelId} onBack={() => setSelId(null)} />;
+  }
+  return <PlanLista patient={patient} budgets={budgets} onOpen={setSelId} />;
+}
 
+/* ---------- LISTA de planes (En ejecución / Otros) ---------- */
+function MiniRing({ pct }: { pct: number }) {
+  const r = 16;
+  const c = 2 * Math.PI * r;
+  const off = c * (1 - Math.min(100, Math.max(0, pct)) / 100);
+  return (
+    <div className="relative h-12 w-12 shrink-0">
+      <svg viewBox="0 0 44 44" className="h-12 w-12 -rotate-90">
+        <circle cx="22" cy="22" r={r} fill="none" strokeWidth="4" stroke="currentColor" className="text-clinic-border" />
+        <circle cx="22" cy="22" r={r} fill="none" strokeWidth="4" strokeLinecap="round" stroke="currentColor" strokeDasharray={c} strokeDashoffset={off} className="text-azure-500" />
+      </svg>
+      <span className="absolute inset-0 grid place-items-center text-[10px] font-extrabold text-clinic-text">{pct}%</span>
+    </div>
+  );
+}
+
+function PlanLista({ patient, budgets, onOpen }: { patient: Patient; budgets: Budget[]; onOpen: (id: string) => void }) {
+  const { db } = useStore();
+  const enEjecucion = budgets.filter((b) => b.status === "aceptado");
+  const otros = budgets.filter((b) => b.status !== "aceptado");
+
+  const Row = (b: Budget) => {
+    const fin = financialStatus(b, db.payments);
+    const prof = db.users.find((u) => u.id === b.dentistId)?.name ?? "—";
+    return (
+      <button key={b.id} onClick={() => onOpen(b.id)} className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-clinic-bg/60">
+        <MiniRing pct={planProgress(b, patient)} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-extrabold text-azure-700">#{b.id}</span>
+            <span className="font-bold text-clinic-text">{b.planType === "ortodoncia" ? "Ortodoncia" : "Plan general"}</span>
+          </div>
+          <div className="text-xs text-clinic-muted">{prof}{b.convenio ? ` · ${b.convenio}` : ""} · creado {fmtDate(b.createdAt)}</div>
+        </div>
+        <Badge tone={fin.tone}>{fin.label}</Badge>
+        <ChevronRight className="h-4 w-4 shrink-0 text-clinic-muted" />
+      </button>
+    );
+  };
+
+  return (
+    <div className="space-y-5">
+      {enEjecucion.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">En ejecución</h3>
+          <Card className="divide-y divide-clinic-border p-0">{enEjecucion.map(Row)}</Card>
+        </div>
+      )}
+      {otros.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Otros</h3>
+          <Card className="divide-y divide-clinic-border p-0">{otros.map(Row)}</Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- DETALLE (2 columnas) ---------- */
+function PlanDetalle({
+  patient, budgets, selId, onSelect, onBack,
+}: { patient: Patient; budgets: Budget[]; selId: string; onSelect: (id: string) => void; onBack: () => void }) {
+  const { db } = useStore();
+  const hasIA = useClinicPlan().features.includes("ia");
+  const budget = budgets.find((b) => b.id === selId) ?? budgets[0];
   const isOrtho = budget.planType === "ortodoncia";
   const professional = db.users.find((u) => u.id === budget.dentistId);
 
   return (
     <div className="space-y-4">
-      {budgets.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          {budgets.map((b) => (
-            <button
-              key={b.id}
-              onClick={() => setSelId(b.id)}
-              className={`rounded-xl border px-3 py-1.5 text-xs font-bold transition-colors ${
-                b.id === budget.id ? "border-azure-500 bg-azure-50 text-azure-700" : "border-clinic-border bg-white text-clinic-muted hover:border-azure-300"
-              }`}
-            >
-              Plan #{b.id} · {b.planType === "ortodoncia" ? "Ortodoncia" : "General"}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={onBack} className="inline-flex items-center gap-1 text-sm font-bold text-azure-700 hover:underline">
+          <ChevronLeft className="h-4 w-4" /> Planes
+        </button>
+        {budgets.length > 1 && budgets.map((b) => (
+          <button
+            key={b.id}
+            onClick={() => onSelect(b.id)}
+            className={`rounded-xl border px-3 py-1.5 text-xs font-bold transition-colors ${b.id === budget.id ? "border-azure-500 bg-azure-50 text-azure-700" : "border-clinic-border bg-white text-clinic-muted hover:border-azure-300"}`}
+          >
+            #{b.id}
+          </button>
+        ))}
+      </div>
 
       <div className="grid gap-5 lg:grid-cols-[330px_1fr]">
         <PlanFinanciero budget={budget} payments={db.payments} professional={professional?.name} hasIA={hasIA} patient={patient} />

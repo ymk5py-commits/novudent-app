@@ -34,6 +34,14 @@ export function budgetBalance(b: Budget, payments: Payment[]): number {
   return budgetTotal(b) - budgetPaid(b.id, payments);
 }
 
+/** Estado financiero del plan (etiqueta Dentalink): No hay saldo / Deudas / Hay saldo. */
+export function financialStatus(b: Budget, payments: Payment[]): { label: string; tone: "ok" | "warn" | "err" | "muted" } {
+  const saldo = budgetBalance(b, payments);
+  if (saldo <= 0) return { label: "No hay saldo", tone: "muted" };
+  if (budgetRealizado(b) > budgetPaid(b.id, payments)) return { label: "Deudas", tone: "err" };
+  return { label: "Hay saldo", tone: "ok" };
+}
+
 /** Valor de cada cuota pactada */
 export function installmentValue(b: Budget): number | null {
   if (!b.installments || b.installments < 2) return null;
