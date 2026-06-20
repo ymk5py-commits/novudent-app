@@ -1,7 +1,7 @@
 "use client";
 /** Informes de gestión: KPIs de 30 días, producción y comisiones por profesional,
  *  tasa de aceptación de presupuestos, morosidad y reportes descargables (Excel/CSV). */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ShieldAlert, Download, TrendingUp, TrendingDown, Scale, FileSpreadsheet, Percent, Bot, Star } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
@@ -10,6 +10,7 @@ import { Card, Btn, Badge } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { ReportsIAPanel } from "@/components/NovudentIA";
 import { CashflowAreaChart, ProductionBarsChart } from "@/components/Charts";
+import { AnalisisConversion } from "@/components/AnalisisConversion";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 
 /** Descarga CSV con BOM UTF-8 (abre directo en Excel) */
@@ -27,6 +28,7 @@ const DAYS30 = 30 * 24 * 3600 * 1000;
 
 export default function ReportsPage() {
   const { db, session } = useStore();
+  const [tab, setTab] = useState<"desempeno" | "analisis" | "excel">("desempeno");
 
   const data = useMemo(() => {
     const since = Date.now() - DAYS30;
@@ -187,6 +189,17 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Sub-pestañas estilo Dentalink */}
+      <div className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
+        {([["desempeno", "Panel de desempeño"], ["analisis", "Análisis de pacientes"], ["excel", "Reportes Excel"]] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-3.5 py-2 text-sm font-bold transition-colors ${tab === k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>{label}</button>
+        ))}
+      </div>
+
+      {tab === "analisis" && <AnalisisConversion />}
+
+      {tab === "desempeno" && (
+      <div className="space-y-5">
       {/* Novudent IA — pregúntale a tus datos */}
       <Reveal><ReportsIAPanel datos={iaDatos} /></Reveal>
 
@@ -331,6 +344,11 @@ export default function ReportsPage() {
       </Card>
       </Reveal>
 
+      </div>
+      )}
+
+      {tab === "excel" && (
+      <div className="space-y-5">
       {/* exportables */}
       <Reveal>
       <Card className="p-5">
@@ -345,6 +363,8 @@ export default function ReportsPage() {
         </div>
       </Card>
       </Reveal>
+      </div>
+      )}
     </div>
   );
 }
