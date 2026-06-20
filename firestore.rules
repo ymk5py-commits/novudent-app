@@ -147,6 +147,8 @@ service cloud.firestore {
       match /labOrders/{docId}   { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       match /settlements/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       match /boxes/{docId}       { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Notas del paciente: comentarios administrativos / tareas de gestión / emails
+      match /patientNotes/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
     }
 
     // Todo lo demás: denegado.

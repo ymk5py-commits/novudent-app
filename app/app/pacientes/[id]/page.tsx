@@ -5,7 +5,7 @@ import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams } from "next/navigation";
 import {
   FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2, Smile,
-  Pill, FolderOpen, Activity, ScanLine, FileSignature, Camera, AlertTriangle, HeartPulse, User, Wallet, Layers,
+  Pill, FolderOpen, Activity, ScanLine, FileSignature, Camera, AlertTriangle, HeartPulse, User, Wallet, Layers, MessageSquare, CheckSquare, Mail,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fullName } from "@/lib/store";
 import { recordTotal } from "@/lib/billing";
@@ -22,6 +22,7 @@ import { DatosTab } from "@/components/PatientDatos";
 import { RecibirPagoTab } from "@/components/RecibirPago";
 import { HistorialTimeline } from "@/components/Historial";
 import { FacturacionPaciente } from "@/components/FacturacionPaciente";
+import { PatientNotas } from "@/components/PatientNotas";
 import { VoiceNoteButton, PatientBriefButton } from "@/components/NovudentIA";
 import { useClinicPlan } from "@/components/PlanGate";
 import Periodontogram from "@/components/Periodontogram";
@@ -29,7 +30,7 @@ import RecoveryCard from "@/components/RecoveryCard";
 import { Reveal } from "@/components/motion";
 
 type SubTab =
-  | "datos" | "citas" | "formularios" | "archivos" | "consentimientos"
+  | "datos" | "citas" | "comentarios" | "tareas" | "emails" | "formularios" | "archivos" | "consentimientos"
   | "resumen" | "odontograma" | "periodoncia" | "historial" | "radiografias" | "recetas"
   | "planes" | "facturacion" | "recibir-pago";
 
@@ -39,6 +40,9 @@ const GROUPS: GroupDef[] = [
   { key: "datos-personales", label: "Datos personales", tabs: [
     { key: "datos", label: "Datos", icon: User },
     { key: "citas", label: "Citas", icon: CalendarDays },
+    { key: "comentarios", label: "Comentarios", icon: MessageSquare },
+    { key: "tareas", label: "Tareas", icon: CheckSquare },
+    { key: "emails", label: "Emails", icon: Mail },
     { key: "formularios", label: "Formularios", icon: FileText },
     { key: "archivos", label: "Archivos", icon: FolderOpen },
     { key: "consentimientos", label: "Consentimientos", icon: FileSignature },
@@ -367,6 +371,9 @@ export default function PatientProfile() {
           )}
         </Reveal>
       )}
+      {tab === "comentarios" && <Reveal><PatientNotas patient={p} kind="comentario" /></Reveal>}
+      {tab === "tareas" && <Reveal><PatientNotas patient={p} kind="tarea" /></Reveal>}
+      {tab === "emails" && <Reveal><PatientNotas patient={p} kind="email" /></Reveal>}
       {tab === "planes" && <Reveal><PlanTratamiento patient={p} /></Reveal>}
       {tab === "recibir-pago" && <Reveal><RecibirPagoTab patient={p} /></Reveal>}
       {tab === "recetas" && <Reveal><RxTab patient={p} /></Reveal>}

@@ -599,6 +599,22 @@ export interface Settlement { id: string; professionalId: string; periodFrom: st
 
 export interface Box { id: string; name: string; color?: string; }
 
+export type PatientNoteKind = "comentario" | "tarea" | "email";
+/** Nota del paciente (Datos personales, paridad Dentalink): comentario administrativo,
+ *  tarea de gestión o registro de email. */
+export interface PatientNote {
+  id: string;
+  clinicId: string;
+  patientId: string;
+  kind: PatientNoteKind;
+  text: string;          // comentario / descripción de la tarea / cuerpo del email
+  subject?: string;      // asunto (emails)
+  done?: boolean;        // tareas
+  dueDate?: string;      // tareas (YYYY-MM-DD)
+  createdAt: string;
+  createdBy: string;
+}
+
 export interface DB {
   clinics: Clinic[];
   users: User[];
@@ -621,5 +637,6 @@ export interface DB {
   labOrders: LabOrder[];
   settlements: Settlement[];
   boxes: Box[];
+  patientNotes: PatientNote[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }

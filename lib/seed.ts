@@ -368,6 +368,11 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
     outbox,
     recoveryMonitors: [],
     radiographs: [],
+    patientNotes: [
+      { id: "pn1", clinicId: CLINIC_ID, patientId: "p6", kind: "comentario", text: "Paciente puntual y colaborador. Prefiere turnos a la tarde.", createdAt: at(-10, 9), createdBy: "Paola Asistente" },
+      { id: "pn2", clinicId: CLINIC_ID, patientId: "p6", kind: "tarea", text: "Pedir radiografía panorámica de control a los 6 meses.", dueDate: at(150, 9).slice(0, 10), done: false, createdAt: at(-5, 10), createdBy: "Dra. Sofía Benítez" },
+      { id: "pn3", clinicId: CLINIC_ID, patientId: "p6", kind: "email", subject: "Recordatorio de control", text: "Se envió recordatorio del control de ortodoncia por email.", createdAt: at(-3, 16), createdBy: "Sistema" },
+    ],
     signatures: [],
     crmCards: [],
     campaigns: [],

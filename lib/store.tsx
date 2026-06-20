@@ -27,7 +27,7 @@ async function ensureAuth() {
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord,
   Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
-  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate,
+  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote,
   CrmCard, Campaign, LabOrder, Settlement, Box,
 } from "./types";
 import { buildSeed } from "./seed";
@@ -79,6 +79,7 @@ async function seedFirestore(seed: DB) {
   for (const m of seed.stockMoves) batch.set(doc(fsdb, "clinics", CLINIC_ID, "stockMoves", m.id), clean(m));
   for (const w of seed.waitlist) batch.set(doc(fsdb, "clinics", CLINIC_ID, "waitlist", w.id), clean(w));
   for (const t of seed.outbox) batch.set(doc(fsdb, "clinics", CLINIC_ID, "outbox", t.id), clean(t));
+  for (const n of seed.patientNotes) batch.set(doc(fsdb, "clinics", CLINIC_ID, "patientNotes", n.id), clean(n));
   await batch.commit();
 }
 
@@ -94,10 +95,10 @@ async function loadFirestore(): Promise<DB> {
   }
   const meta = clinicSnap.data() as any;
   const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
-    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"),
+    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -121,6 +122,7 @@ async function loadFirestore(): Promise<DB> {
     labOrders: labOrders.docs.map((d) => d.data() as LabOrder),
     settlements: settlements.docs.map((d) => d.data() as Settlement),
     boxes: boxes.docs.map((d) => d.data() as Box),
+    patientNotes: patientNotes.docs.map((d) => d.data() as PatientNote),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   /* Upgrade v3: bases creadas antes de los módulos nuevos — sembramos
@@ -366,6 +368,9 @@ interface Ctx {
   addRadiograph: (r: RadiographRec) => void;
   updateRadiograph: (r: RadiographRec) => void;
   deleteRadiograph: (id: string) => void;
+  addPatientNote: (n: PatientNote) => void;
+  updatePatientNote: (n: PatientNote) => void;
+  deletePatientNote: (id: string) => void;
   /* — Firma electrónica / consentimientos — */
   addSignature: (s: SignatureDoc) => void;
   updateSignature: (s: SignatureDoc) => void;
@@ -813,6 +818,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         fsSave("recoveryMonitors", id, up);
       },
       /* — Análisis IA de radiografías — */
+      addPatientNote: (n: PatientNote) => {
+        persist({ ...db, patientNotes: [n, ...db.patientNotes] });
+        fsSave("patientNotes", n.id, n);
+      },
+      updatePatientNote: (n: PatientNote) => {
+        persist({ ...db, patientNotes: db.patientNotes.map((x) => (x.id === n.id ? n : x)) });
+        fsSave("patientNotes", n.id, n);
+      },
+      deletePatientNote: (id: string) => {
+        persist({ ...db, patientNotes: db.patientNotes.filter((x) => x.id !== id) });
+        fsDelete("patientNotes", id);
+      },
       addRadiograph: (r: RadiographRec) => {
         persist({ ...db, radiographs: [r, ...db.radiographs] });
         fsSave("radiographs", r.id, r);
