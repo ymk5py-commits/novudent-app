@@ -132,6 +132,7 @@ const budgets: Budget[] = [
     planType: "ortodoncia",
     items: [{ id: "gi4", cpt: "D8080", description: "Ortodoncia integral (adolescente/adulto)", price: 4500000, status: "pendiente" }],
     installments: 12,
+    schedule: Array.from({ length: 12 }, (_, i) => ({ numero: i + 1, dueDate: at(-30 + i * 30, 10).slice(0, 10), amount: 375000 })),
     notes: "Ortodoncia integral — entrega inicial + 12 cuotas mensuales.",
     patientComments: "Tiempo estimado 24 meses (entrega inicial + 12 cuotas). No incluye micro-tornillos ni exodoncias. La pérdida o despegue de brackets por falta de cuidado del paciente tiene costo adicional.",
     history: [

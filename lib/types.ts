@@ -263,6 +263,13 @@ export interface BudgetItem {
   doneBy?: string;
 }
 
+/** Cuota de un plan de financiamiento. */
+export interface Installment {
+  numero: number;
+  dueDate: string;  // YYYY-MM-DD o ISO
+  amount: number;
+}
+
 export interface Budget {
   id: string;
   clinicId: string;
@@ -283,6 +290,8 @@ export interface Budget {
   notes?: string;
   /** Comentarios para el paciente (se imprimen en el presupuesto) */
   patientComments?: string;
+  /** Plan de cuotas de financiamiento (paridad Dentalink) */
+  schedule?: Installment[];
   history: { at: string; action: string; by: string }[];
   /** Negociación de presupuesto abandonado (bot re-engancha al paciente) */
   negociacion?: {
