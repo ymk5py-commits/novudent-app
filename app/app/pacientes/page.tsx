@@ -1,16 +1,21 @@
 "use client";
-/** Patient Finder (sec. 3.2 A): estado de interacción por íconos. */
+/** Sección Pacientes (paridad Dentalink): sub-tabs Pacientes / Análisis / Pacientes de
+ *  Ortodoncia. La lista es una tabla con Tratamientos y Deudas. */
 import { useMemo, useState } from "react";
 import { Search, FileText, ClipboardList, Plus, ChevronRight } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
+import { patientBalance } from "@/lib/budgets";
 import type { Patient } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
+import { AnalisisConversion } from "@/components/AnalisisConversion";
+import { PacientesOrtodoncia } from "@/components/PacientesOrtodoncia";
 
 export default function PatientsPage() {
   const { db, session, upsertPatient } = useStore();
   const [q, setQ] = useState("");
   const [creating, setCreating] = useState(false);
+  const [tab, setTab] = useState<"lista" | "analisis" | "ortodoncia">("lista");
 
   const list = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -20,63 +25,99 @@ export default function PatientsPage() {
     return [...xs].sort((a, b) => fullName(a).localeCompare(fullName(b)));
   }, [db.patients, q]);
 
+  const orthoCount = db.patients.filter((p) => p.ortho?.active).length;
+  const TABS = [
+    { k: "lista", label: "Pacientes" },
+    { k: "analisis", label: "Análisis" },
+    { k: "ortodoncia", label: `Pacientes de Ortodoncia (${orthoCount})` },
+  ] as const;
+
   return (
     <div className="space-y-5">
       <Reveal y={0} className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold text-clinic-text">Pacientes</h1>
-          <p className="text-sm text-clinic-muted">
-            <FileText className="mr-1 inline h-3.5 w-3.5 text-state-warn" /> formularios pendientes ·
-            <ClipboardList className="mx-1 inline h-3.5 w-3.5 text-state-info" /> actualización de historial pendiente
-          </p>
-        </div>
+        <h1 className="text-2xl font-extrabold text-clinic-text">Pacientes</h1>
         <Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Nuevo paciente</Btn>
       </Reveal>
 
-      <Reveal delay={0.05} className="relative max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar por nombre, CI o teléfono…"
-          className="w-full rounded-xl border border-clinic-border bg-white py-2.5 pl-9 pr-3 text-sm focus:border-azure-500 focus:outline-none"
-        />
+      <Reveal delay={0.05} className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
+        {TABS.map((t) => (
+          <button
+            key={t.k}
+            onClick={() => setTab(t.k)}
+            className={`rounded-xl px-3.5 py-2 text-sm font-bold transition-colors ${tab === t.k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
+          >
+            {t.label}
+          </button>
+        ))}
       </Reveal>
 
-      {list.length === 0 ? (
-        <Reveal><Empty title="Sin resultados" desc="Probá con otro nombre o número de documento." /></Reveal>
-      ) : (
-        <Reveal>
-        <Card className="divide-y divide-clinic-border">
-          {list.map((p) => {
-            const pendingForms = p.forms.filter((f) => f.status === "pendiente").length;
-            return (
-              <a key={p.id} href={`/app/pacientes/${p.id}`} className="group flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-clinic-bg/70">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-azure-100 to-azure-200 font-bold text-azure-700 ring-1 ring-azure-200/60 transition-transform group-hover:scale-105">
-                  {p.firstName[0]}{p.lastName[0]}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-bold text-clinic-text">{fullName(p)}</span>
-                  <span className="block text-xs text-clinic-muted">CI {p.document} · {p.phone}{p.insurer ? ` · ${p.insurer}` : ""}</span>
-                </span>
-                <span className="flex items-center gap-2">
-                  {pendingForms > 0 && (
-                    <span data-tip={`${pendingForms} formulario(s) pendiente(s)`} className="grid h-8 w-8 place-items-center rounded-lg bg-state-warnbg">
-                      <FileText className="h-4 w-4 text-state-warn" />
-                    </span>
-                  )}
-                  {p.historyUpdatePending && (
-                    <span data-tip="Actualización de historial médico pendiente" className="grid h-8 w-8 place-items-center rounded-lg bg-state-infobg">
-                      <ClipboardList className="h-4 w-4 text-state-info" />
-                    </span>
-                  )}
-                  {pendingForms === 0 && !p.historyUpdatePending && <Badge tone="ok">Al día</Badge>}
-                  <ChevronRight className="h-4 w-4 text-clinic-muted" />
-                </span>
-              </a>
-            );
-          })}
-        </Card>
+      {tab === "analisis" && <Reveal><AnalisisConversion /></Reveal>}
+      {tab === "ortodoncia" && <Reveal><PacientesOrtodoncia /></Reveal>}
+
+      {tab === "lista" && (
+        <Reveal className="space-y-4">
+          <div className="relative max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar por nombre, CI o teléfono…"
+              className="w-full rounded-xl border border-clinic-border bg-white py-2.5 pl-9 pr-3 text-sm focus:border-azure-500 focus:outline-none"
+            />
+          </div>
+
+          {list.length === 0 ? (
+            <Empty title="Sin resultados" desc="Probá con otro nombre o número de documento." />
+          ) : (
+            <Card className="overflow-x-auto p-0">
+              <table className="w-full min-w-[680px] text-sm">
+                <thead>
+                  <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                    <th className="px-4 py-3">Nombre</th>
+                    <th className="px-2 py-3">Apellidos</th>
+                    <th className="px-2 py-3">Tratamientos</th>
+                    <th className="px-2 py-3">Deudas</th>
+                    <th className="px-2 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-clinic-border">
+                  {list.map((p) => {
+                    const trats = db.budgets.filter((b) => b.patientId === p.id).length;
+                    const debt = patientBalance(p.id, db.budgets, db.payments) > 0;
+                    const pendingForms = p.forms.filter((f) => f.status === "pendiente").length;
+                    return (
+                      <tr key={p.id} className="hover:bg-clinic-bg/60">
+                        <td className="px-4 py-2.5">
+                          <a href={`/app/pacientes/${p.id}`} className="flex items-center gap-2 font-semibold text-clinic-text hover:text-azure-700">
+                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-azure-100 to-azure-200 text-xs font-bold text-azure-700">{p.firstName[0]}{p.lastName[0]}</span>
+                            {p.firstName}
+                          </a>
+                        </td>
+                        <td className="px-2 py-2.5 text-clinic-text">{p.lastName}</td>
+                        <td className="px-2 py-2.5 text-clinic-muted">{trats}</td>
+                        <td className="px-2 py-2.5">{debt ? <Badge tone="err">Con deuda</Badge> : <span className="text-clinic-muted">No tiene</span>}</td>
+                        <td className="px-2 py-2.5">
+                          <span className="flex items-center justify-end gap-1.5">
+                            {pendingForms > 0 && (
+                              <span data-tip={`${pendingForms} formulario(s) pendiente(s)`} className="grid h-7 w-7 place-items-center rounded-lg bg-state-warnbg">
+                                <FileText className="h-3.5 w-3.5 text-state-warn" />
+                              </span>
+                            )}
+                            {p.historyUpdatePending && (
+                              <span data-tip="Actualización de historial médico pendiente" className="grid h-7 w-7 place-items-center rounded-lg bg-state-infobg">
+                                <ClipboardList className="h-3.5 w-3.5 text-state-info" />
+                              </span>
+                            )}
+                            <a href={`/app/pacientes/${p.id}`}><ChevronRight className="h-4 w-4 text-clinic-muted" /></a>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </Card>
+          )}
         </Reveal>
       )}
 
