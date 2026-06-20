@@ -21,7 +21,7 @@ const CLINIC_ID = "cl_demo";
 const patients: Patient[] = [
   {
     id: "p1", clinicId: CLINIC_ID, firstName: "María", lastName: "González", document: "3.456.789",
-    phone: "+595 981 111 111", email: "maria@example.com", birthDate: "1988-04-12", insurer: "Asismed",
+    phone: "+595 981 111 111", email: "maria@example.com", birthDate: "1988-04-12", insurer: "Asismed", gender: "F", city: "Asunción",
     forms: [
       { id: "f1", templateName: "Anamnesis inicial", status: "pendiente", fields: [{ label: "Alergias", value: "" }, { label: "Medicación actual", value: "" }, { label: "Antecedentes", value: "" }] },
       { id: "f2", templateName: "Consentimiento informado", status: "completado", completedAt: "2026-05-20", fields: [{ label: "Firmado por", value: "María González" }] },
@@ -52,14 +52,14 @@ const patients: Patient[] = [
   },
   {
     id: "p2", clinicId: CLINIC_ID, firstName: "Juan", lastName: "Ríos", document: "4.567.890",
-    phone: "+595 982 222 222", birthDate: "1995-09-03",
+    phone: "+595 982 222 222", birthDate: "1995-09-03", gender: "M", city: "Lambaré",
     forms: [{ id: "f3", templateName: "Anamnesis inicial", status: "pendiente", fields: [{ label: "Alergias", value: "" }, { label: "Medicación actual", value: "" }] }],
     historyUpdatePending: false,
     emr: [],
   },
   {
     id: "p3", clinicId: CLINIC_ID, firstName: "Camila", lastName: "Ortega", document: "5.678.901",
-    phone: "+595 983 333 333", email: "cami@example.com", birthDate: "2001-01-26", insurer: "OSDE PY",
+    phone: "+595 983 333 333", email: "cami@example.com", birthDate: "2001-01-26", insurer: "OSDE PY", gender: "F", city: "San Lorenzo",
     forms: [],
     historyUpdatePending: false,
     emr: [{ id: "n3", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-14, 9), kind: "tratamiento", text: "Profilaxis realizada (D1110). Encías saludables, leve gingivitis en sector anteroinferior." }],
@@ -67,7 +67,7 @@ const patients: Patient[] = [
   },
   {
     id: "p4", clinicId: CLINIC_ID, firstName: "Andrés", lastName: "Mejía", document: "2.345.678",
-    phone: "+595 984 444 444", birthDate: "1979-11-30",
+    phone: "+595 984 444 444", birthDate: "1979-11-30", gender: "M", city: "Asunción",
     forms: [{ id: "f4", templateName: "Historia médica (actualización)", status: "pendiente", fields: [{ label: "Cambios de salud", value: "" }, { label: "Nueva medicación", value: "" }] }],
     historyUpdatePending: true,
     emr: [{ id: "n4", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-3, 11), kind: "diagnostico", text: "Resto radicular pieza 28 (K08.3). Indicada exodoncia simple." }],
@@ -80,12 +80,12 @@ const patients: Patient[] = [
   },
   {
     id: "p5", clinicId: CLINIC_ID, firstName: "Lucía", lastName: "Ferreira", document: "6.789.012",
-    phone: "+595 985 555 555", birthDate: "1992-06-17", insurer: "Asismed",
+    phone: "+595 985 555 555", birthDate: "1992-06-17", insurer: "Asismed", gender: "F", city: "Luque",
     forms: [], historyUpdatePending: false, emr: [],
   },
   {
     id: "p6", clinicId: CLINIC_ID, firstName: "Marco", lastName: "Giménez", document: "1.234.567",
-    phone: "+595 986 666 666", birthDate: "1985-02-08",
+    phone: "+595 986 666 666", birthDate: "1985-02-08", gender: "M", city: "Fernando de la Mora",
     forms: [], historyUpdatePending: false,
     emr: [{ id: "n5", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-1, 16), kind: "plan", text: "Inicio de ortodoncia (D8080). Estudio cefalométrico solicitado." }],
     ortho: {
@@ -347,15 +347,15 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
       },
     ],
     procedures: [
-      { cpt: "D0120", description: "Evaluación oral periódica", price: 150000, defaultDx: ["Z01.20"] },
-      { cpt: "D1110", description: "Profilaxis (adulto)", price: 250000, defaultDx: ["Z01.20"] },
-      { cpt: "D2330", description: "Resina compuesta — 1 superficie", price: 420000, defaultDx: ["K02.9"] },
-      { cpt: "D2740", description: "Corona de porcelana/cerámica", price: 2800000, defaultDx: ["K08.531"] },
-      { cpt: "D3310", description: "Endodoncia — anterior", price: 1200000, defaultDx: ["K04.0"] },
-      { cpt: "D4341", description: "Raspado y alisado radicular (cuadrante)", price: 550000, defaultDx: ["K05.30"] },
-      { cpt: "D7140", description: "Exodoncia simple", price: 600000, defaultDx: ["K08.3"] },
-      { cpt: "D8080", description: "Ortodoncia integral (adolescente/adulto)", price: 4500000, defaultDx: ["M26.4"] },
-      { cpt: "D9972", description: "Blanqueamiento dental (arcada)", price: 900000, defaultDx: ["Z01.20"] },
+      { cpt: "D0120", description: "Evaluación oral periódica", price: 150000, defaultDx: ["Z01.20"], category: "diagnostico" },
+      { cpt: "D1110", description: "Profilaxis (adulto)", price: 250000, defaultDx: ["Z01.20"], category: "prevencion" },
+      { cpt: "D2330", description: "Resina compuesta — 1 superficie", price: 420000, defaultDx: ["K02.9"], category: "operatoria" },
+      { cpt: "D2740", description: "Corona de porcelana/cerámica", price: 2800000, defaultDx: ["K08.531"], category: "protesis" },
+      { cpt: "D3310", description: "Endodoncia — anterior", price: 1200000, defaultDx: ["K04.0"], category: "endodoncia" },
+      { cpt: "D4341", description: "Raspado y alisado radicular (cuadrante)", price: 550000, defaultDx: ["K05.30"], category: "periodoncia" },
+      { cpt: "D7140", description: "Exodoncia simple", price: 600000, defaultDx: ["K08.3"], category: "cirugia" },
+      { cpt: "D8080", description: "Ortodoncia integral (adolescente/adulto)", price: 4500000, defaultDx: ["M26.4"], category: "ortodoncia" },
+      { cpt: "D9972", description: "Blanqueamiento dental (arcada)", price: 900000, defaultDx: ["Z01.20"], category: "estetica" },
     ],
     budgets,
     payments,

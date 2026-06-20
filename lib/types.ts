@@ -122,6 +122,9 @@ export interface Patient {
   email?: string;
   birthDate?: string;
   insurer?: string;
+  /** Datos demográficos (Análisis & Conversión): género y ciudad/localidad */
+  gender?: "F" | "M" | "otro";
+  city?: string;
   /** Foto del paciente (data URL base64, redimensionada) */
   photo?: string;
   /** Datos médicos destacados de la cabecera (estilo Dentalink) */
@@ -208,6 +211,11 @@ export interface BillingRecord {
   history: { at: string; action: string; by: string }[];
 }
 
+/** Categoría clínica de la prestación (donut "Categoría de acciones" + Ventas por categoría). */
+export type ProcedureCategory =
+  | "diagnostico" | "prevencion" | "operatoria" | "endodoncia" | "periodoncia"
+  | "protesis" | "cirugia" | "ortodoncia" | "estetica" | "general";
+
 export interface Procedure {
   cpt: string;
   description: string;
@@ -215,6 +223,8 @@ export interface Procedure {
   defaultDx: string[];
   /** Marca el arancel como quirúrgico (sugiere monitor de recuperación post-op) */
   surgical?: boolean;
+  /** Categoría clínica para reportes */
+  category?: ProcedureCategory;
 }
 
 /* ===== Presupuestos (planes de tratamiento) ===== */
