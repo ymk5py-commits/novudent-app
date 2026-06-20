@@ -454,9 +454,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /* persistencia local siempre (cache) + estado React */
-  const persist = useCallback((next: DB) => {
-    setDb(next);
-    try { localStorage.setItem(DB_KEY, JSON.stringify(next)); } catch {}
+  const persist = useCallback((next: DB | ((prev: DB) => DB)) => {
+    setDb((prev) => {
+      const resolved = typeof next === "function" ? next(prev) : next;
+      try { localStorage.setItem(DB_KEY, JSON.stringify(resolved)); } catch {}
+      return resolved;
+    });
   }, []);
 
   /* ===== Tiempo real: outbox de Botika =====
@@ -721,7 +724,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
       /* — Caja — */
       addPayment: (p) => {
-        persist({ ...db, payments: [...db.payments, p] });
+        // updater funcional → seguro al llamarse en bucle síncrono (pago multi-plan):
+        // cada iteración parte del estado previo y acumula, sin last-write-wins.
+        persist((prev) => ({ ...prev, payments: [...prev.payments, p] }));
         fsSave("payments", p.id, p);
       },
       deletePayment: (id) => {
