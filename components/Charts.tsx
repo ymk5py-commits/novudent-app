@@ -4,7 +4,7 @@
  *  Todas reciben datos ya agregados (la página hace los cálculos). */
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
-  PieChart, Pie, AreaChart, Area, Legend,
+  PieChart, Pie, AreaChart, Area, Legend, LineChart, Line,
 } from "recharts";
 import { fmtGs } from "@/lib/store";
 
@@ -163,6 +163,49 @@ export function CashflowAreaChart({ data }: { data: { d: string; cobrado: number
           <Area type="monotone" dataKey="cobrado" name="Cobrado" stroke="#0E9F6E" strokeWidth={2.5} fill="url(#nv-in)" animationDuration={900} dot={false} activeDot={{ r: 4 }} />
           <Area type="monotone" dataKey="gastos" name="Gastos" stroke="#DC2626" strokeWidth={2} fill="url(#nv-out)" animationDuration={900} dot={false} activeDot={{ r: 4 }} />
         </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ---------- embudo de conversión (trapecios apilados, CSS) ---------- */
+export function FunnelChart({ stages }: { stages: { label: string; value: number; pct: number; color: string }[] }) {
+  return (
+    <div className="mx-auto flex max-w-xs flex-col gap-0.5">
+      {stages.map((s, i) => {
+        const topPct = i === 0 ? 100 : stages[i - 1].pct;
+        const topInset = (100 - topPct) / 2;
+        const botInset = (100 - s.pct) / 2;
+        const clip = `polygon(${topInset}% 0, ${100 - topInset}% 0, ${100 - botInset}% 100%, ${botInset}% 100%)`;
+        return (
+          <div key={s.label} className="relative grid h-[68px] place-items-center text-center text-white" style={{ background: s.color, clipPath: clip }}>
+            <div>
+              <div className="text-lg font-extrabold leading-none">{s.pct}%</div>
+              <div className="text-[10px] font-bold uppercase tracking-wide opacity-90">{s.label}</div>
+              <div className="font-mono text-[11px] opacity-90">{s.value.toLocaleString("es-PY")}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------- línea de conversión (meses, 3 series) ---------- */
+export function ConversionLineChart({ data }: { data: { mes: string; agendadas: number; confirmadas: number; aceptados: number }[] }) {
+  return (
+    <div className="h-64 w-full">
+      <ResponsiveContainer>
+        <LineChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
+          <CartesianGrid vertical={false} stroke={GRID} />
+          <XAxis dataKey="mes" axisLine={false} tickLine={false} tick={AXIS} dy={6} minTickGap={12} />
+          <YAxis axisLine={false} tickLine={false} width={28} tick={AXIS} allowDecimals={false} />
+          <Tooltip content={<CardTooltip />} />
+          <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, fontWeight: 700 }} />
+          <Line type="monotone" dataKey="agendadas" name="Citas agendadas" stroke="#2E83F5" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} animationDuration={900} />
+          <Line type="monotone" dataKey="confirmadas" name="Citas confirmadas" stroke="#0E9F6E" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} animationDuration={900} />
+          <Line type="monotone" dataKey="aceptados" name="Presup. aceptados" stroke="#F59E0B" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} animationDuration={900} />
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );
