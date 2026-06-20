@@ -1,11 +1,12 @@
 "use client";
-/** Shell estilo "Spike admin" adaptado: sidebar blanca con secciones y pill activo,
- *  topbar con buscador global (Patient Finder), campana y avatar. */
-import { useEffect, useMemo, useState } from "react";
+/** Shell estilo Dentalink: header de 2 filas — fila 1 (logo + buscador global +
+ *  clínica + campana + usuario), fila 2 (nav horizontal con desplegables). En móvil
+ *  el nav colapsa en un drawer. CRM siempre visible (paridad Dentalink). */
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, LayoutDashboard, Bell, CreditCard,
-  FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X,
+  CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, Bell, CreditCard,
+  FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown,
   Megaphone, FlaskConical, Coins, Armchair,
 } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
@@ -14,37 +15,34 @@ import { planOf, type PlanFeature } from "@/lib/plan";
 import ChangePasswordGate from "@/components/ChangePasswordGate";
 import { PageTransition } from "@/components/motion";
 
-const SECTIONS: { label: string; items: { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature }[] }[] = [
+type NavLeaf = { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature };
+type NavTop = { label: string; href?: string; icon?: any; perm?: Permission; feature?: PlanFeature; children?: NavLeaf[] };
+
+/** Agrupado igual a la barra superior de Dentalink. CRM no lleva gate de feature:
+ *  aparece siempre (la página decide si está disponible según el plan). */
+const NAV: NavTop[] = [
+  { href: "/app/agenda", label: "Agenda", icon: CalendarDays },
+  { href: "/app/pacientes", label: "Pacientes", icon: Users },
+  { href: "/app/caja", label: "Caja", icon: Wallet, perm: "payments.manage", feature: "caja" },
   {
-    label: "Principal",
-    items: [
-      { href: "/app", label: "Inicio", icon: LayoutDashboard },
-      { href: "/app/agenda", label: "Agenda", icon: CalendarDays },
-      { href: "/app/pacientes", label: "Pacientes", icon: Users },
+    label: "Recaudación", icon: Receipt, children: [
+      { href: "/app/facturacion", label: "Facturación", icon: Receipt },
       { href: "/app/presupuestos", label: "Presupuestos", icon: FileSpreadsheet, perm: "budgets.manage" },
+      { href: "/app/liquidaciones", label: "Liquidaciones", icon: Coins, perm: "billing.reports", feature: "liquidaciones" },
     ],
   },
   {
-    label: "Administración",
-    items: [
-      { href: "/app/caja", label: "Caja", icon: Wallet, perm: "payments.manage", feature: "caja" },
-      { href: "/app/facturacion", label: "Facturación", icon: Receipt },
+    label: "Administración", icon: Settings, children: [
       { href: "/app/inventario", label: "Inventario", icon: Package, perm: "inventory.manage", feature: "inventario" },
       { href: "/app/laboratorios", label: "Laboratorios", icon: FlaskConical, feature: "laboratorios" },
-      { href: "/app/liquidaciones", label: "Liquidaciones", icon: Coins, perm: "billing.reports", feature: "liquidaciones" },
       { href: "/app/box", label: "Box/Sillones", icon: Armchair, perm: "practice.config", feature: "boxes" },
-      { href: "/app/reportes", label: "Reportes", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
-      { href: "/app/crm", label: "CRM", icon: Megaphone, feature: "crm" },
-    ],
-  },
-  {
-    label: "Configuración",
-    items: [
       { href: "/app/integraciones", label: "Integraciones", icon: Bot, perm: "practice.config", feature: "integraciones" },
       { href: "/app/suscripcion", label: "Suscripción", icon: CreditCard, perm: "practice.config" },
       { href: "/app/configuracion", label: "Configuración", icon: Settings, perm: "practice.config" },
     ],
   },
+  { href: "/app/reportes", label: "Reportes", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
+  { href: "/app/crm", label: "CRM", icon: Megaphone },
 ];
 
 export default function Shell({ children }: { children: React.ReactNode }) {
@@ -52,8 +50,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [q, setQ] = useState("");
-  // Drawer móvil: la sidebar fija de 232px no entra en pantallas chicas.
-  const [navOpen, setNavOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false); // drawer móvil
   useEffect(() => { setNavOpen(false); }, [pathname]);
 
   useEffect(() => {
@@ -74,189 +71,211 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   if (!ready || !session) {
     return (
-      <div className="flex min-h-screen">
-        <div className="hidden w-[232px] border-r border-clinic-border bg-white md:block" />
-        <div className="flex-1 p-8">
-          <div className="mx-auto max-w-6xl space-y-5">
-            <div className="h-9 w-56 animate-pulse rounded-xl bg-clinic-border/60" />
-            <div className="grid gap-4 sm:grid-cols-4">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="h-28 animate-pulse rounded-2xl bg-clinic-border/50" style={{ animationDelay: `${i * 120}ms` }} />
-              ))}
-            </div>
-            <div className="h-72 animate-pulse rounded-2xl bg-clinic-border/40" />
-            <p className="text-center font-mono text-[10px] font-bold uppercase tracking-widest text-clinic-muted">Cargando Novudent…</p>
+      <div className="min-h-screen bg-clinic-bg">
+        <div className="h-[104px] border-b border-clinic-border bg-white" />
+        <div className="mx-auto max-w-6xl space-y-5 p-8">
+          <div className="h-9 w-56 animate-pulse rounded-xl bg-clinic-border/60" />
+          <div className="grid gap-4 sm:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-28 animate-pulse rounded-2xl bg-clinic-border/50" style={{ animationDelay: `${i * 120}ms` }} />
+            ))}
           </div>
+          <div className="h-72 animate-pulse rounded-2xl bg-clinic-border/40" />
+          <p className="text-center font-mono text-[10px] font-bold uppercase tracking-widest text-clinic-muted">Cargando Novudent…</p>
         </div>
       </div>
     );
   }
 
   const me = db.users.find((u) => u.id === session.userId);
-  // Cambio de contraseña inicial obligatorio: bloquea TODO el dashboard.
   if (me?.mustChangePassword) return <ChangePasswordGate />;
   const plan = planOf(db.clinics[0]);
+  const clinicName = db.clinics[0]?.name ?? "Novudent";
+
+  // Filtrar por rol/plan; un grupo sin hijos visibles se oculta entero.
+  const nav: NavTop[] = NAV.map((e) => {
+    if (e.children) {
+      const kids = e.children.filter((it) => (!it.perm || can(session.role, it.perm)) && (!it.feature || plan.features.includes(it.feature)));
+      return kids.length ? { ...e, children: kids } : null;
+    }
+    const ok = (!e.perm || can(session.role, e.perm)) && (!e.feature || plan.features.includes(e.feature));
+    return ok ? e : null;
+  }).filter(Boolean) as NavTop[];
+
+  const isActive = (href: string) => (href === "/app" ? pathname === "/app" : pathname.startsWith(href));
+  const initials = session.name.split(" ").map((w) => w[0]).slice(0, 2).join("");
 
   return (
-    <div className="flex min-h-screen bg-clinic-bg">
-      {/* Overlay del drawer móvil */}
-      {navOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 md:hidden"
-          onClick={() => setNavOpen(false)}
-          role="presentation"
-        />
-      )}
-
-      {/* ===== Sidebar blanca (Spike) — drawer en móvil ===== */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[232px] flex-col border-r border-clinic-border bg-white transition-transform duration-200 md:z-40 md:translate-x-0 ${
-          navOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
-        }`}
-      >
-        <div className="px-5 pb-2 pt-6">
-          <a href="/app" className="flex items-baseline gap-2">
-            <span className="font-logo text-xl tracking-[0.16em] text-navy-800">NOVUdent</span>
-          </a>
-          <div className="mt-0.5 flex items-center gap-1.5">
-            <span className="font-mono text-[8.5px] uppercase tracking-[0.3em] text-clinic-muted">gestión dental</span>
-            <span
-              data-tip={`Plan ${plan.label} — ${plan.maxDentists === Infinity ? "profesionales ilimitados" : `hasta ${plan.maxDentists} profesional${plan.maxDentists > 1 ? "es" : ""}`}`}
-              className="rounded-full bg-azure-50 px-1.5 py-0.5 font-mono text-[8px] font-extrabold uppercase tracking-wide text-azure-700"
-            >
-              {plan.label}
-            </span>
-          </div>
+    <div className="min-h-screen bg-clinic-bg">
+      {/* ===== Drawer móvil ===== */}
+      {navOpen && <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setNavOpen(false)} role="presentation" />}
+      <aside className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-white transition-transform duration-200 md:hidden ${navOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}>
+        <div className="flex items-center justify-between px-5 pt-5">
+          <span className="font-logo text-xl tracking-[0.16em] text-navy-800">NOVUdent</span>
+          <button onClick={() => setNavOpen(false)} aria-label="Cerrar menú" className="grid h-9 w-9 place-items-center rounded-xl text-clinic-muted hover:bg-clinic-bg"><X className="h-5 w-5" /></button>
         </div>
-        <nav className="flex-1 space-y-5 overflow-y-auto px-3 pt-4">
-          {SECTIONS.map((sec) => {
-            const items = sec.items.filter(
-              (it) => (!it.perm || can(session.role, it.perm)) && (!it.feature || plan.features.includes(it.feature))
-            );
-            if (items.length === 0) return null;
-            return (
-              <div key={sec.label}>
-                <div className="px-3 pb-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-clinic-muted/80">{sec.label}</div>
-                <div className="space-y-1">
-                  {items.map((item) => {
-                    const active = item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);
-                    return (
-                      <a
-                        key={item.href}
-                        href={item.href}
-                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                          active
-                            ? "bg-azure-600 text-white shadow-[0_6px_16px_-6px_rgba(46,131,245,0.55)]"
-                            : "text-clinic-muted hover:translate-x-0.5 hover:bg-clinic-bg hover:text-clinic-text"
-                        }`}
-                      >
-                        <item.icon className="h-[18px] w-[18px]" strokeWidth={2} />
-                        {item.label}
-                      </a>
-                    );
-                  })}
-                </div>
+        <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
+          {nav.map((e) => e.children ? (
+            <div key={e.label}>
+              <div className="px-3 pb-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-clinic-muted/80">{e.label}</div>
+              <div className="space-y-1">
+                {e.children.map((it) => <DrawerLink key={it.href} {...it} active={isActive(it.href)} />)}
               </div>
-            );
-          })}
+            </div>
+          ) : (
+            <DrawerLink key={e.href} href={e.href!} label={e.label} icon={e.icon} active={isActive(e.href!)} />
+          ))}
         </nav>
-        {/* usuario */}
-        <div className="p-3">
-          <div className="flex items-center gap-3 rounded-2xl bg-clinic-bg p-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ background: me?.color ?? "#1769E0" }}>
-              {session.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-bold text-clinic-text">{session.name}</span>
-              <span className="block text-[10px] text-clinic-muted">{ROLE_LABEL[session.role]}</span>
-            </span>
-            <button
-              onClick={() => { logout(); router.replace("/login"); }}
-              aria-label="Cerrar sesión"
-              data-tip="Cerrar sesión"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-clinic-muted transition-colors hover:bg-white hover:text-state-err"
+      </aside>
+
+      {/* ===== Header 2 filas ===== */}
+      <header className="sticky top-0 z-30 border-b border-clinic-border bg-white/85 backdrop-blur-xl [-webkit-backdrop-filter:blur(20px)_saturate(1.4)] [backdrop-filter:blur(20px)_saturate(1.4)]">
+        {/* Fila 1 */}
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
+          <button onClick={() => setNavOpen(true)} aria-label="Abrir menú" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-clinic-border bg-white text-clinic-muted md:hidden">
+            <Menu className="h-5 w-5" />
+          </button>
+          <a href="/app" className="flex shrink-0 items-baseline gap-2">
+            <span className="font-logo text-xl tracking-[0.16em] text-navy-800">NOVUdent</span>
+            <span data-tip={`Plan ${plan.label}`} className="hidden rounded-full bg-azure-50 px-1.5 py-0.5 font-mono text-[8px] font-extrabold uppercase tracking-wide text-azure-700 sm:inline">{plan.label}</span>
+          </a>
+          {/* Patient Finder */}
+          <div className="relative ml-1 min-w-0 w-full max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar paciente…"
+              className="w-full rounded-xl border border-clinic-border bg-clinic-bg py-2.5 pl-9 pr-3 text-sm transition-colors focus:border-azure-500 focus:bg-white focus:outline-none"
+            />
+            {results.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-clinic-border bg-white shadow-pop">
+                {results.map((p) => (
+                  <a key={p.id} href={`/app/pacientes/${p.id}`} onClick={() => setQ("")} className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-clinic-bg">
+                    <span className="font-semibold text-clinic-text">{fullName(p)}</span>
+                    <span className="flex items-center gap-2 text-clinic-muted">
+                      {p.forms.some((f) => f.status === "pendiente") && <FileText className="h-3.5 w-3.5 text-state-warn" />}
+                      {p.historyUpdatePending && <ClipboardList className="h-3.5 w-3.5 text-state-info" />}
+                      CI {p.document}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            <span className="hidden max-w-[180px] truncate text-sm font-bold text-clinic-text lg:block">{clinicName}</span>
+            <span
+              data-tip={backend === "firebase" ? "Datos guardados en la nube" : "Sin conexión — datos solo en este navegador"}
+              data-tip-pos="down"
+              className={`hidden items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wide sm:inline-flex ${backend === "firebase" ? "bg-state-okbg text-state-ok" : "bg-state-warnbg text-state-warn"}`}
             >
+              <span className={`h-1.5 w-1.5 rounded-full ${backend === "firebase" ? "bg-state-ok" : "bg-state-warn"}`} />
+              {backend === "firebase" ? "En línea" : "Sin conexión"}
+            </span>
+            <a
+              href={pendings > 0 ? "/app/pacientes" : "#"}
+              data-tip={pendings > 0 ? `${pendings} pendiente(s): formularios y retenciones` : "Sin pendientes"}
+              data-tip-pos="down-left"
+              className="relative grid h-10 w-10 place-items-center rounded-xl border border-clinic-border bg-white text-clinic-muted transition-colors hover:text-azure-600"
+              aria-label="Notificaciones"
+            >
+              <Bell className="h-[18px] w-[18px]" />
+              {pendings > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 font-mono text-[9.5px] font-bold text-white">{pendings}</span>}
+            </a>
+            <span className="hidden text-right sm:block">
+              <span className="block text-xs font-bold leading-tight text-clinic-text">{session.name}</span>
+              <span className="block text-[10px] leading-tight text-clinic-muted">{ROLE_LABEL[session.role]}</span>
+            </span>
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ background: me?.color ?? "#1769E0" }}>{initials}</span>
+            <button onClick={() => { logout(); router.replace("/login"); }} aria-label="Cerrar sesión" data-tip="Cerrar sesión" data-tip-pos="down-left" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-clinic-muted transition-colors hover:bg-clinic-bg hover:text-state-err">
               <LogOut className="h-4 w-4" />
             </button>
           </div>
         </div>
-      </aside>
 
-      {/* ===== Área principal ===== */}
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:ml-[232px]">
-        <header className="sticky top-0 z-30 border-b border-white/60 bg-white/70 shadow-[0_4px_24px_-12px_rgba(15,31,61,0.12)] backdrop-blur-xl [-webkit-backdrop-filter:blur(20px)_saturate(1.4)] [backdrop-filter:blur(20px)_saturate(1.4)]">
-          <div className="relative mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
-            {/* Hamburguesa — abre el drawer en móvil */}
-            <button
-              onClick={() => setNavOpen(true)}
-              aria-label="Abrir menú"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-clinic-border bg-white text-clinic-muted md:hidden"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-            {/* Patient Finder */}
-            <div className="relative min-w-0 w-full max-w-md">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar paciente… (Patient Finder)"
-                className="w-full rounded-xl border border-clinic-border bg-clinic-bg py-2.5 pl-9 pr-3 text-sm transition-colors focus:border-azure-500 focus:bg-white focus:outline-none"
-              />
-              {results.length > 0 && (
-                <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-clinic-border bg-white shadow-pop">
-                  {results.map((p) => (
-                    <a key={p.id} href={`/app/pacientes/${p.id}`} onClick={() => setQ("")} className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-clinic-bg">
-                      <span className="font-semibold text-clinic-text">{fullName(p)}</span>
-                      <span className="flex items-center gap-2 text-clinic-muted">
-                        {p.forms.some((f) => f.status === "pendiente") && <FileText className="h-3.5 w-3.5 text-state-warn" />}
-                        {p.historyUpdatePending && <ClipboardList className="h-3.5 w-3.5 text-state-info" />}
-                        CI {p.document}
-                      </span>
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
+        {/* Fila 2: nav horizontal (desktop) */}
+        <div className="hidden border-t border-clinic-border md:block">
+          <nav className="mx-auto flex max-w-6xl items-center gap-0.5 px-3 sm:px-5">
+            {nav.map((e) => e.children
+              ? <NavDropdown key={e.label} label={e.label} items={e.children} pathname={pathname} />
+              : <NavLink key={e.href} href={e.href!} label={e.label} active={isActive(e.href!)} />
+            )}
+          </nav>
+        </div>
+      </header>
 
-            <div className="ml-auto flex items-center gap-2">
-              {/* estado backend */}
-              <span
-                data-tip={backend === "firebase" ? "Todos tus datos se guardan en la nube de forma segura" : "Sin conexión — los datos se guardan solo en este navegador"}
-                data-tip-pos="down"
-                className={`hidden items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wide sm:inline-flex ${
-                  backend === "firebase" ? "bg-state-okbg text-state-ok" : "bg-state-warnbg text-state-warn"
-                }`}
-              >
-                <span className={`h-1.5 w-1.5 rounded-full ${backend === "firebase" ? "bg-state-ok" : "bg-state-warn"}`} />
-                {backend === "firebase" ? "En línea" : "Sin conexión"}
-              </span>
-              {/* campana */}
-              <a
-                href={pendings > 0 ? "/app/pacientes" : "#"}
-                data-tip={pendings > 0 ? `${pendings} pendiente(s): formularios y retenciones` : "Sin pendientes"}
-                data-tip-pos="down-left"
-                className="relative grid h-10 w-10 place-items-center rounded-xl border border-clinic-border bg-white text-clinic-muted transition-colors hover:text-azure-600"
-                aria-label="Notificaciones"
-              >
-                <Bell className="h-[18px] w-[18px]" />
-                {pendings > 0 && (
-                  <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 font-mono text-[9.5px] font-bold text-white">
-                    {pendings}
-                  </span>
-                )}
-              </a>
-              {/* avatar */}
-              <span className="grid h-10 w-10 place-items-center rounded-xl text-sm font-bold text-white" style={{ background: me?.color ?? "#1769E0" }}>
-                {session.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-              </span>
-            </div>
-          </div>
-        </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-7">
-          <PageTransition>{children}</PageTransition>
-        </main>
-      </div>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-7">
+        <PageTransition>{children}</PageTransition>
+      </main>
     </div>
+  );
+}
+
+/* — Link de nav (nivel superior, desktop) — */
+function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
+  return (
+    <a
+      href={href}
+      className={`relative px-3.5 py-3 text-sm font-bold transition-colors ${active ? "text-azure-700" : "text-clinic-muted hover:text-clinic-text"}`}
+    >
+      {label}
+      {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-azure-600" />}
+    </a>
+  );
+}
+
+/* — Desplegable de nav (Recaudación / Administración) — */
+function NavDropdown({ label, items, pathname }: { label: string; items: NavLeaf[]; pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+  const active = items.some((it) => pathname.startsWith(it.href));
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-1 px-3.5 py-3 text-sm font-bold transition-colors ${active || open ? "text-azure-700" : "text-clinic-muted hover:text-clinic-text"}`}
+      >
+        {label}
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+        {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-azure-600" />}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-0.5 min-w-[210px] overflow-hidden rounded-xl border border-clinic-border bg-white py-1 shadow-pop">
+          {items.map((it) => {
+            const a = pathname.startsWith(it.href);
+            return (
+              <a
+                key={it.href}
+                href={it.href}
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors ${a ? "bg-azure-50 text-azure-700" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
+              >
+                <it.icon className="h-4 w-4 shrink-0" /> {it.label}
+              </a>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* — Link del drawer móvil — */
+function DrawerLink({ href, label, icon: Icon, active }: { href: string; label: string; icon: any; active: boolean }) {
+  return (
+    <a
+      href={href}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${active ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
+    >
+      <Icon className="h-[18px] w-[18px]" strokeWidth={2} /> {label}
+    </a>
   );
 }
