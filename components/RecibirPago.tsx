@@ -43,7 +43,7 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
       const saldo = budgetBalance(b, db.payments);
       if (saldo <= 0) continue;
       addPayment({
-        id: `pay_${Date.now()}_${count}`,
+        id: `pay_${Date.now()}_${b.id}`,
         clinicId: patient.clinicId, patientId: patient.id, budgetId: b.id,
         date: new Date(date + "T12:00:00").toISOString(), amount: saldo, method,
         concept: concept.trim() || `Abono plan #${b.id}`, receivedBy: session.name,

@@ -38,7 +38,7 @@ export function HistorialTimeline({ patient }: { patient: Patient }) {
 
   const groups: { day: string; items: HistorialEntry[] }[] = [];
   for (const e of filtered) {
-    const day = e.at.slice(0, 10);
+    const day = new Date(e.at).toLocaleDateString("en-CA"); // YYYY-MM-DD local (evita corrimiento TZ)
     const g = groups.find((x) => x.day === day);
     if (g) g.items.push(e);
     else groups.push({ day, items: [e] });

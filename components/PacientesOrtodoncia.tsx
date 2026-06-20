@@ -9,11 +9,17 @@ import { Card, Empty } from "@/components/ui";
 
 export function PacientesOrtodoncia() {
   const { db } = useStore();
-  const now = Date.now();
 
   const data = useMemo(() => {
+    const now = Date.now();
     const active = db.patients.filter((p) => p.ortho?.active);
-    const ageOf = (bd?: string) => (bd ? Math.floor((now - Date.parse(bd)) / (365.25 * 86_400_000)) : null);
+    const ageOf = (bd?: string) => {
+      if (!bd) return null;
+      const t = Date.parse(bd);
+      if (Number.isNaN(t)) return null;
+      const a = Math.floor((now - t) / (365.25 * 86_400_000));
+      return a >= 0 ? a : null;
+    };
     const futureAppt = new Set(
       db.appointments.filter((a) => Date.parse(a.start) > now && a.status !== "cancelada").map((a) => a.patientId),
     );
@@ -43,7 +49,7 @@ export function PacientesOrtodoncia() {
       e12: ages.filter((a) => a > 12).length,
     };
     return { rows, kpis };
-  }, [db, now]);
+  }, [db]);
 
   return (
     <div className="space-y-5">
