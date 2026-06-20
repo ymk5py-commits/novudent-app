@@ -5,7 +5,7 @@ import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams } from "next/navigation";
 import {
   FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2, Smile,
-  FileSpreadsheet, Pill, FolderOpen, Braces, Activity, ScanLine, FileSignature, Camera, AlertTriangle, HeartPulse,
+  Pill, FolderOpen, Activity, ScanLine, FileSignature, Camera, AlertTriangle, HeartPulse, User, Wallet, Layers,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fullName } from "@/lib/store";
 import { recordTotal } from "@/lib/billing";
@@ -14,22 +14,56 @@ import { can } from "@/lib/rbac";
 import type { EmrNote, PatientForm, Patient } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, FlagBadge, Empty } from "@/components/ui";
 import Odontogram from "@/components/Odontogram";
-import { BudgetsTab, RxTab, FilesTab, OrthoTab } from "@/components/PatientExtras";
+import { RxTab, FilesTab } from "@/components/PatientExtras";
 import { RadiografiasTab } from "@/components/Radiografias";
 import { ConsentimientosTab } from "@/components/Consentimientos";
+import { PlanTratamiento } from "@/components/PlanTratamiento";
+import { DatosTab } from "@/components/PatientDatos";
+import { RecibirPagoTab } from "@/components/RecibirPago";
 import { VoiceNoteButton, PatientBriefButton } from "@/components/NovudentIA";
 import { useClinicPlan } from "@/components/PlanGate";
 import Periodontogram from "@/components/Periodontogram";
 import RecoveryCard from "@/components/RecoveryCard";
 import { Reveal } from "@/components/motion";
 
-type Tab = "resumen" | "odontograma" | "periodoncia" | "historial" | "presupuestos" | "recetas" | "archivos" | "radiografias" | "ortodoncia" | "consentimientos" | "formularios" | "facturacion";
+type SubTab =
+  | "datos" | "formularios" | "archivos" | "consentimientos"
+  | "resumen" | "odontograma" | "periodoncia" | "historial" | "radiografias" | "recetas"
+  | "planes" | "facturacion" | "recibir-pago";
+
+type GroupDef = { key: string; label: string; tabs: { key: SubTab; label: string; icon: any }[] };
+
+const GROUPS: GroupDef[] = [
+  { key: "datos-personales", label: "Datos personales", tabs: [
+    { key: "datos", label: "Datos", icon: User },
+    { key: "formularios", label: "Formularios", icon: FileText },
+    { key: "archivos", label: "Archivos", icon: FolderOpen },
+    { key: "consentimientos", label: "Consentimientos", icon: FileSignature },
+  ] },
+  { key: "ficha-clinica", label: "Ficha clínica", tabs: [
+    { key: "resumen", label: "Resumen", icon: Stethoscope },
+    { key: "odontograma", label: "Odontograma", icon: Smile },
+    { key: "periodoncia", label: "Periodoncia", icon: Activity },
+    { key: "historial", label: "Historial", icon: ClipboardList },
+    { key: "radiografias", label: "Radiografías", icon: ScanLine },
+    { key: "recetas", label: "Recetas", icon: Pill },
+  ] },
+  { key: "planes", label: "Planes de tratamiento", tabs: [
+    { key: "planes", label: "Plan de tratamiento", icon: Layers },
+  ] },
+  { key: "facturacion", label: "Facturación y pagos", tabs: [
+    { key: "facturacion", label: "Facturación", icon: Receipt },
+  ] },
+  { key: "recibir-pago", label: "Recibir pago", tabs: [
+    { key: "recibir-pago", label: "Recibir pago", icon: Wallet },
+  ] },
+];
 
 export default function PatientProfile() {
   const { id } = useParams<{ id: string }>();
   const { db, session, completeForm, addEmrNote, addPerioSession, setTooth, markHistoryUpdate, upsertPatient } = useStore();
   const hasIA = useClinicPlan().features.includes("ia"); // Novudent IA: Plan Clínica+
-  const [tab, setTab] = useState<Tab>("resumen");
+  const [tab, setTab] = useState<SubTab>("resumen");
   const [fillingForm, setFillingForm] = useState<PatientForm | null>(null);
   const [writingNote, setWritingNote] = useState(false);
   const [clipOpen, setClipOpen] = useState(false);
@@ -61,20 +95,7 @@ export default function PatientProfile() {
   };
   const canWriteEmr = can(session.role, "emr.write");
 
-  const TABS: { key: Tab; label: string; icon: any; badge?: number }[] = [
-    { key: "resumen", label: "Resumen", icon: Stethoscope },
-    { key: "odontograma", label: "Odontograma", icon: Smile },
-    { key: "periodoncia", label: "Periodoncia", icon: Activity, badge: p.perio?.length || undefined },
-    { key: "historial", label: "Historial", icon: ClipboardList },
-    { key: "presupuestos", label: "Presupuestos", icon: FileSpreadsheet },
-    { key: "recetas", label: "Recetas", icon: Pill },
-    { key: "archivos", label: "Archivos", icon: FolderOpen, badge: p.files?.length || undefined },
-    { key: "radiografias", label: "Radiografías", icon: ScanLine },
-    { key: "ortodoncia", label: "Ortodoncia", icon: Braces },
-    { key: "consentimientos", label: "Consentimientos", icon: FileSignature },
-    { key: "formularios", label: "Formularios", icon: FileText, badge: pendingForms.length || undefined },
-    { key: "facturacion", label: "Facturación", icon: Receipt },
-  ];
+  const activeGroup = GROUPS.find((g) => g.tabs.some((t) => t.key === tab)) ?? GROUPS[0];
 
   return (
     <div className="space-y-5">
@@ -176,20 +197,44 @@ export default function PatientProfile() {
         />
       )}
 
-      {/* Tabs */}
-      <Reveal delay={0.05} className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-bold transition-colors ${
-              tab === t.key ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"
-            }`}
-          >
-            <t.icon className="h-4 w-4" /> {t.label}
-            {t.badge && <span className="ml-0.5 rounded-full bg-state-warn px-1.5 text-[10px] font-bold text-white">{t.badge}</span>}
-          </button>
-        ))}
+      {/* Navegación 2 niveles estilo Dentalink: grupos (N1) + sub-tabs (N2) */}
+      <Reveal delay={0.05} className="space-y-2">
+        <div className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
+          {GROUPS.map((g) => {
+            const active = g.key === activeGroup.key;
+            return (
+              <button
+                key={g.key}
+                onClick={() => setTab(g.tabs[0].key)}
+                className={`rounded-xl px-3.5 py-2 text-sm font-bold transition-colors ${
+                  active ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"
+                }`}
+              >
+                {g.label}
+              </button>
+            );
+          })}
+        </div>
+        {activeGroup.tabs.length > 1 && (
+          <div className="flex flex-wrap gap-1 px-1">
+            {activeGroup.tabs.map((t) => {
+              const active = t.key === tab;
+              const badge = t.key === "formularios" ? pendingForms.length : 0;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors ${
+                    active ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"
+                  }`}
+                >
+                  <t.icon className="h-4 w-4" /> {t.label}
+                  {badge > 0 && <span className="ml-0.5 rounded-full bg-state-warn px-1.5 text-[10px] font-bold text-white">{badge}</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </Reveal>
 
       {/* ===== RESUMEN ===== */}
@@ -302,12 +347,13 @@ export default function PatientProfile() {
         </Reveal>
       )}
 
-      {/* ===== PRESUPUESTOS / RECETAS / ARCHIVOS / ORTODONCIA ===== */}
-      {tab === "presupuestos" && <Reveal><BudgetsTab patient={p} /></Reveal>}
+      {/* ===== DATOS / PLANES / RECIBIR PAGO / RECETAS / ARCHIVOS / RADIOGRAFÍAS / CONSENTIMIENTOS ===== */}
+      {tab === "datos" && <Reveal><DatosTab patient={p} /></Reveal>}
+      {tab === "planes" && <Reveal><PlanTratamiento patient={p} /></Reveal>}
+      {tab === "recibir-pago" && <Reveal><RecibirPagoTab patient={p} /></Reveal>}
       {tab === "recetas" && <Reveal><RxTab patient={p} /></Reveal>}
       {tab === "archivos" && <Reveal><FilesTab patient={p} /></Reveal>}
       {tab === "radiografias" && <Reveal><RadiografiasTab patient={p} /></Reveal>}
-      {tab === "ortodoncia" && <Reveal><OrthoTab patient={p} /></Reveal>}
       {tab === "consentimientos" && <Reveal><ConsentimientosTab patient={p} /></Reveal>}
 
       {/* ===== FORMULARIOS (Engagement) ===== */}
