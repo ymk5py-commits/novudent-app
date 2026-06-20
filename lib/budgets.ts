@@ -19,6 +19,13 @@ export function budgetTotal(b: Pick<Budget, "items" | "discountPct">): number {
   return Math.round(budgetSubtotal(b) * (1 - (b.discountPct ?? 0) / 100));
 }
 
+/** Monto de los ítems ya realizados, con el descuento del presupuesto aplicado.
+ *  (el "Realizado" del panel financiero del Plan de tratamiento). */
+export function budgetRealizado(b: Pick<Budget, "items" | "discountPct">): number {
+  const done = b.items.filter((i) => i.status === "realizado").reduce((s, i) => s + i.price, 0);
+  return Math.round(done * (1 - (b.discountPct ?? 0) / 100));
+}
+
 export function budgetPaid(budgetId: string, payments: Payment[]): number {
   return payments.filter((p) => p.budgetId === budgetId).reduce((s, p) => s + p.amount, 0);
 }
