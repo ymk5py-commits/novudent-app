@@ -12,7 +12,7 @@ import { recordTotal } from "@/lib/billing";
 import { resizeToDataUrl } from "@/lib/image";
 import { can } from "@/lib/rbac";
 import type { EmrNote, PatientForm, Patient } from "@/lib/types";
-import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, FlagBadge, Empty } from "@/components/ui";
+import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, Empty } from "@/components/ui";
 import Odontogram from "@/components/Odontogram";
 import { RxTab, FilesTab } from "@/components/PatientExtras";
 import { RadiografiasTab } from "@/components/Radiografias";
@@ -21,6 +21,7 @@ import { PlanTratamiento } from "@/components/PlanTratamiento";
 import { DatosTab } from "@/components/PatientDatos";
 import { RecibirPagoTab } from "@/components/RecibirPago";
 import { HistorialTimeline } from "@/components/Historial";
+import { FacturacionPaciente } from "@/components/FacturacionPaciente";
 import { VoiceNoteButton, PatientBriefButton } from "@/components/NovudentIA";
 import { useClinicPlan } from "@/components/PlanGate";
 import Periodontogram from "@/components/Periodontogram";
@@ -382,23 +383,7 @@ export default function PatientProfile() {
       )}
 
       {/* ===== FACTURACIÓN del paciente ===== */}
-      {tab === "facturacion" && (
-        <Reveal className="space-y-3">
-          {bills.length === 0 ? (
-            <Empty title="Sin registros de facturación" />
-          ) : (
-            bills.map((b) => (
-              <Card key={b.id} className="flex flex-wrap items-center gap-3 p-4">
-                <span className="font-mono text-sm font-bold text-clinic-text">{b.cpt}</span>
-                <span className="flex-1 text-sm text-clinic-muted">DX {b.dx} · POS {b.pos}</span>
-                <span className="font-mono text-sm font-bold">{fmtGs(recordTotal(b))}</span>
-                <span className="flex flex-wrap gap-1.5">{b.flags.length === 0 ? <Badge tone="muted">SIN ENVIAR</Badge> : b.flags.map((fl) => <FlagBadge key={fl} flag={fl} />)}</span>
-                <a href="/app/facturacion" className="text-xs font-bold text-azure-600 hover:underline">Gestionar →</a>
-              </Card>
-            ))
-          )}
-        </Reveal>
-      )}
+      {tab === "facturacion" && <Reveal><FacturacionPaciente patient={p} /></Reveal>}
 
       {/* Modal: completar formulario (pencil flow) */}
       {fillingForm && (

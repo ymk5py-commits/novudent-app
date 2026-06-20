@@ -300,6 +300,10 @@ export interface Payment {
   method: PaymentMethod;
   concept: string;
   receivedBy: string;
+  /** Facturación (paridad Dentalink) */
+  paymentNumber?: string;   // N° de pago visible
+  receiptNumber?: string;   // N° de boleta/comprobante
+  dueDate?: string;         // vencimiento (ISO o YYYY-MM-DD)
 }
 
 export interface Expense {

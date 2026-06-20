@@ -165,7 +165,7 @@ const budgets: Budget[] = [
 const payments: Payment[] = [
   { id: "pay1", clinicId: CLINIC_ID, patientId: "p6", budgetId: "g2", date: at(-30, 11), amount: 1500000, method: "efectivo", concept: "Entrega inicial ortodoncia", receivedBy: "Paola Asistente" },
   { id: "pay2", clinicId: CLINIC_ID, patientId: "p6", budgetId: "g2", date: at(-2, 10), amount: 375000, method: "transferencia", concept: "Cuota mensual ortodoncia", receivedBy: "Paola Asistente" },
-  { id: "pay3", clinicId: CLINIC_ID, patientId: "p4", budgetId: "g3", date: at(-1, 11), amount: 750000, method: "tarjeta", concept: "Exodoncia 28 + consulta", receivedBy: "Carlos Admin" },
+  { id: "pay3", clinicId: CLINIC_ID, patientId: "p4", budgetId: "g3", date: at(-1, 11), amount: 750000, method: "tarjeta", concept: "Exodoncia 28 + consulta", receivedBy: "Carlos Admin", paymentNumber: "3625", receiptNumber: "2875" },
   { id: "pay4", clinicId: CLINIC_ID, patientId: "p3", date: at(0, 10), amount: 225000, method: "efectivo", concept: "Profilaxis (con descuento)", receivedBy: "Paola Asistente" },
   { id: "pay5", clinicId: CLINIC_ID, patientId: "p1", budgetId: "g1", date: at(0, 12), amount: 200000, method: "qr", concept: "Anticipo presupuesto resinas", receivedBy: "Paola Asistente" },
 ];
