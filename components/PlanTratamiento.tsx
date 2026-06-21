@@ -2,8 +2,9 @@
 /** Vista "Plan de tratamiento" estilo Dentalink: LISTA de planes (En ejecución / Otros)
  *  → DETALLE de 2 columnas (panel financiero + seguimiento) + prestaciones + comentarios. */
 import { ReactNode, useState } from "react";
-import { Copy, UserRound, Braces, Smile, ChevronLeft, ChevronRight, FileSpreadsheet, Save, Pencil, Plus, Calendar, Clock, Printer, Camera, AlertTriangle } from "lucide-react";
+import { Copy, UserRound, Braces, Smile, ChevronLeft, ChevronRight, FileSpreadsheet, Save, Pencil, Plus, Calendar, Clock, Printer, Camera, AlertTriangle, Trash2, Upload } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fmtTime } from "@/lib/store";
+import { resizeToDataUrl } from "@/lib/image";
 import { can } from "@/lib/rbac";
 import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, financialStatus, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { orthoProgress } from "@/lib/ortho";
@@ -481,28 +482,85 @@ function RipsForm({ budget, mode, canWrite, onSave, onClose }: {
 }
 
 /* ---------- Estética facial ---------- */
-function EsteticaFacial({ budget, patient }: { budget: Budget; patient: Patient }) {
+function EsteticaFacial({ budget }: { budget: Budget; patient: Patient }) {
   const { session, upsertBudget } = useStore();
   const canWrite = session ? can(session.role, "emr.write") : false;
   const [note, setNote] = useState(budget.facialNote ?? "");
-  const dirty = note.trim() !== (budget.facialNote ?? "").trim();
+  const [m, setM] = useState<NonNullable<Budget["facialMeasures"]>>(budget.facialMeasures ?? {});
+  const [busy, setBusy] = useState(false);
+  const photos = budget.facialPhotos ?? [];
+  const dirty = note.trim() !== (budget.facialNote ?? "").trim() || JSON.stringify(m) !== JSON.stringify(budget.facialMeasures ?? {});
+
+  const addPhotos = async (files: FileList | null) => {
+    if (!files || !canWrite) return;
+    setBusy(true);
+    const picked = Array.from(files).slice(0, Math.max(0, 8 - photos.length));
+    const added: NonNullable<Budget["facialPhotos"]> = [];
+    for (const file of picked) {
+      try { const dataUrl = await resizeToDataUrl(file, { maxDim: 700 }); added.push({ id: `fp_${Date.now()}_${added.length}`, label: "", dataUrl, at: new Date().toISOString() }); } catch { /* omitir */ }
+    }
+    if (added.length) upsertBudget({ ...budget, facialPhotos: [...photos, ...added] });
+    setBusy(false);
+  };
+  const setLabel = (id: string, label: string) => upsertBudget({ ...budget, facialPhotos: photos.map((p) => (p.id === id ? { ...p, label } : p)) });
+  const delPhoto = (id: string) => upsertBudget({ ...budget, facialPhotos: photos.filter((p) => p.id !== id) });
+  const guardar = () => upsertBudget({ ...budget, facialNote: note.trim() || undefined, facialMeasures: Object.values(m).some(Boolean) ? m : undefined });
+
+  const MF = (label: string, k: keyof NonNullable<Budget["facialMeasures"]>, ph: string) => (
+    <label className="text-[11px] font-bold text-clinic-muted">{label}
+      <input disabled={!canWrite} value={m[k] ?? ""} onChange={(e) => setM({ ...m, [k]: e.target.value })} className={`${inputCls} mt-1`} placeholder={ph} />
+    </label>
+  );
+
   return (
-    <div className="rounded-2xl border border-clinic-border bg-white p-5">
-      <div className="grid gap-5 sm:grid-cols-[180px_1fr]">
-        <div className="grid aspect-[3/4] place-items-center overflow-hidden rounded-xl bg-clinic-bg">
-          {patient.photo ? (
-            <img src={patient.photo} alt="Estética facial" className="h-full w-full object-cover" />
-          ) : (
-            <div className="text-center text-clinic-muted"><Camera className="mx-auto h-8 w-8" /><p className="mt-1 text-xs">Sin foto facial</p></div>
+    <div className="space-y-4 rounded-2xl border border-clinic-border bg-white p-5">
+      <h3 className="font-extrabold text-clinic-text">Estética facial</h3>
+
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Registro fotográfico (pre / post)</span>
+          {canWrite && photos.length < 8 && (
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-clinic-border px-2.5 py-1 text-xs font-bold text-clinic-text hover:border-azure-300 hover:text-azure-700">
+              <Upload className="h-3.5 w-3.5" /> {busy ? "Subiendo…" : "Agregar fotos"}
+              <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addPhotos(e.target.files); e.currentTarget.value = ""; }} />
+            </label>
           )}
         </div>
-        <div>
-          <h3 className="font-extrabold text-clinic-text">Estética facial</h3>
-          <p className="mb-2 text-[11px] text-clinic-muted">Análisis facial y observaciones estéticas del plan.</p>
-          <textarea disabled={!canWrite} rows={6} value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} placeholder="Proporciones faciales, línea media, sonrisa, perfil, objetivos estéticos…" />
-          {canWrite && dirty && <div className="mt-2"><Btn onClick={() => upsertBudget({ ...budget, facialNote: note.trim() || undefined })}><Save className="h-4 w-4" /> Guardar</Btn></div>}
+        {photos.length === 0 ? (
+          <div className="grid place-items-center rounded-xl border border-dashed border-clinic-border py-8 text-center text-clinic-muted">
+            <Camera className="h-8 w-8" /><p className="mt-1 text-xs">Sin fotos. Subí registros frontal/perfil pre y post.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {photos.map((p) => (
+              <div key={p.id} className="group overflow-hidden rounded-xl border border-clinic-border">
+                <div className="relative aspect-[3/4] bg-clinic-bg">
+                  <img src={p.dataUrl} alt={p.label || "Foto facial"} className="h-full w-full object-cover" />
+                  {canWrite && <button onClick={() => delPhoto(p.id)} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100" title="Eliminar"><Trash2 className="h-3 w-3" /></button>}
+                </div>
+                <input disabled={!canWrite} value={p.label} onChange={(e) => setLabel(p.id, e.target.value)} placeholder="Etiqueta (ej. Pre frontal)" className="w-full border-t border-clinic-border px-2 py-1 text-[10px] text-clinic-text focus:outline-none" />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Análisis facial</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {MF("Proporción de tercios", "tercios", "Sup/medio/inf equilibrados…")}
+          {MF("Línea media", "lineaMedia", "Centrada / desviada …")}
+          {MF("Perfil", "perfil", "Recto / convexo / cóncavo")}
+          {MF("Sonrisa / exposición gingival", "sonrisa", "Línea de sonrisa, encía…")}
         </div>
       </div>
+
+      <div>
+        <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Observaciones</div>
+        <textarea disabled={!canWrite} rows={4} value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} placeholder="Objetivos estéticos, indicaciones…" />
+      </div>
+
+      {canWrite && dirty && <div><Btn onClick={guardar}><Save className="h-4 w-4" /> Guardar análisis</Btn></div>}
     </div>
   );
 }

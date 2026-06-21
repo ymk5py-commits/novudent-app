@@ -309,6 +309,10 @@ export interface Budget {
   rips?: { tipoDoc?: string; nroDoc?: string; eps?: string; regimen?: "contributivo" | "subsidiado" | "particular"; riesgos?: string; completo?: boolean };
   /** Nota de estética facial del plan. */
   facialNote?: string;
+  /** Registro fotográfico facial (pre/post): imágenes base64 redimensionadas. */
+  facialPhotos?: { id: string; label: string; dataUrl: string; at: string }[];
+  /** Análisis/medidas faciales. */
+  facialMeasures?: { tercios?: string; lineaMedia?: string; perfil?: string; sonrisa?: string };
   /** Vencimiento del presupuesto (ISO). Si falta, se asume 60 días. */
   dueDate?: string;
   items: BudgetItem[];
