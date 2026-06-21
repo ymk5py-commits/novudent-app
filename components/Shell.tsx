@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, Bell, CreditCard,
   FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown, Banknote, Handshake, Image as ImageIcon,
-  Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle,
+  Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star,
 } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
@@ -41,6 +41,7 @@ const NAV: NavTop[] = [
       { href: "/app/liquidaciones", label: "Liquidaciones", icon: Coins, perm: "billing.reports", feature: "liquidaciones", section: "Gestión" },
       { href: "/app/box", label: "Box / Sillones", icon: Armchair, perm: "practice.config", feature: "boxes", section: "Gestión" },
       { href: "/app/esterilizacion", label: "Esterilización", icon: ShieldCheck, perm: "practice.config", section: "Gestión" },
+      { href: "/app/encuestas", label: "Encuestas y NPS", icon: Star, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#convenios", label: "Convenios", icon: Handshake, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#usuarios", label: "Usuarios y profesionales", icon: Users, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#fusion", label: "Fusión de fichas", icon: Users, perm: "practice.config", section: "Gestión" },

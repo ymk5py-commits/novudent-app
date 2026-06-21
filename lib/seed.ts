@@ -390,6 +390,27 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
       { id: "tm2", clinicId: CLINIC_ID, userId: "u2", userName: "Dra. Sofía Benítez", text: "Perfecto, hacela pasar al box 2 en 5 minutos.", createdAt: at(0, 11) },
       { id: "tm3", clinicId: CLINIC_ID, userId: "u1", userName: "Carlos Admin", text: "Recordatorio: la reposición de guantes M llega mañana a la mañana.", createdAt: at(0, 12) },
     ],
+    surveys: [
+      { id: "sv_nps", clinicId: CLINIC_ID, title: "¿Nos recomendarías?", kind: "nps", active: true, createdAt: at(-20, 9), questions: [
+        { id: "q1", text: "¿Qué tan probable es que recomiendes nuestra clínica a un amigo o familiar?", type: "nps" },
+        { id: "q2", text: "¿Algún comentario para mejorar?", type: "text" },
+      ] },
+      { id: "sv_sat", clinicId: CLINIC_ID, title: "Encuesta de satisfacción", kind: "satisfaccion", active: true, createdAt: at(-20, 9), questions: [
+        { id: "s1", text: "Atención del personal", type: "rating" },
+        { id: "s2", text: "Puntualidad de la cita", type: "rating" },
+        { id: "s3", text: "Resultado del tratamiento", type: "rating" },
+        { id: "s4", text: "Instalaciones", type: "rating" },
+        { id: "s5", text: "Comentarios", type: "text" },
+      ] },
+    ],
+    surveyResponses: [
+      { id: "sr1", clinicId: CLINIC_ID, surveyId: "sv_nps", patientName: "María G.", answers: [], npsScore: 10, comment: "Excelente atención, muy profesionales.", createdAt: at(-15, 18) },
+      { id: "sr2", clinicId: CLINIC_ID, surveyId: "sv_nps", patientName: "Jorge R.", answers: [], npsScore: 9, createdAt: at(-12, 17) },
+      { id: "sr3", clinicId: CLINIC_ID, surveyId: "sv_nps", patientName: "Ana L.", answers: [], npsScore: 7, comment: "Bien, aunque esperé un poco.", createdAt: at(-9, 16) },
+      { id: "sr4", clinicId: CLINIC_ID, surveyId: "sv_nps", patientName: "Pedro M.", answers: [], npsScore: 5, comment: "La sala de espera estaba llena.", createdAt: at(-6, 15) },
+      { id: "sr5", clinicId: CLINIC_ID, surveyId: "sv_sat", patientName: "María G.", answers: [{ questionId: "s1", value: 5 }, { questionId: "s2", value: 4 }, { questionId: "s3", value: 5 }, { questionId: "s4", value: 5 }, { questionId: "s5", value: "Todo perfecto" }], createdAt: at(-15, 18) },
+      { id: "sr6", clinicId: CLINIC_ID, surveyId: "sv_sat", patientName: "Jorge R.", answers: [{ questionId: "s1", value: 4 }, { questionId: "s2", value: 5 }, { questionId: "s3", value: 4 }, { questionId: "s4", value: 4 }], createdAt: at(-12, 17) },
+    ],
     signatures: [],
     crmCards: [],
     campaigns: [],

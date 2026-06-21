@@ -27,7 +27,7 @@ async function ensureAuth() {
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord,
   Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
-  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage,
+  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, Survey, SurveyResponse,
   CrmCard, Campaign, LabOrder, Settlement, Box,
 } from "./types";
 import { buildSeed } from "./seed";
@@ -88,6 +88,8 @@ async function seedFirestore(seed: DB) {
   for (const cs of seed.cashSessions) batch.set(doc(fsdb, "clinics", CLINIC_ID, "cashSessions", cs.id), clean(cs));
   for (const sc of seed.sterilizationCycles) batch.set(doc(fsdb, "clinics", CLINIC_ID, "sterilizationCycles", sc.id), clean(sc));
   for (const tm of seed.teamMessages) batch.set(doc(fsdb, "clinics", CLINIC_ID, "teamMessages", tm.id), clean(tm));
+  for (const s of seed.surveys) batch.set(doc(fsdb, "clinics", CLINIC_ID, "surveys", s.id), clean(s));
+  for (const r of seed.surveyResponses) batch.set(doc(fsdb, "clinics", CLINIC_ID, "surveyResponses", r.id), clean(r));
   await batch.commit();
 }
 
@@ -103,10 +105,10 @@ async function loadFirestore(): Promise<DB> {
   }
   const meta = clinicSnap.data() as any;
   const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
-    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"), col("sterilizationCycles"), col("teamMessages"),
+    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"), col("sterilizationCycles"), col("teamMessages"), col("surveys"), col("surveyResponses"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -135,6 +137,8 @@ async function loadFirestore(): Promise<DB> {
     cashSessions: cashSessions.docs.map((d) => d.data() as CashSession),
     sterilizationCycles: sterilizationCycles.docs.map((d) => d.data() as SterilizationCycle),
     teamMessages: teamMessages.docs.map((d) => d.data() as TeamMessage),
+    surveys: surveys.docs.map((d) => d.data() as Survey),
+    surveyResponses: surveyResponses.docs.map((d) => d.data() as SurveyResponse),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   ACTIVE_CURRENCY = (db.clinics[0]?.config?.currency as CurrencyCode) ?? DEFAULT_CURRENCY;
@@ -398,6 +402,10 @@ interface Ctx {
   deleteSterilizationCycle: (id: string) => void;
   /* — Chat interno del equipo — */
   addTeamMessage: (m: TeamMessage) => void;
+  /* — Encuestas / NPS — */
+  addSurvey: (s: Survey) => void;
+  updateSurvey: (s: Survey) => void;
+  deleteSurvey: (id: string) => void;
   /* — Firma electrónica / consentimientos — */
   addSignature: (s: SignatureDoc) => void;
   updateSignature: (s: SignatureDoc) => void;
@@ -950,6 +958,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addTeamMessage: (m) => {
         persist((prev) => ({ ...prev, teamMessages: [...prev.teamMessages, m] }));
         fsSave("teamMessages", m.id, m);
+      },
+      addSurvey: (s) => {
+        persist({ ...db, surveys: [s, ...db.surveys] });
+        fsSave("surveys", s.id, s);
+      },
+      updateSurvey: (s) => {
+        persist({ ...db, surveys: db.surveys.map((x) => (x.id === s.id ? s : x)) });
+        fsSave("surveys", s.id, s);
+      },
+      deleteSurvey: (id) => {
+        persist({ ...db, surveys: db.surveys.filter((x) => x.id !== id) });
+        fsDelete("surveys", id);
       },
       addRadiograph: (r: RadiographRec) => {
         persist({ ...db, radiographs: [r, ...db.radiographs] });

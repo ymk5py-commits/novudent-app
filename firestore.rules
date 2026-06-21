@@ -157,6 +157,13 @@ service cloud.firestore {
       match /sterilizationCycles/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       // Chat interno del equipo
       match /teamMessages/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Encuestas (definición): admin escribe; la respuesta pública entra por route de servicio
+      match /surveys/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Respuestas de encuestas: alta pública (sin sesión) vía route de servicio
+      match /surveyResponses/{docId} {
+        allow read: if isMember(cid) || isService() || isDemo(cid);
+        allow write: if isService() || isDemo(cid);
+      }
     }
 
     // Todo lo demás: denegado.

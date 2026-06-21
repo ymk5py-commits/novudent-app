@@ -695,6 +695,33 @@ export interface TeamMessage {
   createdAt: string;
 }
 
+/** Encuestas de satisfacción / NPS (spec 7.4). */
+export type SurveyKind = "nps" | "satisfaccion";
+export interface SurveyQuestion {
+  id: string;
+  text: string;
+  type: "rating" | "nps" | "text"; // rating 1-5 · nps 0-10 · text abierto
+}
+export interface Survey {
+  id: string;
+  clinicId: string;
+  title: string;
+  kind: SurveyKind;
+  questions: SurveyQuestion[];
+  active: boolean;
+  createdAt: string;
+}
+export interface SurveyResponse {
+  id: string;
+  clinicId: string;
+  surveyId: string;
+  patientName?: string;
+  answers: { questionId: string; value: number | string }[];
+  npsScore?: number;       // 0-10 (encuestas NPS)
+  comment?: string;
+  createdAt: string;
+}
+
 export interface DB {
   clinics: Clinic[];
   users: User[];
@@ -722,5 +749,7 @@ export interface DB {
   cashSessions: CashSession[];
   sterilizationCycles: SterilizationCycle[];
   teamMessages: TeamMessage[];
+  surveys: Survey[];
+  surveyResponses: SurveyResponse[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }
