@@ -3,7 +3,7 @@
  *  Presupuestos · Recetas (plantillas + impresión) · Archivos (imágenes/documentos) · Ortodoncia */
 import { useRef, useState } from "react";
 import {
-  Plus, Printer, FileSpreadsheet, Pill, Upload, Trash2, ImageIcon, FileText, Braces, CircleCheck, Calendar,
+  Plus, Printer, FileSpreadsheet, Pill, Upload, Trash2, ImageIcon, FileText, Braces, CircleCheck, Calendar, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download,
 } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
@@ -257,6 +257,14 @@ export function FilesTab({ patient }: { patient: Patient }) {
   const [viewing, setViewing] = useState<PatientFileRec | null>(null);
   const canDelete = session ? can(session.role, "emr.write") : false;
   const files = patient.files ?? [];
+  const sorted = [...files].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+  const grouped: [string, PatientFileRec[]][] = [];
+  for (const f of sorted) {
+    const k = f.uploadedAt.slice(0, 10);
+    const g = grouped.find((x) => x[0] === k);
+    if (g) g[1].push(f); else grouped.push([k, [f]]);
+  }
+  const images = sorted.filter((f) => f.kind === "imagen");
 
   const onPick = async (f: File) => {
     setError("");
@@ -294,47 +302,79 @@ export function FilesTab({ patient }: { patient: Patient }) {
       {files.length === 0 ? (
         <Empty title="Sin archivos" desc="Subí radiografías o fotos clínicas del paciente." />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {files.map((f) => (
-            <Card key={f.id} className="group overflow-hidden">
-              <button onClick={() => setViewing(f)} className="block w-full">
-                {f.kind === "imagen" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={f.dataUrl} alt={f.name} className="h-32 w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                ) : (
-                  <div className="grid h-32 w-full place-items-center bg-clinic-bg"><FileText className="h-10 w-10 text-clinic-muted" /></div>
-                )}
-              </button>
-              <div className="flex items-center gap-2 p-2.5">
-                {f.kind === "imagen" ? <ImageIcon className="h-3.5 w-3.5 shrink-0 text-azure-600" /> : <FileText className="h-3.5 w-3.5 shrink-0 text-azure-600" />}
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[11px] font-bold text-clinic-text">{f.name}</span>
-                  <span className="block text-[10px] text-clinic-muted">{fmtDate(f.uploadedAt)} · {f.by}</span>
-                </span>
-                {canDelete && (
-                  <button onClick={() => removePatientFile(patient.id, f.id)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err" title="Eliminar archivo">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
+        <div className="space-y-5">
+          {grouped.map(([date, fs]) => (
+            <div key={date}>
+              <div className="mb-2 border-b border-clinic-border pb-1 text-xs font-bold uppercase tracking-wide text-clinic-muted">{fmtDate(date)}</div>
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {fs.map((f) => (
+                  <Card key={f.id} className="group overflow-hidden">
+                    <button onClick={() => setViewing(f)} className="block w-full">
+                      {f.kind === "imagen" ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={f.dataUrl} alt={f.name} className="h-32 w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      ) : (
+                        <div className="grid h-32 w-full place-items-center bg-clinic-bg"><FileText className="h-10 w-10 text-clinic-muted" /></div>
+                      )}
+                    </button>
+                    <div className="flex items-center gap-2 p-2.5">
+                      {f.kind === "imagen" ? <ImageIcon className="h-3.5 w-3.5 shrink-0 text-azure-600" /> : <FileText className="h-3.5 w-3.5 shrink-0 text-azure-600" />}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[11px] font-bold text-clinic-text">{f.name}</span>
+                        <span className="block text-[10px] text-clinic-muted">{f.by}</span>
+                      </span>
+                      {canDelete && (
+                        <button onClick={() => removePatientFile(patient.id, f.id)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err" title="Eliminar archivo">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </Card>
+                ))}
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}
-      {viewing && (
-        <Modal title={viewing.name} onClose={() => setViewing(null)} wide>
-          {viewing.kind === "imagen" ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={viewing.dataUrl} alt={viewing.name} className="max-h-[70vh] w-full rounded-xl object-contain" />
-          ) : (
-            <div className="space-y-3 py-6 text-center">
-              <FileText className="mx-auto h-12 w-12 text-clinic-muted" />
-              <a href={viewing.dataUrl} download={viewing.name}><Btn>Descargar documento</Btn></a>
-            </div>
-          )}
-        </Modal>
-      )}
+      {viewing && <FileViewer file={viewing} images={images} onClose={() => setViewing(null)} onNav={setViewing} />}
     </div>
+  );
+}
+
+/* Visor de imágenes con zoom + navegación prev/siguiente. */
+function FileViewer({ file, images, onClose, onNav }: { file: PatientFileRec; images: PatientFileRec[]; onClose: () => void; onNav: (f: PatientFileRec) => void }) {
+  const [zoom, setZoom] = useState(1);
+  const idx = images.findIndex((f) => f.id === file.id);
+  const go = (d: number) => { const n = images[idx + d]; if (n) { onNav(n); setZoom(1); } };
+  return (
+    <Modal title={file.name} onClose={onClose} wide>
+      {file.kind === "imagen" ? (
+        <div className="space-y-3">
+          <div className="max-h-[68vh] overflow-auto rounded-xl bg-clinic-bg">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={file.dataUrl} alt={file.name} style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }} className="mx-auto block transition-transform duration-150" />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Btn variant="outline" onClick={() => go(-1)} disabled={idx <= 0}><ChevronLeft className="h-4 w-4" /></Btn>
+              <span className="font-mono text-xs text-clinic-muted">{idx + 1} / {images.length}</span>
+              <Btn variant="outline" onClick={() => go(1)} disabled={idx < 0 || idx >= images.length - 1}><ChevronRight className="h-4 w-4" /></Btn>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Btn variant="outline" onClick={() => setZoom((z) => Math.max(1, +(z - 0.25).toFixed(2)))}><ZoomOut className="h-4 w-4" /></Btn>
+              <span className="w-12 text-center font-mono text-xs">{Math.round(zoom * 100)}%</span>
+              <Btn variant="outline" onClick={() => setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2)))}><ZoomIn className="h-4 w-4" /></Btn>
+              <a href={file.dataUrl} download={file.name}><Btn variant="outline"><Download className="h-4 w-4" /></Btn></a>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3 py-6 text-center">
+          <FileText className="mx-auto h-12 w-12 text-clinic-muted" />
+          <a href={file.dataUrl} download={file.name}><Btn>Descargar documento</Btn></a>
+        </div>
+      )}
+    </Modal>
   );
 }
 
