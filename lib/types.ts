@@ -635,6 +635,21 @@ export interface FiscalDoc {
   by: string;
 }
 
+export type CashSessionStatus = "abierta" | "cerrada";
+/** Sesión de caja (libro de caja): apertura/cierre con arqueo por usuario. */
+export interface CashSession {
+  id: string;
+  clinicId: string;
+  userId: string;
+  userName: string;
+  openedAt: string;        // ISO
+  closedAt?: string;       // ISO
+  openingBalance: number;  // saldo inicial declarado
+  countedCash?: number;    // efectivo contado al cierre (arqueo)
+  note?: string;
+  status: CashSessionStatus;
+}
+
 export interface DB {
   clinics: Clinic[];
   users: User[];
@@ -659,5 +674,6 @@ export interface DB {
   boxes: Box[];
   patientNotes: PatientNote[];
   fiscalDocs: FiscalDoc[];
+  cashSessions: CashSession[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }

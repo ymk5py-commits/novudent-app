@@ -151,6 +151,8 @@ service cloud.firestore {
       match /patientNotes/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       // Documentos fiscales: boletas emitidas / devoluciones
       match /fiscalDocs/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Sesiones de caja: apertura/cierre con arqueo
+      match /cashSessions/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
     }
 
     // Todo lo demás: denegado.

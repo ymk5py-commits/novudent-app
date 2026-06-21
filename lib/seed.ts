@@ -377,6 +377,10 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
       { id: "fd1", clinicId: CLINIC_ID, patientId: "p6", kind: "boleta", number: "0001-2875", amount: 1500000, date: at(-30, 11), paymentId: "pay1", by: "Paola Asistente" },
       { id: "fd2", clinicId: CLINIC_ID, patientId: "p4", kind: "boleta", number: "0001-2870", amount: 750000, date: at(-1, 11), paymentId: "pay3", by: "Carlos Admin" },
     ],
+    cashSessions: [
+      { id: "cs_today", clinicId: CLINIC_ID, userId: "u1", userName: "Carlos Admin", openedAt: at(0, 8), openingBalance: 200000, status: "abierta" },
+      { id: "cs_prev", clinicId: CLINIC_ID, userId: "u3", userName: "Paola Asistente", openedAt: at(-1, 8), closedAt: at(-1, 19), openingBalance: 200000, countedCash: 980000, status: "cerrada" },
+    ],
     signatures: [],
     crmCards: [],
     campaigns: [],
