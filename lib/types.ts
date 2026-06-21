@@ -1,4 +1,5 @@
 /* ===== Modelo de datos Novudent (sec. 4 del Documento Maestro) ===== */
+import type { CurrencyCode } from "./currency";
 
 export type Role = "admin" | "dentist" | "assistant";
 
@@ -25,7 +26,7 @@ export interface Clinic {
   plan?: "solo" | "clinica" | "cadena";
   config: {
     timezone: string;
-    currency: "PYG" | "USD";
+    currency: CurrencyCode;
     address?: string;
     phone?: string;
     /** Gestión de convenios (descuento % aplicable a presupuestos) */

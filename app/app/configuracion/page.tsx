@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
+import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
 import { can, ROLE_LABEL } from "@/lib/rbac";
 import type { Role, User, Procedure, BotikaConfig, ConsentTemplate } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
@@ -66,10 +67,19 @@ export default function ConfigPage() {
         <div className="mb-3 flex items-center gap-2"><Building2 className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Clínica</h2></div>
         <div className="grid gap-3 text-sm sm:grid-cols-2">
           <div><span className="text-clinic-muted">Nombre:</span> <b>{clinic?.name}</b></div>
-          <div><span className="text-clinic-muted">Moneda:</span> <b>{clinic?.config.currency}</b></div>
+          <div id="moneda" className="scroll-mt-24"><span className="text-clinic-muted">Moneda:</span>{" "}
+            <select
+              value={clinic?.config.currency ?? "PYG"}
+              onChange={(e) => updateClinicConfig({ currency: e.target.value as CurrencyCode })}
+              className="ml-1 rounded-lg border border-clinic-border bg-white px-2 py-1 text-sm font-bold text-clinic-text outline-none focus:border-azure-400"
+            >
+              {CURRENCY_LIST.map((c) => <option key={c.code} value={c.code}>{c.symbol} · {c.name} ({c.code})</option>)}
+            </select>
+          </div>
           <div><span className="text-clinic-muted">Dirección:</span> <b>{clinic?.config.address}</b></div>
           <div><span className="text-clinic-muted">Teléfono:</span> <b>{clinic?.config.phone}</b></div>
         </div>
+        <p className="mt-3 text-[11px] text-clinic-muted">Cambiar la moneda afecta el formato en toda la app (presupuestos, pagos, caja, reportes). No convierte montos por tipo de cambio.</p>
       </Card>
       </Reveal>
 

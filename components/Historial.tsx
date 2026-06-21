@@ -3,7 +3,7 @@
  *  prestaciones realizadas + pagos + notas, agrupados por día, con filtros e impresión. */
 import { useMemo, useState } from "react";
 import { Printer, Calendar, Activity, Receipt, ClipboardList, Stethoscope } from "lucide-react";
-import { useStore } from "@/lib/store";
+import { useStore, fmtGs } from "@/lib/store";
 import { buildHistorial, type HistorialKind, type HistorialEntry } from "@/lib/historial";
 import type { Patient } from "@/lib/types";
 import { Card, Badge, Empty } from "@/components/ui";
@@ -92,7 +92,7 @@ export function HistorialTimeline({ patient }: { patient: Patient }) {
                       </div>
                       <p className="mt-1 text-sm text-clinic-text">
                         {e.detail}
-                        {e.amount != null && <span className="ml-1 font-mono font-bold text-state-ok">· {e.amount.toLocaleString("es-PY")} Gs</span>}
+                        {e.amount != null && <span className="ml-1 font-mono font-bold text-state-ok">· {fmtGs(e.amount)}</span>}
                       </p>
                     </Card>
                   );

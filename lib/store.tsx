@@ -34,6 +34,7 @@ import { buildSeed } from "./seed";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { planUserLimitError } from "./plan";
 import { worstSeverity } from "./recovery";
+import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
 
 const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
@@ -41,6 +42,9 @@ const DEMO_CLINIC_ID = "cl_demo";
 /** Clínica activa (multi-clínica). Se resuelve desde la sesión guardada antes
  *  de cargar Firestore; cambia al iniciar sesión con una cuenta de otra clínica. */
 let CLINIC_ID = DEMO_CLINIC_ID;
+/** Moneda activa de la clínica. La setea `loadFirestore` al cargar y
+ *  `updateClinicConfig` al cambiarla; `fmtGs`/`fmtMoney` la consumen. */
+let ACTIVE_CURRENCY: CurrencyCode = DEFAULT_CURRENCY;
 function resolveClinicId(): string {
   try {
     const s = JSON.parse(localStorage.getItem(SES_KEY) || "null");
@@ -129,6 +133,7 @@ async function loadFirestore(): Promise<DB> {
     cashSessions: cashSessions.docs.map((d) => d.data() as CashSession),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
+  ACTIVE_CURRENCY = (db.clinics[0]?.config?.currency as CurrencyCode) ?? DEFAULT_CURRENCY;
   /* Upgrade v3: bases creadas antes de los módulos nuevos — sembramos
    * presupuestos/caja/inventario/espera demo una sola vez. SOLO en la demo:
    * una clínica real recién creada está vacía a propósito. */
@@ -841,6 +846,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       updateClinicConfig: (patch) => {
         const c = db.clinics[0];
         const nextClinic = { ...c, config: { ...c.config, ...patch } };
+        ACTIVE_CURRENCY = (nextClinic.config.currency as CurrencyCode) ?? DEFAULT_CURRENCY;
         const next = { ...db, clinics: [nextClinic] };
         persist(next);
         fsMeta(next);
@@ -1043,8 +1049,15 @@ export function useStore() {
 }
 
 /* ===== Utilidades compartidas ===== */
+/** Formatea un monto en la moneda activa de la clínica (configurable).
+ *  Conserva el nombre `fmtGs` por compatibilidad; usar `fmtMoney` en código nuevo. */
 export function fmtGs(n: number) {
-  return "Gs " + n.toLocaleString("es-PY");
+  return formatMoney(n, ACTIVE_CURRENCY);
+}
+export const fmtMoney = fmtGs;
+/** Moneda activa (para componentes que necesiten el símbolo/código). */
+export function activeCurrency(): CurrencyCode {
+  return ACTIVE_CURRENCY;
 }
 export function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit", hour12: false });
