@@ -144,6 +144,8 @@ function GastoModal({ expense, onClose }: { expense: Expense | null; onClose: ()
   const [amount, setAmount] = useState(expense?.amount ?? 0);
   const [invoiceDate, setInvoiceDate] = useState(expense?.invoiceDate ?? new Date().toISOString().slice(0, 10));
   const [payDate, setPayDate] = useState(expense?.payDate ?? "");
+  const [cashSessionId, setCashSessionId] = useState(expense?.cashSessionId ?? db.cashSessions.find((s) => s.status === "abierta" && s.userId === session?.userId)?.id ?? "");
+  const openCajas = db.cashSessions.filter((s) => s.status === "abierta");
 
   const save = () => {
     if (!session || amount <= 0 || !description.trim()) return;
@@ -154,6 +156,7 @@ function GastoModal({ expense, onClose }: { expense: Expense | null; onClose: ()
       category, supplier: supplier.trim() || undefined, description: description.trim(),
       amount, registeredBy: expense?.registeredBy ?? session.name,
       invoiceDate: invoiceDate || undefined, payDate: payDate || undefined,
+      cashSessionId: cashSessionId || undefined,
     };
     (expense ? updateExpense : addExpense)(exp);
     onClose();
@@ -172,6 +175,12 @@ function GastoModal({ expense, onClose }: { expense: Expense | null; onClose: ()
           <Field label="Fecha factura"><input type="date" className={inputCls} value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} /></Field>
           <Field label="Fecha pago"><input type="date" className={inputCls} value={payDate} onChange={(e) => setPayDate(e.target.value)} /></Field>
         </div>
+        <Field label="Asociar a caja (opcional)">
+          <select className={inputCls} value={cashSessionId} onChange={(e) => setCashSessionId(e.target.value)}>
+            <option value="">Sin asociar</option>
+            {openCajas.map((s) => <option key={s.id} value={s.id}>Caja de {s.userName} · {new Date(s.openedAt).toLocaleDateString("es-PY")}</option>)}
+          </select>
+        </Field>
         <div className="flex justify-end gap-2 pt-1">
           <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
           <Btn disabled={amount <= 0 || !description.trim()} onClick={save}>{expense ? "Guardar" : "Registrar"}{amount > 0 ? ` · ${fmtGs(amount)}` : ""}</Btn>

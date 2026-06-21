@@ -350,6 +350,7 @@ export interface Expense {
   registeredBy: string;
   invoiceDate?: string; // Fecha de factura (YYYY-MM-DD)
   payDate?: string;     // Fecha de pago (YYYY-MM-DD)
+  cashSessionId?: string; // Caja (sesión) a la que se asocia el gasto
 }
 
 /* ===== Inventario (bodega virtual) ===== */

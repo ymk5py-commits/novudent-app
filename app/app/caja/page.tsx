@@ -22,7 +22,7 @@ function sessionTotals(s: CashSession, payments: Payment[], expenses: Expense[])
   const from = s.openedAt;
   const to = s.closedAt ?? new Date().toISOString();
   const pays = payments.filter((p) => !p.voidedAt && p.date >= from && p.date <= to);
-  const exps = expenses.filter((e) => e.date >= from && e.date <= to);
+  const exps = expenses.filter((e) => e.cashSessionId === s.id || (!e.cashSessionId && e.date >= from && e.date <= to));
   const ingresos = pays.reduce((a, p) => a + p.amount, 0);
   const egresos = exps.reduce((a, e) => a + e.amount, 0);
   const efectivo = pays.filter((p) => p.method === "efectivo").reduce((a, p) => a + p.amount, 0);
