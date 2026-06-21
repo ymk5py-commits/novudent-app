@@ -1,7 +1,7 @@
 "use client";
 /** Informes de gestión: KPIs de 30 días, producción y comisiones por profesional,
  *  tasa de aceptación de presupuestos, morosidad y reportes descargables (Excel/CSV). */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ShieldAlert, Download, TrendingUp, TrendingDown, Scale, FileSpreadsheet, Percent, Bot, Star } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
@@ -29,6 +29,16 @@ const DAYS30 = 30 * 24 * 3600 * 1000;
 export default function ReportsPage() {
   const { db, session } = useStore();
   const [tab, setTab] = useState<"desempeno" | "analisis" | "excel">("desempeno");
+  // Deep-link desde el menú (Reportes ▾): /app/reportes#analisis abre esa pestaña.
+  useEffect(() => {
+    const apply = () => {
+      const h = window.location.hash.replace("#", "");
+      if (h === "desempeno" || h === "analisis" || h === "excel") setTab(h);
+    };
+    apply();
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
+  }, []);
 
   const data = useMemo(() => {
     const since = Date.now() - DAYS30;

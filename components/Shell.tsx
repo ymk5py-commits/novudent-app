@@ -43,9 +43,9 @@ const NAV: NavTop[] = [
   },
   {
     label: "Reportes", icon: BarChart3, children: [
-      { href: "/app/reportes", label: "Panel de desempeño", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
-      { href: "/app/reportes", label: "Análisis de pacientes", icon: Users, perm: "billing.reports", feature: "reportes" },
-      { href: "/app/reportes", label: "Reportes Excel", icon: FileSpreadsheet, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/reportes#desempeno", label: "Panel de desempeño", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/reportes#analisis", label: "Análisis de pacientes", icon: Users, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/reportes#excel", label: "Reportes Excel", icon: FileSpreadsheet, perm: "billing.reports", feature: "reportes" },
     ],
   },
   { href: "/app/crm", label: "CRM", icon: Megaphone },
@@ -242,7 +242,7 @@ function NavDropdown({ label, items, pathname }: { label: string; items: NavLeaf
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [open]);
-  const active = items.some((it) => pathname.startsWith(it.href));
+  const active = items.some((it) => pathname.startsWith(it.href.split(/[?#]/)[0]));
   return (
     <div ref={ref} className="relative">
       <button
@@ -256,7 +256,7 @@ function NavDropdown({ label, items, pathname }: { label: string; items: NavLeaf
       {open && (
         <div className="absolute left-0 top-full z-50 mt-0.5 min-w-[210px] overflow-hidden rounded-xl border border-clinic-border bg-white py-1 shadow-pop">
           {items.map((it) => {
-            const a = pathname.startsWith(it.href);
+            const a = pathname.startsWith(it.href.split(/[?#]/)[0]);
             return (
               <a
                 key={it.href}
