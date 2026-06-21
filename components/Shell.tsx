@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, Bell, CreditCard,
-  FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown, Banknote,
+  FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown, Banknote, Handshake, Image as ImageIcon,
   Megaphone, FlaskConical, Coins, Armchair,
 } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
@@ -15,7 +15,7 @@ import { planOf, type PlanFeature } from "@/lib/plan";
 import ChangePasswordGate from "@/components/ChangePasswordGate";
 import { PageTransition } from "@/components/motion";
 
-type NavLeaf = { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature };
+type NavLeaf = { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature; section?: string };
 type NavTop = { label: string; href?: string; icon?: any; perm?: Permission; feature?: PlanFeature; children?: NavLeaf[] };
 
 /** Agrupado igual a la barra superior de Dentalink. CRM no lleva gate de feature:
@@ -33,13 +33,21 @@ const NAV: NavTop[] = [
   },
   {
     label: "Administración", icon: Settings, children: [
-      { href: "/app/gastos", label: "Gastos", icon: Banknote, perm: "payments.manage" },
-      { href: "/app/inventario", label: "Inventario", icon: Package, perm: "inventory.manage", feature: "inventario" },
-      { href: "/app/laboratorios", label: "Laboratorios", icon: FlaskConical, feature: "laboratorios" },
-      { href: "/app/box", label: "Box/Sillones", icon: Armchair, perm: "practice.config", feature: "boxes" },
-      { href: "/app/integraciones", label: "Integraciones", icon: Bot, perm: "practice.config", feature: "integraciones" },
-      { href: "/app/suscripcion", label: "Suscripción", icon: CreditCard, perm: "practice.config" },
-      { href: "/app/configuracion", label: "Configuración", icon: Settings, perm: "practice.config" },
+      { href: "/app/gastos", label: "Gastos", icon: Banknote, perm: "payments.manage", section: "Gestión" },
+      { href: "/app/inventario", label: "Inventario", icon: Package, perm: "inventory.manage", feature: "inventario", section: "Gestión" },
+      { href: "/app/laboratorios", label: "Laboratorios", icon: FlaskConical, feature: "laboratorios", section: "Gestión" },
+      { href: "/app/liquidaciones", label: "Liquidaciones", icon: Coins, perm: "billing.reports", feature: "liquidaciones", section: "Gestión" },
+      { href: "/app/box", label: "Box / Sillones", icon: Armchair, perm: "practice.config", feature: "boxes", section: "Gestión" },
+      { href: "/app/configuracion#convenios", label: "Convenios", icon: Handshake, perm: "practice.config", section: "Gestión" },
+      { href: "/app/configuracion#usuarios", label: "Usuarios y profesionales", icon: Users, perm: "practice.config", section: "Gestión" },
+      { href: "/app/configuracion#fusion", label: "Fusión de fichas", icon: Users, perm: "practice.config", section: "Gestión" },
+      { href: "/app/configuracion#arancel", label: "Arancel de precios", icon: FileSpreadsheet, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion#consentimientos", label: "Documentos y consentimientos", icon: FileText, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion#logotipo", label: "Logotipo", icon: ImageIcon, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion#campos", label: "Campos del paciente", icon: ClipboardList, perm: "practice.config", section: "Configuración" },
+      { href: "/app/integraciones", label: "Integraciones", icon: Bot, perm: "practice.config", feature: "integraciones", section: "Configuración" },
+      { href: "/app/suscripcion", label: "Suscripción", icon: CreditCard, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion", label: "Configuración general", icon: Settings, perm: "practice.config", section: "Configuración" },
     ],
   },
   {
@@ -255,23 +263,32 @@ function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; ic
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
         {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-azure-600" />}
       </button>
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-0.5 min-w-[210px] overflow-hidden rounded-xl border border-clinic-border bg-white py-1 shadow-pop">
-          {items.map((it) => {
-            const a = pathname.startsWith(it.href.split(/[?#]/)[0]);
-            return (
-              <a
-                key={it.href}
-                href={it.href}
-                onClick={() => setOpen(false)}
-                className={`flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors ${a ? "bg-azure-50 text-azure-700" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
-              >
-                <it.icon className="h-4 w-4 shrink-0" /> {it.label}
-              </a>
-            );
-          })}
-        </div>
-      )}
+      {open && (() => {
+        const renderItem = (it: NavLeaf) => {
+          const a = pathname.startsWith(it.href.split(/[?#]/)[0]);
+          return (
+            <a key={it.href} href={it.href} onClick={() => setOpen(false)} className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${a ? "bg-azure-50 text-azure-700" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
+              <it.icon className="h-4 w-4 shrink-0" /> {it.label}
+            </a>
+          );
+        };
+        const grouped: [string, NavLeaf[]][] = [];
+        if (items.some((it) => it.section)) for (const it of items) { const s = it.section ?? "Otros"; const g = grouped.find((x) => x[0] === s); if (g) g[1].push(it); else grouped.push([s, [it]]); }
+        return grouped.length ? (
+          <div className="absolute left-0 top-full z-50 mt-0.5 grid w-[460px] max-w-[92vw] grid-cols-2 gap-x-2 rounded-xl border border-clinic-border bg-white p-2 shadow-pop">
+            {grouped.map(([title, its]) => (
+              <div key={title}>
+                <div className="px-3 pb-1 pt-1 text-[10px] font-extrabold uppercase tracking-wide text-clinic-muted/70">{title}</div>
+                {its.map(renderItem)}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="absolute left-0 top-full z-50 mt-0.5 min-w-[220px] rounded-xl border border-clinic-border bg-white p-1 shadow-pop">
+            {items.map(renderItem)}
+          </div>
+        );
+      })()}
     </div>
   );
 }

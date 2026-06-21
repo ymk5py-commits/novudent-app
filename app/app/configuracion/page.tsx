@@ -1,7 +1,7 @@
 "use client";
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
 import { can, ROLE_LABEL } from "@/lib/rbac";
@@ -26,6 +26,13 @@ export default function ConfigPage() {
   const [editingProc, setEditingProc] = useState<Procedure | null>(null);
   const [mergeKeep, setMergeKeep] = useState(db.patients[0]?.id ?? "");
   const [mergeRemove, setMergeRemove] = useState("");
+  // Deep-link desde el menú Administración (/app/configuracion#arancel) → scroll a la sección.
+  useEffect(() => {
+    const go = () => { const id = window.location.hash.replace("#", ""); if (id) document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); };
+    const t = setTimeout(go, 90);
+    window.addEventListener("hashchange", go);
+    return () => { clearTimeout(t); window.removeEventListener("hashchange", go); };
+  }, []);
   const [importing, setImporting] = useState(false);
   const [convName, setConvName] = useState("");
   const [convPct, setConvPct] = useState(10);
@@ -64,6 +71,7 @@ export default function ConfigPage() {
       </Card>
       </Reveal>
 
+      <span id="usuarios" className="block scroll-mt-24" aria-hidden="true" />
       {/* Usuarios */}
       <Reveal>
       <Card className="p-5">
@@ -100,6 +108,7 @@ export default function ConfigPage() {
       </Card>
       </Reveal>
 
+      <span id="convenios" className="block scroll-mt-24" aria-hidden="true" />
       {/* Convenios */}
       <Reveal>
       <Card className="p-5">
@@ -263,7 +272,7 @@ export default function ConfigPage() {
       {/* Servicios / aranceles */}
       <Reveal>
       <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><ImageIcon className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Logotipo</h2></div>
+        <div id="logotipo" className="mb-3 flex scroll-mt-24 items-center gap-2"><ImageIcon className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Logotipo</h2></div>
         <p className="mb-3 text-xs text-clinic-muted">Se usa en la cabecera de la app y en los documentos impresos (presupuestos).</p>
         <div className="flex flex-wrap items-center gap-4">
           <div className="grid h-16 w-40 place-items-center rounded-xl border border-clinic-border bg-clinic-bg">
@@ -280,7 +289,7 @@ export default function ConfigPage() {
 
       <Reveal>
       <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Fusión de fichas</h2></div>
+        <div id="fusion" className="mb-3 flex scroll-mt-24 items-center gap-2"><Users className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Fusión de fichas</h2></div>
         <p className="mb-3 text-xs text-clinic-muted">Unificá dos fichas duplicadas: citas, presupuestos, pagos e historial pasan a la ficha que se mantiene; la otra se elimina.</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Mantener esta ficha"><select className={inputCls} value={mergeKeep} onChange={(e) => { setMergeKeep(e.target.value); if (e.target.value === mergeRemove) setMergeRemove(""); }}>{db.patients.map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {p.document}</option>)}</select></Field>
@@ -298,7 +307,7 @@ export default function ConfigPage() {
       <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2"><Stethoscope className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Servicios y aranceles</h2></div>
+          <div id="arancel" className="flex scroll-mt-24 items-center gap-2"><Stethoscope className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Servicios y aranceles</h2></div>
           <Btn onClick={() => setAddingProc(true)}><Plus className="h-4 w-4" /> Agregar servicio</Btn>
         </div>
         {db.procedures.length === 0 ? (
