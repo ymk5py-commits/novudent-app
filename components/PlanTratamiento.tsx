@@ -5,6 +5,7 @@ import { ReactNode, useState } from "react";
 import { Copy, UserRound, Braces, Smile, ChevronLeft, ChevronRight, FileSpreadsheet, Save, Pencil, Plus, Calendar, Clock, Printer, Camera, AlertTriangle, Trash2, Upload } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fmtTime } from "@/lib/store";
 import { resizeToDataUrl } from "@/lib/image";
+import { SmileSimulator } from "@/components/SmileSimulator";
 import { can } from "@/lib/rbac";
 import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, financialStatus, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { orthoProgress } from "@/lib/ortho";
@@ -489,6 +490,7 @@ function EsteticaFacial({ budget }: { budget: Budget; patient: Patient }) {
   const [m, setM] = useState<NonNullable<Budget["facialMeasures"]>>(budget.facialMeasures ?? {});
   const [busy, setBusy] = useState(false);
   const photos = budget.facialPhotos ?? [];
+  const hasIA = useClinicPlan().features.includes("ia");
   const dirty = note.trim() !== (budget.facialNote ?? "").trim() || JSON.stringify(m) !== JSON.stringify(budget.facialMeasures ?? {});
 
   const addPhotos = async (files: FileList | null) => {
@@ -559,6 +561,10 @@ function EsteticaFacial({ budget }: { budget: Budget; patient: Patient }) {
         <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Observaciones</div>
         <textarea disabled={!canWrite} rows={4} value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} placeholder="Objetivos estéticos, indicaciones…" />
       </div>
+
+      {hasIA && canWrite && (
+        <SmileSimulator onSave={(dataUrl, label) => upsertBudget({ ...budget, facialPhotos: [...(budget.facialPhotos ?? []), { id: `fp_${Date.now()}`, label, dataUrl, at: new Date().toISOString() }] })} />
+      )}
 
       {canWrite && dirty && <div><Btn onClick={guardar}><Save className="h-4 w-4" /> Guardar análisis</Btn></div>}
     </div>
