@@ -27,7 +27,7 @@ export function Btn({
 }) {
   const styles = {
     primary:
-      "btn-shine bg-gradient-to-b from-azure-500 to-azure-600 text-white shadow-[0_6px_18px_-6px_rgba(46,131,245,0.55)] hover:from-azure-600 hover:to-azure-700 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:from-clinic-border disabled:to-clinic-border disabled:text-clinic-muted disabled:shadow-none disabled:translate-y-0",
+      "btn-shine bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-[0_6px_18px_-6px_rgba(16,185,129,0.5)] hover:from-emerald-600 hover:to-emerald-700 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:from-clinic-border disabled:to-clinic-border disabled:text-clinic-muted disabled:shadow-none disabled:translate-y-0",
     ghost: "text-clinic-text hover:bg-clinic-bg active:scale-[0.98]",
     outline: "border border-clinic-border text-clinic-text hover:border-azure-300 hover:text-azure-700 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-white",
     danger: "bg-state-errbg text-state-err hover:bg-red-100 active:scale-[0.98]",

@@ -147,24 +147,25 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* ===== Header 2 filas ===== */}
-      <header className="sticky top-0 z-30 border-b border-clinic-border bg-white/85 backdrop-blur-xl [-webkit-backdrop-filter:blur(20px)_saturate(1.4)] [backdrop-filter:blur(20px)_saturate(1.4)]">
-        {/* Fila 1 */}
+      <header className="sticky top-0 z-30 border-b border-clinic-border bg-white">
+        {/* Fila 1 — barra celeste estilo Dentalink */}
+        <div className="bg-azure-600">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
-          <button onClick={() => setNavOpen(true)} aria-label="Abrir menú" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-clinic-border bg-white text-clinic-muted md:hidden">
+          <button onClick={() => setNavOpen(true)} aria-label="Abrir menú" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/30 bg-white/10 text-white md:hidden">
             <Menu className="h-5 w-5" />
           </button>
           <a href="/app" className="flex shrink-0 items-baseline gap-2">
-            {logo ? <img src={logo} alt={clinicName} className="h-8 w-auto max-w-[150px] object-contain" /> : <span className="font-logo text-xl tracking-[0.16em] text-navy-800">NOVUdent</span>}
-            <span data-tip={`Plan ${plan.label}`} className="hidden rounded-full bg-azure-50 px-1.5 py-0.5 font-mono text-[8px] font-extrabold uppercase tracking-wide text-azure-700 sm:inline">{plan.label}</span>
+            {logo ? <img src={logo} alt={clinicName} className="h-8 w-auto max-w-[150px] object-contain" /> : <span className="font-logo text-xl tracking-[0.16em] text-white">NOVUdent</span>}
+            <span data-tip={`Plan ${plan.label}`} className="hidden rounded-full bg-white/20 px-1.5 py-0.5 font-mono text-[8px] font-extrabold uppercase tracking-wide text-white sm:inline">{plan.label}</span>
           </a>
           {/* Patient Finder */}
           <div className="relative ml-1 min-w-0 w-full max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar paciente…"
-              className="w-full rounded-xl border border-clinic-border bg-clinic-bg py-2.5 pl-9 pr-3 text-sm transition-colors focus:border-azure-500 focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-white/25 bg-white/15 py-2.5 pl-9 pr-3 text-sm text-white transition-colors placeholder:text-white/65 focus:border-white focus:bg-white focus:text-clinic-text focus:outline-none focus:placeholder:text-clinic-muted"
             />
             {results.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-clinic-border bg-white shadow-pop">
@@ -183,7 +184,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden max-w-[180px] truncate text-sm font-bold text-clinic-text lg:block">{clinicName}</span>
+            <span className="hidden max-w-[180px] truncate text-sm font-bold text-white lg:block">{clinicName}</span>
             <span
               data-tip={backend === "firebase" ? "Datos guardados en la nube" : "Sin conexión — datos solo en este navegador"}
               data-tip-pos="down"
@@ -196,25 +197,26 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               href={pendings > 0 ? "/app/pacientes" : "#"}
               data-tip={pendings > 0 ? `${pendings} pendiente(s): formularios y retenciones` : "Sin pendientes"}
               data-tip-pos="down-left"
-              className="relative grid h-10 w-10 place-items-center rounded-xl border border-clinic-border bg-white text-clinic-muted transition-colors hover:text-azure-600"
+              className="relative grid h-10 w-10 place-items-center rounded-xl border border-white/30 bg-white/10 text-white transition-colors hover:bg-white/20"
               aria-label="Notificaciones"
             >
               <Bell className="h-[18px] w-[18px]" />
               {pendings > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 font-mono text-[9.5px] font-bold text-white">{pendings}</span>}
             </a>
             <span className="hidden text-right sm:block">
-              <span className="block text-xs font-bold leading-tight text-clinic-text">{session.name}</span>
-              <span className="block text-[10px] leading-tight text-clinic-muted">{ROLE_LABEL[session.role]}</span>
+              <span className="block text-xs font-bold leading-tight text-white">{session.name}</span>
+              <span className="block text-[10px] leading-tight text-white/75">{ROLE_LABEL[session.role]}</span>
             </span>
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ background: me?.color ?? "#1769E0" }}>{initials}</span>
-            <button onClick={() => { logout(); router.replace("/login"); }} aria-label="Cerrar sesión" data-tip="Cerrar sesión" data-tip-pos="down-left" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-clinic-muted transition-colors hover:bg-clinic-bg hover:text-state-err">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white ring-2 ring-white/40" style={{ background: me?.color ?? "#0E8AA3" }}>{initials}</span>
+            <button onClick={() => { logout(); router.replace("/login"); }} aria-label="Cerrar sesión" data-tip="Cerrar sesión" data-tip-pos="down-left" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white/80 transition-colors hover:bg-white/15 hover:text-white">
               <LogOut className="h-4 w-4" />
             </button>
           </div>
         </div>
+        </div>
 
         {/* Fila 2: nav horizontal (desktop) */}
-        <div className="hidden border-t border-clinic-border md:block">
+        <div className="hidden border-t border-clinic-border bg-white md:block">
           <nav className="mx-auto flex max-w-6xl items-center gap-0.5 px-3 sm:px-5">
             {nav.map((e) => e.children
               ? <NavDropdown key={e.label} label={e.label} icon={e.icon} items={e.children} pathname={pathname} />
