@@ -31,18 +31,19 @@ const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 const STATUS_BG: Record<AppointmentStatus, string> = {
   confirmada: "bg-state-okbg border-state-ok/30 text-state-ok",
+  en_atencion: "bg-azure-50 border-azure-400/50 text-azure-700",
   pendiente: "bg-state-warnbg border-state-warn/30 text-state-warn",
   completada: "bg-state-infobg border-azure-300/40 text-azure-700",
   cancelada: "bg-state-errbg border-state-err/30 text-state-err line-through",
   ausente: "bg-state-warnbg border-state-warn/30 text-state-warn",
 };
 /* Estados de cita estilo Dentalink */
-const ALL_STATUSES: AppointmentStatus[] = ["confirmada", "pendiente", "completada", "cancelada", "ausente"];
+const ALL_STATUSES: AppointmentStatus[] = ["confirmada", "en_atencion", "pendiente", "completada", "cancelada", "ausente"];
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
-  confirmada: "Confirmado", pendiente: "No confirmado", completada: "Atendido", cancelada: "Cancelado", ausente: "Ausente",
+  confirmada: "Confirmado", en_atencion: "En atención", pendiente: "No confirmado", completada: "Atendido", cancelada: "Cancelado", ausente: "Ausente",
 };
 const STATUS_DOT: Record<AppointmentStatus, string> = {
-  confirmada: "#0E9F6E", pendiente: "#94A3B8", completada: "#2E83F5", cancelada: "#E24B4A", ausente: "#F59E0B",
+  confirmada: "#0E9F6E", en_atencion: "#14A6C0", pendiente: "#94A3B8", completada: "#2E83F5", cancelada: "#E24B4A", ausente: "#F59E0B",
 };
 
 type Tab = "diaria" | "global" | "semanal" | "reprog";

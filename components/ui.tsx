@@ -69,6 +69,7 @@ export function FlagBadge({ flag }: { flag: BillingFlag }) {
 export function StatusBadge({ status }: { status: AppointmentStatus }) {
   const map = {
     confirmada: { tone: "ok" as const, label: "Confirmada" },
+    en_atencion: { tone: "info" as const, label: "En atención" },
     pendiente: { tone: "warn" as const, label: "Pendiente" },
     completada: { tone: "info" as const, label: "Completada" },
     cancelada: { tone: "err" as const, label: "Cancelada" },

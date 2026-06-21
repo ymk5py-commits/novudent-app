@@ -15,7 +15,7 @@ import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { Reveal } from "@/components/motion";
 
-const METHOD_ICON: Record<PaymentMethod, any> = { efectivo: Banknote, tarjeta: CreditCard, transferencia: Landmark, qr: QrCode };
+const METHOD_ICON: Record<PaymentMethod, any> = { efectivo: Banknote, tarjeta: CreditCard, transferencia: Landmark, cheque: Landmark, qr: QrCode };
 
 /** Totales de una sesión: movimientos (pagos no anulados + gastos) en [apertura, cierre/ahora]. */
 function sessionTotals(s: CashSession, payments: Payment[], expenses: Expense[]) {

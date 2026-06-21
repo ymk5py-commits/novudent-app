@@ -63,7 +63,7 @@ export interface User {
   commissionPct?: number;
 }
 
-export type AppointmentStatus = "confirmada" | "pendiente" | "completada" | "cancelada" | "ausente";
+export type AppointmentStatus = "confirmada" | "en_atencion" | "pendiente" | "completada" | "cancelada" | "ausente";
 
 export interface Appointment {
   id: string;
@@ -329,7 +329,7 @@ export interface Budget {
 }
 
 /* ===== Caja: pagos y gastos ===== */
-export type PaymentMethod = "efectivo" | "tarjeta" | "transferencia" | "qr";
+export type PaymentMethod = "efectivo" | "tarjeta" | "transferencia" | "cheque" | "qr";
 
 export interface Payment {
   id: string;

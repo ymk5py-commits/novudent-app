@@ -19,7 +19,7 @@ const AGE_LABEL: Record<string, string> = {
   "<14": "Menor de 14", "15-20": "Entre 15 y 20", "21-35": "Entre 21 y 35",
   "36-50": "Entre 36 y 50", "51-65": "Entre 51 y 65", ">65": "Sobre 65", "Sin dato": "Desconocida",
 };
-const APPT_STATUS_LABEL: Record<string, string> = { confirmada: "Confirmada", pendiente: "Pendiente", completada: "Completada", cancelada: "Cancelada", ausente: "Ausente" };
+const APPT_STATUS_LABEL: Record<string, string> = { confirmada: "Confirmada", en_atencion: "En atención", pendiente: "Pendiente", completada: "Completada", cancelada: "Cancelada", ausente: "Ausente" };
 
 function countBy<T>(items: T[], key: (x: T) => string): { label: string; v: number }[] {
   const m = new Map<string, number>();
