@@ -6,11 +6,11 @@
 import { useMemo, useState } from "react";
 import {
   ShieldAlert, Plus, Trash2, ChevronLeft, ChevronRight, UserPlus, Pencil, Target,
-  ArrowRight, RefreshCcw, Megaphone, MessageCircle, Mail, Bot, Check, Cake,
+  ArrowRight, RefreshCcw, Megaphone, MessageCircle, Mail, Bot, Check, Cake, Filter,
 } from "lucide-react";
 import { useStore, fmtDate, fmtGs, fullName, waLink } from "@/lib/store";
 import { can } from "@/lib/rbac";
-import { budgetTotal } from "@/lib/budgets";
+import { budgetTotal, patientBalance } from "@/lib/budgets";
 import type { CrmCard, CrmStage, Campaign, Patient } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
@@ -35,6 +35,7 @@ export default function CrmPage() {
   const [newCard, setNewCard] = useState(false);
   const [editing, setEditing] = useState<CrmCard | null>(null);
   const [newCampaign, setNewCampaign] = useState(false);
+  const [seg, setSeg] = useState({ gender: "", city: "", ageMin: "", ageMax: "", deuda: false, sinCita: false });
 
   const plan = useClinicPlan();
   if (!session) return null;
@@ -100,6 +101,25 @@ export default function CrmPage() {
     }
     return list.sort((a, b) => a.inDays - b.inDays);
   }, [db.patients]);
+
+  /* Segmentador de pacientes (filtros combinables → lista de destinatarios) */
+  const cities = useMemo(() => [...new Set(db.patients.map((p) => p.city).filter(Boolean) as string[])].sort(), [db.patients]);
+  const segMatches = useMemo(() => {
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const hasFuture = new Set(db.appointments.filter((a) => a.start > nowIso && a.status !== "cancelada").map((a) => a.patientId));
+    const ageOf = (bd?: string) => { if (!bd) return null; const t = Date.parse(bd); if (Number.isNaN(t)) return null; return Math.floor((now.getTime() - t) / (365.25 * 86_400_000)); };
+    return db.patients.filter((p) => {
+      if (seg.gender && p.gender !== seg.gender) return false;
+      if (seg.city && p.city !== seg.city) return false;
+      const a = ageOf(p.birthDate);
+      if (seg.ageMin && (a == null || a < +seg.ageMin)) return false;
+      if (seg.ageMax && (a == null || a > +seg.ageMax)) return false;
+      if (seg.deuda && patientBalance(p.id, db.budgets, db.payments) <= 0) return false;
+      if (seg.sinCita && hasFuture.has(p.id)) return false;
+      return true;
+    });
+  }, [db, seg]);
 
   const addToPipeline = (patientId: string, stage: CrmStage, note?: string) => {
     const now = new Date().toISOString();
@@ -293,6 +313,41 @@ export default function CrmPage() {
                   )}
                 </li>
               ))}
+            </ul>
+          )}
+        </Card>
+      </Reveal>
+
+      {/* ===== Segmentar pacientes ===== */}
+      <Reveal>
+        <Card className="p-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-100 text-azure-700"><Filter className="h-4 w-4" /></span><h2 className="font-extrabold text-clinic-text">Segmentar pacientes</h2></div>
+            <Badge tone="info">{segMatches.length} paciente{segMatches.length !== 1 && "s"}</Badge>
+          </div>
+          <p className="mb-3 text-xs text-clinic-muted">Combiná filtros para armar una lista de destinatarios (deudores, por ciudad, edad, sin cita…).</p>
+          <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            <select value={seg.gender} onChange={(e) => setSeg({ ...seg, gender: e.target.value })} className={inputCls}><option value="">Todos los géneros</option><option value="M">Masculino</option><option value="F">Femenino</option></select>
+            <select value={seg.city} onChange={(e) => setSeg({ ...seg, city: e.target.value })} className={inputCls}><option value="">Todas las ciudades</option>{cities.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+            <input type="number" min={0} placeholder="Edad mín." value={seg.ageMin} onChange={(e) => setSeg({ ...seg, ageMin: e.target.value })} className={inputCls} />
+            <input type="number" min={0} placeholder="Edad máx." value={seg.ageMax} onChange={(e) => setSeg({ ...seg, ageMax: e.target.value })} className={inputCls} />
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-clinic-border px-3 text-sm text-clinic-text"><input type="checkbox" checked={seg.deuda} onChange={(e) => setSeg({ ...seg, deuda: e.target.checked })} className="accent-azure-600" /> Con deuda</label>
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-clinic-border px-3 text-sm text-clinic-text"><input type="checkbox" checked={seg.sinCita} onChange={(e) => setSeg({ ...seg, sinCita: e.target.checked })} className="accent-azure-600" /> Sin cita futura</label>
+          </div>
+          {segMatches.length === 0 ? (
+            <p className="py-6 text-center text-sm text-clinic-muted">Ningún paciente coincide con esos filtros.</p>
+          ) : (
+            <ul className="mt-3 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+              {segMatches.slice(0, 30).map((p) => (
+                <li key={p.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-2.5">
+                  <a href={`/app/pacientes/${p.id}`} className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{fullName(p)}</span>
+                    <span className="text-[11px] text-clinic-muted">{[p.city, p.gender].filter(Boolean).join(" · ") || "—"}</span>
+                  </a>
+                  {p.phone && <a href={waLink(p.phone, `Hola ${p.firstName} 👋 Te escribimos de ${db.clinics[0].name}.`)} target="_blank" rel="noopener noreferrer" className="grid h-8 w-8 place-items-center rounded-lg bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366]/20" title="WhatsApp"><MessageCircle className="h-4 w-4" /></a>}
+                </li>
+              ))}
+              {segMatches.length > 30 && <li className="col-span-full text-center text-xs text-clinic-muted">+{segMatches.length - 30} más…</li>}
             </ul>
           )}
         </Card>
