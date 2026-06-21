@@ -13,6 +13,9 @@ import { Btn, Field, inputCls, Modal } from "./ui";
 
 const UPPER = ["18", "17", "16", "15", "14", "13", "12", "11", "21", "22", "23", "24", "25", "26", "27", "28"];
 const LOWER = ["48", "47", "46", "45", "44", "43", "42", "41", "31", "32", "33", "34", "35", "36", "37", "38"];
+/* Dentición temporal (FDI 51-85) — pacientes pediátricos */
+const UPPER_TEMP = ["55", "54", "53", "52", "51", "61", "62", "63", "64", "65"];
+const LOWER_TEMP = ["85", "84", "83", "82", "81", "71", "72", "73", "74", "75"];
 
 /* rojo = pendiente/patología · azul = realizado */
 const RED = "#DC2626";
@@ -206,6 +209,9 @@ export default function Odontogram({
   authorName: string;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [dentition, setDentition] = useState<"permanente" | "temporal">("permanente");
+  const upperTeeth = dentition === "temporal" ? UPPER_TEMP : UPPER;
+  const lowerTeeth = dentition === "temporal" ? LOWER_TEMP : LOWER;
 
   const counts = useMemo(() => {
     const acc: Partial<Record<ToothCondition, number>> = {};
@@ -213,13 +219,16 @@ export default function Odontogram({
     return acc;
   }, [value]);
 
-  const Row = ({ teeth, upper }: { teeth: string[]; upper: boolean }) => (
-    <div className="flex justify-center">
-      <div className="flex">{teeth.slice(0, 8).map((n) => <ToothCol key={n} n={n} rec={value[n]} upper={upper} onClick={() => setSelected(n)} />)}</div>
-      <div className="mx-1.5 w-px self-stretch bg-clinic-border sm:mx-2.5" />
-      <div className="flex">{teeth.slice(8).map((n) => <ToothCol key={n} n={n} rec={value[n]} upper={upper} onClick={() => setSelected(n)} />)}</div>
-    </div>
-  );
+  const Row = ({ teeth, upper }: { teeth: string[]; upper: boolean }) => {
+    const h = Math.ceil(teeth.length / 2);
+    return (
+      <div className="flex justify-center">
+        <div className="flex">{teeth.slice(0, h).map((n) => <ToothCol key={n} n={n} rec={value[n]} upper={upper} onClick={() => setSelected(n)} />)}</div>
+        <div className="mx-1.5 w-px self-stretch bg-clinic-border sm:mx-2.5" />
+        <div className="flex">{teeth.slice(h).map((n) => <ToothCol key={n} n={n} rec={value[n]} upper={upper} onClick={() => setSelected(n)} />)}</div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-5">
@@ -238,17 +247,26 @@ export default function Odontogram({
         {Object.keys(value).length === 0 && <span className="text-sm text-clinic-muted">Sin hallazgos registrados — dentición sana.</span>}
       </div>
 
+      {/* Toggle Permanente / Temporal (FDI) */}
+      <div className="flex w-fit gap-1 rounded-xl border border-clinic-border bg-white p-1">
+        {(["permanente", "temporal"] as const).map((d) => (
+          <button key={d} onClick={() => { setDentition(d); setSelected(null); }} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${dentition === d ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
+            {d === "permanente" ? "Permanente" : "Temporal (niños)"}
+          </button>
+        ))}
+      </div>
+
       {/* Tablero */}
       <div className="overflow-x-auto rounded-2xl border border-clinic-border bg-white p-4 sm:p-6">
         <div className="min-w-[700px] space-y-1.5">
-          <Row teeth={UPPER} upper />
+          <Row teeth={upperTeeth} upper />
           <div className="relative py-2.5">
             <div className="h-px bg-clinic-border" />
             <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 font-mono text-[9px] uppercase tracking-widest text-clinic-muted">
               derecha · línea media · izquierda
             </span>
           </div>
-          <Row teeth={LOWER} upper={false} />
+          <Row teeth={lowerTeeth} upper={false} />
         </div>
       </div>
 
@@ -292,7 +310,7 @@ function ToothEditor({
   const [condition, setCondition] = useState<ToothCondition | null>(rec?.condition ?? null);
   const [surfaces, setSurfaces] = useState<ToothSurface[]>(rec?.surfaces ?? []);
   const [note, setNote] = useState(rec?.note ?? "");
-  const upper = parseInt(tooth[0], 10) <= 2;
+  const upper = [1, 2, 5, 6].includes(parseInt(tooth[0], 10));
   const usesSurfaces = condition === "caries" || condition === "restaurado";
   const preview: ToothRecord | undefined = condition
     ? { condition, surfaces: usesSurfaces ? surfaces : undefined, updatedAt: "", updatedBy: "" }
