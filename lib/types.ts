@@ -295,6 +295,12 @@ export interface Budget {
   createdAt: string;
   status: BudgetStatus;
   name?: string; // Nombre del plan (ej: "Ortodoncia fija")
+  /** Datos RIPS/EPS (legislación CO) — banner "Actualizar los detalles RIPS". */
+  rips?: { tipoDoc?: string; nroDoc?: string; eps?: string; regimen?: "contributivo" | "subsidiado" | "particular"; riesgos?: string; completo?: boolean };
+  /** Nota de estética facial del plan. */
+  facialNote?: string;
+  /** Vencimiento del presupuesto (ISO). Si falta, se asume 60 días. */
+  dueDate?: string;
   items: BudgetItem[];
   /** Tipo de plan (Dentalink): general u ortodoncia. El seguimiento clínico de
    *  ortodoncia vive en `patient.ortho` (un tratamiento de ortodoncia por paciente). */

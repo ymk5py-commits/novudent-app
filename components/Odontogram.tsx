@@ -247,13 +247,16 @@ export default function Odontogram({
         {Object.keys(value).length === 0 && <span className="text-sm text-clinic-muted">Sin hallazgos registrados — dentición sana.</span>}
       </div>
 
-      {/* Toggle Permanente / Temporal (FDI) */}
-      <div className="flex w-fit gap-1 rounded-xl border border-clinic-border bg-white p-1">
-        {(["permanente", "temporal"] as const).map((d) => (
-          <button key={d} onClick={() => { setDentition(d); setSelected(null); }} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${dentition === d ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
-            {d === "permanente" ? "Permanente" : "Temporal (niños)"}
-          </button>
-        ))}
+      {/* Toggle Permanente / Temporal + notación FDI */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex w-fit gap-1 rounded-xl border border-clinic-border bg-white p-1">
+          {(["permanente", "temporal"] as const).map((d) => (
+            <button key={d} onClick={() => { setDentition(d); setSelected(null); }} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${dentition === d ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
+              {d === "permanente" ? "Permanente" : "Temporal"}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs font-bold text-clinic-muted">Odontograma Internacional FDI</span>
       </div>
 
       {/* Tablero */}

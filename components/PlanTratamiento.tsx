@@ -2,7 +2,7 @@
 /** Vista "Plan de tratamiento" estilo Dentalink: LISTA de planes (En ejecución / Otros)
  *  → DETALLE de 2 columnas (panel financiero + seguimiento) + prestaciones + comentarios. */
 import { ReactNode, useState } from "react";
-import { Copy, UserRound, Braces, Smile, ChevronLeft, ChevronRight, FileSpreadsheet, Save, Pencil, Plus, Calendar, Clock } from "lucide-react";
+import { Copy, UserRound, Braces, Smile, ChevronLeft, ChevronRight, FileSpreadsheet, Save, Pencil, Plus, Calendar, Clock, Printer, Camera, AlertTriangle } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fmtTime } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, financialStatus, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
@@ -198,7 +198,7 @@ function PlanFinanciero({
             <Copy className="h-3 w-3" /> {copied ? "Copiado" : `#${budget.id}`}
           </button>
         </div>
-        <h2 className="font-logo text-xl leading-tight">{budget.planType === "ortodoncia" ? "Ortodoncia" : "Plan general"}</h2>
+        <PlanNameEdit budget={budget} />
         {hasIA && (
           <div className="mt-3">
             <PatientBriefButton patient={patient} context={{ budgets: [{ estado: budget.status, items: budget.items.length, total }] }} />
@@ -206,43 +206,52 @@ function PlanFinanciero({
         )}
       </div>
 
-      <div className="space-y-3 p-5">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-clinic-muted">Descuento comercial</span>
-          <span className="font-bold text-clinic-text">{budget.discountPct ?? 0}%{budget.convenio ? ` · ${budget.convenio}` : ""}</span>
+      <div className="p-5">
+        <div className="text-center">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Presupuesto total</div>
+          <div className="mt-1 font-mono text-3xl font-extrabold text-azure-600">{fmtGs(total)}</div>
         </div>
-        <Money label="Presupuesto total" value={total} strong />
-        <Money label="Realizado" value={realizado} />
-        <Money label="Abonado" value={abonado} />
-        <div className="flex items-center justify-between border-t border-clinic-border pt-3">
-          <span className="text-sm font-bold text-clinic-text">Saldo por abonar</span>
-          <span className={`font-mono text-lg font-extrabold ${saldo > 0 ? "text-state-err" : "text-state-ok"}`}>{fmtGs(Math.max(0, saldo))}</span>
-        </div>
+        <DescuentoRow budget={budget} />
+        <div className="my-3 border-t border-clinic-border" />
+        <DottedRow label="Realizado" value={fmtGs(realizado)} />
+        <DottedRow label="Abonado" value={fmtGs(abonado)} />
+        <DottedRow label="Saldo por abonar" value={fmtGs(Math.max(0, saldo))} strong tone={saldo > 0 ? "err" : "ok"} />
 
-        <div className="rounded-xl bg-clinic-bg p-3">
-          <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Abonos</div>
+        <div className="mt-3 rounded-xl border border-clinic-border p-3">
           {pagos.length === 0 ? (
-            <p className="text-xs text-clinic-muted">No hay abonos</p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-clinic-muted">No hay abonos</span>
+              <span className="font-mono font-bold text-clinic-text">{fmtGs(0)}</span>
+            </div>
           ) : (
-            <ul className="space-y-1">
-              {pagos.map((p) => (
-                <li key={p.id} className="flex items-center justify-between text-xs">
-                  <span className="text-clinic-muted">{fmtDate(p.date)} · {PAYMENT_METHOD_LABEL[p.method] ?? p.method}</span>
-                  <span className="font-mono font-bold text-clinic-text">{fmtGs(p.amount)}</span>
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Abonos</div>
+              <ul className="space-y-1">
+                {pagos.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between text-xs">
+                    <span className="text-clinic-muted">{fmtDate(p.date)} · {PAYMENT_METHOD_LABEL[p.method] ?? p.method}</span>
+                    <span className="font-mono font-bold text-clinic-text">{fmtGs(p.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
 
-        <div className="flex items-center gap-2 border-t border-clinic-border pt-3 text-sm">
+        <div className="mt-3 flex justify-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+            <Clock className="h-3.5 w-3.5" /> Vencimiento: {vencimientoDias(budget)} días
+          </span>
+        </div>
+
+        <div className="mt-4 flex items-center gap-2 border-t border-clinic-border pt-3 text-sm">
           <UserRound className="h-4 w-4 text-azure-600" />
           <span className="text-clinic-muted">Profesional a cargo:</span>
           <span className="font-bold text-clinic-text">{professional ?? "—"}</span>
         </div>
 
         {citas.length > 0 && (
-          <div className="border-t border-clinic-border pt-3">
+          <div className="mt-3 border-t border-clinic-border pt-3">
             <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Citas del paciente</div>
             <ul className="space-y-1">
               {citas.map((a) => (
@@ -259,11 +268,68 @@ function PlanFinanciero({
   );
 }
 
-function Money({ label, value, strong }: { label: string; value: number; strong?: boolean }) {
+function vencimientoDias(b: Budget): number {
+  if (b.dueDate) return Math.max(0, Math.ceil((Date.parse(b.dueDate) - Date.now()) / 86_400_000));
+  return 60;
+}
+
+/** Fila con guiones (líder punteado) estilo Dentalink: etiqueta · · · valor. */
+function DottedRow({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: "err" | "ok" }) {
+  const color = tone === "err" ? "text-state-err" : tone === "ok" ? "text-state-ok" : "text-clinic-text";
   return (
-    <div className="flex items-center justify-between text-sm">
+    <div className="flex items-baseline gap-2 py-1 text-sm">
       <span className="text-clinic-muted">{label}</span>
-      <span className={`font-mono ${strong ? "text-base font-extrabold text-clinic-text" : "font-bold text-clinic-text"}`}>{fmtGs(value)}</span>
+      <span className="mb-1 flex-1 self-end border-b border-dotted border-clinic-border" />
+      <span className={`font-mono ${strong ? "text-base font-extrabold" : "font-bold"} ${color}`}>{value}</span>
+    </div>
+  );
+}
+
+/** Nombre del plan editable (cabecera navy) — Dentalink: "Prueba 2 ✏️". */
+function PlanNameEdit({ budget }: { budget: Budget }) {
+  const { session, upsertBudget } = useStore();
+  const canWrite = session ? can(session.role, "emr.write") : false;
+  const label = budget.name ?? (budget.planType === "ortodoncia" ? "Ortodoncia" : "Plan general");
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(label);
+  if (editing) {
+    const save = () => { upsertBudget({ ...budget, name: name.trim() || undefined }); setEditing(false); };
+    return (
+      <div className="mt-1 flex items-center gap-2">
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} className="min-w-0 flex-1 rounded-lg bg-white/15 px-2 py-1 font-logo text-xl text-white outline-none placeholder:text-white/50" />
+        <button onClick={save} className="shrink-0 text-white/90 hover:text-white" title="Guardar"><Save className="h-4 w-4" /></button>
+      </div>
+    );
+  }
+  return (
+    <h2 className="mt-1 flex items-center gap-2 font-logo text-xl leading-tight">
+      <span className="min-w-0 truncate">{label}</span>
+      {canWrite && <button onClick={() => { setName(label); setEditing(true); }} className="shrink-0 text-white/60 hover:text-white" title="Renombrar plan"><Pencil className="h-3.5 w-3.5" /></button>}
+    </h2>
+  );
+}
+
+/** Descuento comercial editable inline (✏️) — Dentalink. */
+function DescuentoRow({ budget }: { budget: Budget }) {
+  const { session, upsertBudget } = useStore();
+  const canWrite = session ? can(session.role, "emr.write") : false;
+  const [editing, setEditing] = useState(false);
+  const [pct, setPct] = useState(String(budget.discountPct ?? 0));
+  const save = () => { upsertBudget({ ...budget, discountPct: Math.min(100, Math.max(0, Number(pct) || 0)) }); setEditing(false); };
+  return (
+    <div className="mt-3 flex items-center justify-between text-sm">
+      <span className="text-clinic-muted">Descuento comercial</span>
+      {editing ? (
+        <span className="flex items-center gap-1">
+          <input type="number" min={0} max={100} value={pct} onChange={(e) => setPct(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} className="w-16 rounded-lg border border-clinic-border px-2 py-0.5 text-right font-bold text-clinic-text outline-none focus:border-azure-400" autoFocus />
+          <button onClick={save} className="text-azure-700 hover:underline" title="Guardar"><Save className="h-3.5 w-3.5" /></button>
+        </span>
+      ) : (
+        <span className="flex items-center gap-1.5 font-bold text-clinic-text">
+          {budget.discountPct ?? 0}%{budget.convenio ? ` · ${budget.convenio}` : ""}
+          {canWrite && <button onClick={() => { setPct(String(budget.discountPct ?? 0)); setEditing(true); }} className="text-clinic-muted hover:text-azure-700" title="Editar descuento"><Pencil className="h-3 w-3" /></button>}
+        </span>
+      )}
     </div>
   );
 }
@@ -290,17 +356,26 @@ function ComentariosPaciente({ budget }: { budget: Budget }) {
 function PlanClinico({ budget, patient, isOrtho }: { budget: Budget; patient: Patient; isOrtho: boolean }) {
   const { session, setTooth } = useStore();
   const canWriteEmr = session ? can(session.role, "emr.write") : false;
-  const [tab, setTab] = useState<"esp" | "plan" | "odo">(isOrtho ? "esp" : "plan");
+  const [tab, setTab] = useState<"esp" | "plan" | "odo" | "facial">(isOrtho ? "esp" : "plan");
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 rounded-xl border border-clinic-border bg-white p-1">
-        {isOrtho ? (
-          <TabBtn active={tab === "esp"} onClick={() => setTab("esp")} icon={Braces} label="Ortodoncia" />
-        ) : (
-          <TabBtn active={tab === "plan"} onClick={() => setTab("plan")} icon={FileSpreadsheet} label="Plan de tratamiento" />
-        )}
-        <TabBtn active={tab === "odo"} onClick={() => setTab("odo")} icon={Smile} label="Odontograma" />
+      <RipsBanner budget={budget} />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1 rounded-xl border border-clinic-border bg-white p-1">
+          {isOrtho ? (
+            <TabBtn active={tab === "esp"} onClick={() => setTab("esp")} icon={Braces} label="Ortodoncia" />
+          ) : (
+            <TabBtn active={tab === "plan"} onClick={() => setTab("plan")} icon={FileSpreadsheet} label="Plan de tratamiento" />
+          )}
+          <TabBtn active={tab === "odo"} onClick={() => setTab("odo")} icon={Smile} label="Odontograma" />
+          <TabBtn active={tab === "facial"} onClick={() => setTab("facial")} icon={Camera} label="Estética facial" />
+        </div>
+        <div className="ml-auto flex items-center gap-1">
+          <button onClick={() => window.print()} title="Imprimir" className="rounded-lg border border-clinic-border p-2 text-clinic-muted transition-colors hover:border-azure-300 hover:text-azure-700">
+            <Printer className="h-4 w-4" />
+          </button>
+        </div>
       </div>
       {tab === "esp" && isOrtho && <OrtodonciaPanel patient={patient} budget={budget} />}
       {tab === "plan" && !isOrtho && <PrestacionesList budget={budget} />}
@@ -312,6 +387,122 @@ function PlanClinico({ budget, patient, isOrtho }: { budget: Budget; patient: Pa
           onChange={(tooth, rec) => setTooth(patient.id, tooth, rec)}
         />
       )}
+      {tab === "facial" && <EsteticaFacial budget={budget} patient={patient} />}
+    </div>
+  );
+}
+
+/* ---------- Banner RIPS / Riesgos EPS (legislación CO) ---------- */
+function RipsBanner({ budget }: { budget: Budget }) {
+  const { session, upsertBudget } = useStore();
+  const canWrite = session ? can(session.role, "emr.write") : false;
+  const [open, setOpen] = useState<null | "rips" | "eps">(null);
+  const completo = budget.rips?.completo ?? false;
+  return (
+    <Card className="p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-extrabold text-clinic-text">Actualizar los detalles RIPS</h3>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setOpen(open === "rips" ? null : "rips")} className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-1.5 text-xs font-bold text-clinic-text transition-colors hover:border-azure-300 hover:text-azure-700">
+            Detalles RIPS {!completo && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
+          </button>
+          <button onClick={() => setOpen(open === "eps" ? null : "eps")} className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-1.5 text-xs font-bold text-clinic-text transition-colors hover:border-azure-300 hover:text-azure-700">
+            Riesgos EPS
+          </button>
+        </div>
+      </div>
+      {!completo && open === null && (
+        <div className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Este plan de tratamiento no tiene configurados todos los datos pertinentes a la legislación actual, por favor complételos utilizando los botones superiores.
+        </div>
+      )}
+      {open && (
+        <RipsForm
+          budget={budget}
+          mode={open}
+          canWrite={canWrite}
+          onSave={(rips) => { upsertBudget({ ...budget, rips }); setOpen(null); }}
+          onClose={() => setOpen(null)}
+        />
+      )}
+    </Card>
+  );
+}
+
+function RipsForm({ budget, mode, canWrite, onSave, onClose }: {
+  budget: Budget; mode: "rips" | "eps"; canWrite: boolean;
+  onSave: (r: NonNullable<Budget["rips"]>) => void; onClose: () => void;
+}) {
+  const r = budget.rips ?? {};
+  const [tipoDoc, setTipoDoc] = useState(r.tipoDoc ?? "CC");
+  const [nroDoc, setNroDoc] = useState(r.nroDoc ?? "");
+  const [eps, setEps] = useState(r.eps ?? "");
+  const [regimen, setRegimen] = useState<"contributivo" | "subsidiado" | "particular">(r.regimen ?? "contributivo");
+  const [riesgos, setRiesgos] = useState(r.riesgos ?? "");
+  const guardar = () => onSave({ tipoDoc, nroDoc, eps, regimen, riesgos, completo: Boolean(nroDoc && eps) });
+  return (
+    <div className="mt-3 space-y-3 rounded-xl border border-clinic-border bg-clinic-bg/40 p-4">
+      {mode === "rips" ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-xs font-bold text-clinic-muted">Tipo de documento
+            <select disabled={!canWrite} value={tipoDoc} onChange={(e) => setTipoDoc(e.target.value)} className={`${inputCls} mt-1`}>
+              <option value="CC">CC — Cédula de ciudadanía</option>
+              <option value="TI">TI — Tarjeta de identidad</option>
+              <option value="CE">CE — Cédula de extranjería</option>
+              <option value="PA">PA — Pasaporte</option>
+              <option value="RC">RC — Registro civil</option>
+            </select>
+          </label>
+          <label className="text-xs font-bold text-clinic-muted">N.º de documento
+            <input disabled={!canWrite} value={nroDoc} onChange={(e) => setNroDoc(e.target.value)} className={`${inputCls} mt-1`} />
+          </label>
+          <label className="text-xs font-bold text-clinic-muted">EPS
+            <input disabled={!canWrite} value={eps} onChange={(e) => setEps(e.target.value)} className={`${inputCls} mt-1`} placeholder="Entidad promotora de salud" />
+          </label>
+          <label className="text-xs font-bold text-clinic-muted">Régimen
+            <select disabled={!canWrite} value={regimen} onChange={(e) => setRegimen(e.target.value as "contributivo" | "subsidiado" | "particular")} className={`${inputCls} mt-1`}>
+              <option value="contributivo">Contributivo</option>
+              <option value="subsidiado">Subsidiado</option>
+              <option value="particular">Particular</option>
+            </select>
+          </label>
+        </div>
+      ) : (
+        <label className="block text-xs font-bold text-clinic-muted">Riesgos / observaciones EPS
+          <textarea disabled={!canWrite} rows={3} value={riesgos} onChange={(e) => setRiesgos(e.target.value)} className={`${inputCls} mt-1`} placeholder="Riesgos clínicos reportados a la EPS…" />
+        </label>
+      )}
+      <div className="flex justify-end gap-2">
+        <button onClick={onClose} className="rounded-xl border border-clinic-border px-3 py-1.5 text-xs font-bold text-clinic-muted hover:text-clinic-text">Cerrar</button>
+        {canWrite && <Btn onClick={guardar}><Save className="h-4 w-4" /> Guardar</Btn>}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Estética facial ---------- */
+function EsteticaFacial({ budget, patient }: { budget: Budget; patient: Patient }) {
+  const { session, upsertBudget } = useStore();
+  const canWrite = session ? can(session.role, "emr.write") : false;
+  const [note, setNote] = useState(budget.facialNote ?? "");
+  const dirty = note.trim() !== (budget.facialNote ?? "").trim();
+  return (
+    <div className="rounded-2xl border border-clinic-border bg-white p-5">
+      <div className="grid gap-5 sm:grid-cols-[180px_1fr]">
+        <div className="grid aspect-[3/4] place-items-center overflow-hidden rounded-xl bg-clinic-bg">
+          {patient.photo ? (
+            <img src={patient.photo} alt="Estética facial" className="h-full w-full object-cover" />
+          ) : (
+            <div className="text-center text-clinic-muted"><Camera className="mx-auto h-8 w-8" /><p className="mt-1 text-xs">Sin foto facial</p></div>
+          )}
+        </div>
+        <div>
+          <h3 className="font-extrabold text-clinic-text">Estética facial</h3>
+          <p className="mb-2 text-[11px] text-clinic-muted">Análisis facial y observaciones estéticas del plan.</p>
+          <textarea disabled={!canWrite} rows={6} value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} placeholder="Proporciones faciales, línea media, sonrisa, perfil, objetivos estéticos…" />
+          {canWrite && dirty && <div className="mt-2"><Btn onClick={() => upsertBudget({ ...budget, facialNote: note.trim() || undefined })}><Save className="h-4 w-4" /> Guardar</Btn></div>}
+        </div>
+      </div>
     </div>
   );
 }
