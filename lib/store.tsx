@@ -27,7 +27,7 @@ async function ensureAuth() {
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord,
   Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
-  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, Survey, SurveyResponse,
+  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, Survey, SurveyResponse, MgmtTask,
   CrmCard, Campaign, LabOrder, Settlement, Box,
 } from "./types";
 import { buildSeed } from "./seed";
@@ -90,6 +90,7 @@ async function seedFirestore(seed: DB) {
   for (const tm of seed.teamMessages) batch.set(doc(fsdb, "clinics", CLINIC_ID, "teamMessages", tm.id), clean(tm));
   for (const s of seed.surveys) batch.set(doc(fsdb, "clinics", CLINIC_ID, "surveys", s.id), clean(s));
   for (const r of seed.surveyResponses) batch.set(doc(fsdb, "clinics", CLINIC_ID, "surveyResponses", r.id), clean(r));
+  for (const mt of seed.mgmtTasks) batch.set(doc(fsdb, "clinics", CLINIC_ID, "mgmtTasks", mt.id), clean(mt));
   await batch.commit();
 }
 
@@ -105,10 +106,10 @@ async function loadFirestore(): Promise<DB> {
   }
   const meta = clinicSnap.data() as any;
   const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
-    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"), col("sterilizationCycles"), col("teamMessages"), col("surveys"), col("surveyResponses"),
+    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"), col("sterilizationCycles"), col("teamMessages"), col("surveys"), col("surveyResponses"), col("mgmtTasks"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -139,6 +140,7 @@ async function loadFirestore(): Promise<DB> {
     teamMessages: teamMessages.docs.map((d) => d.data() as TeamMessage),
     surveys: surveys.docs.map((d) => d.data() as Survey),
     surveyResponses: surveyResponses.docs.map((d) => d.data() as SurveyResponse),
+    mgmtTasks: mgmtTasks.docs.map((d) => d.data() as MgmtTask),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   ACTIVE_CURRENCY = (db.clinics[0]?.config?.currency as CurrencyCode) ?? DEFAULT_CURRENCY;
@@ -406,6 +408,10 @@ interface Ctx {
   addSurvey: (s: Survey) => void;
   updateSurvey: (s: Survey) => void;
   deleteSurvey: (id: string) => void;
+  /* — Tareas de gestión — */
+  addMgmtTask: (t: MgmtTask) => void;
+  updateMgmtTask: (t: MgmtTask) => void;
+  deleteMgmtTask: (id: string) => void;
   /* — Firma electrónica / consentimientos — */
   addSignature: (s: SignatureDoc) => void;
   updateSignature: (s: SignatureDoc) => void;
@@ -970,6 +976,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       deleteSurvey: (id) => {
         persist({ ...db, surveys: db.surveys.filter((x) => x.id !== id) });
         fsDelete("surveys", id);
+      },
+      addMgmtTask: (t) => {
+        persist((prev) => ({ ...prev, mgmtTasks: [t, ...prev.mgmtTasks] }));
+        fsSave("mgmtTasks", t.id, t);
+      },
+      updateMgmtTask: (t) => {
+        persist((prev) => ({ ...prev, mgmtTasks: prev.mgmtTasks.map((x) => (x.id === t.id ? t : x)) }));
+        fsSave("mgmtTasks", t.id, t);
+      },
+      deleteMgmtTask: (id) => {
+        persist((prev) => ({ ...prev, mgmtTasks: prev.mgmtTasks.filter((x) => x.id !== id) }));
+        fsDelete("mgmtTasks", id);
       },
       addRadiograph: (r: RadiographRec) => {
         persist({ ...db, radiographs: [r, ...db.radiographs] });

@@ -411,6 +411,10 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
       { id: "sr5", clinicId: CLINIC_ID, surveyId: "sv_sat", patientName: "María G.", answers: [{ questionId: "s1", value: 5 }, { questionId: "s2", value: 4 }, { questionId: "s3", value: 5 }, { questionId: "s4", value: 5 }, { questionId: "s5", value: "Todo perfecto" }], createdAt: at(-15, 18) },
       { id: "sr6", clinicId: CLINIC_ID, surveyId: "sv_sat", patientName: "Jorge R.", answers: [{ questionId: "s1", value: 4 }, { questionId: "s2", value: 5 }, { questionId: "s3", value: 4 }, { questionId: "s4", value: 4 }], createdAt: at(-12, 17) },
     ],
+    mgmtTasks: [
+      { id: "mt1", clinicId: CLINIC_ID, type: "captura", patientId: "p1", title: "Presupuesto presentado sin aceptar", detail: "Plan dental integral — contactar para convertir a plan.", budgetId: "g1", status: "pendiente", createdAt: at(-4, 9) },
+      { id: "mt2", clinicId: CLINIC_ID, type: "personalizada", patientId: "p6", title: "Llamar para confirmar control de ortodoncia", status: "en_proceso", assigneeId: "u3", createdAt: at(-2, 11) },
+    ],
     signatures: [],
     crmCards: [],
     campaigns: [],

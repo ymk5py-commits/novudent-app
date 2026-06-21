@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, Bell, CreditCard,
   FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown, Banknote, Handshake, Image as ImageIcon,
-  Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star,
+  Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star, ListChecks,
 } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
@@ -61,6 +61,7 @@ const NAV: NavTop[] = [
       { href: "/app/reportes#excel", label: "Reportes Excel", icon: FileSpreadsheet, perm: "billing.reports", feature: "reportes" },
     ],
   },
+  { href: "/app/tareas", label: "Tareas", icon: ListChecks, perm: "engagement.forms" },
   { href: "/app/crm", label: "CRM", icon: Megaphone },
   { href: "/app/chat", label: "Chat", icon: MessageCircle },
 ];

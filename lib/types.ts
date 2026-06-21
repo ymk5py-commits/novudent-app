@@ -722,6 +722,25 @@ export interface SurveyResponse {
   createdAt: string;
 }
 
+/** Tarea de gestión (spec 3.2 / 6.5 / 7.2): bandeja de captura/control/cobranza/cita. */
+export type MgmtTaskType = "cita" | "captura" | "control" | "cobranza" | "personalizada";
+export interface MgmtTask {
+  id: string;
+  clinicId: string;
+  type: MgmtTaskType;
+  patientId?: string;
+  patientName?: string;     // denormalizado (fallback si no está en patients)
+  title: string;
+  detail?: string;
+  budgetId?: string;
+  assigneeId?: string;
+  status: "pendiente" | "en_proceso" | "cerrada";
+  resolution?: "acepto" | "contacto_posterior" | "rechazo";
+  dueDate?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface DB {
   clinics: Clinic[];
   users: User[];
@@ -751,5 +770,6 @@ export interface DB {
   teamMessages: TeamMessage[];
   surveys: Survey[];
   surveyResponses: SurveyResponse[];
+  mgmtTasks: MgmtTask[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }

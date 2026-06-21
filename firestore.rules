@@ -164,6 +164,8 @@ service cloud.firestore {
         allow read: if isMember(cid) || isService() || isDemo(cid);
         allow write: if isService() || isDemo(cid);
       }
+      // Tareas de gestión (bandeja captura/control/cobranza/cita)
+      match /mgmtTasks/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
     }
 
     // Todo lo demás: denegado.
