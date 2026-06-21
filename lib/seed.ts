@@ -80,7 +80,7 @@ const patients: Patient[] = [
   },
   {
     id: "p5", clinicId: CLINIC_ID, firstName: "Lucía", lastName: "Ferreira", document: "6.789.012",
-    phone: "+595 985 555 555", birthDate: "1992-06-17", insurer: "Asismed", sex: "F", gender: "F", city: "Luque", municipio: "Luque",
+    phone: "+595 985 555 555", birthDate: `1992-${at(3, 12).slice(5, 10)}`, insurer: "Asismed", sex: "F", gender: "F", city: "Luque", municipio: "Luque",
     forms: [], historyUpdatePending: false, emr: [],
   },
   {

@@ -6,12 +6,12 @@
 import { useMemo, useState } from "react";
 import {
   ShieldAlert, Plus, Trash2, ChevronLeft, ChevronRight, UserPlus, Pencil, Target,
-  ArrowRight, RefreshCcw, Megaphone, MessageCircle, Mail, Bot, Check,
+  ArrowRight, RefreshCcw, Megaphone, MessageCircle, Mail, Bot, Check, Cake,
 } from "lucide-react";
-import { useStore, fmtDate, fmtGs, fullName } from "@/lib/store";
+import { useStore, fmtDate, fmtGs, fullName, waLink } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal } from "@/lib/budgets";
-import type { CrmCard, CrmStage, Campaign } from "@/lib/types";
+import type { CrmCard, CrmStage, Campaign, Patient } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
@@ -83,6 +83,23 @@ export default function CrmPage() {
     );
     return db.patients.filter((p) => !hasFuture.has(p.id));
   }, [db.patients, db.appointments]);
+
+  /* Cumpleaños: pacientes que cumplen en los próximos 7 días */
+  const birthdays = useMemo(() => {
+    const now = new Date();
+    const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const list: { p: Patient; inDays: number; turns: number }[] = [];
+    for (const p of db.patients) {
+      if (!p.birthDate) continue;
+      const d = new Date(p.birthDate);
+      if (Number.isNaN(d.getTime())) continue;
+      let next = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+      if (next < today0) next = new Date(now.getFullYear() + 1, d.getMonth(), d.getDate());
+      const inDays = Math.round((next.getTime() - today0.getTime()) / 86400000);
+      if (inDays <= 7) list.push({ p, inDays, turns: next.getFullYear() - d.getFullYear() });
+    }
+    return list.sort((a, b) => a.inDays - b.inDays);
+  }, [db.patients]);
 
   const addToPipeline = (patientId: string, stage: CrmStage, note?: string) => {
     const now = new Date().toISOString();
@@ -246,6 +263,40 @@ export default function CrmPage() {
           </Card>
         </Reveal>
       </div>
+
+      {/* ===== Cumpleaños (derivado) ===== */}
+      <Reveal>
+        <Card className="p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-state-warnbg text-state-warn"><Cake className="h-4 w-4" /></span>
+              <h2 className="font-extrabold text-clinic-text">Cumpleaños</h2>
+            </div>
+            <Badge tone={birthdays.length > 0 ? "warn" : "muted"}>{birthdays.length} en 7 días</Badge>
+          </div>
+          <p className="mt-1 text-xs text-clinic-muted">Saludá a tus pacientes — fideliza y reactiva.</p>
+          {birthdays.length === 0 ? (
+            <p className="py-8 text-center text-sm text-clinic-muted">Sin cumpleaños en los próximos 7 días.</p>
+          ) : (
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+              {birthdays.map(({ p, inDays, turns }) => (
+                <li key={p.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-3">
+                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${inDays === 0 ? "bg-state-warn text-white" : "bg-white text-state-warn"}`}><Cake className="h-4 w-4" /></span>
+                  <a href={`/app/pacientes/${p.id}`} className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{fullName(p)}</span>
+                    <span className="text-[11px] text-clinic-muted">{inDays === 0 ? "¡Hoy!" : inDays === 1 ? "Mañana" : `En ${inDays} días`} · cumple {turns}</span>
+                  </a>
+                  {p.phone && (
+                    <a href={waLink(p.phone, `¡Feliz cumpleaños ${p.firstName}! 🎉 Te saludamos desde ${db.clinics[0].name}. ¡Que tengas un gran día!`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366]/10 px-3 py-2 text-xs font-bold text-[#128C7E] transition-colors hover:bg-[#25D366]/20" title="Saludar por WhatsApp">
+                      <MessageCircle className="h-3.5 w-3.5" /> Saludar
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </Reveal>
 
       {/* ===== Campañas ===== */}
       <Reveal>
