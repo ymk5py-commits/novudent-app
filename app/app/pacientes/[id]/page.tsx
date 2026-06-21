@@ -5,7 +5,7 @@ import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams } from "next/navigation";
 import {
   FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2, Smile,
-  Pill, FolderOpen, Activity, ScanLine, FileSignature, Camera, AlertTriangle, HeartPulse, User, Wallet, Layers, MessageSquare, CheckSquare, Mail,
+  Pill, FolderOpen, Activity, ScanLine, FileSignature, Camera, AlertTriangle, HeartPulse, User, Wallet, Layers, MessageSquare, CheckSquare, Mail, Sparkles,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName } from "@/lib/store";
 import { recordTotal } from "@/lib/billing";
@@ -16,6 +16,7 @@ import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, Empty } from "@/
 import Odontogram from "@/components/Odontogram";
 import { RxTab, FilesTab } from "@/components/PatientExtras";
 import { RadiografiasTab } from "@/components/Radiografias";
+import { ClinicalCopilot } from "@/components/ClinicalCopilot";
 import { ConsentimientosTab } from "@/components/Consentimientos";
 import { PlanTratamiento } from "@/components/PlanTratamiento";
 import { DatosTab } from "@/components/PatientDatos";
@@ -31,7 +32,7 @@ import { Reveal } from "@/components/motion";
 
 type SubTab =
   | "datos" | "citas" | "comentarios" | "tareas" | "emails" | "formularios" | "archivos" | "consentimientos"
-  | "resumen" | "evoluciones" | "antecedentes" | "odontograma" | "periodoncia" | "historial" | "radiografias" | "recetas"
+  | "resumen" | "evoluciones" | "antecedentes" | "odontograma" | "periodoncia" | "historial" | "radiografias" | "copilot" | "recetas"
   | "planes" | "facturacion" | "recibir-pago";
 
 type GroupDef = { key: string; label: string; tabs: { key: SubTab; label: string; icon: any }[] };
@@ -55,6 +56,7 @@ const GROUPS: GroupDef[] = [
     { key: "periodoncia", label: "Periodoncia", icon: Activity },
     { key: "historial", label: "Historial", icon: ClipboardList },
     { key: "radiografias", label: "Radiografías", icon: ScanLine },
+    { key: "copilot", label: "Copilot IA", icon: Sparkles },
     { key: "recetas", label: "Recetas", icon: Pill },
   ] },
   { key: "planes", label: "Planes de tratamiento", tabs: [
@@ -442,6 +444,7 @@ export default function PatientProfile() {
       )}
       {tab === "archivos" && <Reveal><FilesTab patient={p} /></Reveal>}
       {tab === "radiografias" && <Reveal><RadiografiasTab patient={p} /></Reveal>}
+      {tab === "copilot" && <Reveal>{hasIA ? <ClinicalCopilot patient={p} /> : <Empty title="Clinical Copilot" desc="Disponible en el plan Clínica o superior." />}</Reveal>}
       {tab === "consentimientos" && <Reveal><ConsentimientosTab patient={p} /></Reveal>}
 
       {/* ===== FORMULARIOS (Engagement) ===== */}
