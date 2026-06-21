@@ -145,26 +145,31 @@ function Occlusal({
   const fillColor = c && CONDITIONS[c].group === "rojo" ? RED : BLUE;
   const fullCircle = c === "corona" || c === "implante";
   const dim = size === "lg" ? "h-28 w-28" : "h-7 w-7 sm:h-8 sm:w-8";
+  // Dentalink: diente presente = círculo oscuro con cruz blanca; superficies marcadas en color.
+  const base = ghost ? "transparent" : c === "implante" ? "#0F1F3D" : fullCircle ? BLUE : "#15233B";
+  const divider = ghost ? "#cbd5e1" : "#ffffff";
+  const hover = interactive ? "cursor-pointer hover:fill-azure-500" : "";
 
   return (
     <svg viewBox="0 0 36 36" className={`${dim} ${ghost ? "opacity-40" : ""}`} aria-hidden={!interactive}>
-      {/* base */}
-      <circle cx="18" cy="18" r="14" fill={fullCircle ? (c === "implante" ? "#0F1F3D" : "#CBE0FF") : "white"} strokeDasharray={ghost ? "3 2.5" : undefined} className={`${fullCircle ? "stroke-azure-600" : "stroke-slate-300"}`} strokeWidth="1.3" />
+      <circle cx="18" cy="18" r="14" fill={base} strokeDasharray={ghost ? "3 2.5" : undefined} stroke={ghost ? "#94a3b8" : c === "corona" ? "#0E8AA3" : "#15233B"} strokeWidth="1.2" />
       {(Object.keys(SEG) as Exclude<ToothSurface, "O">[]).map((s) => (
         <path
           key={s}
           d={SEG[s]}
           fill={surfaces.includes(s) ? fillColor : "transparent"}
-          className={`stroke-slate-300 ${interactive ? "cursor-pointer hover:fill-azure-100" : ""}`}
-          strokeWidth="1"
+          stroke={divider}
+          className={hover}
+          strokeWidth="1.1"
           onClick={interactive && onToggle ? () => onToggle(s) : undefined}
         />
       ))}
       <circle
         cx="18" cy="18" r="4.2"
-        fill={surfaces.includes("O") ? fillColor : fullCircle ? "white" : "transparent"}
-        className={`stroke-slate-300 ${interactive ? "cursor-pointer hover:fill-azure-100" : ""}`}
-        strokeWidth="1"
+        fill={surfaces.includes("O") ? fillColor : fullCircle ? "#ffffff" : "transparent"}
+        stroke={divider}
+        className={hover}
+        strokeWidth="1.1"
         onClick={interactive && onToggle ? () => onToggle("O") : undefined}
       />
       {c === "extraccion" && (
@@ -173,7 +178,7 @@ function Occlusal({
         </g>
       )}
       {interactive && (
-        <g className="fill-slate-400" fontSize="4.6" fontFamily="monospace" textAnchor="middle">
+        <g fill="#ffffff" fontSize="4.6" fontFamily="monospace" textAnchor="middle">
           <text x="18" y="6">V</text><text x="32" y="19.5">D</text><text x="18" y="33.5">L</text><text x="4" y="19.5">M</text>
         </g>
       )}
@@ -185,6 +190,7 @@ function Occlusal({
 function ToothCol({ n, rec, upper, onClick }: { n: string; rec?: ToothRecord; upper: boolean; onClick: () => void }) {
   const parts = [
     <span key="e" className="transition-transform duration-150 group-hover:scale-110"><Elevation n={n} rec={rec} upper={upper} /></span>,
+    <span key="s" className="text-[8px] leading-none text-azure-500">{rec && rec.condition !== "ausente" ? "★" : " "}</span>,
     <Occlusal key="o" rec={rec} />,
     <span key="n" className={`font-mono text-[9.5px] leading-none ${rec ? "font-bold text-clinic-text" : "text-clinic-muted"}`}>{n}</span>,
   ];
