@@ -115,6 +115,7 @@ export default function AgendaPage() {
   const [day, setDay] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
   const [proFilter, setProFilter] = useState<string>("all");
+  const [branchFilter, setBranchFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<Set<AppointmentStatus>>(new Set(ALL_STATUSES));
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Appointment | null>(null);
@@ -137,9 +138,14 @@ export default function AgendaPage() {
     () => db.appointments.filter((a) => dayKeyOf(a.start) === selKey).sort((a, b) => a.start.localeCompare(b.start)),
     [db.appointments, selKey]
   );
+  const mainBranchId = db.branches.find((b) => b.isMain)?.id;
   const dayAllPro = useMemo(
-    () => dayAll.filter((a) => tab === "global" || proFilter === "all" || a.dentistId === proFilter),
-    [dayAll, tab, proFilter]
+    () => dayAll.filter((a) => {
+      const okBranch = branchFilter === "all" || (a.branchId ?? mainBranchId) === branchFilter;
+      const okPro = tab === "global" || proFilter === "all" || a.dentistId === proFilter;
+      return okBranch && okPro;
+    }),
+    [dayAll, tab, proFilter, branchFilter, mainBranchId]
   );
   const dayAppts = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -372,11 +378,17 @@ export default function AgendaPage() {
             </Card>
 
             {tab === "diaria" && (
-              <Card className="p-3">
+              <Card className="space-y-2 p-3">
                 <select value={proFilter} onChange={(e) => setProFilter(e.target.value)} className={inputCls}>
                   <option value="all">Todos los profesionales</option>
                   {dentists.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
+                {db.branches.length > 1 && (
+                  <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className={inputCls}>
+                    <option value="all">Todas las sucursales</option>
+                    {db.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                )}
               </Card>
             )}
 
@@ -714,6 +726,13 @@ function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () =>
             </select>
           </Field>
         </div>
+        {db.branches.length > 1 && (
+          <Field label="Sucursal">
+            <select className={inputCls} value={form.branchId ?? db.branches.find((b) => b.isMain)?.id ?? ""} onChange={(e) => setForm({ ...form, branchId: e.target.value || undefined })}>
+              {db.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </Field>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <Field label="Inicio"><input type="datetime-local" required className={inputCls} value={toLocal(form.start)} onChange={(e) => setForm({ ...form, start: new Date(e.target.value).toISOString() })} /></Field>
           <Field label="Fin"><input type="datetime-local" required className={inputCls} value={toLocal(form.end)} onChange={(e) => setForm({ ...form, end: new Date(e.target.value).toISOString() })} /></Field>

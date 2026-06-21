@@ -27,7 +27,7 @@ async function ensureAuth() {
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord,
   Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
-  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo,
+  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo, Branch,
   CrmCard, Campaign, LabOrder, Settlement, Box,
 } from "./types";
 import { buildSeed } from "./seed";
@@ -93,6 +93,7 @@ async function seedFirestore(seed: DB) {
   for (const mt of seed.mgmtTasks) batch.set(doc(fsdb, "clinics", CLINIC_ID, "mgmtTasks", mt.id), clean(mt));
   for (const e of seed.environmentalLogs) batch.set(doc(fsdb, "clinics", CLINIC_ID, "environmentalLogs", e.id), clean(e));
   for (const v of seed.eduVideos) batch.set(doc(fsdb, "clinics", CLINIC_ID, "eduVideos", v.id), clean(v));
+  for (const br of seed.branches) batch.set(doc(fsdb, "clinics", CLINIC_ID, "branches", br.id), clean(br));
   await batch.commit();
 }
 
@@ -108,10 +109,10 @@ async function loadFirestore(): Promise<DB> {
   }
   const meta = clinicSnap.data() as any;
   const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos, branches] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
-    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"), col("sterilizationCycles"), col("teamMessages"), col("surveys"), col("surveyResponses"), col("mgmtTasks"), col("environmentalLogs"), col("eduVideos"),
+    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"), col("sterilizationCycles"), col("teamMessages"), col("surveys"), col("surveyResponses"), col("mgmtTasks"), col("environmentalLogs"), col("eduVideos"), col("branches"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -145,6 +146,7 @@ async function loadFirestore(): Promise<DB> {
     mgmtTasks: mgmtTasks.docs.map((d) => d.data() as MgmtTask),
     environmentalLogs: environmentalLogs.docs.map((d) => d.data() as EnvironmentalLog),
     eduVideos: eduVideos.docs.map((d) => d.data() as EduVideo),
+    branches: branches.docs.map((d) => d.data() as Branch),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   ACTIVE_CURRENCY = (db.clinics[0]?.config?.currency as CurrencyCode) ?? DEFAULT_CURRENCY;
@@ -424,6 +426,10 @@ interface Ctx {
   addEduVideo: (v: EduVideo) => void;
   updateEduVideo: (v: EduVideo) => void;
   deleteEduVideo: (id: string) => void;
+  /* — Sucursales (multi-sede) — */
+  addBranch: (b: Branch) => void;
+  updateBranch: (b: Branch) => void;
+  deleteBranch: (id: string) => void;
   /* — Firma electrónica / consentimientos — */
   addSignature: (s: SignatureDoc) => void;
   updateSignature: (s: SignatureDoc) => void;
@@ -1024,6 +1030,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       deleteEduVideo: (id) => {
         persist({ ...db, eduVideos: db.eduVideos.filter((x) => x.id !== id) });
         fsDelete("eduVideos", id);
+      },
+      addBranch: (b) => {
+        persist({ ...db, branches: [...db.branches, b] });
+        fsSave("branches", b.id, b);
+      },
+      updateBranch: (b) => {
+        persist({ ...db, branches: db.branches.map((x) => (x.id === b.id ? b : x)) });
+        fsSave("branches", b.id, b);
+      },
+      deleteBranch: (id) => {
+        persist({ ...db, branches: db.branches.filter((x) => x.id !== id) });
+        fsDelete("branches", id);
       },
       addRadiograph: (r: RadiographRec) => {
         persist({ ...db, radiographs: [r, ...db.radiographs] });

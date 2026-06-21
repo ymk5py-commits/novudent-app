@@ -63,6 +63,8 @@ export interface User {
   commissionPct?: number;
   /** Especialidad del profesional (Ortodoncia, Endodoncia, …) */
   specialty?: string;
+  /** Sucursal asignada (multi-sede) */
+  branchId?: string;
 }
 
 export type AppointmentStatus = "confirmada" | "en_atencion" | "pendiente" | "completada" | "cancelada" | "ausente";
@@ -83,6 +85,7 @@ export interface Appointment {
   cancelReason?: string;
   /** Origen: "online" = reserva web del paciente (entra como pendiente, a validar) */
   source?: "online" | "interna";
+  branchId?: string;        // sucursal (multi-sede)
   /** Confirmación de citas: recordatorio WhatsApp/email ya enviado */
   reminderSent?: boolean;
   /** quién confirmó la cita (botika = automático por el bot) */
@@ -679,6 +682,7 @@ export interface CashSession {
   openingBalance: number;  // saldo inicial declarado
   countedCash?: number;    // efectivo contado al cierre (arqueo)
   note?: string;
+  branchId?: string;       // sucursal (multi-sede)
   status: CashSessionStatus;
 }
 
@@ -777,6 +781,17 @@ export interface EduVideo {
   description?: string;
 }
 
+/** Sucursal / sede de la clínica (multi-sede — spec 11). */
+export interface Branch {
+  id: string;
+  clinicId: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  isMain?: boolean;   // sede principal
+  active?: boolean;
+}
+
 export interface DB {
   clinics: Clinic[];
   users: User[];
@@ -809,5 +824,6 @@ export interface DB {
   mgmtTasks: MgmtTask[];
   environmentalLogs: EnvironmentalLog[];
   eduVideos: EduVideo[];
+  branches: Branch[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }

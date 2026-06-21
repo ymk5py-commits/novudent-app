@@ -425,6 +425,10 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
       { id: "ev3", clinicId: CLINIC_ID, title: "Ortodoncia con brackets", category: "Ortodoncia", url: "https://www.youtube.com/results?search_query=animaci%C3%B3n+ortodoncia+brackets", description: "Movimiento dental durante el tratamiento de ortodoncia." },
       { id: "ev4", clinicId: CLINIC_ID, title: "Carillas dentales", category: "Estética", url: "https://www.youtube.com/results?search_query=animaci%C3%B3n+carillas+dentales", description: "Proceso de colocación de carillas estéticas." },
     ],
+    branches: [
+      { id: "b_main", clinicId: CLINIC_ID, name: "Sede Central", address: "Av. España 1234, Asunción", phone: "+595 21 555 000", isMain: true, active: true },
+      { id: "b_norte", clinicId: CLINIC_ID, name: "Sucursal Norte", address: "Av. San Martín 4500, Asunción", phone: "+595 21 555 010", active: true },
+    ],
     signatures: [],
     crmCards: [],
     campaigns: [],

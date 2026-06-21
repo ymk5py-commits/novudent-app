@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, Bell, CreditCard,
   FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown, Banknote, Handshake, Image as ImageIcon,
-  Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star, ListChecks, Leaf, Video,
+  Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star, ListChecks, Leaf, Video, MapPin,
 } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
@@ -46,6 +46,7 @@ const NAV: NavTop[] = [
       { href: "/app/ambiental", label: "Registro ambiental", icon: Leaf, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#convenios", label: "Convenios", icon: Handshake, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#usuarios", label: "Usuarios y profesionales", icon: Users, perm: "practice.config", section: "Gestión" },
+      { href: "/app/configuracion#sucursales", label: "Sucursales", icon: MapPin, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#fusion", label: "Fusión de fichas", icon: Users, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#arancel", label: "Arancel de precios", icon: FileSpreadsheet, perm: "practice.config", section: "Configuración" },
       { href: "/app/configuracion#consentimientos", label: "Documentos y consentimientos", icon: FileText, perm: "practice.config", section: "Configuración" },

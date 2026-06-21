@@ -2,11 +2,11 @@
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon, MapPin } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
 import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
 import { can, ROLE_LABEL } from "@/lib/rbac";
-import type { Role, User, Procedure, BotikaConfig, ConsentTemplate } from "@/lib/types";
+import type { Role, User, Procedure, BotikaConfig, ConsentTemplate, Branch } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
 import DentalinkImport from "@/components/DentalinkImport";
@@ -20,7 +20,7 @@ const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> =
 };
 
 export default function ConfigPage() {
-  const { db, session, upsertProcedure, deleteProcedure, mergePatients, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, saveConsentTemplates } = useStore();
+  const { db, session, upsertProcedure, deleteProcedure, mergePatients, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, saveConsentTemplates, addBranch, updateBranch, deleteBranch } = useStore();
   const plan = useClinicPlan();
   const [addingUser, setAddingUser] = useState(false);
   const [addingProc, setAddingProc] = useState(false);
@@ -40,6 +40,7 @@ export default function ConfigPage() {
   const [convRuc, setConvRuc] = useState("");
   const [convPhone, setConvPhone] = useState("");
   const [template, setTemplate] = useState<string | null>(null);
+  const [editBranch, setEditBranch] = useState<Branch | null>(null);
 
   if (!session) return null;
   if (!can(session.role, "practice.config")) {
@@ -83,6 +84,33 @@ export default function ConfigPage() {
       </Card>
       </Reveal>
 
+      <span id="sucursales" className="block scroll-mt-24" aria-hidden="true" />
+      {/* Sucursales (multi-sede) */}
+      <Reveal>
+      <Card className="p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Sucursales</h2></div>
+          <Btn onClick={() => setEditBranch({ id: "", clinicId: db.clinics[0]?.id ?? "", name: "", active: true })}><Plus className="h-4 w-4" /> Agregar sucursal</Btn>
+        </div>
+        <p className="mb-3 text-xs text-clinic-muted">Sedes de la clínica. Asigná usuarios, citas y cajas a una sucursal.</p>
+        <div className="divide-y divide-clinic-border">
+          {db.branches.length === 0 && <p className="py-2 text-sm text-clinic-muted">Sin sucursales — agregá tu primera sede.</p>}
+          {db.branches.map((b) => (
+            <div key={b.id} className="flex items-center gap-3 py-3">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-azure-50 text-azure-600"><MapPin className="h-4 w-4" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-2 text-sm font-bold text-clinic-text">{b.name}{b.isMain && <Badge tone="info">Principal</Badge>}{b.active === false && <Badge tone="muted">Inactiva</Badge>}</span>
+                <span className="block truncate text-xs text-clinic-muted">{[b.address, b.phone].filter(Boolean).join(" · ") || "—"}</span>
+              </span>
+              <button onClick={() => setEditBranch(b)} className="rounded-lg p-1.5 text-clinic-muted hover:bg-clinic-bg hover:text-azure-700" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+              {!b.isMain && <button onClick={() => { if (confirm("¿Eliminar esta sucursal?")) deleteBranch(b.id); }} className="rounded-lg p-1.5 text-clinic-muted hover:bg-clinic-bg hover:text-state-err" title="Eliminar"><Trash2 className="h-3.5 w-3.5" /></button>}
+            </div>
+          ))}
+        </div>
+      </Card>
+      </Reveal>
+      {editBranch && <BranchForm branch={editBranch} onClose={() => setEditBranch(null)} onSave={(b) => { if (db.branches.some((x) => x.id === b.id)) updateBranch(b); else addBranch(b); setEditBranch(null); }} />}
+
       <span id="usuarios" className="block scroll-mt-24" aria-hidden="true" />
       {/* Usuarios */}
       <Reveal>
@@ -123,6 +151,12 @@ export default function ConfigPage() {
                     onChange={(e) => upsertUser({ ...u, commissionPct: Number(e.target.value) || 0 })}
                   />
                 </label>
+              )}
+              {db.branches.length > 0 && (
+                <select value={u.branchId ?? ""} onChange={(e) => upsertUser({ ...u, branchId: e.target.value || undefined })} className="rounded-lg border border-clinic-border px-2 py-1 text-xs text-clinic-text focus:border-azure-400 focus:outline-none" title="Sucursal asignada">
+                  <option value="">Todas las sedes</option>
+                  {db.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
               )}
               <Badge tone={u.role === "admin" ? "info" : u.role === "dentist" ? "ok" : "warn"}>{ROLE_LABEL[u.role]}</Badge>
             </div>
@@ -431,6 +465,28 @@ export default function ConfigPage() {
       )}
       {importing && <DentalinkImport onClose={() => setImporting(false)} />}
     </div>
+  );
+}
+
+function BranchForm({ branch, onClose, onSave }: { branch: Branch; onClose: () => void; onSave: (b: Branch) => void }) {
+  const [name, setName] = useState(branch.name);
+  const [address, setAddress] = useState(branch.address ?? "");
+  const [phone, setPhone] = useState(branch.phone ?? "");
+  const [active, setActive] = useState(branch.active !== false);
+  const guardar = () => {
+    if (!name.trim()) return;
+    onSave({ ...branch, id: branch.id || `b_${Date.now()}`, name: name.trim(), address: address.trim() || undefined, phone: phone.trim() || undefined, active });
+  };
+  return (
+    <Modal title={branch.id ? "Editar sucursal" : "Nueva sucursal"} onClose={onClose}>
+      <div className="space-y-3">
+        <Field label="Nombre"><input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder="Ej. Sucursal Centro" /></Field>
+        <Field label="Dirección"><input value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls} /></Field>
+        <Field label="Teléfono"><input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} /></Field>
+        <label className="flex items-center gap-2 text-sm text-clinic-text"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Activa</label>
+        <div className="flex justify-end gap-2"><Btn variant="outline" onClick={onClose}>Cancelar</Btn><Btn onClick={guardar}>Guardar</Btn></div>
+      </div>
+    </Modal>
   );
 }
 
