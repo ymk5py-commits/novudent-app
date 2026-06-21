@@ -157,6 +157,20 @@ export default function ReportsPage() {
         }),
       ],
     },
+    {
+      label: "Inventario", file: "inventario.csv",
+      rows: () => [
+        ["Producto", "Categoría", "Stock", "Mínimo", "Costo Gs", "Valorización Gs"],
+        ...db.stock.map((s) => [s.name, s.category, s.stock, s.minStock, s.cost, s.stock * s.cost]),
+      ],
+    },
+    {
+      label: "Laboratorios", file: "laboratorios.csv",
+      rows: () => [
+        ["Paciente", "Laboratorio", "Trabajo", "Enviado", "Vencimiento", "Costo Gs", "Estado"],
+        ...db.labOrders.map((o) => [patientName(o.patientId), o.lab, o.workType, o.sentAt.slice(0, 10), o.dueAt?.slice(0, 10) ?? "", o.cost ?? 0, o.status]),
+      ],
+    },
   ];
 
   // Payload compacto para Reportes IA — agregados ya computados, nunca
