@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, Bell, CreditCard,
-  FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown,
+  FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown, Banknote,
   Megaphone, FlaskConical, Coins, Armchair,
 } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
@@ -33,6 +33,7 @@ const NAV: NavTop[] = [
   },
   {
     label: "Administración", icon: Settings, children: [
+      { href: "/app/gastos", label: "Gastos", icon: Banknote, perm: "payments.manage" },
       { href: "/app/inventario", label: "Inventario", icon: Package, perm: "inventory.manage", feature: "inventario" },
       { href: "/app/laboratorios", label: "Laboratorios", icon: FlaskConical, feature: "laboratorios" },
       { href: "/app/box", label: "Box/Sillones", icon: Armchair, perm: "practice.config", feature: "boxes" },

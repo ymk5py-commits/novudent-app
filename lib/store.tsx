@@ -338,6 +338,7 @@ interface Ctx {
   addPayment: (p: Payment) => void;
   deletePayment: (id: string) => void;
   addExpense: (e: Expense) => void;
+  updateExpense: (e: Expense) => void;
   deleteExpense: (id: string) => void;
   /* — Inventario — */
   upsertStockItem: (s: StockItem) => void;
@@ -735,6 +736,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
       addExpense: (e) => {
         persist({ ...db, expenses: [...db.expenses, e] });
+        fsSave("expenses", e.id, e);
+      },
+      updateExpense: (e) => {
+        persist({ ...db, expenses: db.expenses.map((x) => (x.id === e.id ? e : x)) });
         fsSave("expenses", e.id, e);
       },
       deleteExpense: (id) => {

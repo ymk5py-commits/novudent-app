@@ -344,6 +344,8 @@ export interface Expense {
   description: string;
   amount: number;
   registeredBy: string;
+  invoiceDate?: string; // Fecha de factura (YYYY-MM-DD)
+  payDate?: string;     // Fecha de pago (YYYY-MM-DD)
 }
 
 /* ===== Inventario (bodega virtual) ===== */
