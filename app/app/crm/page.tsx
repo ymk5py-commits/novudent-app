@@ -36,6 +36,7 @@ export default function CrmPage() {
   const [editing, setEditing] = useState<CrmCard | null>(null);
   const [newCampaign, setNewCampaign] = useState(false);
   const [seg, setSeg] = useState({ gender: "", city: "", ageMin: "", ageMax: "", deuda: false, sinCita: false });
+  const [tab, setTab] = useState<"reportes" | "campanas" | "plantillas" | "config">("reportes");
 
   const plan = useClinicPlan();
   if (!session) return null;
@@ -136,6 +137,14 @@ export default function CrmPage() {
         <Btn onClick={() => setNewCard(true)}><UserPlus className="h-4 w-4" /> Nuevo en pipeline</Btn>
       </Reveal>
 
+      {/* Pestañas del CRM (estilo Dentalink) */}
+      <Reveal className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
+        {([["reportes", "Reportes"], ["campanas", "Campañas de Marketing"], ["plantillas", "Plantillas"], ["config", "Configuración"]] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-3.5 py-2 text-sm font-bold transition-colors ${tab === k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>{label}</button>
+        ))}
+      </Reveal>
+
+      {tab === "reportes" && (<>
       {/* ===== Pipeline (Kanban) ===== */}
       <Reveal>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -353,7 +362,10 @@ export default function CrmPage() {
         </Card>
       </Reveal>
 
+      </>)}
+
       {/* ===== Campañas ===== */}
+      {tab === "campanas" && (
       <Reveal>
         <Card className="p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -402,6 +414,47 @@ export default function CrmPage() {
           )}
         </Card>
       </Reveal>
+      )}
+
+      {tab === "plantillas" && (
+        <Reveal>
+          <Card className="p-5">
+            <div className="mb-3 flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-100 text-azure-700"><Mail className="h-4 w-4" /></span><h2 className="font-extrabold text-clinic-text">Plantillas de mensaje</h2></div>
+            <p className="mb-3 text-xs text-clinic-muted">Mensajes reutilizables para campañas y saludos. Los recordatorios automáticos se editan en <a href="/app/integraciones" className="font-bold text-azure-700 hover:underline">Integraciones</a>.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                { t: "Cumpleaños", m: "¡Feliz cumpleaños {paciente}! 🎉 Te saludamos desde {clinica}." },
+                { t: "Reactivación", m: "Hola {paciente} 👋 Hace rato no te vemos en {clinica}. ¿Coordinamos tu próximo control?" },
+                { t: "Cobranza", m: "Hola {paciente}, tenés un saldo pendiente de {saldo} en {clinica}. ¿Coordinamos el pago?" },
+                { t: "Promoción", m: "Hola {paciente} 👋 Este mes en {clinica} tenemos una promo. ¿Te interesa?" },
+              ].map((x) => (
+                <div key={x.t} className="rounded-xl border border-clinic-border p-4">
+                  <div className="text-sm font-extrabold text-clinic-text">{x.t}</div>
+                  <p className="mt-1 whitespace-pre-wrap text-xs text-clinic-muted">{x.m}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </Reveal>
+      )}
+
+      {tab === "config" && (
+        <Reveal>
+          <Card className="p-5">
+            <div className="mb-3 flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-100 text-azure-700"><Target className="h-4 w-4" /></span><h2 className="font-extrabold text-clinic-text">Configuración del embudo</h2></div>
+            <p className="mb-3 text-xs text-clinic-muted">Etapas del pipeline de captación de pacientes.</p>
+            <ol className="space-y-2">
+              {STAGES.map((st, i) => (
+                <li key={st.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-3">
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-white font-mono text-xs font-bold text-clinic-muted">{i + 1}</span>
+                  <span className="flex-1 text-sm font-bold text-clinic-text">{st.label}</span>
+                  <Badge tone={st.tone}>{db.crmCards.filter((c) => c.stage === st.id).length}</Badge>
+                </li>
+              ))}
+            </ol>
+          </Card>
+        </Reveal>
+      )}
 
       {newCard && <CardForm onClose={() => setNewCard(false)} />}
       {editing && <CardForm card={editing} onClose={() => setEditing(null)} />}
