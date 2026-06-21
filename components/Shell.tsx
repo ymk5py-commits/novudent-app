@@ -23,9 +23,9 @@ type NavTop = { label: string; href?: string; icon?: any; perm?: Permission; fea
 const NAV: NavTop[] = [
   { href: "/app/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/app/pacientes", label: "Pacientes", icon: Users },
-  { href: "/app/caja", label: "Caja", icon: Wallet, perm: "payments.manage", feature: "caja" },
+  { href: "/app/caja", label: "Cajas", icon: Wallet, perm: "payments.manage", feature: "caja" },
   {
-    label: "Recaudación", icon: Receipt, children: [
+    label: "Cobranza", icon: Receipt, children: [
       { href: "/app/facturacion", label: "Facturación", icon: Receipt },
       { href: "/app/presupuestos", label: "Presupuestos", icon: FileSpreadsheet, perm: "budgets.manage" },
       { href: "/app/liquidaciones", label: "Liquidaciones", icon: Coins, perm: "billing.reports", feature: "liquidaciones" },
@@ -41,7 +41,13 @@ const NAV: NavTop[] = [
       { href: "/app/configuracion", label: "Configuración", icon: Settings, perm: "practice.config" },
     ],
   },
-  { href: "/app/reportes", label: "Reportes", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
+  {
+    label: "Reportes", icon: BarChart3, children: [
+      { href: "/app/reportes", label: "Panel de desempeño", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/reportes", label: "Análisis de pacientes", icon: Users, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/reportes", label: "Reportes Excel", icon: FileSpreadsheet, perm: "billing.reports", feature: "reportes" },
+    ],
+  },
   { href: "/app/crm", label: "CRM", icon: Megaphone },
 ];
 
