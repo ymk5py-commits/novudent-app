@@ -123,6 +123,12 @@ export default function AgendaPage() {
       status: "pendiente", amount: 0, discount: 0,
     });
   }
+  const reagendar = (a: Appointment) => {
+    // Pre-carga la cita cancelada (paciente/dentista/título/importe) en una nueva.
+    const start = new Date(); start.setDate(start.getDate() + 1); start.setHours(9, 0, 0, 0);
+    const end = new Date(start); end.setHours(10);
+    setEditing({ ...a, id: `a_${Date.now()}`, start: start.toISOString(), end: end.toISOString(), status: "pendiente" });
+  };
   const toggleStatus = (s: AppointmentStatus) =>
     setStatusFilter((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
 
@@ -252,7 +258,7 @@ export default function AgendaPage() {
                         <td className="px-4 py-2.5"><div className="font-semibold text-clinic-text">{a.title || "Cita"}</div><div className="text-xs text-clinic-muted">{new Date(a.start).toLocaleDateString("es-PY", { day: "2-digit", month: "short", year: "numeric" })} · {fmtTime(a.start)}</div></td>
                         <td className="px-2 py-2.5">{p ? <a href={`/app/pacientes/${p.id}`} className="font-semibold text-azure-700 hover:underline">{fullName(p)}</a> : "—"}</td>
                         <td className="px-2 py-2.5 text-clinic-muted">{dent?.name ?? "—"}</td>
-                        <td className="px-2 py-2.5 text-right"><Btn variant="outline" onClick={() => newAppt(new Date())}><CalendarDays className="h-3.5 w-3.5" /> Reagendar</Btn></td>
+                        <td className="px-2 py-2.5 text-right"><Btn variant="outline" onClick={() => reagendar(a)}><CalendarDays className="h-3.5 w-3.5" /> Reagendar</Btn></td>
                       </tr>
                     );
                   })}
