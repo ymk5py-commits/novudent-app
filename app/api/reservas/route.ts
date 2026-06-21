@@ -238,6 +238,7 @@ export async function POST(req: NextRequest) {
       start: startISO,
       end: endISO,
       status: "pendiente",
+      source: "online",
       amount: 0,
       discount: 0,
       notes: "Reservado online por el paciente",

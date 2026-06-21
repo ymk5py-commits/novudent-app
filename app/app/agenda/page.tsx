@@ -102,7 +102,7 @@ export default function AgendaPage() {
     [db.appointments]
   );
 
-  const porValidar = dayAllPro.filter((a) => a.status === "pendiente").length;
+  const porValidar = dayAllPro.filter((a) => a.source === "online" && a.status === "pendiente").length;
   const headerCount = tab === "semanal" ? weekAppointments.length : tab === "reprog" ? reprog.length : dayAppts.length;
 
   function newAppt(base: Date) {
@@ -183,7 +183,7 @@ export default function AgendaPage() {
       {/* Banner: citas por validar */}
       {(tab === "diaria" || tab === "global") && porValidar > 0 && (
         <Reveal className="flex flex-wrap items-center gap-2 rounded-xl border border-state-ok/30 bg-state-okbg px-4 py-2.5 text-sm text-state-ok">
-          <BellRing className="h-4 w-4" /> Hay {porValidar} cita(s) sin confirmar que deben ser validadas.
+          <BellRing className="h-4 w-4" /> Hay {porValidar} agendamiento(s) online que deben ser validados.
           <button onClick={() => setStatusFilter(new Set(["pendiente"]))} className="font-bold underline">Ver y validar</button>
         </Reveal>
       )}
@@ -389,6 +389,7 @@ export default function AgendaPage() {
                           </td>
                           <td className="px-2 py-3">
                             {p ? <a href={`/app/pacientes/${p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(p)}</a> : <span className="text-clinic-muted">—</span>}
+                            {a.source === "online" && <span className="ml-2 rounded bg-state-infobg px-1.5 text-[10px] font-bold text-state-info">Online</span>}
                             {multi && <span className="ml-2 rounded bg-state-warnbg px-1.5 text-[10px] font-bold text-state-warn">Múltiples citas hoy</span>}
                             {p?.phone && <div className="mt-0.5 flex items-center gap-1 text-xs text-clinic-muted"><Phone className="h-3 w-3" /> {p.phone}</div>}
                           </td>
