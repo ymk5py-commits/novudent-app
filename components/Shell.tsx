@@ -98,6 +98,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   if (me?.mustChangePassword) return <ChangePasswordGate />;
   const plan = planOf(db.clinics[0]);
   const clinicName = db.clinics[0]?.name ?? "Novudent";
+  const logo = db.clinics[0]?.config.logo;
 
   // Filtrar por rol/plan; un grupo sin hijos visibles se oculta entero.
   const nav: NavTop[] = NAV.map((e) => {
@@ -118,7 +119,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       {navOpen && <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setNavOpen(false)} role="presentation" />}
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-white transition-transform duration-200 md:hidden ${navOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between px-5 pt-5">
-          <span className="font-logo text-xl tracking-[0.16em] text-navy-800">NOVUdent</span>
+          {logo ? <img src={logo} alt={clinicName} className="h-8 w-auto max-w-[150px] object-contain" /> : <span className="font-logo text-xl tracking-[0.16em] text-navy-800">NOVUdent</span>}
           <button onClick={() => setNavOpen(false)} aria-label="Cerrar menú" className="grid h-9 w-9 place-items-center rounded-xl text-clinic-muted hover:bg-clinic-bg"><X className="h-5 w-5" /></button>
         </div>
         <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
@@ -143,7 +144,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <Menu className="h-5 w-5" />
           </button>
           <a href="/app" className="flex shrink-0 items-baseline gap-2">
-            <span className="font-logo text-xl tracking-[0.16em] text-navy-800">NOVUdent</span>
+            {logo ? <img src={logo} alt={clinicName} className="h-8 w-auto max-w-[150px] object-contain" /> : <span className="font-logo text-xl tracking-[0.16em] text-navy-800">NOVUdent</span>}
             <span data-tip={`Plan ${plan.label}`} className="hidden rounded-full bg-azure-50 px-1.5 py-0.5 font-mono text-[8px] font-extrabold uppercase tracking-wide text-azure-700 sm:inline">{plan.label}</span>
           </a>
           {/* Patient Finder */}

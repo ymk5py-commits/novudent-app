@@ -226,7 +226,7 @@ function BudgetDetail({ budget: b, onClose }: { budget: Budget; onClose: () => v
         {/* encabezado imprimible */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="font-logo text-lg tracking-[0.16em] text-navy-800">NOVUdent</div>
+            {clinic.config.logo ? <img src={clinic.config.logo} alt="Logo" className="h-10 w-auto max-w-[160px] object-contain" /> : <div className="font-logo text-lg tracking-[0.16em] text-navy-800">NOVUdent</div>}
             <div className="text-xs text-clinic-muted">{clinic.name} · {clinic.config.address} · {clinic.config.phone}</div>
           </div>
           <Badge tone={info.tone}>{info.label}</Badge>

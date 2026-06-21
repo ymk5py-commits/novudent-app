@@ -2,13 +2,14 @@
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useState } from "react";
-import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon } from "lucide-react";
 import { useStore, fmtGs } from "@/lib/store";
 import { can, ROLE_LABEL } from "@/lib/rbac";
 import type { Role, User, Procedure, BotikaConfig, ConsentTemplate } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
 import DentalinkImport from "@/components/DentalinkImport";
+import { resizeToDataUrl } from "@/lib/image";
 import { Reveal } from "@/components/motion";
 
 const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> = {
@@ -258,6 +259,23 @@ export default function ConfigPage() {
       </Reveal>
 
       {/* Servicios / aranceles */}
+      <Reveal>
+      <Card className="p-5">
+        <div className="mb-3 flex items-center gap-2"><ImageIcon className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Logotipo</h2></div>
+        <p className="mb-3 text-xs text-clinic-muted">Se usa en la cabecera de la app y en los documentos impresos (presupuestos).</p>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="grid h-16 w-40 place-items-center rounded-xl border border-clinic-border bg-clinic-bg">
+            {clinic.config.logo ? <img src={clinic.config.logo} alt="Logo" className="max-h-14 max-w-[150px] object-contain" /> : <span className="font-logo text-lg text-navy-800">NOVUdent</span>}
+          </div>
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-clinic-muted hover:text-clinic-text">
+            <UploadCloud className="h-4 w-4" /> Subir logo
+            <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) updateClinicConfig({ logo: await resizeToDataUrl(f, { maxDim: 400 }) }); }} />
+          </label>
+          {clinic.config.logo && <button onClick={() => updateClinicConfig({ logo: "" })} className="text-sm font-bold text-state-err hover:underline">Quitar</button>}
+        </div>
+      </Card>
+      </Reveal>
+
       <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">

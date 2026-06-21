@@ -36,6 +36,8 @@ export interface Clinic {
     consentTemplates?: ConsentTemplate[];
     /** Config de campos del paciente: presente/requerido por contexto */
     patientFields?: Record<string, FieldConfig>;
+    /** Logotipo de la clínica (data URL base64) — header de la app + documentos */
+    logo?: string;
   };
 }
 
