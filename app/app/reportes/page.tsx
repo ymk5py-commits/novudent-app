@@ -378,12 +378,27 @@ export default function ReportsPage() {
       <Card className="p-5">
         <div className="flex items-center gap-2"><FileSpreadsheet className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Reportes descargables (Excel)</h2></div>
         <p className="text-[11px] text-clinic-muted">CSV con codificación UTF-8 — se abren directamente en Excel o Google Sheets.</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {EXPORTS.map((x) => (
-            <Btn key={x.file} variant="outline" onClick={() => downloadCsv(x.file, x.rows())}>
-              <Download className="h-3.5 w-3.5" /> {x.label}
-            </Btn>
-          ))}
+        <div className="mt-4 space-y-4">
+          {(() => {
+            const CAT: Record<string, string> = { Pagos: "Finanzas", Gastos: "Finanzas", Presupuestos: "Finanzas", Comisiones: "Nóminas", Pacientes: "Pacientes", Citas: "Pacientes", Inventario: "Inventario", Laboratorios: "Laboratorios" };
+            const ORDER = ["Finanzas", "Pacientes", "Inventario", "Laboratorios", "Nóminas"];
+            return ORDER.map((cat) => {
+              const xs = EXPORTS.filter((x) => (CAT[x.label] ?? "Otros") === cat);
+              if (!xs.length) return null;
+              return (
+                <div key={cat}>
+                  <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wide text-clinic-muted">{cat}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {xs.map((x) => (
+                      <Btn key={x.file} variant="outline" onClick={() => downloadCsv(x.file, x.rows())}>
+                        <Download className="h-3.5 w-3.5" /> {x.label}
+                      </Btn>
+                    ))}
+                  </div>
+                </div>
+              );
+            });
+          })()}
         </div>
       </Card>
       </Reveal>

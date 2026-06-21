@@ -28,7 +28,9 @@ const NAV: NavTop[] = [
     label: "Cobranza", icon: Receipt, children: [
       { href: "/app/facturacion", label: "Facturación", icon: Receipt },
       { href: "/app/presupuestos", label: "Presupuestos", icon: FileSpreadsheet, perm: "budgets.manage" },
+      { href: "/app/caja", label: "Cuentas por cobrar", icon: Wallet, perm: "payments.manage", feature: "caja" },
       { href: "/app/liquidaciones", label: "Liquidaciones", icon: Coins, perm: "billing.reports", feature: "liquidaciones" },
+      { href: "/app/reportes#desempeno", label: "Reporte de cobranza", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
     ],
   },
   {
