@@ -166,6 +166,10 @@ service cloud.firestore {
       }
       // Tareas de gestión (bandeja captura/control/cobranza/cita)
       match /mgmtTasks/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Registro ambiental de residuos (cumplimiento)
+      match /environmentalLogs/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Biblioteca de videos educativos / 3D
+      match /eduVideos/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
     }
 
     // Todo lo demás: denegado.

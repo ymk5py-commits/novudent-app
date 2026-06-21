@@ -741,6 +741,29 @@ export interface MgmtTask {
   updatedAt?: string;
 }
 
+/** Registro ambiental de residuos (cumplimiento CO — spec 8.7). */
+export interface EnvironmentalLog {
+  id: string;
+  clinicId: string;
+  date: string;
+  wasteType: "biologico" | "cortopunzante" | "quimico" | "anatomopatologico" | "comun" | "reciclable";
+  quantityKg: number;
+  responsibleId?: string;
+  collector?: string;       // empresa gestora externa
+  manifest?: string;        // n.º de manifiesto / acta de entrega
+  notes?: string;
+}
+
+/** Video educativo / 3D para mostrar al paciente (spec 5.8). */
+export interface EduVideo {
+  id: string;
+  clinicId: string;
+  title: string;
+  category: string;         // ej. Implantes, Endodoncia, Ortodoncia
+  url: string;              // YouTube/Vimeo o búsqueda
+  description?: string;
+}
+
 export interface DB {
   clinics: Clinic[];
   users: User[];
@@ -771,5 +794,7 @@ export interface DB {
   surveys: Survey[];
   surveyResponses: SurveyResponse[];
   mgmtTasks: MgmtTask[];
+  environmentalLogs: EnvironmentalLog[];
+  eduVideos: EduVideo[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }

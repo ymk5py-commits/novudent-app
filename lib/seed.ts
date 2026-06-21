@@ -415,6 +415,16 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
       { id: "mt1", clinicId: CLINIC_ID, type: "captura", patientId: "p1", title: "Presupuesto presentado sin aceptar", detail: "Plan dental integral — contactar para convertir a plan.", budgetId: "g1", status: "pendiente", createdAt: at(-4, 9) },
       { id: "mt2", clinicId: CLINIC_ID, type: "personalizada", patientId: "p6", title: "Llamar para confirmar control de ortodoncia", status: "en_proceso", assigneeId: "u3", createdAt: at(-2, 11) },
     ],
+    environmentalLogs: [
+      { id: "en1", clinicId: CLINIC_ID, date: at(-2, 18), wasteType: "cortopunzante", quantityKg: 1.2, responsibleId: "u3", collector: "EcoGestión Residuos S.A.", manifest: "ACT-2026-0457" },
+      { id: "en2", clinicId: CLINIC_ID, date: at(-2, 18), wasteType: "biologico", quantityKg: 3.5, responsibleId: "u3", collector: "EcoGestión Residuos S.A.", manifest: "ACT-2026-0457" },
+    ],
+    eduVideos: [
+      { id: "ev1", clinicId: CLINIC_ID, title: "¿Cómo funciona un implante dental?", category: "Implantes", url: "https://www.youtube.com/results?search_query=animaci%C3%B3n+implante+dental", description: "Animación del proceso de colocación de un implante y su corona." },
+      { id: "ev2", clinicId: CLINIC_ID, title: "Tratamiento de conducto (endodoncia)", category: "Endodoncia", url: "https://www.youtube.com/results?search_query=animaci%C3%B3n+tratamiento+de+conducto", description: "Cómo se realiza una endodoncia paso a paso." },
+      { id: "ev3", clinicId: CLINIC_ID, title: "Ortodoncia con brackets", category: "Ortodoncia", url: "https://www.youtube.com/results?search_query=animaci%C3%B3n+ortodoncia+brackets", description: "Movimiento dental durante el tratamiento de ortodoncia." },
+      { id: "ev4", clinicId: CLINIC_ID, title: "Carillas dentales", category: "Estética", url: "https://www.youtube.com/results?search_query=animaci%C3%B3n+carillas+dentales", description: "Proceso de colocación de carillas estéticas." },
+    ],
     signatures: [],
     crmCards: [],
     campaigns: [],
