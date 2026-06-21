@@ -685,6 +685,16 @@ export interface SterilizationCycle {
   notes?: string;
 }
 
+/** Mensaje del chat interno del equipo (recepción ↔ odontólogos ↔ admin). */
+export interface TeamMessage {
+  id: string;
+  clinicId: string;
+  userId: string;
+  userName: string;
+  text: string;
+  createdAt: string;
+}
+
 export interface DB {
   clinics: Clinic[];
   users: User[];
@@ -711,5 +721,6 @@ export interface DB {
   fiscalDocs: FiscalDoc[];
   cashSessions: CashSession[];
   sterilizationCycles: SterilizationCycle[];
+  teamMessages: TeamMessage[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }

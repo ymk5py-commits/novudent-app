@@ -385,6 +385,11 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
       { id: "st1", clinicId: CLINIC_ID, date: at(-1, 9), responsibleId: "u3", method: "autoclave", load: "Instrumental de examen (espejos, exploradores, pinzas) ×4 sets", cycleNumber: "A-1042", lot: "L-2026-118", temperature: 134, chemicalIndicator: "ok", biologicalIndicator: "ok" },
       { id: "st2", clinicId: CLINIC_ID, date: at(0, 8), responsibleId: "u3", method: "autoclave", load: "Kit de cirugía + fresas", cycleNumber: "A-1043", lot: "L-2026-119", temperature: 134, chemicalIndicator: "ok", biologicalIndicator: "pendiente" },
     ],
+    teamMessages: [
+      { id: "tm1", clinicId: CLINIC_ID, userId: "u3", userName: "Paola Asistente", text: "Llegó la paciente de las 10:30 para el control de ortodoncia 🦷", createdAt: at(0, 10) },
+      { id: "tm2", clinicId: CLINIC_ID, userId: "u2", userName: "Dra. Sofía Benítez", text: "Perfecto, hacela pasar al box 2 en 5 minutos.", createdAt: at(0, 11) },
+      { id: "tm3", clinicId: CLINIC_ID, userId: "u1", userName: "Carlos Admin", text: "Recordatorio: la reposición de guantes M llega mañana a la mañana.", createdAt: at(0, 12) },
+    ],
     signatures: [],
     crmCards: [],
     campaigns: [],

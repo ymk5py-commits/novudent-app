@@ -155,6 +155,8 @@ service cloud.firestore {
       match /cashSessions/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       // Ciclos de esterilización de instrumental (cumplimiento)
       match /sterilizationCycles/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Chat interno del equipo
+      match /teamMessages/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
     }
 
     // Todo lo demás: denegado.
