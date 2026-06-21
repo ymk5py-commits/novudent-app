@@ -407,6 +407,25 @@ export default function CrmPage() {
                     <div className="mt-auto pt-2 text-[11px] text-clinic-muted">
                       <span className="font-semibold uppercase tracking-wide">Audiencia:</span> {c.audience || "—"}
                     </div>
+                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-clinic-border pt-2">
+                      {c.sentAt ? (
+                        <span className="text-[11px] font-bold text-state-ok">✓ Enviado a {c.sentCount ?? 0} · {fmtDate(c.sentAt)}</span>
+                      ) : <span className="text-[11px] text-clinic-muted">Sin enviar</span>}
+                      {c.channel === "email" && (
+                        <button
+                          onClick={() => {
+                            const dest = db.patients.map((p) => p.email).filter(Boolean) as string[];
+                            if (dest.length === 0) { alert("No hay pacientes con email cargado."); return; }
+                            window.open(`mailto:?bcc=${encodeURIComponent(dest.join(","))}&subject=${encodeURIComponent(c.name)}&body=${encodeURIComponent(c.message)}`);
+                            store.updateCampaign({ ...c, sentAt: new Date().toISOString(), sentCount: dest.length });
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-azure-600 px-2.5 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-azure-700"
+                          title="Abre tu correo con la lista en CCO"
+                        >
+                          <Mail className="h-3.5 w-3.5" /> Enviar
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </StaggerItem>
               ))}
