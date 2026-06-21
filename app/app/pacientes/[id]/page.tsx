@@ -394,10 +394,20 @@ export default function PatientProfile() {
               {[...p.emr].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((n) => (
                 <Card key={n.id} className="p-4">
                   <div className="flex items-center justify-between gap-2">
-                    <Badge tone="info">{n.kind}</Badge>
+                    <Badge tone="info">{({ diagnostico: "Diagnóstico", tratamiento: "Tratamiento", plan: "Plan", nota: "Nota" } as Record<string, string>)[n.kind] ?? n.kind}</Badge>
                     <span className="text-[11px] text-clinic-muted">{n.authorName} · {fmtDate(n.createdAt)}</span>
                   </div>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-clinic-text">{n.text}</p>
+                  {n.soap ? (
+                    <div className="mt-2 space-y-1.5 text-sm leading-relaxed text-clinic-text">
+                      {n.soap.s && <p><span className="mr-1 font-bold text-azure-700">S</span>{n.soap.s}</p>}
+                      {n.soap.o && <p><span className="mr-1 font-bold text-azure-700">O</span>{n.soap.o}</p>}
+                      {n.soap.a && <p><span className="mr-1 font-bold text-azure-700">A</span>{n.soap.a}</p>}
+                      {n.soap.p && <p><span className="mr-1 font-bold text-azure-700">P</span>{n.soap.p}</p>}
+                    </div>
+                  ) : (
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-clinic-text">{n.text}</p>
+                  )}
+                  {n.signedBy && <div className="mt-2 border-t border-clinic-border pt-2 text-[11px] font-bold text-state-ok">✓ Firmado electrónicamente por {n.signedBy}</div>}
                 </Card>
               ))}
             </div>
@@ -581,28 +591,69 @@ function FormFill({ form, onClose, onSave }: { form: PatientForm; onClose: () =>
   );
 }
 
+const SOAP_TEMPLATES: { name: string; soap: { s: string; o: string; a: string; p: string } }[] = [
+  { name: "Control de ortodoncia", soap: { s: "Refiere buena tolerancia, sin molestias.", o: "Higiene aceptable. Aparatología sin daños, arcos en posición.", a: "Evolución favorable del tratamiento de ortodoncia.", p: "Activación / cambio de ligas. Próximo control en 4 semanas." } },
+  { name: "Urgencia por dolor", soap: { s: "Dolor espontáneo, intensidad …, evolución …", o: "Pieza … con … . Pruebas de vitalidad/percusión …", a: "Pulpitis / … en pieza …", p: "Apertura cameral / medicación / derivación a endodoncia." } },
+  { name: "Profilaxis", soap: { s: "Asintomático, consulta de control.", o: "Placa y cálculo supragingival leve, encías levemente inflamadas.", a: "Gingivitis asociada a placa.", p: "Profilaxis + tartrectomía. Refuerzo de técnica de cepillado." } },
+  { name: "Post-quirúrgico", soap: { s: "Dolor leve controlado con analgésicos.", o: "Herida en buen proceso de cicatrización, sin signos de infección.", a: "Evolución post-operatoria normal.", p: "Continuar indicaciones. Retiro de puntos en 7 días." } },
+];
+
 function NoteForm({ onClose, onSave, author }: { onClose: () => void; onSave: (n: EmrNote) => void; author: { id: string; name: string } }) {
-  const [kind, setKind] = useState<EmrNote["kind"]>("nota");
+  const [mode, setMode] = useState<"soap" | "libre">("soap");
+  const [kind, setKind] = useState<EmrNote["kind"]>("tratamiento");
   const [text, setText] = useState("");
+  const [soap, setSoap] = useState({ s: "", o: "", a: "", p: "" });
+  const pill = (on: boolean) => `rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${on ? "bg-azure-600 text-white" : "text-clinic-muted hover:text-clinic-text"}`;
+
+  const submit = (e: { preventDefault(): void }) => {
+    e.preventDefault();
+    const now = new Date().toISOString();
+    const base = { id: `n_${Date.now()}`, authorId: author.id, authorName: author.name, createdAt: now, kind, signedBy: author.name, signedAt: now };
+    if (mode === "soap") {
+      if (!soap.s && !soap.o && !soap.a && !soap.p) return;
+      const composed = [soap.s && `S: ${soap.s}`, soap.o && `O: ${soap.o}`, soap.a && `A: ${soap.a}`, soap.p && `P: ${soap.p}`].filter(Boolean).join("\n");
+      onSave({ ...base, text: composed, soap: { s: soap.s || undefined, o: soap.o || undefined, a: soap.a || undefined, p: soap.p || undefined } });
+    } else {
+      if (!text.trim()) return;
+      onSave({ ...base, text: text.trim() });
+    }
+  };
+
   return (
-    <Modal title="Nueva nota clínica" onClose={onClose}>
-      <form
-        className="space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSave({ id: `n_${Date.now()}`, authorId: author.id, authorName: author.name, createdAt: new Date().toISOString(), kind, text });
-        }}
-      >
-        <Field label="Tipo">
-          <select className={inputCls} value={kind} onChange={(e) => setKind(e.target.value as EmrNote["kind"])}>
+    <Modal title="Nueva evolución clínica" onClose={onClose} wide>
+      <form className="space-y-4" onSubmit={submit}>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 rounded-xl border border-clinic-border bg-white p-1">
+            <button type="button" onClick={() => setMode("soap")} className={pill(mode === "soap")}>SOAP</button>
+            <button type="button" onClick={() => setMode("libre")} className={pill(mode === "libre")}>Nota libre</button>
+          </div>
+          {mode === "soap" && (
+            <select onChange={(e) => { const t = SOAP_TEMPLATES.find((x) => x.name === e.target.value); if (t) setSoap({ ...t.soap }); e.currentTarget.selectedIndex = 0; }} className={`${inputCls} w-auto`} defaultValue="">
+              <option value="" disabled>Plantilla…</option>
+              {SOAP_TEMPLATES.map((t) => <option key={t.name} value={t.name}>{t.name}</option>)}
+            </select>
+          )}
+          <select className={`${inputCls} ml-auto w-auto`} value={kind} onChange={(e) => setKind(e.target.value as EmrNote["kind"])}>
             <option value="diagnostico">Diagnóstico</option>
             <option value="tratamiento">Tratamiento</option>
             <option value="plan">Plan</option>
             <option value="nota">Nota</option>
           </select>
-        </Field>
-        <Field label="Detalle"><textarea required rows={4} className={inputCls} value={text} onChange={(e) => setText(e.target.value)} placeholder="Hallazgos, piezas, indicaciones…" /></Field>
-        <div className="flex justify-end gap-2"><Btn variant="outline" onClick={onClose}>Cancelar</Btn><Btn type="submit">Guardar nota</Btn></div>
+        </div>
+
+        {mode === "soap" ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="S — Subjetivo"><textarea rows={3} className={inputCls} value={soap.s} onChange={(e) => setSoap({ ...soap, s: e.target.value })} placeholder="Lo que refiere el paciente" /></Field>
+            <Field label="O — Objetivo"><textarea rows={3} className={inputCls} value={soap.o} onChange={(e) => setSoap({ ...soap, o: e.target.value })} placeholder="Hallazgos clínicos, exámenes" /></Field>
+            <Field label="A — Análisis"><textarea rows={3} className={inputCls} value={soap.a} onChange={(e) => setSoap({ ...soap, a: e.target.value })} placeholder="Diagnóstico / impresión" /></Field>
+            <Field label="P — Plan"><textarea rows={3} className={inputCls} value={soap.p} onChange={(e) => setSoap({ ...soap, p: e.target.value })} placeholder="Tratamiento, indicaciones, próximos pasos" /></Field>
+          </div>
+        ) : (
+          <Field label="Detalle"><textarea rows={5} className={inputCls} value={text} onChange={(e) => setText(e.target.value)} placeholder="Hallazgos, piezas, indicaciones…" /></Field>
+        )}
+
+        <p className="text-[11px] text-clinic-muted">Se firma electrónicamente como <b className="text-clinic-text">{author.name}</b> al guardar.</p>
+        <div className="flex justify-end gap-2"><Btn variant="outline" onClick={onClose}>Cancelar</Btn><Btn type="submit">Firmar y guardar</Btn></div>
       </form>
     </Modal>
   );

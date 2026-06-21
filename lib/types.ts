@@ -132,6 +132,11 @@ export interface EmrNote {
   createdAt: string;
   kind: "diagnostico" | "tratamiento" | "plan" | "nota";
   text: string;
+  /** Evolución estructurada SOAP (Subjetivo/Objetivo/Análisis/Plan). */
+  soap?: { s?: string; o?: string; a?: string; p?: string };
+  /** Firma electrónica del profesional (autoría + sello temporal). */
+  signedBy?: string;
+  signedAt?: string;
 }
 
 export interface Patient {
