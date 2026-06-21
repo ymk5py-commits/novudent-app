@@ -333,6 +333,36 @@ export default function AgendaPage() {
 
           {/* Tabla del día */}
           <div className="min-w-0 flex-1 space-y-3">
+            {tab === "global" ? (
+              <div className="overflow-x-auto pb-1">
+                <div className="flex gap-3" style={{ minWidth: Math.max(1, dentists.length) * 210 }}>
+                  {dentists.map((d) => {
+                    const list = dayAll.filter((a) => a.dentistId === d.id && statusFilter.has(a.status)).sort((a, b) => a.start.localeCompare(b.start));
+                    return (
+                      <div key={d.id} className="min-w-[200px] flex-1">
+                        <div className="mb-2 flex items-center gap-2 rounded-xl bg-clinic-bg px-3 py-2">
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: d.color }} />
+                          <span className="truncate text-sm font-bold text-clinic-text">{d.name}</span>
+                          <span className="ml-auto font-mono text-xs text-clinic-muted">{list.length}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {list.length === 0 ? <p className="py-4 text-center text-xs text-clinic-muted">Sin citas</p> : list.map((a) => {
+                            const p = db.patients.find((x) => x.id === a.patientId);
+                            return (
+                              <button key={a.id} onClick={() => setViewing(a)} className="block w-full rounded-xl border border-clinic-border border-l-4 bg-white p-2.5 text-left shadow-card transition-shadow hover:shadow-pop" style={{ borderLeftColor: STATUS_DOT[a.status] }}>
+                                <div className="font-mono text-[11px] font-bold text-clinic-text">{fmtTime(a.start)}–{fmtTime(a.end)}</div>
+                                <div className="truncate text-sm font-semibold text-clinic-text">{p ? fullName(p) : "—"}</div>
+                                <div className="truncate text-[11px] font-semibold" style={{ color: STATUS_DOT[a.status] }}>{STATUS_LABEL[a.status]}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (<>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nombre del paciente en las citas de hoy…" className="w-full rounded-xl border border-clinic-border bg-white py-2.5 pl-9 pr-3 text-sm focus:border-azure-500 focus:outline-none" />
@@ -385,6 +415,7 @@ export default function AgendaPage() {
                 </table>
               </Card>
             )}
+            </>)}
           </div>
         </Reveal>
       )}
