@@ -167,6 +167,8 @@ export interface Patient {
   referencia?: string;          // cómo nos conoció
   observaciones?: string;       // observaciones (demográfico, no clínico)
   legalRepDoc?: string;         // DNI representante legal
+  emergencyContact?: string;    // contacto de emergencia (nombre + parentesco)
+  emergencyPhone?: string;      // teléfono del contacto de emergencia
   /** Foto del paciente (data URL base64, redimensionada) */
   photo?: string;
   /** Datos médicos destacados de la cabecera (estilo Dentalink) */

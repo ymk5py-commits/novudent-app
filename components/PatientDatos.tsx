@@ -21,6 +21,7 @@ export function DatosTab({ patient }: { patient: Patient }) {
     address: patient.address ?? "", activity: patient.activity ?? "", employer: patient.employer ?? "",
     landline: patient.landline ?? "", guardian: patient.guardian ?? "", referencia: patient.referencia ?? "",
     observaciones: patient.observaciones ?? "", legalRepDoc: patient.legalRepDoc ?? "",
+    emergencyContact: patient.emergencyContact ?? "", emergencyPhone: patient.emergencyPhone ?? "",
   };
   const [f, setF] = useState(orig);
   const set = (patch: Partial<typeof f>) => setF((x) => ({ ...x, ...patch }));
@@ -47,6 +48,7 @@ export function DatosTab({ patient }: { patient: Patient }) {
       employer: f.employer.trim() || undefined, landline: f.landline.trim() || undefined,
       guardian: f.guardian.trim() || undefined, referencia: f.referencia.trim() || undefined,
       observaciones: f.observaciones.trim() || undefined, legalRepDoc: f.legalRepDoc.trim() || undefined,
+      emergencyContact: f.emergencyContact.trim() || undefined, emergencyPhone: f.emergencyPhone.trim() || undefined,
     });
 
   return (
@@ -110,6 +112,8 @@ export function DatosTab({ patient }: { patient: Patient }) {
           {T("Apoderado", "guardian")}
           {T("Referencia (cómo nos conoció)", "referencia")}
           {T("DNI representante legal", "legalRepDoc")}
+          {T("Contacto de emergencia", "emergencyContact")}
+          {T("Teléfono de emergencia", "emergencyPhone", "tel")}
         </div>
         <div className="mt-3">
           <Field label="Observaciones">
