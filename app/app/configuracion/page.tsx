@@ -2,8 +2,8 @@
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useState } from "react";
-import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon } from "lucide-react";
-import { useStore, fmtGs } from "@/lib/store";
+import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon } from "lucide-react";
+import { useStore, fmtGs, fullName } from "@/lib/store";
 import { can, ROLE_LABEL } from "@/lib/rbac";
 import type { Role, User, Procedure, BotikaConfig, ConsentTemplate } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
@@ -19,11 +19,13 @@ const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> =
 };
 
 export default function ConfigPage() {
-  const { db, session, upsertProcedure, deleteProcedure, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, saveConsentTemplates } = useStore();
+  const { db, session, upsertProcedure, deleteProcedure, mergePatients, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, saveConsentTemplates } = useStore();
   const plan = useClinicPlan();
   const [addingUser, setAddingUser] = useState(false);
   const [addingProc, setAddingProc] = useState(false);
   const [editingProc, setEditingProc] = useState<Procedure | null>(null);
+  const [mergeKeep, setMergeKeep] = useState(db.patients[0]?.id ?? "");
+  const [mergeRemove, setMergeRemove] = useState("");
   const [importing, setImporting] = useState(false);
   const [convName, setConvName] = useState("");
   const [convPct, setConvPct] = useState(10);
@@ -272,6 +274,23 @@ export default function ConfigPage() {
             <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) updateClinicConfig({ logo: await resizeToDataUrl(f, { maxDim: 400 }) }); }} />
           </label>
           {clinic.config.logo && <button onClick={() => updateClinicConfig({ logo: "" })} className="text-sm font-bold text-state-err hover:underline">Quitar</button>}
+        </div>
+      </Card>
+      </Reveal>
+
+      <Reveal>
+      <Card className="p-5">
+        <div className="mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Fusión de fichas</h2></div>
+        <p className="mb-3 text-xs text-clinic-muted">Unificá dos fichas duplicadas: citas, presupuestos, pagos e historial pasan a la ficha que se mantiene; la otra se elimina.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Mantener esta ficha"><select className={inputCls} value={mergeKeep} onChange={(e) => { setMergeKeep(e.target.value); if (e.target.value === mergeRemove) setMergeRemove(""); }}>{db.patients.map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {p.document}</option>)}</select></Field>
+          <Field label="Fusionar y eliminar"><select className={inputCls} value={mergeRemove} onChange={(e) => setMergeRemove(e.target.value)}><option value="">— Elegí la ficha duplicada —</option>{db.patients.filter((p) => p.id !== mergeKeep).map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {p.document}</option>)}</select></Field>
+        </div>
+        <div className="mt-3 flex justify-end">
+          <Btn disabled={!mergeRemove || mergeRemove === mergeKeep} onClick={() => {
+            const a = db.patients.find((p) => p.id === mergeKeep); const b = db.patients.find((p) => p.id === mergeRemove);
+            if (a && b && confirm(`¿Fusionar "${fullName(b)}" dentro de "${fullName(a)}"? Esta acción no se puede deshacer.`)) { mergePatients(mergeKeep, mergeRemove); setMergeRemove(""); }
+          }}><Users className="h-4 w-4" /> Fusionar fichas</Btn>
         </div>
       </Card>
       </Reveal>

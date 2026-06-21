@@ -355,6 +355,7 @@ interface Ctx {
   addPrescription: (patientId: string, rx: Prescription) => void;
   addPatientFile: (patientId: string, f: PatientFileRec) => void;
   removePatientFile: (patientId: string, fileId: string) => void;
+  mergePatients: (keepId: string, removeId: string) => void;
   setOrtho: (patientId: string, ortho: OrthoRecord | null) => void;
   addOrthoControl: (patientId: string, c: { date: string; note: string; by: string }) => void;
   /* — Configuración — */
@@ -664,6 +665,44 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       upsertPatient: (p) => {
         persist({ ...db, patients: db.patients.some((x) => x.id === p.id) ? db.patients.map((x) => (x.id === p.id ? p : x)) : [...db.patients, p] });
         fsSave("patients", p.id, p);
+      },
+      mergePatients: (keepId, removeId) => {
+        if (keepId === removeId) return;
+        const keep = db.patients.find((p) => p.id === keepId);
+        const remove = db.patients.find((p) => p.id === removeId);
+        if (!keep || !remove) return;
+        // Reasigna patientId en todas las colecciones y re-guarda los docs cambiados.
+        const reassign = <T extends { id: string; patientId: string }>(col: string, arr: T[]): T[] =>
+          arr.map((x) => {
+            if (x.patientId !== removeId) return x;
+            const up = { ...x, patientId: keepId };
+            fsSave(col, x.id, up);
+            return up;
+          });
+        const appointments = reassign("appointments", db.appointments);
+        const billing = reassign("billing", db.billing);
+        const budgets = reassign("budgets", db.budgets);
+        const payments = reassign("payments", db.payments);
+        const signatures = reassign("signatures", db.signatures);
+        const radiographs = reassign("radiographs", db.radiographs);
+        const recoveryMonitors = reassign("recoveryMonitors", db.recoveryMonitors);
+        const crmCards = reassign("crmCards", db.crmCards);
+        const labOrders = reassign("labOrders", db.labOrders);
+        const patientNotes = reassign("patientNotes", db.patientNotes);
+        const fiscalDocs = reassign("fiscalDocs", db.fiscalDocs);
+        // Fusiona los datos embebidos en la ficha que se mantiene.
+        const merged: Patient = {
+          ...keep,
+          forms: [...keep.forms, ...remove.forms],
+          emr: [...keep.emr, ...remove.emr],
+          files: [...(keep.files ?? []), ...(remove.files ?? [])],
+          perio: [...(keep.perio ?? []), ...(remove.perio ?? [])],
+          odontogram: { ...(remove.odontogram ?? {}), ...(keep.odontogram ?? {}) },
+        };
+        const patients = db.patients.filter((p) => p.id !== removeId).map((p) => (p.id === keepId ? merged : p));
+        persist({ ...db, patients, appointments, billing, budgets, payments, signatures, radiographs, recoveryMonitors, crmCards, labOrders, patientNotes, fiscalDocs });
+        fsSave("patients", keepId, merged);
+        fsDelete("patients", removeId);
       },
       completeForm: (patientId, formId, fields, completedAt) =>
         patchPatient(patientId, (p) => {
