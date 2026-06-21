@@ -60,7 +60,7 @@ export interface User {
   commissionPct?: number;
 }
 
-export type AppointmentStatus = "confirmada" | "pendiente" | "completada" | "cancelada";
+export type AppointmentStatus = "confirmada" | "pendiente" | "completada" | "cancelada" | "ausente";
 
 export interface Appointment {
   id: string;
@@ -74,6 +74,8 @@ export interface Appointment {
   amount: number; // Importe total
   discount: number; // Descuento
   notes?: string;
+  /** Motivo de cancelación / ausencia (cuando status = cancelada | ausente) */
+  cancelReason?: string;
   /** Confirmación de citas: recordatorio WhatsApp/email ya enviado */
   reminderSent?: boolean;
   /** quién confirmó la cita (botika = automático por el bot) */

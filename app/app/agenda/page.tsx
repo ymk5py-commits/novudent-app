@@ -34,14 +34,15 @@ const STATUS_BG: Record<AppointmentStatus, string> = {
   pendiente: "bg-state-warnbg border-state-warn/30 text-state-warn",
   completada: "bg-state-infobg border-azure-300/40 text-azure-700",
   cancelada: "bg-state-errbg border-state-err/30 text-state-err line-through",
+  ausente: "bg-state-warnbg border-state-warn/30 text-state-warn",
 };
-/* Estados de cita estilo Dentalink (mapeados al modelo de 4 estados) */
-const ALL_STATUSES: AppointmentStatus[] = ["confirmada", "pendiente", "completada", "cancelada"];
+/* Estados de cita estilo Dentalink */
+const ALL_STATUSES: AppointmentStatus[] = ["confirmada", "pendiente", "completada", "cancelada", "ausente"];
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
-  confirmada: "Confirmado", pendiente: "No confirmado", completada: "Atendido", cancelada: "Cancelado",
+  confirmada: "Confirmado", pendiente: "No confirmado", completada: "Atendido", cancelada: "Cancelado", ausente: "Ausente",
 };
 const STATUS_DOT: Record<AppointmentStatus, string> = {
-  confirmada: "#0E9F6E", pendiente: "#94A3B8", completada: "#2E83F5", cancelada: "#E24B4A",
+  confirmada: "#0E9F6E", pendiente: "#94A3B8", completada: "#2E83F5", cancelada: "#E24B4A", ausente: "#F59E0B",
 };
 
 type Tab = "diaria" | "global" | "semanal" | "reprog";
@@ -131,6 +132,19 @@ export default function AgendaPage() {
   };
   const toggleStatus = (s: AppointmentStatus) =>
     setStatusFilter((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
+
+  /* Cambiar estado; cancelada/ausente piden motivo. */
+  const setEstado = (a: Appointment, s: AppointmentStatus) => {
+    let cancelReason = a.cancelReason;
+    if (s === "cancelada" || s === "ausente") {
+      const r = window.prompt(`Motivo (${STATUS_LABEL[s].toLowerCase()}):`, a.cancelReason ?? "");
+      if (r === null) return;
+      cancelReason = r.trim() || undefined;
+    } else {
+      cancelReason = undefined;
+    }
+    upsertAppointment({ ...a, status: s, cancelReason });
+  };
 
   const TABS: [Tab, string, any][] = [
     ["diaria", "Diaria", List], ["semanal", "Semanal", CalendarDays],
@@ -349,7 +363,10 @@ export default function AgendaPage() {
                             {p?.phone && <div className="mt-0.5 flex items-center gap-1 text-xs text-clinic-muted"><Phone className="h-3 w-3" /> {p.phone}</div>}
                           </td>
                           <td className="px-2 py-3 text-clinic-muted">{dent?.name ?? "—"}</td>
-                          <td className="px-2 py-3"><EstadoCell appt={a} onSet={(s) => upsertAppointment({ ...a, status: s })} /></td>
+                          <td className="px-2 py-3">
+                            <EstadoCell appt={a} onSet={(s) => setEstado(a, s)} />
+                            {(a.status === "cancelada" || a.status === "ausente") && <div className="mt-0.5 text-[11px] text-clinic-muted">{a.cancelReason || "Sin motivo"}</div>}
+                          </td>
                           <td className="px-2 py-3"><SituacionPill patientId={a.patientId} /></td>
                           <td className="relative px-2 py-3 text-right">
                             <button onClick={() => setMenuFor(menuFor === a.id ? null : a.id)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-clinic-bg" aria-label="Acciones"><MoreHorizontal className="h-4 w-4 text-clinic-muted" /></button>
@@ -606,6 +623,7 @@ function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () =>
               <option value="confirmada">Confirmada</option>
               <option value="completada">Completada</option>
               <option value="cancelada">Cancelada</option>
+              <option value="ausente">Ausente</option>
             </select>
           </Field>
           <Field label="Importe (Gs)"><input type="number" min={0} className={inputCls} value={form.amount} onChange={(e) => setForm({ ...form, amount: +e.target.value })} /></Field>

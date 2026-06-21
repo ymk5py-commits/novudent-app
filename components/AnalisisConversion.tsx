@@ -14,7 +14,7 @@ import { Reveal } from "@/components/motion";
 
 const PALETTE = ["#2E83F5", "#0E9F6E", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", "#F97316", "#64748B"];
 const AGE_ORDER = ["<14", "15-20", "21-35", "36-50", "51-65", ">65", "Sin dato"];
-const APPT_STATUS_LABEL: Record<string, string> = { confirmada: "Confirmada", pendiente: "Pendiente", completada: "Completada", cancelada: "Cancelada" };
+const APPT_STATUS_LABEL: Record<string, string> = { confirmada: "Confirmada", pendiente: "Pendiente", completada: "Completada", cancelada: "Cancelada", ausente: "Ausente" };
 
 function countBy<T>(items: T[], key: (x: T) => string): { label: string; v: number }[] {
   const m = new Map<string, number>();
