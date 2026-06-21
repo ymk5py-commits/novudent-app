@@ -12,14 +12,15 @@ const config: Config = {
           900: "#0B1D3D",
           950: "#07142C",
         },
+        // Acento cyan/teal (acercado a Dentalink, manteniendo identidad Novudent)
         azure: {
-          50: "#E9F2FF",
-          100: "#CBE0FF",
-          200: "#9AC4FF",
-          300: "#5FA1FB",
-          500: "#2E83F5",
-          600: "#1769E0",
-          700: "#1153B8",
+          50: "#E7F6F9",
+          100: "#C3E9F0",
+          200: "#93D6E2",
+          300: "#4FBED2",
+          500: "#14A6C0",
+          600: "#0E8AA3",
+          700: "#0B6B80",
         },
         // Superficie clínica clara
         clinic: {
@@ -36,8 +37,8 @@ const config: Config = {
           warnbg: "#FEF3C7",
           err: "#C81E1E",
           errbg: "#FDE8E8",
-          info: "#1769E0",
-          infobg: "#E9F2FF",
+          info: "#0E8AA3",
+          infobg: "#E7F6F9",
           hold: "#92400E",
           holdbg: "#FFEDD5",
         },

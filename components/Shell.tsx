@@ -207,8 +207,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <div className="hidden border-t border-clinic-border md:block">
           <nav className="mx-auto flex max-w-6xl items-center gap-0.5 px-3 sm:px-5">
             {nav.map((e) => e.children
-              ? <NavDropdown key={e.label} label={e.label} items={e.children} pathname={pathname} />
-              : <NavLink key={e.href} href={e.href!} label={e.label} active={isActive(e.href!)} />
+              ? <NavDropdown key={e.label} label={e.label} icon={e.icon} items={e.children} pathname={pathname} />
+              : <NavLink key={e.href} href={e.href!} label={e.label} icon={e.icon} active={isActive(e.href!)} />
             )}
           </nav>
         </div>
@@ -222,20 +222,20 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 }
 
 /* — Link de nav (nivel superior, desktop) — */
-function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
+function NavLink({ href, label, icon: Icon, active }: { href: string; label: string; icon: any; active: boolean }) {
   return (
     <a
       href={href}
-      className={`relative px-3.5 py-3 text-sm font-bold transition-colors ${active ? "text-azure-700" : "text-clinic-muted hover:text-clinic-text"}`}
+      className={`relative flex items-center gap-1.5 px-3.5 py-3 text-sm font-bold transition-colors ${active ? "text-azure-700" : "text-clinic-muted hover:text-clinic-text"}`}
     >
-      {label}
+      <Icon className="h-4 w-4" /> {label}
       {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-azure-600" />}
     </a>
   );
 }
 
 /* — Desplegable de nav (Recaudación / Administración) — */
-function NavDropdown({ label, items, pathname }: { label: string; items: NavLeaf[]; pathname: string }) {
+function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; icon: any; items: NavLeaf[]; pathname: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -249,9 +249,9 @@ function NavDropdown({ label, items, pathname }: { label: string; items: NavLeaf
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-1 px-3.5 py-3 text-sm font-bold transition-colors ${active || open ? "text-azure-700" : "text-clinic-muted hover:text-clinic-text"}`}
+        className={`flex items-center gap-1.5 px-3.5 py-3 text-sm font-bold transition-colors ${active || open ? "text-azure-700" : "text-clinic-muted hover:text-clinic-text"}`}
       >
-        {label}
+        <Icon className="h-4 w-4" /> {label}
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
         {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-azure-600" />}
       </button>

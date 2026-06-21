@@ -36,8 +36,8 @@ export function WeekBarsChart({ data, money, name }: { data: { d: string; v: num
         <BarChart data={data} margin={{ top: 8, right: 4, left: 4, bottom: 0 }} barCategoryGap="28%">
           <defs>
             <linearGradient id="nv-bar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2E83F5" />
-              <stop offset="100%" stopColor="#1769E0" />
+              <stop offset="0%" stopColor="#14A6C0" />
+              <stop offset="100%" stopColor="#0E8AA3" />
             </linearGradient>
             <linearGradient id="nv-bar-soft" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#BFDBFE" />
@@ -205,7 +205,7 @@ export function ConversionLineChart({ data }: { data: { mes: string; agendadas: 
           <YAxis axisLine={false} tickLine={false} width={28} tick={AXIS} allowDecimals={false} />
           <Tooltip content={<CardTooltip />} />
           <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, fontWeight: 700 }} />
-          <Line type="monotone" dataKey="agendadas" name="Citas agendadas" stroke="#2E83F5" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} animationDuration={900} />
+          <Line type="monotone" dataKey="agendadas" name="Citas agendadas" stroke="#14A6C0" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} animationDuration={900} />
           <Line type="monotone" dataKey="confirmadas" name="Citas confirmadas" stroke="#0E9F6E" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} animationDuration={900} />
           <Line type="monotone" dataKey="aceptados" name="Presup. aceptados" stroke="#F59E0B" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} animationDuration={900} />
         </LineChart>

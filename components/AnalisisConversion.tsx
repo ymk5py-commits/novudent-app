@@ -12,7 +12,7 @@ import { downloadCsv } from "@/lib/csv";
 import { FunnelChart, ConversionLineChart, StatusDonutChart } from "@/components/Charts";
 import { Reveal } from "@/components/motion";
 
-const PALETTE = ["#2E83F5", "#0E9F6E", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", "#F97316", "#64748B"];
+const PALETTE = ["#14A6C0", "#0E9F6E", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", "#F97316", "#64748B"];
 const AGE_ORDER = ["<14", "15-20", "21-35", "36-50", "51-65", ">65", "Sin dato"];
 const APPT_STATUS_LABEL: Record<string, string> = { confirmada: "Confirmada", pendiente: "Pendiente", completada: "Completada", cancelada: "Cancelada", ausente: "Ausente" };
 
@@ -58,7 +58,7 @@ export function AnalisisConversion() {
 
   const f = data.funnel;
   const stages = [
-    { label: "Citas agendadas", value: f.agendadas, pct: 100, color: "#2E83F5" },
+    { label: "Citas agendadas", value: f.agendadas, pct: 100, color: "#14A6C0" },
     { label: "Citas confirmadas", value: f.confirmadas, pct: f.pctConfirmadas, color: "#0E9F6E" },
     { label: "Presup. aceptados", value: f.aceptados, pct: f.pctAceptados, color: "#F59E0B" },
   ];

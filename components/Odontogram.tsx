@@ -19,7 +19,7 @@ const LOWER_TEMP = ["85", "84", "83", "82", "81", "71", "72", "73", "74", "75"];
 
 /* rojo = pendiente/patología · azul = realizado */
 const RED = "#DC2626";
-const BLUE = "#1769E0";
+const BLUE = "#0E8AA3";
 
 export const CONDITIONS: Record<ToothCondition, { label: string; group: "rojo" | "azul" | "neutro"; chip: string; dot: string }> = {
   caries:     { label: "Caries",              group: "rojo",   chip: "bg-red-100 text-red-700",     dot: "bg-red-500" },

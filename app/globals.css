@@ -9,7 +9,7 @@ html, body {
   font-feature-settings: "tnum" on;
 }
 
-::selection { background: #2e83f5; color: #fff; }
+::selection { background: #14a6c0; color: #fff; }
 
 /* Scrollbar discreto */
 ::-webkit-scrollbar { width: 9px; height: 9px; }
@@ -117,15 +117,15 @@ html, body {
 /* Malla de gradientes para el banner (profundidad sin imágenes) */
 .mesh-hero {
   background:
-    radial-gradient(120% 140% at 0% 0%, #1b3b73 0%, transparent 55%),
-    radial-gradient(90% 120% at 100% 0%, rgba(46, 131, 245, 0.55) 0%, transparent 60%),
-    radial-gradient(110% 120% at 82% 100%, rgba(14, 159, 110, 0.22) 0%, transparent 55%),
-    linear-gradient(160deg, #0f1f3d 0%, #07142c 80%);
+    radial-gradient(120% 140% at 0% 0%, #0e6b7e 0%, transparent 55%),
+    radial-gradient(90% 120% at 100% 0%, rgba(20, 166, 192, 0.6) 0%, transparent 60%),
+    radial-gradient(110% 120% at 82% 100%, rgba(14, 159, 110, 0.25) 0%, transparent 55%),
+    linear-gradient(160deg, #0c5566 0%, #073a44 80%);
 }
 .ring-glow {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.1),
-    0 24px 48px -20px rgba(46, 131, 245, 0.45);
+    0 24px 48px -20px rgba(20, 166, 192, 0.45);
 }
 
 /* Ícono con brillo superior (efecto pastilla 3D) */
