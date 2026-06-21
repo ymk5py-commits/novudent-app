@@ -41,7 +41,7 @@ function pdColor(v: number | null): string {
 }
 
 function sessionStats(s: PerioSession) {
-  let sites = 0, bop = 0, p4 = 0, p6 = 0;
+  let sites = 0, bop = 0, p4 = 0, p6 = 0, plaque = 0, worstCal = 0;
   for (const t of Object.values(s.teeth)) {
     t.pd.forEach((v, i) => {
       if (v === null || v === undefined) return;
@@ -49,11 +49,17 @@ function sessionStats(s: PerioSession) {
       if (t.bop[i]) bop++;
       if (v >= 6) p6++;
       else if (v >= 4) p4++;
+      if (t.plaque?.[i]) plaque++;
+      const rec = t.recession?.[i];
+      const cal = v + (typeof rec === "number" ? rec : 0);
+      if (cal > worstCal) worstCal = cal;
     });
   }
   return {
     sites,
     bopPct: sites ? Math.round((bop / sites) * 100) : 0,
+    plaquePct: sites ? Math.round((plaque / sites) * 100) : 0,
+    worstCal,
     p4,
     p6,
   };
@@ -120,6 +126,8 @@ export default function Periodontogram({
                   <Badge tone={st.bopPct >= 30 ? "err" : st.bopPct >= 10 ? "warn" : "ok"} tip="Sangrado al sondaje">
                     <Droplets className="mr-0.5 inline h-3 w-3" /> BOP {st.bopPct}%
                   </Badge>
+                  {st.plaquePct > 0 && <Badge tone={st.plaquePct >= 30 ? "warn" : "muted"} tip="Índice de placa">Placa {st.plaquePct}%</Badge>}
+                  {st.worstCal > 0 && <Badge tone={st.worstCal >= 5 ? "err" : "muted"} tip="Peor nivel de inserción clínica (CAL = sondaje + recesión)">CAL {st.worstCal}mm</Badge>}
                   {st.p6 > 0 && <Badge tone="err" tip="Sitios ≥6mm">{st.p6} ≥6mm</Badge>}
                   {st.p4 > 0 && <Badge tone="warn" tip="Sitios 4-5mm">{st.p4} 4-5mm</Badge>}
                   <ChevronDown className={`h-4 w-4 text-clinic-muted transition-transform ${open ? "rotate-180" : ""}`} />
@@ -150,21 +158,32 @@ function PerioTable({ teeth }: { teeth: Record<string, PerioToothRecord> }) {
         <tr className="text-[10px] uppercase tracking-wide text-clinic-muted">
           <th className="p-1 text-left">Pieza</th>
           {SITES.map((s) => <th key={s} className="p-1">{s}</th>)}
+          <th className="p-1">CAL</th>
           <th className="p-1">Mov.</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((t) => {
           const r = teeth[t];
+          let worstCal = 0;
+          r.pd.forEach((v, i) => {
+            if (v === null || v === undefined) return;
+            const rec = r.recession?.[i];
+            worstCal = Math.max(worstCal, v + (typeof rec === "number" ? rec : 0));
+          });
           return (
             <tr key={t} className="border-t border-clinic-border/60">
               <td className="p-1 text-left font-extrabold text-clinic-text">{t}</td>
-              {r.pd.map((v, i) => (
-                <td key={i} className={`p-1 ${pdColor(v)}`}>
-                  {v ?? "·"}
-                  {r.bop[i] && <span className="text-state-err">•</span>}
-                </td>
-              ))}
+              {r.pd.map((v, i) => {
+                const rec = r.recession?.[i];
+                return (
+                  <td key={i} className={`p-1 ${pdColor(v)}`}>
+                    <span>{v ?? "·"}{r.bop[i] && <span className="text-state-err">•</span>}{r.plaque?.[i] && <span className="text-amber-500">▪</span>}</span>
+                    {typeof rec === "number" && rec > 0 && <span className="ml-0.5 text-[9px] font-normal text-clinic-muted">r{rec}</span>}
+                  </td>
+                );
+              })}
+              <td className="p-1 font-bold text-clinic-text">{worstCal || "—"}</td>
               <td className="p-1">{r.mobility ?? "—"}</td>
             </tr>
           );
@@ -176,7 +195,7 @@ function PerioTable({ teeth }: { teeth: Record<string, PerioToothRecord> }) {
 
 /* ---------- editor de nueva sesión ---------- */
 
-type Draft = Record<string, { pd: (number | null)[]; bop: boolean[]; mobility?: 0 | 1 | 2 | 3 }>;
+type Draft = Record<string, { pd: (number | null)[]; bop: boolean[]; recession?: (number | null)[]; plaque?: boolean[]; mobility?: 0 | 1 | 2 | 3 }>;
 
 type VoiceState = "idle" | "recording" | "processing";
 
@@ -328,6 +347,21 @@ function PerioEditor({
       return { ...d, [tooth]: { ...cur, mobility } };
     });
   }
+  function setRecession(tooth: string, site: number, raw: string) {
+    const v = raw === "" ? null : Math.max(0, Math.min(15, parseInt(raw, 10) || 0));
+    setDraft((d) => {
+      const cur = d[tooth] ?? { pd: Array(6).fill(null), bop: Array(6).fill(false) };
+      const recession = [...(cur.recession ?? Array(6).fill(null))]; recession[site] = v;
+      return { ...d, [tooth]: { ...cur, recession } };
+    });
+  }
+  function togglePlaque(tooth: string, site: number) {
+    setDraft((d) => {
+      const cur = d[tooth] ?? { pd: Array(6).fill(null), bop: Array(6).fill(false) };
+      const plaque = [...(cur.plaque ?? Array(6).fill(false))]; plaque[site] = !plaque[site];
+      return { ...d, [tooth]: { ...cur, plaque } };
+    });
+  }
 
   const measured = useMemo(
     () => Object.entries(draft).filter(([, r]) => r.pd.some((v) => v !== null)).length,
@@ -421,7 +455,8 @@ function PerioEditor({
       )}
 
       <p className="mb-2 text-[11px] text-clinic-muted">
-        Profundidad en mm por sitio (vacío = no medido) · click en la gotita = sangrado · Mov. 0-3.
+        Por sitio: <b>arriba</b> profundidad (mm) + 🩸 sangrado · <b>abajo</b> recesión (mm) + ▪ placa.
+        El CAL (inserción clínica) se calcula como sondaje + recesión · Mov. 0-3.
       </p>
 
       <div className="overflow-x-auto">
@@ -445,23 +480,44 @@ function PerioEditor({
                   <td className={`p-1 text-left font-mono font-extrabold ${isHighlighted ? "text-azure-700" : "text-clinic-text"}`}>{t}</td>
                   {SITES.map((_, i) => (
                     <td key={i} className="p-0.5">
-                      <div className="flex items-center justify-center gap-0.5">
-                        <input
-                          type="number"
-                          min={0}
-                          max={15}
-                          value={r?.pd[i] ?? ""}
-                          onChange={(e) => setPd(t, i, e.target.value)}
-                          className={`h-8 w-10 rounded-md border border-clinic-border text-center font-mono text-xs outline-none focus:border-azure-500 ${pdColor(r?.pd[i] ?? null)}`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => toggleBop(t, i)}
-                          title="Sangrado al sondaje"
-                          className={`text-sm leading-none ${r?.bop[i] ? "opacity-100" : "opacity-20"}`}
-                        >
-                          🩸
-                        </button>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <div className="flex items-center justify-center gap-0.5">
+                          <input
+                            type="number"
+                            min={0}
+                            max={15}
+                            value={r?.pd[i] ?? ""}
+                            onChange={(e) => setPd(t, i, e.target.value)}
+                            title="Profundidad de sondaje (mm)"
+                            className={`h-8 w-10 rounded-md border border-clinic-border text-center font-mono text-xs outline-none focus:border-azure-500 ${pdColor(r?.pd[i] ?? null)}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => toggleBop(t, i)}
+                            title="Sangrado al sondaje"
+                            className={`text-sm leading-none ${r?.bop[i] ? "opacity-100" : "opacity-20"}`}
+                          >
+                            🩸
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-center gap-0.5">
+                          <input
+                            type="number"
+                            min={0}
+                            max={15}
+                            value={r?.recession?.[i] ?? ""}
+                            onChange={(e) => setRecession(t, i, e.target.value)}
+                            title="Recesión gingival (mm)"
+                            placeholder="rec"
+                            className="h-6 w-10 rounded-md border border-clinic-border/70 text-center font-mono text-[10px] text-clinic-muted outline-none placeholder:text-clinic-muted/50 focus:border-azure-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => togglePlaque(t, i)}
+                            title="Placa bacteriana"
+                            className={`h-4 w-4 rounded-sm border transition-colors ${r?.plaque?.[i] ? "border-amber-500 bg-amber-400" : "border-clinic-border bg-white"}`}
+                          />
+                        </div>
                       </div>
                     </td>
                   ))}

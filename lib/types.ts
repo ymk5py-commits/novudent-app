@@ -203,8 +203,10 @@ export interface Patient {
  *  sondaje por sitio y movilidad (escala Miller 0-3). null = sitio no
  *  medido. */
 export interface PerioToothRecord {
-  pd: (number | null)[];   // largo 6
-  bop: boolean[];          // largo 6
+  pd: (number | null)[];          // largo 6 — profundidad de sondaje (mm)
+  bop: boolean[];                 // largo 6 — sangrado al sondaje
+  recession?: (number | null)[];  // largo 6 — recesión gingival (mm)
+  plaque?: boolean[];             // largo 6 — placa bacteriana por sitio
   mobility?: 0 | 1 | 2 | 3;
 }
 
