@@ -61,6 +61,8 @@ export interface User {
   phone?: string;
   /** % de comisión sobre producción cobrada (cálculo de pago a odontólogos) */
   commissionPct?: number;
+  /** Especialidad del profesional (Ortodoncia, Endodoncia, …) */
+  specialty?: string;
 }
 
 export type AppointmentStatus = "confirmada" | "en_atencion" | "pendiente" | "completada" | "cancelada" | "ausente";

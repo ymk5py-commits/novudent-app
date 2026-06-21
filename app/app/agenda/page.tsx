@@ -4,7 +4,7 @@
  *  Semanal (grilla 24h) · Reprogramación. Modales VER/Lista de espera/Crear-editar. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ChevronLeft, ChevronRight, CalendarDays, List, MoreHorizontal, Eye, Pencil, Trash2, Plus, User,
+  ChevronLeft, ChevronRight, CalendarDays, CalendarRange, List, MoreHorizontal, Eye, Pencil, Trash2, Plus, User,
   MessageCircle, Hourglass, BellRing, Users, AlertTriangle, Printer, Search, Phone, ChevronDown,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } from "@/lib/store";
@@ -46,7 +46,68 @@ const STATUS_DOT: Record<AppointmentStatus, string> = {
   confirmada: "#0E9F6E", en_atencion: "#14A6C0", pendiente: "#94A3B8", completada: "#2E83F5", cancelada: "#E24B4A", ausente: "#F59E0B",
 };
 
-type Tab = "diaria" | "global" | "semanal" | "reprog";
+type Tab = "diaria" | "global" | "semanal" | "mensual" | "reprog";
+
+/* ===== Vista MENSUAL (calendario del mes) ===== */
+function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (d: Date) => void; setTab: (t: Tab) => void; appointments: Appointment[] }) {
+  const y = day.getFullYear(), m = day.getMonth();
+  const first = new Date(y, m, 1);
+  const startWeekday = (first.getDay() + 6) % 7; // lunes = 0
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const todayKey = dayKeyOf(new Date());
+  const byDay = useMemo(() => {
+    const map = new Map<string, Appointment[]>();
+    appointments.forEach((a) => { const k = dayKeyOf(a.start); const arr = map.get(k) ?? []; arr.push(a); map.set(k, arr); });
+    map.forEach((arr) => arr.sort((a, b) => a.start.localeCompare(b.start)));
+    return map;
+  }, [appointments]);
+  const cells: (Date | null)[] = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(y, m, d));
+  while (cells.length % 7 !== 0) cells.push(null);
+  const monthLabel = first.toLocaleDateString("es-PY", { month: "long", year: "numeric" });
+  const WD = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+  return (
+    <Reveal>
+      <div className="mb-2 flex items-center gap-2">
+        <button onClick={() => setDay(new Date(y, m - 1, 1))} className="grid h-9 w-9 place-items-center rounded-xl border border-clinic-border bg-white hover:bg-clinic-bg" aria-label="Mes anterior"><ChevronLeft className="h-4 w-4" /></button>
+        <button onClick={() => setDay(new Date())} className="rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-azure-600 hover:bg-clinic-bg">Este mes</button>
+        <button onClick={() => setDay(new Date(y, m + 1, 1))} className="grid h-9 w-9 place-items-center rounded-xl border border-clinic-border bg-white hover:bg-clinic-bg" aria-label="Mes siguiente"><ChevronRight className="h-4 w-4" /></button>
+        <span className="ml-1 text-sm font-bold capitalize text-clinic-text">{monthLabel}</span>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-clinic-border bg-white">
+        <div className="grid grid-cols-7 border-b border-clinic-border bg-clinic-bg/50 text-center text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+          {WD.map((w) => <div key={w} className="py-2">{w}</div>)}
+        </div>
+        <div className="grid grid-cols-7">
+          {cells.map((c, i) => {
+            if (!c) return <div key={i} className="min-h-[88px] border-b border-r border-clinic-border bg-clinic-bg/20" />;
+            const k = dayKeyOf(c);
+            const appts = byDay.get(k) ?? [];
+            const isToday = k === todayKey;
+            return (
+              <button key={i} onClick={() => { setDay(c); setTab("diaria"); }} className={`min-h-[88px] border-b border-r border-clinic-border p-1.5 text-left align-top transition-colors hover:bg-azure-50 ${isToday ? "bg-azure-50/60" : ""}`}>
+                <div className={`mb-1 inline-grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${isToday ? "bg-azure-600 text-white" : "text-clinic-text"}`}>{c.getDate()}</div>
+                {appts.length > 0 && (
+                  <div className="space-y-0.5">
+                    {appts.slice(0, 3).map((a) => (
+                      <div key={a.id} className="flex items-center gap-1 truncate text-[10px] text-clinic-muted">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: STATUS_DOT[a.status] }} />
+                        <span className="truncate">{a.start.slice(11, 16)} {a.title || "Cita"}</span>
+                      </div>
+                    ))}
+                    {appts.length > 3 && <div className="text-[10px] font-bold text-azure-700">+{appts.length - 3} más</div>}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </Reveal>
+  );
+}
 
 export default function AgendaPage() {
   const { db, session, upsertAppointment, deleteAppointment, setOnboarding, removeWaitlist, addOutboxTask } = useStore();
@@ -103,8 +164,14 @@ export default function AgendaPage() {
     [db.appointments]
   );
 
+  /* — Mensual: citas del mes de `day` — */
+  const monthAppts = useMemo(() => {
+    const y = day.getFullYear(), m = day.getMonth();
+    return db.appointments.filter((a) => { const t = new Date(a.start); return t.getFullYear() === y && t.getMonth() === m; });
+  }, [db.appointments, day]);
+
   const porValidar = dayAllPro.filter((a) => a.source === "online" && a.status === "pendiente").length;
-  const headerCount = tab === "semanal" ? weekAppointments.length : tab === "reprog" ? reprog.length : dayAppts.length;
+  const headerCount = tab === "semanal" ? weekAppointments.length : tab === "mensual" ? monthAppts.length : tab === "reprog" ? reprog.length : dayAppts.length;
 
   function newAppt(base: Date) {
     const start = new Date(base);
@@ -148,7 +215,7 @@ export default function AgendaPage() {
   };
 
   const TABS: [Tab, string, any][] = [
-    ["diaria", "Diaria", List], ["semanal", "Semanal", CalendarDays],
+    ["diaria", "Diaria", List], ["semanal", "Semanal", CalendarDays], ["mensual", "Mensual", CalendarRange],
     ["global", "Diaria global", Users], ["reprog", "Reprogramación", AlertTriangle],
   ];
 
@@ -253,6 +320,8 @@ export default function AgendaPage() {
             </div>
           </Card>
         </Reveal>
+      ) : tab === "mensual" ? (
+        <MonthView day={day} setDay={setDay} setTab={setTab} appointments={monthAppts} />
       ) : tab === "reprog" ? (
         /* ===== REPROGRAMACIÓN (canceladas) ===== */
         <Reveal>

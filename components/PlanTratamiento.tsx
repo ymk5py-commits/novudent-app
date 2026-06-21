@@ -164,7 +164,7 @@ function PlanDetalle({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[330px_1fr]">
-        <PlanFinanciero budget={budget} payments={db.payments} citas={citas} professional={professional?.name} hasIA={hasIA} patient={patient} />
+        <PlanFinanciero budget={budget} payments={db.payments} citas={citas} professional={professional ? professional.name + (professional.specialty ? ` · ${professional.specialty}` : "") : undefined} hasIA={hasIA} patient={patient} />
         <PlanClinico key={budget.id} budget={budget} patient={patient} isOrtho={isOrtho} />
       </div>
 
