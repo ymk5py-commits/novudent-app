@@ -5,7 +5,9 @@ export type Role = "admin" | "dentist" | "assistant";
 /** Convenio empresarial / aseguradora con descuento pactado */
 export interface Convenio {
   name: string;
-  discountPct: number;
+  discountPct: number;   // % de cobertura/descuento
+  ruc?: string;
+  phone?: string;
 }
 
 /** Configuración de campos del paciente (paridad Dentalink): por contexto, presente/requerido. */

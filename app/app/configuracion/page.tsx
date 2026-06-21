@@ -36,6 +36,8 @@ export default function ConfigPage() {
   const [importing, setImporting] = useState(false);
   const [convName, setConvName] = useState("");
   const [convPct, setConvPct] = useState(10);
+  const [convRuc, setConvRuc] = useState("");
+  const [convPhone, setConvPhone] = useState("");
   const [template, setTemplate] = useState<string | null>(null);
 
   if (!session) return null;
@@ -116,7 +118,7 @@ export default function ConfigPage() {
         <p className="mb-3 text-xs text-clinic-muted">Acuerdos con empresas/aseguradoras — el descuento se aplica automáticamente en los presupuestos.</p>
         <div className="flex flex-wrap gap-2">
           {(clinic.config.convenios ?? []).map((c) => (
-            <span key={c.name} className="inline-flex items-center gap-2 rounded-full border border-clinic-border bg-clinic-bg px-3 py-1.5 text-xs font-bold text-clinic-text">
+            <span key={c.name} data-tip={[c.ruc && `RUC ${c.ruc}`, c.phone].filter(Boolean).join(" · ") || undefined} className="inline-flex items-center gap-2 rounded-full border border-clinic-border bg-clinic-bg px-3 py-1.5 text-xs font-bold text-clinic-text">
               {c.name} <span className="font-mono text-azure-700">{c.discountPct}%</span>
               <button
                 onClick={() => updateClinicConfig({ convenios: (clinic.config.convenios ?? []).filter((x) => x.name !== c.name) })}
@@ -130,13 +132,15 @@ export default function ConfigPage() {
         </div>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <input className={inputCls + " !w-48"} placeholder="Nombre (ej: IPS)" value={convName} onChange={(e) => setConvName(e.target.value)} />
-          <input type="number" min={0} max={100} className={inputCls + " !w-24"} value={convPct} onChange={(e) => setConvPct(Number(e.target.value))} title="% de descuento" />
+          <input type="number" min={0} max={100} className={inputCls + " !w-24"} value={convPct} onChange={(e) => setConvPct(Number(e.target.value))} title="% de cobertura/descuento" />
+          <input className={inputCls + " !w-32"} placeholder="RUC (opcional)" value={convRuc} onChange={(e) => setConvRuc(e.target.value)} />
+          <input className={inputCls + " !w-36"} placeholder="Teléfono (opcional)" value={convPhone} onChange={(e) => setConvPhone(e.target.value)} />
           <Btn
             variant="outline"
             disabled={!convName.trim()}
             onClick={() => {
-              updateClinicConfig({ convenios: [...(clinic.config.convenios ?? []).filter((x) => x.name !== convName.trim()), { name: convName.trim(), discountPct: convPct }] });
-              setConvName("");
+              updateClinicConfig({ convenios: [...(clinic.config.convenios ?? []).filter((x) => x.name !== convName.trim()), { name: convName.trim(), discountPct: convPct, ruc: convRuc.trim() || undefined, phone: convPhone.trim() || undefined }] });
+              setConvName(""); setConvRuc(""); setConvPhone("");
             }}
           >
             <Plus className="h-3.5 w-3.5" /> Agregar convenio
