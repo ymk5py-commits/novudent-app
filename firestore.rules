@@ -153,6 +153,8 @@ service cloud.firestore {
       match /fiscalDocs/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       // Sesiones de caja: apertura/cierre con arqueo
       match /cashSessions/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Ciclos de esterilización de instrumental (cumplimiento)
+      match /sterilizationCycles/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
     }
 
     // Todo lo demás: denegado.

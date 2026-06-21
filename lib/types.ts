@@ -667,6 +667,22 @@ export interface CashSession {
   status: CashSessionStatus;
 }
 
+/** Ciclo de esterilización de instrumental (cumplimiento — spec 8.7). */
+export interface SterilizationCycle {
+  id: string;
+  clinicId: string;
+  date: string;                 // fecha/hora del ciclo (ISO)
+  responsibleId?: string;       // usuario responsable
+  method: "autoclave" | "calor_seco" | "quimico";
+  load: string;                 // descripción del instrumental / carga
+  cycleNumber?: string;         // n.º de ciclo del equipo
+  lot?: string;                 // lote del paquete
+  temperature?: number;         // °C
+  chemicalIndicator?: "ok" | "fail";                 // indicador químico
+  biologicalIndicator?: "ok" | "fail" | "pendiente"; // indicador biológico (espora)
+  notes?: string;
+}
+
 export interface DB {
   clinics: Clinic[];
   users: User[];
@@ -692,5 +708,6 @@ export interface DB {
   patientNotes: PatientNote[];
   fiscalDocs: FiscalDoc[];
   cashSessions: CashSession[];
+  sterilizationCycles: SterilizationCycle[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
 }

@@ -27,7 +27,7 @@ async function ensureAuth() {
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord,
   Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
-  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession,
+  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle,
   CrmCard, Campaign, LabOrder, Settlement, Box,
 } from "./types";
 import { buildSeed } from "./seed";
@@ -86,6 +86,7 @@ async function seedFirestore(seed: DB) {
   for (const n of seed.patientNotes) batch.set(doc(fsdb, "clinics", CLINIC_ID, "patientNotes", n.id), clean(n));
   for (const d of seed.fiscalDocs) batch.set(doc(fsdb, "clinics", CLINIC_ID, "fiscalDocs", d.id), clean(d));
   for (const cs of seed.cashSessions) batch.set(doc(fsdb, "clinics", CLINIC_ID, "cashSessions", cs.id), clean(cs));
+  for (const sc of seed.sterilizationCycles) batch.set(doc(fsdb, "clinics", CLINIC_ID, "sterilizationCycles", sc.id), clean(sc));
   await batch.commit();
 }
 
@@ -101,10 +102,10 @@ async function loadFirestore(): Promise<DB> {
   }
   const meta = clinicSnap.data() as any;
   const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
-    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"),
+    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"), col("sterilizationCycles"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -131,6 +132,7 @@ async function loadFirestore(): Promise<DB> {
     patientNotes: patientNotes.docs.map((d) => d.data() as PatientNote),
     fiscalDocs: fiscalDocs.docs.map((d) => d.data() as FiscalDoc),
     cashSessions: cashSessions.docs.map((d) => d.data() as CashSession),
+    sterilizationCycles: sterilizationCycles.docs.map((d) => d.data() as SterilizationCycle),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
   };
   ACTIVE_CURRENCY = (db.clinics[0]?.config?.currency as CurrencyCode) ?? DEFAULT_CURRENCY;
@@ -388,6 +390,10 @@ interface Ctx {
   voidPayment: (id: string, by: string) => void;
   openCashSession: (s: CashSession) => void;
   closeCashSession: (id: string, countedCash: number, note: string) => void;
+  /* — Esterilización (cumplimiento) — */
+  addSterilizationCycle: (c: SterilizationCycle) => void;
+  updateSterilizationCycle: (c: SterilizationCycle) => void;
+  deleteSterilizationCycle: (id: string) => void;
   /* — Firma electrónica / consentimientos — */
   addSignature: (s: SignatureDoc) => void;
   updateSignature: (s: SignatureDoc) => void;
@@ -924,6 +930,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const up: CashSession = { ...s, status: "cerrada", closedAt: new Date().toISOString(), countedCash, note: note || undefined };
         persist({ ...db, cashSessions: db.cashSessions.map((x) => (x.id === id ? up : x)) });
         fsSave("cashSessions", id, up);
+      },
+      addSterilizationCycle: (c) => {
+        persist({ ...db, sterilizationCycles: [c, ...db.sterilizationCycles] });
+        fsSave("sterilizationCycles", c.id, c);
+      },
+      updateSterilizationCycle: (c) => {
+        persist({ ...db, sterilizationCycles: db.sterilizationCycles.map((x) => (x.id === c.id ? c : x)) });
+        fsSave("sterilizationCycles", c.id, c);
+      },
+      deleteSterilizationCycle: (id) => {
+        persist({ ...db, sterilizationCycles: db.sterilizationCycles.filter((x) => x.id !== id) });
+        fsDelete("sterilizationCycles", id);
       },
       addRadiograph: (r: RadiographRec) => {
         persist({ ...db, radiographs: [r, ...db.radiographs] });

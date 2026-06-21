@@ -381,6 +381,10 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
       { id: "cs_today", clinicId: CLINIC_ID, userId: "u1", userName: "Carlos Admin", openedAt: at(0, 8), openingBalance: 200000, status: "abierta" },
       { id: "cs_prev", clinicId: CLINIC_ID, userId: "u3", userName: "Paola Asistente", openedAt: at(-1, 8), closedAt: at(-1, 19), openingBalance: 200000, countedCash: 980000, status: "cerrada" },
     ],
+    sterilizationCycles: [
+      { id: "st1", clinicId: CLINIC_ID, date: at(-1, 9), responsibleId: "u3", method: "autoclave", load: "Instrumental de examen (espejos, exploradores, pinzas) ×4 sets", cycleNumber: "A-1042", lot: "L-2026-118", temperature: 134, chemicalIndicator: "ok", biologicalIndicator: "ok" },
+      { id: "st2", clinicId: CLINIC_ID, date: at(0, 8), responsibleId: "u3", method: "autoclave", load: "Kit de cirugía + fresas", cycleNumber: "A-1043", lot: "L-2026-119", temperature: 134, chemicalIndicator: "ok", biologicalIndicator: "pendiente" },
+    ],
     signatures: [],
     crmCards: [],
     campaigns: [],
