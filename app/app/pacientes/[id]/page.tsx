@@ -7,7 +7,7 @@ import {
   FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2, Smile,
   Pill, FolderOpen, Activity, ScanLine, FileSignature, Camera, AlertTriangle, HeartPulse, User, Wallet, Layers, MessageSquare, CheckSquare, Mail,
 } from "lucide-react";
-import { useStore, fmtGs, fmtTime, fullName } from "@/lib/store";
+import { useStore, fmtGs, fmtTime, fmtDate, fullName } from "@/lib/store";
 import { recordTotal } from "@/lib/billing";
 import { resizeToDataUrl } from "@/lib/image";
 import { can } from "@/lib/rbac";
@@ -31,7 +31,7 @@ import { Reveal } from "@/components/motion";
 
 type SubTab =
   | "datos" | "citas" | "comentarios" | "tareas" | "emails" | "formularios" | "archivos" | "consentimientos"
-  | "resumen" | "odontograma" | "periodoncia" | "historial" | "radiografias" | "recetas"
+  | "resumen" | "evoluciones" | "antecedentes" | "odontograma" | "periodoncia" | "historial" | "radiografias" | "recetas"
   | "planes" | "facturacion" | "recibir-pago";
 
 type GroupDef = { key: string; label: string; tabs: { key: SubTab; label: string; icon: any }[] };
@@ -49,6 +49,8 @@ const GROUPS: GroupDef[] = [
   ] },
   { key: "ficha-clinica", label: "Ficha clínica", tabs: [
     { key: "resumen", label: "Resumen", icon: Stethoscope },
+    { key: "evoluciones", label: "Evoluciones", icon: ClipboardList },
+    { key: "antecedentes", label: "Antecedentes médicos", icon: HeartPulse },
     { key: "odontograma", label: "Odontograma", icon: Smile },
     { key: "periodoncia", label: "Periodoncia", icon: Activity },
     { key: "historial", label: "Historial", icon: ClipboardList },
@@ -377,6 +379,57 @@ export default function PatientProfile() {
       {tab === "planes" && <Reveal><PlanTratamiento patient={p} /></Reveal>}
       {tab === "recibir-pago" && <Reveal><RecibirPagoTab patient={p} /></Reveal>}
       {tab === "recetas" && <Reveal><RxTab patient={p} /></Reveal>}
+
+      {/* ===== EVOLUCIONES ===== */}
+      {tab === "evoluciones" && (
+        <Reveal>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-extrabold text-clinic-text">Evoluciones clínicas</h2>
+            {canWriteEmr && <Btn onClick={() => setWritingNote(true)}><Plus className="h-4 w-4" /> Nueva evolución</Btn>}
+          </div>
+          {p.emr.length === 0 ? (
+            <Empty title="Sin evoluciones" desc="Registrá la evolución clínica de cada sesión del paciente." />
+          ) : (
+            <div className="space-y-3">
+              {[...p.emr].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((n) => (
+                <Card key={n.id} className="p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge tone="info">{n.kind}</Badge>
+                    <span className="text-[11px] text-clinic-muted">{n.authorName} · {fmtDate(n.createdAt)}</span>
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-clinic-text">{n.text}</p>
+                </Card>
+              ))}
+            </div>
+          )}
+        </Reveal>
+      )}
+
+      {/* ===== ANTECEDENTES MÉDICOS ===== */}
+      {tab === "antecedentes" && (
+        <Reveal>
+          <Card className="p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-extrabold text-clinic-text">Antecedentes médicos</h2>
+              {canEditPatient && <Btn variant="outline" onClick={() => setMedOpen(true)}><Pencil className="h-3.5 w-3.5" /> Editar</Btn>}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border border-clinic-border p-4">
+                <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-state-warn"><AlertTriangle className="h-3.5 w-3.5" /> Alertas médicas</div>
+                <p className="mt-1.5 whitespace-pre-wrap text-sm text-clinic-text">{p.medicalAlerts || <span className="text-clinic-muted">Sin información</span>}</p>
+              </div>
+              <div className="rounded-xl border border-clinic-border p-4">
+                <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-state-err"><HeartPulse className="h-3.5 w-3.5" /> Enfermedades</div>
+                <p className="mt-1.5 whitespace-pre-wrap text-sm text-clinic-text">{p.conditions || <span className="text-clinic-muted">Sin información</span>}</p>
+              </div>
+              <div className="rounded-xl border border-clinic-border p-4">
+                <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-azure-700"><Pill className="h-3.5 w-3.5" /> Medicamentos</div>
+                <p className="mt-1.5 whitespace-pre-wrap text-sm text-clinic-text">{p.medications || <span className="text-clinic-muted">Sin información</span>}</p>
+              </div>
+            </div>
+          </Card>
+        </Reveal>
+      )}
       {tab === "archivos" && <Reveal><FilesTab patient={p} /></Reveal>}
       {tab === "radiografias" && <Reveal><RadiografiasTab patient={p} /></Reveal>}
       {tab === "consentimientos" && <Reveal><ConsentimientosTab patient={p} /></Reveal>}
