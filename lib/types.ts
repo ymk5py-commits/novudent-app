@@ -294,6 +294,7 @@ export interface Budget {
   dentistId: string;
   createdAt: string;
   status: BudgetStatus;
+  name?: string; // Nombre del plan (ej: "Ortodoncia fija")
   items: BudgetItem[];
   /** Tipo de plan (Dentalink): general u ortodoncia. El seguimiento clínico de
    *  ortodoncia vive en `patient.ortho` (un tratamiento de ortodoncia por paciente). */

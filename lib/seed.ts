@@ -114,7 +114,7 @@ const patients: Patient[] = [
 /* ===== Presupuestos demo (plan de tratamiento → captura → cobro) ===== */
 const budgets: Budget[] = [
   {
-    id: "g1", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", createdAt: at(-5, 11), status: "presentado",
+    id: "g1", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", createdAt: at(-5, 11), status: "presentado", name: "Plan dental integral",
     items: [
       { id: "gi1", cpt: "D2330", description: "Resina compuesta — 1 superficie", tooth: "16", price: 420000, status: "pendiente", section: "Restauraciones" },
       { id: "gi2", cpt: "D2330", description: "Resina compuesta — 1 superficie", tooth: "24", price: 420000, status: "pendiente", section: "Restauraciones" },
@@ -128,7 +128,7 @@ const budgets: Budget[] = [
     ],
   },
   {
-    id: "g2", clinicId: CLINIC_ID, patientId: "p6", dentistId: "u2", createdAt: at(-30, 10), status: "aceptado",
+    id: "g2", clinicId: CLINIC_ID, patientId: "p6", dentistId: "u2", createdAt: at(-30, 10), status: "aceptado", name: "Ortodoncia fija superior e inferior",
     planType: "ortodoncia",
     items: [{ id: "gi4", cpt: "D8080", description: "Ortodoncia integral (adolescente/adulto)", price: 4500000, status: "pendiente" }],
     installments: 12,
@@ -141,7 +141,7 @@ const budgets: Budget[] = [
     ],
   },
   {
-    id: "g3", clinicId: CLINIC_ID, patientId: "p4", dentistId: "u2", createdAt: at(-10, 9), status: "completado",
+    id: "g3", clinicId: CLINIC_ID, patientId: "p4", dentistId: "u2", createdAt: at(-10, 9), status: "completado", name: "Exodoncia y control",
     items: [
       { id: "gi5", cpt: "D7140", description: "Exodoncia simple", tooth: "28", price: 600000, status: "realizado", doneAt: at(-1, 10), doneBy: "Dra. Sofía Benítez" },
       { id: "gi6", cpt: "D0120", description: "Evaluación oral periódica", price: 150000, status: "realizado", doneAt: at(-10, 9), doneBy: "Dra. Sofía Benítez" },
@@ -153,7 +153,7 @@ const budgets: Budget[] = [
     ],
   },
   {
-    id: "g4", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", createdAt: at(-1, 12), status: "borrador",
+    id: "g4", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", createdAt: at(-1, 12), status: "borrador", name: "Blanqueamiento dental",
     items: [
       { id: "gi7", cpt: "D9972", description: "Blanqueamiento dental (arcada)", tooth: undefined, price: 900000, status: "pendiente" },
       { id: "gi8", cpt: "D9972", description: "Blanqueamiento dental (arcada)", price: 900000, status: "pendiente" },
