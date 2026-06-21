@@ -2,7 +2,7 @@
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useState } from "react";
-import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature } from "lucide-react";
 import { useStore, fmtGs } from "@/lib/store";
 import { can, ROLE_LABEL } from "@/lib/rbac";
 import type { Role, User, Procedure, BotikaConfig, ConsentTemplate } from "@/lib/types";
@@ -18,10 +18,11 @@ const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> =
 };
 
 export default function ConfigPage() {
-  const { db, session, upsertProcedure, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, saveConsentTemplates } = useStore();
+  const { db, session, upsertProcedure, deleteProcedure, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, saveConsentTemplates } = useStore();
   const plan = useClinicPlan();
   const [addingUser, setAddingUser] = useState(false);
   const [addingProc, setAddingProc] = useState(false);
+  const [editingProc, setEditingProc] = useState<Procedure | null>(null);
   const [importing, setImporting] = useState(false);
   const [convName, setConvName] = useState("");
   const [convPct, setConvPct] = useState(10);
@@ -270,15 +271,21 @@ export default function ConfigPage() {
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
-                <th className="py-2 pr-3">Código</th><th className="py-2 pr-3">Descripción</th><th className="py-2 text-right">Arancel</th>
+                <th className="py-2 pr-3">Código</th><th className="py-2 pr-3">Descripción</th><th className="py-2 text-right">Arancel</th><th className="py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-clinic-border">
               {db.procedures.map((p) => (
-                <tr key={p.cpt}>
+                <tr key={p.cpt} className="hover:bg-clinic-bg/50">
                   <td className="py-2.5 pr-3 font-mono font-bold text-clinic-text">{p.cpt}</td>
                   <td className="py-2.5 pr-3">{p.description}</td>
                   <td className="py-2.5 text-right font-mono">{fmtGs(p.price)}</td>
+                  <td className="py-2.5 pl-2 text-right">
+                    <span className="flex items-center justify-end gap-1">
+                      <button onClick={() => setEditingProc(p)} title="Editar servicio" className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-azure-50 hover:text-azure-700"><Pencil className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => { if (confirm(`¿Eliminar el servicio ${p.cpt} — ${p.description}?`)) deleteProcedure(p.cpt); }} title="Eliminar servicio" className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -341,6 +348,13 @@ export default function ConfigPage() {
         <NewProc
           onClose={() => setAddingProc(false)}
           onSave={(p) => { upsertProcedure(p); setOnboarding("servicesDefined", true); setAddingProc(false); }}
+        />
+      )}
+      {editingProc && (
+        <NewProc
+          proc={editingProc}
+          onClose={() => setEditingProc(null)}
+          onSave={(p) => { upsertProcedure(p); setEditingProc(null); }}
         />
       )}
       {importing && <DentalinkImport onClose={() => setImporting(false)} />}
@@ -479,18 +493,19 @@ function ConsentTemplatesCard({ templates, onSave }: { templates: ConsentTemplat
   );
 }
 
-function NewProc({ onClose, onSave }: { onClose: () => void; onSave: (p: Procedure) => void }) {
-  const [f, setF] = useState({ cpt: "", description: "", price: 0 });
+function NewProc({ proc, onClose, onSave }: { proc?: Procedure; onClose: () => void; onSave: (p: Procedure) => void }) {
+  const isEdit = !!proc;
+  const [f, setF] = useState<Procedure>(proc ?? { cpt: "", description: "", price: 0, defaultDx: [] });
   return (
-    <Modal title="Agregar servicio" onClose={onClose}>
+    <Modal title={isEdit ? "Editar servicio" : "Agregar servicio"} onClose={onClose}>
       <form
         className="space-y-4"
-        onSubmit={(e) => { e.preventDefault(); onSave({ cpt: f.cpt.toUpperCase(), description: f.description, price: f.price, defaultDx: [] }); }}
+        onSubmit={(e) => { e.preventDefault(); onSave({ ...f, cpt: f.cpt.toUpperCase() }); }}
       >
-        <Field label="Código (CPT/CDT)"><input required className={inputCls} value={f.cpt} onChange={(e) => setF({ ...f, cpt: e.target.value })} placeholder="D2330" /></Field>
+        <Field label="Código (CPT/CDT)"><input required disabled={isEdit} className={inputCls} value={f.cpt} onChange={(e) => setF({ ...f, cpt: e.target.value })} placeholder="D2330" /></Field>
         <Field label="Descripción"><input required className={inputCls} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
         <Field label="Arancel (Gs)"><input type="number" min={0} required className={inputCls} value={f.price} onChange={(e) => setF({ ...f, price: +e.target.value })} /></Field>
-        <div className="flex justify-end gap-2"><Btn variant="outline" onClick={onClose}>Cancelar</Btn><Btn type="submit">Crear servicio</Btn></div>
+        <div className="flex justify-end gap-2"><Btn variant="outline" onClick={onClose}>Cancelar</Btn><Btn type="submit">{isEdit ? "Guardar" : "Crear servicio"}</Btn></div>
       </form>
     </Modal>
   );

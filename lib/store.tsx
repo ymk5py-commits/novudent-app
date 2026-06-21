@@ -332,6 +332,7 @@ interface Ctx {
   toggleFollowUp: (id: string) => void;
   upsertUser: (u: User) => void;
   upsertProcedure: (p: Procedure) => void;
+  deleteProcedure: (cpt: string) => void;
   setOnboarding: (k: keyof DB["onboarding"], v: boolean) => void;
   /* — Presupuestos — */
   upsertBudget: (b: Budget) => void;
@@ -712,6 +713,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       upsertProcedure: (p) => {
         persist({ ...db, procedures: db.procedures.some((x) => x.cpt === p.cpt) ? db.procedures.map((x) => (x.cpt === p.cpt ? p : x)) : [...db.procedures, p] });
         fsSave("procedures", p.cpt, p);
+      },
+      deleteProcedure: (cpt) => {
+        persist({ ...db, procedures: db.procedures.filter((x) => x.cpt !== cpt) });
+        fsDelete("procedures", cpt);
       },
       setOnboarding: (k, v) => {
         const next = { ...db, onboarding: { ...db.onboarding, [k]: v } };
