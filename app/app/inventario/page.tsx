@@ -6,6 +6,7 @@ import { ShieldAlert, Plus, PackagePlus, PackageMinus, Pencil, AlertTriangle, Pa
 import { useStore, fmtGs, fmtDate } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import type { StockItem, StockMove } from "@/lib/types";
+import { stockLevel } from "@/lib/inventory";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
@@ -29,12 +30,6 @@ export default function InventoryPage() {
     );
   }
 
-  const stockLevel = (s: StockItem): "critico" | "bajo" | "ok" | "exceso" => {
-    if (s.stock <= s.minStock) return "critico";
-    if (s.maxStock != null && s.stock > s.maxStock) return "exceso";
-    if (s.optimalStock != null && s.stock < s.optimalStock) return "bajo";
-    return "ok";
-  };
   const LEVEL = { critico: { tone: "err" as const, label: "Reponer" }, bajo: { tone: "warn" as const, label: "Bajo óptimo" }, ok: { tone: "ok" as const, label: "OK" }, exceso: { tone: "info" as const, label: "Sobre-stock" } };
   const low = db.stock.filter((s) => { const l = stockLevel(s); return l === "critico" || l === "bajo"; });
   const totalValue = db.stock.reduce((s, x) => s + x.stock * x.cost, 0);
