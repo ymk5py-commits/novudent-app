@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
-import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
+import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 
 /**
  * Clinical Copilot — Novudent IA (spec 10.1).
@@ -29,6 +29,10 @@ export async function POST(req: NextRequest) {
 
   const rl = rateLimit(`ia:${user.uid}`, { limit: 10, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
+  // Tope adicional por IP: el límite por-uid se evade creando múltiples sesiones
+  // anónimas (demo). Por-IP frena la rotación que multiplicaría la cuota de Gemini.
+  const _rlIp = rateLimit(`ia-ip:${clientIp(req)}`, { limit: 40, windowMs: 60_000 });
+  if (!_rlIp.ok) return tooManyRequests(_rlIp.retryAfterSec);
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return NextResponse.json({ ok: false, error: "GEMINI_API_KEY no configurada en el servidor" }, { status: 500 });

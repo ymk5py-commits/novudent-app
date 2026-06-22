@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
-import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
+import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 
 /**
  * Reportes IA — Novudent IA (Fase 2).
@@ -26,6 +26,10 @@ export async function POST(req: NextRequest) {
   // Rate limit por usuario (frena el abuso de la cuota de Gemini).
   const _rl = rateLimit(`ia:${_user.uid}`, { limit: 20, windowMs: 60_000 });
   if (!_rl.ok) return tooManyRequests(_rl.retryAfterSec);
+  // Tope adicional por IP: el límite por-uid se evade creando múltiples sesiones
+  // anónimas (demo). Por-IP frena la rotación que multiplicaría la cuota de Gemini.
+  const _rlIp = rateLimit(`ia-ip:${clientIp(req)}`, { limit: 40, windowMs: 60_000 });
+  if (!_rlIp.ok) return tooManyRequests(_rlIp.retryAfterSec);
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(

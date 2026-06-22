@@ -8,6 +8,7 @@ import {
   MessageCircle, Hourglass, BellRing, Users, AlertTriangle, Printer, Search, Phone, ChevronDown,
 } from "lucide-react";
 import { buildICS, toICSDate, downloadICS, type ICSEvent } from "@/lib/ical";
+import { newSignToken } from "@/lib/firma";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } from "@/lib/store";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { patientBalance } from "@/lib/budgets";
@@ -550,8 +551,8 @@ export default function AgendaPage() {
                   <div className="rounded-xl border border-azure-300 bg-azure-50 p-3">
                     <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-azure-700"><Video className="h-3.5 w-3.5" /> Videoconsulta</div>
                     <div className="mt-2.5 flex flex-wrap gap-2">
-                      <a href={`https://meet.jit.si/nvd-${live.clinicId}-${live.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-azure-600 px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-azure-700"><Video className="h-4 w-4" /> Iniciar videoconsulta</a>
-                      <button onClick={() => { try { navigator.clipboard?.writeText(`${window.location.origin}/videoconsulta/${live.clinicId}/${live.id}`); } catch { /* sin portapapeles */ } }} className="rounded-xl border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-muted hover:text-clinic-text">Copiar link del paciente</button>
+                      <button onClick={() => { const tok = live.videoToken ?? newSignToken(); if (!live.videoToken) upsertAppointment({ ...live, videoToken: tok }); window.open(`https://meet.jit.si/nvd-${tok}`, "_blank", "noopener,noreferrer"); }} className="inline-flex items-center gap-1.5 rounded-xl bg-azure-600 px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-azure-700"><Video className="h-4 w-4" /> Iniciar videoconsulta</button>
+                      <button onClick={() => { const tok = live.videoToken ?? newSignToken(); if (!live.videoToken) upsertAppointment({ ...live, videoToken: tok }); try { navigator.clipboard?.writeText(`${window.location.origin}/videoconsulta/${live.clinicId}/${live.id}?t=${tok}`); } catch { /* sin portapapeles */ } }} className="rounded-xl border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-muted hover:text-clinic-text">Copiar link del paciente</button>
                     </div>
                   </div>
                 )}

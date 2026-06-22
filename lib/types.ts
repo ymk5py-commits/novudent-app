@@ -92,6 +92,9 @@ export interface Appointment {
   source?: "online" | "interna";
   branchId?: string;        // sucursal (multi-sede)
   telemed?: boolean;        // videoconsulta (telemedicina)
+  /** Token aleatorio de la sala de videoconsulta. La sala se deriva de esto (no
+   *  de cid+id, que son adivinables) para que nadie se cuele en la consulta. */
+  videoToken?: string;
   /** Confirmación de citas: recordatorio WhatsApp/email ya enviado */
   reminderSent?: boolean;
   /** quién confirmó la cita (botika = automático por el bot) */

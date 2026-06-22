@@ -1,10 +1,17 @@
 "use client";
 /** Página pública de videoconsulta (el paciente abre el link de la clínica).
- *  Sala determinística por clínica+cita; sin sesión. */
+ *  La sala se deriva del token `?t=` del link (no adivinable). Sin él, cae a la
+ *  sala legacy por compatibilidad con links viejos. Sin sesión. */
+import { useEffect, useState } from "react";
 import { VideoConsulta } from "@/components/VideoConsulta";
 
 export default function VideoConsultaPublic({ params }: { params: { cid: string; apptId: string } }) {
-  const room = `nvd-${params.cid}-${params.apptId}`;
+  const [room, setRoom] = useState<string | null>(null);
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("t");
+    setRoom(t ? `nvd-${t}` : `nvd-${params.cid}-${params.apptId}`);
+  }, [params.cid, params.apptId]);
+
   return (
     <div className="flex min-h-screen flex-col bg-clinic-bg">
       <header className="flex items-center gap-2 border-b border-clinic-border bg-white px-4 py-3">
@@ -15,7 +22,7 @@ export default function VideoConsultaPublic({ params }: { params: { cid: string;
         <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col">
           <p className="mb-2 text-sm text-clinic-muted">Estás por unirte a tu videoconsulta. Permití el acceso a cámara y micrófono cuando el navegador lo pida.</p>
           <div className="min-h-[60vh] flex-1">
-            <VideoConsulta room={room} displayName="Paciente" />
+            {room ? <VideoConsulta room={room} displayName="Paciente" /> : <p className="py-12 text-center text-sm text-clinic-muted">Cargando…</p>}
           </div>
         </div>
       </main>
