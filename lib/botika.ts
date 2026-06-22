@@ -41,10 +41,12 @@ type TemplateVars = Partial<Record<"paciente" | "clinica" | "fecha" | "hora" | "
 /** Mensaje final: plantilla personalizada (Integraciones) o default, con variables rellenas */
 export function botikaMessage(db: DB, kind: BotikaAutoKey, vars: TemplateVars): string {
   const tpl = db.clinics[0]?.config.botika?.templates?.[kind] || DEFAULT_TEMPLATES[kind];
-  return (Object.entries(vars) as [string, string][]).reduce(
+  const filled = (Object.entries(vars) as [string, string][]).reduce(
     (s, [k, v]) => s.replaceAll(`{${k}}`, v ?? ""),
     tpl
   );
+  // Limpia placeholders no provistos para no mostrarle «{algo}» literal al paciente.
+  return filled.replace(/\{[a-zA-Z_]+\}/g, "");
 }
 
 export function makeOutboxTask(args: {
