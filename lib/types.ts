@@ -396,6 +396,9 @@ export interface StockItem {
   unit: string; // unidad, caja, ml…
   stock: number;
   minStock: number;
+  optimalStock?: number;  // nivel óptimo (semáforo 3 niveles)
+  maxStock?: number;      // nivel máximo (sobre-stock)
+  supplier?: string;      // proveedor
   cost: number; // costo unitario
 }
 

@@ -29,7 +29,14 @@ export default function InventoryPage() {
     );
   }
 
-  const low = db.stock.filter((s) => s.stock <= s.minStock);
+  const stockLevel = (s: StockItem): "critico" | "bajo" | "ok" | "exceso" => {
+    if (s.stock <= s.minStock) return "critico";
+    if (s.maxStock != null && s.stock > s.maxStock) return "exceso";
+    if (s.optimalStock != null && s.stock < s.optimalStock) return "bajo";
+    return "ok";
+  };
+  const LEVEL = { critico: { tone: "err" as const, label: "Reponer" }, bajo: { tone: "warn" as const, label: "Bajo óptimo" }, ok: { tone: "ok" as const, label: "OK" }, exceso: { tone: "info" as const, label: "Sobre-stock" } };
+  const low = db.stock.filter((s) => { const l = stockLevel(s); return l === "critico" || l === "bajo"; });
   const totalValue = db.stock.reduce((s, x) => s + x.stock * x.cost, 0);
   const recentMoves = [...db.stockMoves].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
 
@@ -68,25 +75,26 @@ export default function InventoryPage() {
               <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
                 <th className="px-5 py-3">Ítem</th>
                 <th className="px-5 py-3 text-right">Stock</th>
-                <th className="px-5 py-3 text-right">Mínimo</th>
+                <th className="px-5 py-3 text-right">Mín / Ópt</th>
                 <th className="px-5 py-3 text-right">Costo unit.</th>
                 <th className="px-5 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-clinic-border">
               {db.stock.map((s) => {
-                const isLow = s.stock <= s.minStock;
+                const lvl = stockLevel(s);
+                const li = LEVEL[lvl];
                 return (
-                  <tr key={s.id} className={isLow ? "bg-state-warnbg/40" : "hover:bg-clinic-bg/60"}>
+                  <tr key={s.id} className={lvl === "critico" ? "bg-state-errbg/30" : lvl === "bajo" ? "bg-state-warnbg/30" : "hover:bg-clinic-bg/60"}>
                     <td className="px-5 py-3">
                       <span className="block font-semibold text-clinic-text">{s.name}</span>
-                      <span className="text-[11px] text-clinic-muted">{s.category} · {s.unit}</span>
+                      <span className="text-[11px] text-clinic-muted">{s.category} · {s.unit}{s.supplier ? ` · ${s.supplier}` : ""}</span>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <span className={`font-mono text-sm font-extrabold ${isLow ? "text-state-err" : "text-clinic-text"}`}>{s.stock}</span>
-                      {isLow && <Badge tone="err" tip="Stock en o por debajo del mínimo — reponer">Reponer</Badge>}
+                      <span className={`font-mono text-sm font-extrabold ${lvl === "critico" ? "text-state-err" : lvl === "bajo" ? "text-state-warn" : "text-clinic-text"}`}>{s.stock}</span>{" "}
+                      <Badge tone={li.tone} tip={`Mínimo ${s.minStock}${s.optimalStock != null ? ` · óptimo ${s.optimalStock}` : ""}${s.maxStock != null ? ` · máximo ${s.maxStock}` : ""}`}>{li.label}</Badge>
                     </td>
-                    <td className="px-5 py-3 text-right font-mono text-xs text-clinic-muted">{s.minStock}</td>
+                    <td className="px-5 py-3 text-right font-mono text-xs text-clinic-muted">{s.minStock}{s.optimalStock != null ? ` / ${s.optimalStock}` : ""}</td>
                     <td className="px-5 py-3 text-right font-mono text-xs">{fmtGs(s.cost)}</td>
                     <td className="px-5 py-3">
                       <div className="flex justify-end gap-1.5">
@@ -153,6 +161,9 @@ function ItemForm({ item, onClose, onSave }: { item: StockItem | null; onClose: 
   const [unit, setUnit] = useState(item?.unit ?? "unidad");
   const [stock, setStock] = useState(item?.stock ?? 0);
   const [minStock, setMinStock] = useState(item?.minStock ?? 1);
+  const [optimalStock, setOptimalStock] = useState(item?.optimalStock ?? 0);
+  const [maxStock, setMaxStock] = useState(item?.maxStock ?? 0);
+  const [supplier, setSupplier] = useState(item?.supplier ?? "");
   const [cost, setCost] = useState(item?.cost ?? 0);
   return (
     <Modal title={item ? "Editar ítem" : "Nuevo ítem"} onClose={onClose}>
@@ -167,6 +178,11 @@ function ItemForm({ item, onClose, onSave }: { item: StockItem | null; onClose: 
           <Field label="Mínimo"><input type="number" min={0} className={inputCls} value={minStock} onChange={(e) => setMinStock(Number(e.target.value))} /></Field>
           <Field label="Costo (Gs)"><input type="number" min={0} className={inputCls} value={cost} onChange={(e) => setCost(Number(e.target.value))} /></Field>
         </div>
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="Óptimo"><input type="number" min={0} className={inputCls} value={optimalStock} onChange={(e) => setOptimalStock(Number(e.target.value))} /></Field>
+          <Field label="Máximo"><input type="number" min={0} className={inputCls} value={maxStock} onChange={(e) => setMaxStock(Number(e.target.value))} /></Field>
+          <Field label="Proveedor"><input className={inputCls} value={supplier} onChange={(e) => setSupplier(e.target.value)} /></Field>
+        </div>
         <div className="flex justify-end gap-2">
           <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
           <Btn
@@ -176,6 +192,7 @@ function ItemForm({ item, onClose, onSave }: { item: StockItem | null; onClose: 
                 id: item?.id ?? `s_${Date.now()}`, clinicId: db.clinics[0].id,
                 name: name.trim(), category: category.trim() || "Insumos", unit: unit.trim() || "unidad",
                 stock, minStock, cost,
+                optimalStock: optimalStock || undefined, maxStock: maxStock || undefined, supplier: supplier.trim() || undefined,
               })
             }
           >

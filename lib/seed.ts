@@ -181,10 +181,10 @@ const expenses: Expense[] = [
 
 /* ===== Inventario ===== */
 const stock: StockItem[] = [
-  { id: "s1", clinicId: CLINIC_ID, name: "Resina compuesta A2 (jeringa)", category: "Restauración", unit: "unidad", stock: 6, minStock: 4, cost: 180000 },
-  { id: "s2", clinicId: CLINIC_ID, name: "Anestesia lidocaína 2% c/epinefrina", category: "Anestésicos", unit: "caja x50", stock: 2, minStock: 3, cost: 220000 },
-  { id: "s3", clinicId: CLINIC_ID, name: "Guantes nitrilo M", category: "Descartables", unit: "caja x100", stock: 14, minStock: 5, cost: 65000 },
-  { id: "s4", clinicId: CLINIC_ID, name: "Agujas cortas 30G", category: "Descartables", unit: "caja x100", stock: 8, minStock: 4, cost: 45000 },
+  { id: "s1", clinicId: CLINIC_ID, name: "Resina compuesta A2 (jeringa)", category: "Restauración", unit: "unidad", stock: 6, minStock: 4, optimalStock: 10, maxStock: 20, supplier: "Dental Depot", cost: 180000 },
+  { id: "s2", clinicId: CLINIC_ID, name: "Anestesia lidocaína 2% c/epinefrina", category: "Anestésicos", unit: "caja x50", stock: 2, minStock: 3, optimalStock: 8, maxStock: 15, supplier: "Farma Dental", cost: 220000 },
+  { id: "s3", clinicId: CLINIC_ID, name: "Guantes nitrilo M", category: "Descartables", unit: "caja x100", stock: 14, minStock: 5, optimalStock: 12, maxStock: 25, supplier: "Insumos Médicos SA", cost: 65000 },
+  { id: "s4", clinicId: CLINIC_ID, name: "Agujas cortas 30G", category: "Descartables", unit: "caja x100", stock: 8, minStock: 4, optimalStock: 10, maxStock: 20, supplier: "Insumos Médicos SA", cost: 45000 },
   { id: "s5", clinicId: CLINIC_ID, name: "Ácido grabador 37%", category: "Restauración", unit: "jeringa", stock: 5, minStock: 2, cost: 35000 },
   { id: "s6", clinicId: CLINIC_ID, name: "Hipoclorito de sodio 5%", category: "Endodoncia", unit: "litro", stock: 1, minStock: 2, cost: 40000 },
 ];
