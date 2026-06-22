@@ -6,6 +6,7 @@ import {
   Plus, ShieldAlert, Printer, Check, X, Send, CircleCheck, Trash2, Pencil, FileText, Handshake,
 } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
+import { EmailButton } from "@/components/EmailButton";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { can } from "@/lib/rbac";
 import { budgetTotal, budgetSubtotal, budgetPaid, budgetBalance, installmentValue, BUDGET_STATUS_INFO } from "@/lib/budgets";
@@ -319,7 +320,12 @@ function BudgetDetail({ budget: b, onClose }: { budget: Budget; onClose: () => v
           </ul>
         </div>
 
-        <div className="flex justify-end gap-2 print:hidden">
+        <div className="flex flex-wrap items-start justify-end gap-2 print:hidden">
+          <EmailButton
+            to={patient?.email}
+            subject={`Presupuesto — ${db.clinics[0]?.name ?? "Clínica"}`}
+            html={`<div style="font-family:Arial,sans-serif;color:#1a2b4a;max-width:600px"><h2 style="color:#0E8AA3">${db.clinics[0]?.name ?? "Clínica"}</h2><p>Estimado/a ${patient ? fullName(patient) : "paciente"}, le compartimos su presupuesto:</p><table style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr style="border-bottom:2px solid #eee"><th align="left">Prestación</th><th align="left">Pieza</th><th align="right">Precio</th></tr></thead><tbody>${b.items.map((it) => `<tr style="border-bottom:1px solid #f0f0f0"><td>${it.description}</td><td>${it.tooth ?? "—"}</td><td align="right">${fmtGs(it.price)}</td></tr>`).join("")}</tbody></table><p style="text-align:right;font-size:16px"><b>Total: ${fmtGs(total)}</b></p>${cuota ? `<p style="text-align:right">${b.installments} cuotas de ${fmtGs(cuota)}</p>` : ""}<p style="color:#888;font-size:12px">Presupuesto válido sujeto a evaluación clínica.</p></div>`}
+          />
           <Btn variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4" /> Imprimir / PDF</Btn>
           <Btn onClick={onClose}>Cerrar</Btn>
         </div>
