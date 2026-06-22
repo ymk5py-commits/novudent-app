@@ -40,6 +40,7 @@ export default function LiquidacionesPage() {
   /** overrides por profesional (id → {pct?, prod?}); vacío = usa lo calculado */
   const [pctOverride, setPctOverride] = useState<Record<string, string>>({});
   const [prodOverride, setProdOverride] = useState<Record<string, string>>({});
+  const [salOverride, setSalOverride] = useState<Record<string, string>>({});
 
   const plan = useClinicPlan();
 
@@ -65,10 +66,12 @@ export default function LiquidacionesPage() {
       const production = prodRaw !== undefined && prodRaw !== "" ? Math.max(0, Number(prodRaw) || 0) : computedProd;
       const pctRaw = pctOverride[d.id];
       const pct = pctRaw !== undefined && pctRaw !== "" ? Math.max(0, Number(pctRaw) || 0) : d.commissionPct ?? 0;
-      const amount = Math.round((production * pct) / 100);
-      return { d, computedProd, production, pct, amount };
+      const salRaw = salOverride[d.id];
+      const salaryBase = salRaw !== undefined && salRaw !== "" ? Math.max(0, Number(salRaw) || 0) : d.salaryBase ?? 0;
+      const amount = salaryBase + Math.round((production * pct) / 100);
+      return { d, computedProd, production, pct, salaryBase, amount };
     });
-  }, [db.users, db.appointments, from, to, pctOverride, prodOverride]);
+  }, [db.users, db.appointments, from, to, pctOverride, prodOverride, salOverride]);
 
   if (!session) return null;
   if (!plan.features.includes("liquidaciones")) return <PlanLocked feature="liquidaciones" />;
@@ -94,6 +97,7 @@ export default function LiquidacionesPage() {
       periodTo: to,
       production: r.production,
       commissionPct: r.pct,
+      salaryBase: r.salaryBase || undefined,
       amount: r.amount,
       status: "pendiente",
       createdAt: new Date().toISOString(),
@@ -102,6 +106,7 @@ export default function LiquidacionesPage() {
     // limpiar overrides de esa fila tras liquidar
     setPctOverride((o) => { const n = { ...o }; delete n[r.d.id]; return n; });
     setProdOverride((o) => { const n = { ...o }; delete n[r.d.id]; return n; });
+    setSalOverride((o) => { const n = { ...o }; delete n[r.d.id]; return n; });
   };
 
   const marcarPagado = (s: Settlement) =>
@@ -179,6 +184,7 @@ export default function LiquidacionesPage() {
                     <th className="py-2 pr-3">Profesional</th>
                     <th className="py-2 pr-3 text-right">Producción</th>
                     <th className="py-2 pr-3 text-right">% Comisión</th>
+                    <th className="py-2 pr-3 text-right">Sueldo base</th>
                     <th className="py-2 pr-3 text-right">A liquidar</th>
                     <th className="py-2 pl-3 text-right">Acción</th>
                   </tr>
@@ -218,6 +224,17 @@ export default function LiquidacionesPage() {
                           />
                           <Percent className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-clinic-muted" />
                         </span>
+                      </td>
+                      <td className="py-3 pr-3 text-right">
+                        <input
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          className={inputCls + " !w-32 text-right font-mono"}
+                          value={salOverride[r.d.id] ?? String(r.d.salaryBase ?? 0)}
+                          onChange={(e) => setSalOverride((o) => ({ ...o, [r.d.id]: e.target.value }))}
+                          title="Sueldo base del período (salario fijo / mixto)"
+                        />
                       </td>
                       <td className="py-3 pr-3 text-right font-mono font-extrabold text-state-ok">{fmtGs(r.amount)}</td>
                       <td className="py-3 pl-3 text-right">

@@ -64,6 +64,8 @@ export interface User {
   phone?: string;
   /** % de comisión sobre producción cobrada (cálculo de pago a odontólogos) */
   commissionPct?: number;
+  /** Sueldo base del período (contrato salario fijo / mixto) */
+  salaryBase?: number;
   /** Especialidad del profesional (Ortodoncia, Endodoncia, …) */
   specialty?: string;
   /** Sucursal asignada (multi-sede) */
@@ -642,7 +644,7 @@ export type LabStatus = "enviado" | "en_proceso" | "recibido" | "entregado";
 export interface LabOrder { id: string; patientId: string; professionalId?: string; lab: string; workType: string; sentAt: string; dueAt?: string; cost?: number; status: LabStatus; notes?: string; createdAt: string; }
 
 export type SettlementStatus = "pendiente" | "liquidado";
-export interface Settlement { id: string; professionalId: string; periodFrom: string; periodTo: string; production: number; commissionPct: number; amount: number; status: SettlementStatus; createdAt: string; paidAt?: string; }
+export interface Settlement { id: string; professionalId: string; periodFrom: string; periodTo: string; production: number; commissionPct: number; salaryBase?: number; amount: number; status: SettlementStatus; createdAt: string; paidAt?: string; }
 
 export interface Box { id: string; name: string; color?: string; }
 

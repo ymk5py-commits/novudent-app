@@ -303,7 +303,7 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
       { id: "u1", clinicId: CLINIC_ID, name: "Carlos Admin", email: "admin@novudent.app", role: "admin", color: "#1769E0", active: true },
       { id: "u2", clinicId: CLINIC_ID, name: "Dra. Sofía Benítez", email: "sofia@novudent.app", role: "dentist", color: "#0E9F6E", active: true, commissionPct: 30, specialty: "Ortodoncia" },
       { id: "u3", clinicId: CLINIC_ID, name: "Paola Asistente", email: "paola@novudent.app", role: "assistant", color: "#B45309", active: true },
-      { id: "u4", clinicId: CLINIC_ID, name: "Dr. Diego Martínez", email: "diego@novudent.app", role: "dentist", color: "#0D9488", active: true, commissionPct: 25, specialty: "Endodoncia" },
+      { id: "u4", clinicId: CLINIC_ID, name: "Dr. Diego Martínez", email: "diego@novudent.app", role: "dentist", color: "#0D9488", active: true, commissionPct: 25, salaryBase: 2000000, specialty: "Endodoncia" },
     ],
     patients,
     appointments,
