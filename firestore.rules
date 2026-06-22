@@ -63,6 +63,22 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role in ['admin', 'assistant'];
     }
 
+    // Rol clínico (admin o dentista). El ASISTENTE no escribe el EMR
+    // (matriz RBAC: emr.write = [admin, dentist]). Se usa para blindar los campos
+    // clínicos del doc de paciente a nivel de reglas, no solo en la UI.
+    function isClinical(cid) {
+      return isMember(cid)
+        && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role in ['admin', 'dentist'];
+    }
+
+    // Campos del doc de paciente que son EMR clínico (odontograma, evoluciones,
+    // recetas, ortodoncia, periodontograma). Solo rol clínico puede cambiarlos.
+    // La demografía y el engagement (nombre, teléfono, forms, nps…) NO están acá:
+    // los edita cualquier miembro (recepción/asistente).
+    function patientClinicalFields() {
+      return ['emr', 'odontogram', 'prescriptions', 'ortho', 'perio'];
+    }
+
     // ---- Allowlist de servicio: nunca accesible por el cliente. ----
     // isService() la consulta con exists() (privilegiado), así que puede quedar
     // totalmente cerrada. Solo el dueño la edita desde la consola de Firebase.
@@ -114,7 +130,17 @@ service cloud.firestore {
       // en la UI; acá garantizamos el aislamiento entre clínicas). Enumeradas
       // explícitamente: una subcolección nueva no listada queda DENEGADA por
       // defecto (preferimos negar a filtrar).
-      match /patients/{docId}    { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      // Paciente: lectura/alta/borrado = cualquier miembro (recepción da de alta).
+      // Actualización: rol clínico/servicio/demo sin tope; otros miembros
+      // (asistente) pueden editar demografía pero NO los campos clínicos del EMR
+      // (odontograma/evoluciones/recetas/orto/perio) — blindaje a nivel de reglas
+      // del RBAC emr.write, no solo de la UI. diff().affectedKeys() solo marca los
+      // campos cuyo VALOR cambió, así que un guardado que deja el EMR intacto pasa.
+      match /patients/{docId} {
+        allow read, create, delete: if isMember(cid) || isService() || isDemo(cid);
+        allow update: if isService() || isDemo(cid) || isClinical(cid)
+          || (isMember(cid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(patientClinicalFields()));
+      }
       match /appointments/{docId}{ allow read, write: if isMember(cid) || isService() || isDemo(cid); }
       // billing: lo escriben admin (finaliza), asistente (envía a cobro) y
       // dentista (finaliza) — todos los roles según la matriz, así que isMember.

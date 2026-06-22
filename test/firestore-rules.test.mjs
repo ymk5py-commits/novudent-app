@@ -21,7 +21,7 @@ import {
   assertFails,
   assertSucceeds,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 const PROJECT_ID = "novudent-rules-test";
 let testEnv;
@@ -168,4 +168,27 @@ test("colección no enumerada queda denegada por defecto", async () => {
 test("recoveryMonitors: un miembro lee/escribe los de su clínica; otra clínica NO", async () => {
   await assertSucceeds(setDoc(doc(authed("dentA"), "clinics/clA/recoveryMonitors/m1"), { id: "m1", patientId: "p1" }));
   await assertFails(getDoc(doc(authed("adminA"), "clinics/clB/recoveryMonitors/x")));
+});
+
+// ---- EMR: campos clínicos del paciente solo los escribe rol clínico (RBAC) ----
+
+test("EMR: un ASISTENTE NO puede modificar el odontograma del paciente", async () => {
+  await assertFails(updateDoc(doc(authed("asisA"), "clinics/clA/patients/p1"), { odontogram: { "11": { state: "caries" } } }));
+});
+
+test("EMR: un ASISTENTE NO puede escribir evoluciones/recetas/perio del paciente", async () => {
+  await assertFails(updateDoc(doc(authed("asisA"), "clinics/clA/patients/p1"), { emr: [{ note: "x" }] }));
+  await assertFails(updateDoc(doc(authed("asisA"), "clinics/clA/patients/p1"), { perio: [{ at: "2026-06-22" }] }));
+});
+
+test("EMR: el ASISTENTE SÍ puede editar demografía del paciente (no clínico)", async () => {
+  await assertSucceeds(updateDoc(doc(authed("asisA"), "clinics/clA/patients/p1"), { phone: "0991", city: "Asunción" }));
+});
+
+test("EMR: un DENTISTA SÍ puede escribir el odontograma/EMR del paciente", async () => {
+  await assertSucceeds(updateDoc(doc(authed("dentA"), "clinics/clA/patients/p1"), { odontogram: { "11": { state: "caries" } } }));
+});
+
+test("EMR: un ADMIN SÍ puede escribir el EMR del paciente", async () => {
+  await assertSucceeds(updateDoc(doc(authed("adminA"), "clinics/clA/patients/p1"), { emr: [{ note: "control" }] }));
 });
