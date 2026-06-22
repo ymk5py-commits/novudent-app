@@ -60,7 +60,9 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
   const linkPago = () => {
     const tel = patient.phone.replace(/\D/g, "");
     const saldo = pagables.reduce((s, b) => s + budgetBalance(b, db.payments), 0);
-    const msg = encodeURIComponent(`Hola ${patient.firstName}, te compartimos tu saldo pendiente en la clínica: ${fmtGs(saldo)}. Podés abonarlo en la clínica o por transferencia. ¡Gracias!`);
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const link = `${origin}/pagar/${patient.clinicId}?amount=${Math.round(saldo)}&concept=${encodeURIComponent("Saldo pendiente")}&patient=${encodeURIComponent(patient.firstName)}`;
+    const msg = encodeURIComponent(`Hola ${patient.firstName}, te compartimos tu saldo pendiente: ${fmtGs(saldo)}. Podés pagar online o coordinar el pago acá: ${link} ¡Gracias!`);
     window.open(`https://wa.me/${tel}?text=${msg}`, "_blank");
   };
 

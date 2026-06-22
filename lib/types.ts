@@ -41,6 +41,9 @@ export interface Clinic {
     patientFields?: Record<string, FieldConfig>;
     /** Logotipo de la clínica (data URL base64) — header de la app + documentos */
     logo?: string;
+    /** Pago online configurable (sin atar a una pasarela ni guardar secretos):
+     *  link de checkout del gateway de la clínica + datos de transferencia. */
+    payments?: { checkoutUrl?: string; bankInfo?: string };
   };
 }
 

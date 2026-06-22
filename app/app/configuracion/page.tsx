@@ -111,6 +111,23 @@ export default function ConfigPage() {
       </Reveal>
       {editBranch && <BranchForm branch={editBranch} onClose={() => setEditBranch(null)} onSave={(b) => { if (db.branches.some((x) => x.id === b.id)) updateBranch(b); else addBranch(b); setEditBranch(null); }} />}
 
+      <span id="pagos" className="block scroll-mt-24" aria-hidden="true" />
+      {/* Pago online (configurable, sin guardar credenciales secretas) */}
+      <Reveal>
+      <Card className="p-5">
+        <div className="mb-3 flex items-center gap-2"><HandCoins className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Pago online</h2></div>
+        <p className="mb-3 text-xs text-clinic-muted">Pegá el <b>link de checkout de tu propia pasarela</b> (MercadoPago, Bancard, Pagopar, Stripe… la que uses) y, opcionalmente, tus datos de transferencia. Novudent arma una página de pago para enviarle al paciente por WhatsApp/email. No guardamos credenciales secretas — solo el link público que vos pegás.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Link de checkout de tu pasarela">
+            <input className={inputCls} defaultValue={clinic.config.payments?.checkoutUrl ?? ""} onBlur={(e) => updateClinicConfig({ payments: { ...clinic.config.payments, checkoutUrl: e.target.value.trim() || undefined } })} placeholder="https://link.mercadopago.com.ar/… o tu pasarela" />
+          </Field>
+          <Field label="Datos de transferencia (opcional)">
+            <input className={inputCls} defaultValue={clinic.config.payments?.bankInfo ?? ""} onBlur={(e) => updateClinicConfig({ payments: { ...clinic.config.payments, bankInfo: e.target.value.trim() || undefined } })} placeholder="Banco X · Cta 123456 · Titular …" />
+          </Field>
+        </div>
+      </Card>
+      </Reveal>
+
       <span id="usuarios" className="block scroll-mt-24" aria-hidden="true" />
       {/* Usuarios */}
       <Reveal>
