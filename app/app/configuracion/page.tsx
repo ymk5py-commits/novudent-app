@@ -2,7 +2,7 @@
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon, MapPin } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon, MapPin, CalendarClock } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
 import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
 import { can, ROLE_LABEL } from "@/lib/rbac";
@@ -125,6 +125,16 @@ export default function ConfigPage() {
             <input className={inputCls} defaultValue={clinic.config.payments?.bankInfo ?? ""} onBlur={(e) => updateClinicConfig({ payments: { ...clinic.config.payments, bankInfo: e.target.value.trim() || undefined } })} placeholder="Banco X · Cta 123456 · Titular …" />
           </Field>
         </div>
+      </Card>
+      </Reveal>
+
+      <span id="agendamiento" className="block scroll-mt-24" aria-hidden="true" />
+      {/* Agendamiento online */}
+      <Reveal>
+      <Card className="p-5">
+        <div className="mb-3 flex items-center gap-2"><CalendarClock className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Agendamiento online</h2></div>
+        <p className="mb-3 text-xs text-clinic-muted">Compartí este link en tu web, Instagram, WhatsApp o Facebook para que los pacientes reserven solos. Las reservas entran a la agenda como pendientes de validar.</p>
+        <BookingLink clinicId={db.clinics[0]?.id ?? ""} />
       </Card>
       </Reveal>
 
@@ -481,6 +491,18 @@ export default function ConfigPage() {
         />
       )}
       {importing && <DentalinkImport onClose={() => setImporting(false)} />}
+    </div>
+  );
+}
+
+function BookingLink({ clinicId }: { clinicId: string }) {
+  const [copied, setCopied] = useState(false);
+  const url = typeof window !== "undefined" ? `${window.location.origin}/reservar/${clinicId}` : `/reservar/${clinicId}`;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <code className="min-w-0 flex-1 truncate rounded-lg border border-clinic-border bg-clinic-bg px-3 py-2 text-xs text-clinic-text">{url}</code>
+      <button onClick={() => { try { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* sin portapapeles */ } }} className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-text hover:border-azure-300 hover:text-azure-700">{copied ? "Copiado" : "Copiar link"}</button>
+      <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-muted hover:text-clinic-text">Abrir</a>
     </div>
   );
 }

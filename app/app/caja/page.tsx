@@ -237,14 +237,22 @@ function Stat({ label, value, icon: Icon, tone }: { label: string; value: number
 function AbrirCajaModal({ onClose }: { onClose: () => void }) {
   const { db, session, openCashSession } = useStore();
   const [openingBalance, setOpeningBalance] = useState(0);
+  const [branchId, setBranchId] = useState(db.branches.find((b) => b.isMain)?.id ?? "");
   return (
     <Modal title="Abrir caja" onClose={onClose}>
       <div className="space-y-3">
         <p className="text-sm text-clinic-muted">Declará el efectivo con el que arranca el turno.</p>
         <Field label="Saldo inicial (Gs)"><input type="number" min={0} className={inputCls} value={openingBalance} onChange={(e) => setOpeningBalance(Number(e.target.value))} autoFocus /></Field>
+        {db.branches.length > 1 && (
+          <Field label="Sucursal">
+            <select className={inputCls} value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+              {db.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </Field>
+        )}
         <div className="flex justify-end gap-2">
           <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
-          <Btn onClick={() => { openCashSession({ id: `cs_${Date.now()}`, clinicId: db.clinics[0].id, userId: session!.userId, userName: session!.name, openedAt: new Date().toISOString(), openingBalance, status: "abierta" }); onClose(); }}><Lock className="h-4 w-4" /> Abrir caja</Btn>
+          <Btn onClick={() => { openCashSession({ id: `cs_${Date.now()}`, clinicId: db.clinics[0].id, userId: session!.userId, userName: session!.name, openedAt: new Date().toISOString(), openingBalance, branchId: branchId || undefined, status: "abierta" }); onClose(); }}><Lock className="h-4 w-4" /> Abrir caja</Btn>
         </div>
       </div>
     </Modal>
