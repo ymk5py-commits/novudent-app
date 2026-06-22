@@ -15,6 +15,12 @@ export async function POST(req: NextRequest) {
   try { user = await verifyIdToken(req); }
   catch (e) { return NextResponse.json({ ok: false, error: "No autorizado" }, { status: e instanceof AuthError ? e.status : 401 }); }
 
+  // Las cuentas anónimas (modo demo) NO pueden enviar email: sería un open-relay
+  // desde el dominio verificado de la clínica (phishing/spam). Solo usuarios reales.
+  if (user.isAnonymous) {
+    return NextResponse.json({ ok: false, error: "El envío de email no está disponible en el modo demo." }, { status: 403 });
+  }
+
   const rl = rateLimit(`email:${user.uid}`, { limit: 30, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
@@ -36,7 +42,7 @@ export async function POST(req: NextRequest) {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ from, to: to.slice(0, 50), subject: body.subject.slice(0, 200), html: body.html, text: body.text }),
+      body: JSON.stringify({ from, to: to.slice(0, 10), subject: body.subject.slice(0, 200), html: body.html, text: body.text }),
       signal: AbortSignal.timeout(20_000),
     });
     const data = await res.json().catch(() => ({}));

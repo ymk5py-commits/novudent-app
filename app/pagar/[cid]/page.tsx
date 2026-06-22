@@ -39,7 +39,7 @@ export default function PagarPublic({ params }: { params: { cid: string } }) {
               {q.amount != null && <div className="mb-6 text-center font-mono text-4xl font-extrabold text-azure-600">{formatMoney(q.amount, info.currency)}</div>}
 
               <div className="space-y-3">
-                {info.checkoutUrl ? (
+                {info.checkoutUrl && /^https:\/\//i.test(info.checkoutUrl) ? (
                   <a href={info.checkoutUrl} target="_blank" rel="noopener noreferrer" className="block w-full rounded-xl bg-azure-600 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-azure-700">Pagar con tarjeta</a>
                 ) : (
                   <p className="rounded-xl bg-clinic-bg px-4 py-3 text-center text-sm text-clinic-muted">El pago con tarjeta online no está habilitado. Coordiná el pago con la clínica.</p>

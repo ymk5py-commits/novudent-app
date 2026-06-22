@@ -668,7 +668,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           persist({ ...db, users: db.users.map((u) => (u.id === up.id ? up : u)) });
         }
       },
-      logout: () => { setSession(null); localStorage.removeItem(SES_KEY); },
+      // Borramos TAMBIÉN el cache del padrón: tiene PII de pacientes (nombre, CI,
+      // historia, radiografías base64). No debe sobrevivir al logout en una PC
+      // compartida de recepción (LGPD / Ley 1581).
+      logout: () => { setSession(null); localStorage.removeItem(SES_KEY); try { localStorage.removeItem(DB_KEY); } catch { /* ignore */ } },
       seedDemo: async () => {
         if (clinicIdRef.current !== DEMO_CLINIC_ID) return; // jamás sobre una clínica real
         CLINIC_ID = DEMO_CLINIC_ID; // seedFirestore escribe en CLINIC_ID — lo forzamos a demo

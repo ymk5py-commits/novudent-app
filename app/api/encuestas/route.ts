@@ -3,6 +3,7 @@
  *  mismo patrón que /api/reservas. */
 import { NextResponse } from "next/server";
 import { getDocument, setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
+import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,8 @@ export async function GET(req: Request) {
   const cid = searchParams.get("cid");
   const surveyId = searchParams.get("surveyId");
   if (!cid || !surveyId) return NextResponse.json({ error: "Faltan parámetros." }, { status: 400 });
+  const rl = rateLimit(`encuestas-get:${clientIp(req)}`, { limit: 30, windowMs: 60_000 });
+  if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
   if (!isServerFirestoreConfigured()) return NextResponse.json({ error: "Servidor no configurado." }, { status: 503 });
   try {
     const survey = await getDocument(`clinics/${cid}/surveys/${surveyId}`);
@@ -23,6 +26,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const rl = rateLimit(`encuestas-post:${clientIp(req)}`, { limit: 6, windowMs: 60_000 });
+  if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
   if (!isServerFirestoreConfigured()) return NextResponse.json({ error: "Servidor no configurado." }, { status: 503 });
   let body: any;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "JSON inválido." }, { status: 400 }); }

@@ -131,11 +131,14 @@ export async function POST(req: NextRequest) {
   const dentistId = String(body.dentistId || "");
   const date = String(body.date || "");
   const time = String(body.time || "");
-  const nombre = String(body.nombre || "").trim().slice(0, 60);
-  const apellido = String(body.apellido || "").trim().slice(0, 60);
+  // Quitamos `<`/`>` y caracteres de control: estos campos quedan en el padrón y
+  // luego pueden ir a HTML de email / mensajes → cortamos la inyección en el origen.
+  const clean = (v: unknown, max: number) => String(v || "").replace(/[<>\u0000-\u001f]/g, "").trim().slice(0, max);
+  const nombre = clean(body.nombre, 60);
+  const apellido = clean(body.apellido, 60);
   const ci = String(body.ci || "").replace(/[^\d]/g, "").slice(0, 15);
   const telefono = String(body.telefono || "").replace(/[^\d+ ]/g, "").trim().slice(0, 25);
-  const motivo = String(body.motivo || "").trim().slice(0, 140);
+  const motivo = clean(body.motivo, 140);
 
   if (!isValidId(clinicId) || !isValidId(dentistId)) {
     return NextResponse.json({ ok: false, error: "Parámetros inválidos" }, { status: 400 });
