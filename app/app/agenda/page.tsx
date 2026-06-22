@@ -7,6 +7,7 @@ import {
   ChevronLeft, ChevronRight, CalendarDays, CalendarRange, List, MoreHorizontal, Eye, Pencil, Trash2, Plus, User, Video,
   MessageCircle, Hourglass, BellRing, Users, AlertTriangle, Printer, Search, Phone, ChevronDown,
 } from "lucide-react";
+import { buildICS, toICSDate, downloadICS, type ICSEvent } from "@/lib/ical";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } from "@/lib/store";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { patientBalance } from "@/lib/budgets";
@@ -179,6 +180,24 @@ export default function AgendaPage() {
   const porValidar = dayAllPro.filter((a) => a.source === "online" && a.status === "pendiente").length;
   const headerCount = tab === "semanal" ? weekAppointments.length : tab === "mensual" ? monthAppts.length : tab === "reprog" ? reprog.length : dayAppts.length;
 
+  /* — Exportar agenda a .ics (calendario universal: Outlook/Apple/Google) — */
+  const apptToICS = (a: Appointment): ICSEvent => {
+    const pat = db.patients.find((x) => x.id === a.patientId);
+    const dent = db.users.find((x) => x.id === a.dentistId);
+    const branch = a.branchId ? db.branches.find((b) => b.id === a.branchId)?.name : undefined;
+    return {
+      uid: `${a.id}@novudent`, start: a.start, end: a.end,
+      title: `${pat ? fullName(pat) : "Paciente"} — ${a.title || "Cita"}`,
+      description: [dent && `Profesional: ${dent.name}`, a.telemed && "Videoconsulta", a.notes].filter(Boolean).join("\n") || undefined,
+      location: [db.clinics[0]?.name, branch].filter(Boolean).join(" · ") || undefined,
+    };
+  };
+  const exportICS = () => {
+    const list = tab === "semanal" ? weekAppointments : tab === "mensual" ? monthAppts : tab === "reprog" ? reprog : dayAppts;
+    if (list.length === 0) return;
+    downloadICS(`agenda-novudent-${selKey}`, buildICS(list.map(apptToICS), toICSDate(new Date().toISOString())));
+  };
+
   function newAppt(base: Date) {
     const start = new Date(base);
     if (start.getHours() === 0) start.setHours(Math.min(today.getHours() + 1, 19), 0, 0, 0);
@@ -247,6 +266,7 @@ export default function AgendaPage() {
             <input type="date" value={selKey} onChange={(e) => e.target.value && setDay(new Date(e.target.value + "T00:00:00"))} className="absolute inset-0 cursor-pointer opacity-0" aria-label="Elegir fecha" />
           </label>
           <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-clinic-muted hover:text-clinic-text"><Printer className="h-4 w-4" /> Imprimir</button>
+          <button onClick={exportICS} title="Exportar a tu calendario (Outlook/Apple/Google)" className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-clinic-muted hover:text-clinic-text"><CalendarDays className="h-4 w-4" /> Exportar (.ics)</button>
           <Btn variant="outline" onClick={() => setWaitOpen(true)}>
             <Hourglass className="h-4 w-4" /> Lista de espera
             {db.waitlist.length > 0 && <span className="rounded-full bg-azure-600 px-1.5 font-mono text-[10px] font-bold text-white">{db.waitlist.length}</span>}
@@ -551,7 +571,8 @@ export default function AgendaPage() {
                   </div>
                 )}
 
-                <div className="flex justify-end gap-2 pt-2">
+                <div className="flex flex-wrap justify-end gap-2 pt-2">
+                  <Btn variant="outline" onClick={() => downloadICS(`cita-${live.id}`, buildICS([apptToICS(live)], toICSDate(new Date().toISOString())))}><CalendarDays className="h-3.5 w-3.5" /> Agregar al calendario</Btn>
                   <Btn variant="outline" onClick={() => { setEditing(live); setViewing(null); }}><Pencil className="h-3.5 w-3.5" /> Editar</Btn>
                 </div>
               </div>
