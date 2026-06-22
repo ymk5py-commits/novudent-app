@@ -4,7 +4,7 @@
  *  Semanal (grilla 24h) · Reprogramación. Modales VER/Lista de espera/Crear-editar. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ChevronLeft, ChevronRight, CalendarDays, CalendarRange, List, MoreHorizontal, Eye, Pencil, Trash2, Plus, User,
+  ChevronLeft, ChevronRight, CalendarDays, CalendarRange, List, MoreHorizontal, Eye, Pencil, Trash2, Plus, User, Video,
   MessageCircle, Hourglass, BellRing, Users, AlertTriangle, Printer, Search, Phone, ChevronDown,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } from "@/lib/store";
@@ -526,6 +526,16 @@ export default function AgendaPage() {
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Total a cobrar</span><span className="font-mono font-bold">{fmtGs(live.amount - live.discount)}</span></div>
                 {live.notes && <p className="rounded-xl bg-clinic-bg p-3 text-clinic-text">{live.notes}</p>}
 
+                {live.telemed && (
+                  <div className="rounded-xl border border-azure-300 bg-azure-50 p-3">
+                    <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-azure-700"><Video className="h-3.5 w-3.5" /> Videoconsulta</div>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      <a href={`https://meet.jit.si/nvd-${live.clinicId}-${live.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-azure-600 px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-azure-700"><Video className="h-4 w-4" /> Iniciar videoconsulta</a>
+                      <button onClick={() => { try { navigator.clipboard?.writeText(`${window.location.origin}/videoconsulta/${live.clinicId}/${live.id}`); } catch { /* sin portapapeles */ } }} className="rounded-xl border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-muted hover:text-clinic-text">Copiar link del paciente</button>
+                    </div>
+                  </div>
+                )}
+
                 {p && (
                   <div className="rounded-xl border border-clinic-border p-3">
                     <div className="flex items-center justify-between">
@@ -733,6 +743,7 @@ function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () =>
             </select>
           </Field>
         )}
+        <label className="flex items-center gap-2 text-sm text-clinic-text"><input type="checkbox" checked={!!form.telemed} onChange={(e) => setForm({ ...form, telemed: e.target.checked })} /> <Video className="h-4 w-4 text-azure-600" /> Videoconsulta (telemedicina)</label>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Inicio"><input type="datetime-local" required className={inputCls} value={toLocal(form.start)} onChange={(e) => setForm({ ...form, start: new Date(e.target.value).toISOString() })} /></Field>
           <Field label="Fin"><input type="datetime-local" required className={inputCls} value={toLocal(form.end)} onChange={(e) => setForm({ ...form, end: new Date(e.target.value).toISOString() })} /></Field>

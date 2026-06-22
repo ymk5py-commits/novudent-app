@@ -86,6 +86,7 @@ export interface Appointment {
   /** Origen: "online" = reserva web del paciente (entra como pendiente, a validar) */
   source?: "online" | "interna";
   branchId?: string;        // sucursal (multi-sede)
+  telemed?: boolean;        // videoconsulta (telemedicina)
   /** Confirmación de citas: recordatorio WhatsApp/email ya enviado */
   reminderSent?: boolean;
   /** quién confirmó la cita (botika = automático por el bot) */
