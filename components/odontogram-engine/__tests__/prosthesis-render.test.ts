@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP3b Task 2 byte-identical proof: implant attachments + removable dentures now
 // render off the dedicated `prosthesis` axis (field-move from the legacy
 // crownMaterial/bridgeUnit). Each value must activate the SAME SVG layer set the

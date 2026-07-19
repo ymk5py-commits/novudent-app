@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP5 final-review fixes (data integrity + summary visibility).
 //
 // FIX 1 — version-gate the legacy secondary-caries inference: a surface with

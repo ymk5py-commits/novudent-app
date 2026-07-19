@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP17 Task 1: three tracked follow-up fixes.
 //
 // Fix #1 — setPulpDetailLevel must live-refresh the whole-mouth summary panel

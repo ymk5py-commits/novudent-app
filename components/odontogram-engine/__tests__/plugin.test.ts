@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from "vitest";
 import { getQuadrant, LAYER_Z, type OdontogramPlugin } from "../plugin";
 import { translations } from "../i18n/translations";

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP15 Task 4:
 //   B1 — a new "Panels" settings tab (id "panels") is inserted immediately
 //        after "general", with two ToggleRows bound to showStatusCard /

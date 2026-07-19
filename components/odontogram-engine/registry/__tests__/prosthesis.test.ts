@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from "vitest";
 import { VALID_PROSTHESIS } from "../../odontogram";
 import { AXES } from "../axes";

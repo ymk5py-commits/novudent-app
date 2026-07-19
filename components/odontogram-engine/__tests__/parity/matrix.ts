@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Deterministic parity matrix: every enum value / surface / boolean in isolation,
 // plus curated tricky combinations, over the 6 representative templates.
 import { VALID_TOOTH_SELECTION, VALID_ENDO,

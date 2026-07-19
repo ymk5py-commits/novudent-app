@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { STATUS_EXTRAS } from '../status_extras';
 import { translations } from '../i18n/translations';

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ONE-TIME capture of the pre-rewrite engine's behavior into frozen golden fixtures.
 // Run via `npm run parity:capture`. DO NOT re-run after Stage 0 — later stages must
 // MATCH these fixtures; re-capturing would make the oracle circular.

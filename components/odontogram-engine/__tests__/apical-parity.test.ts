@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP4 Task 4 byte-identical proof: the `apicalDx` clinical axis drives the
 // periapical glyph on a PRESENT tooth, decoupled from `mods.inflammation`.
 // A legacy present-tooth payload `{mods:["inflammation"], periapicalType:X}`

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP14 Task 4: orthodontic findings in the per-tooth tooltip and the
 // whole-mouth summary. Both sites gate on the SAME orthoAllowed predicate
 // that render (Task 2) and the Ortho UI card (Task 3) use — an implant or

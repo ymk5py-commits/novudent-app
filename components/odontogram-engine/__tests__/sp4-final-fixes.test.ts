@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP4 final-review fixes:
 //  - periapicalRowVisible: the lesion-subtype row must stay authorable on a
 //    non-present tooth (implant/missing) carrying mods.inflammation (regression

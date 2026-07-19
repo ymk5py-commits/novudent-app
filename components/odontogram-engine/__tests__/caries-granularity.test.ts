@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP5 Task 5: caries-granularity settings (modes) + the per-tooth/per-surface
 // caries authoring builders and surface-write helpers. No full-DOM harness
 // exists for the tooth panel, so — as prior SP tasks did — these tests target

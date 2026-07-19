@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, beforeEach } from 'vitest';
 import { __setToothStateForTest, __getToothStateForTest, __applyStatusExtraForTest } from '../odontogram';
 

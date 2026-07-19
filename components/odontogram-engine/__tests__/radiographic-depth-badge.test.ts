@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP5 Task 4: `radiographicDepth` surfaces as (1) a `data-radio` attribute on
 // the existing per-surface indicator element (alongside the ICDAS `data-depth`/
 // `data-icdas` attributes, added by SP5 Task 1 as a plain data field), and

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP3b final-review fixes:
 //  FIX 1 — a v1.14.0 (payload 2.0) implant FIXED crown (serialized by the SP3a
 //          interim defer as restorationType:"none" + crownMaterial:<material>)

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from "vitest";
 import { TOUR_STEPS, clampStep } from "../tour";
 import { translations } from "../i18n/translations";

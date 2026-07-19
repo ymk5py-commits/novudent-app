@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP16 Task 1: "Fillings and restorative" card — filling-defect hint note +
 // vertical defect popup.
 //

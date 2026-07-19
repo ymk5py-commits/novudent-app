@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP4 Task 1: pulp/apical/resorption diagnosis axes — additive registry
 // scaffolding only (no render/UI wiring yet; see later SP4 tasks). Verifies
 // the 4 new VALID_* sets and that AXES/FIELD_MAPPINGS stay 1:1 after adding

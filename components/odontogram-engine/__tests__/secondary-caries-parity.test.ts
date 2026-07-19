@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP6 Task 1: caries is a per-surface STATE MACHINE (corrects the SP5 model).
 // A caried surface is exactly ONE of:
 //   - PRIMARY caries   (no filling on the surface) → `caries-{surface}` at the

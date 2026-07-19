@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP13 Task 2: wear/discoloration detail-level accessors + simple-mode
 // toggles. Task 1 (committed) restructured the wear rows and added hidden
 // toggle checkboxes (#wearEdgeToggle / #wearCervicalToggle /

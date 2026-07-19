@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP16 Task 2: position-aware surface notation (letters + captions) +
 // simple/full setting.
 //

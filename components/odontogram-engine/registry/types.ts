@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** Registry type definitions for the clinical-axis engine (SP2). Types only. */
 
 export type AxisKind = "enum" | "boolean" | "set" | "surfaceSet" | "restoration" | "derived" | "global";

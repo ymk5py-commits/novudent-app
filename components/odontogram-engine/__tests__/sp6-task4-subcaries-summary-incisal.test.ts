@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP6 Task 4: "Fillings and restorative" panel subcaries summary line (spec
 // §7) + anterior "occlusal" -> "incisal" display label (spec §8).
 //

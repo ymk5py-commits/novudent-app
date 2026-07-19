@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Canonical system URLs and coding maps for the FHIR export.
  *

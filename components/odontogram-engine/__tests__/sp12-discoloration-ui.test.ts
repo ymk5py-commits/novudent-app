@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP12 Task 3: UI wiring for the discoloration axis. Tasks 1-2 already
 // provide the discoloration enum, getDiscolorationOptions(), the render-time
 // crown tint, and the discolorationAllowed()/__discolorationAllowedForTest

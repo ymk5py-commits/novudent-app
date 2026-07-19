@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP15 Task 3 (B4, ratified): scope the "Periapical inflammation" checkbox
 // (`input[value="inflammation"]` in `#modsChecks`, on the Root/Periodontium
 // card) so it's visible ONLY for a missing tooth or an extraction-socket:

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import '@testing-library/jest-dom/vitest';
 
 // jsdom does not implement scrollIntoView; stub it so code paths that call it

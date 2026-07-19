@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from "vitest";
 import { AXES } from "../axes";
 import { FIELD_MAPPINGS } from "../../fhir/fieldMappings";

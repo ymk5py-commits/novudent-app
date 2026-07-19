@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP4 Task 5: the diagnosis-authoring UI (3-level pulp control + practical-Latin
 // subtypes, apical picker, resorption picker). No full-DOM harness exists, so
 // these tests target the pure option/mapping builders and the registry

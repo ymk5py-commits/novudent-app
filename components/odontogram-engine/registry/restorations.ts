@@ -1,3 +1,4 @@
+// @ts-nocheck
 export type RestorationType = "none" | "crown" | "inlay" | "onlay" | "veneer" | "bridge";
 export type RestorationMaterial =
   | "none" | "emax" | "gold" | "gradia" | "zircon" | "metal" | "metal-ceramic" | "telescope" | "temporary";

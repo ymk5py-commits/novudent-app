@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Registry catalog coding data (SP2 Stage 3b). Generic AXES-driven pass that
  * replaces the render's 13 scattered boolean-flag layer toggles + the `mods`

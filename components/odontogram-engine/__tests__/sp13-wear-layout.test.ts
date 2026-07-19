@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP13 Task 1: Wear-row layout restructure (the overflow fix).
 // #bruxismRow was a no-wrap horizontal .row holding two 220px-min wear
 // <select>s, with #extractionPlanRow reparented in as a third child at

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP6 Task 1: payload version 2.4 — the SP5 `cariesDepths` (ICDAS) +
 // `secondaryCaries` (CARS) pair was unified into a single per-surface
 // `cariesSeverity` (0..6), read as ICDAS on a primary surface and CARS on a

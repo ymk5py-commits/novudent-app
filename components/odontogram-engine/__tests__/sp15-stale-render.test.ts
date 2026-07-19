@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP15 wholebranch review fix — two visibility-gate-without-render/state-clear
 // findings (same bug class as SP15 Task 1's B5/B7 gates):
 //

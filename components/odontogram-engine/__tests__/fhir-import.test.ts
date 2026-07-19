@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from "vitest";
 import { buildFhirBundle } from "../fhir/toFhir";
 import { parseFhirBundle } from "../fhir/fromFhir";

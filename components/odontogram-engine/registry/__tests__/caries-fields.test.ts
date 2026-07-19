@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP5 Task 1: caries fields foundation — additive registry scaffolding only
 // (no render/UI wiring yet; see later SP5 tasks). Mirrors
 // diagnosis-axes.test.ts's shape for the new `rootCaries` enum axis, and

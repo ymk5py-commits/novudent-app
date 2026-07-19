@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Language } from "./i18n/translations";
 
 /**

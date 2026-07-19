@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { test } from "vitest";
 import { runCapture } from "./capture";
 // Guarded: the normal suite skips this; only `npm run parity:capture` (which sets

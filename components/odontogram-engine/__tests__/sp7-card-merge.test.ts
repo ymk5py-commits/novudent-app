@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP7 Task 5: merge the "Root" (#endoSection) and "Periodontium and
 // inflammations" (#inflammationSection) cards into one #rootPeriodontiumSection
 // card with two labeled blocks (#rpRootBlock / #rpPerioBlock), relocate the

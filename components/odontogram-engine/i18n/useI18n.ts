@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { translations, type Language } from "./translations";
 

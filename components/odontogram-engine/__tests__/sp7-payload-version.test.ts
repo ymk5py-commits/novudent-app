@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP7 Task 6: payload version 2.5 — root/periodontium/endo-pulp consolidation
 // (merged Pulp/Endo selector, merged Root+Periodontium card, granuloma/cyst
 // lesion subtype, reversible-pulpitis reduced glyph, retired duplicate

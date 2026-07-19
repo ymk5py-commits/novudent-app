@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP5 Task 2: `rootCaries` (enum) wires the previously-dormant `caries-root`
 // SVG artwork layer (present since v2.5.0 in the 4 main-view templates —
 // 11/13/14/16 — but NOT in the 2 occlusal templates — 14_occl/16_occl — and

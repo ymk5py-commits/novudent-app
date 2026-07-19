@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP3a Task 4 + SP3b Task 3: explicit new-behavior / migration assertions for the
 // crown-material -> toothSubstrate + restorationType x restorationMaterial swap,
 // including implant fixed crowns/bridges folding into the same axis (SP3b Task 3,

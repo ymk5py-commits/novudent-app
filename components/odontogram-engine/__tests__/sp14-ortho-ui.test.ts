@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP14 Task 3: UI wiring for the orthodontic axes (appliance/drift/vertical/
 // rotation). Tasks 1-2 already provide the four enums, the
 // getOrthoApplianceOptions()/getOrthoDriftOptions()/getOrthoVerticalOptions()

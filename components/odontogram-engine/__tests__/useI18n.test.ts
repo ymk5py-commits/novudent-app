@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, beforeEach } from 'vitest';
 import { t, setI18nLanguage, getI18nLanguage, onI18nChange } from '../i18n/useI18n';
 

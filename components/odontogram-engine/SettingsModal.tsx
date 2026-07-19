@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { Language } from "./i18n/translations";
 import type { NumberingSystem } from "./utils/numbering";

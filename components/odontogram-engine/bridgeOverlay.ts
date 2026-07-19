@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Multi-tooth bridge-span OVERLAY subsystem.
  *

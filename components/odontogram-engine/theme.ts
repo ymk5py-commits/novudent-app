@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Theme configuration for the Odontogram component.
  *

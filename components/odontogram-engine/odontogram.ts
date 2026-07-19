@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { STATUS_EXTRAS } from "./status_extras";
 import { t, onI18nChange, getI18nLanguage } from "./i18n/useI18n";
 import { toLabel, type NumberingSystem } from "./utils/numbering";

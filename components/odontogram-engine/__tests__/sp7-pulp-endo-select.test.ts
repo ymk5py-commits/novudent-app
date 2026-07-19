@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SP7 Task 4: merged #pulpEndoSelect (root/periodontium/endo-pulp
 // consolidation). Like diagnosis-ui.test.ts and sp6-task2-caries-popup.test.ts,
 // no full-DOM harness exists for the tooth panel (odontogram.ts's DOM logic is

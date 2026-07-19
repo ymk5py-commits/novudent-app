@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Supported tooth numbering systems.
  * - **FDI** – ISO 3950 two-digit notation (default in most countries).

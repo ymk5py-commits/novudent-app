@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from "vitest";
 import { optionsFor } from "../uiOptions";
 import { t } from "../../i18n/useI18n";

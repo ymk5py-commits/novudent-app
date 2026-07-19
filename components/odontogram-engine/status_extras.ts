@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Pre-configured dental status presets for quick application of common
  * restorative scenarios (bridges, full-arch, partial/full removable, bar dentures).

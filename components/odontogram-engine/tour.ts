@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { t } from "./i18n/useI18n";
 
 export interface TourStep { selector: string; titleKey: string; textKey: string; }

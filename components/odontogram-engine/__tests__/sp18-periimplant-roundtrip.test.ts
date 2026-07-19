@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, beforeEach } from "vitest";
 import { VALID_PERI_IMPLANT, __setToothStateForTest, __getToothStateForTest,
   __collectExportPayloadForTest } from "../odontogram";

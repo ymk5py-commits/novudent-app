@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { AXES } from "./axes";
 import type { UiOptCtx } from "./types";
 

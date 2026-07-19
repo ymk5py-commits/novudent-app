@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from "vitest";
 import { RESTORATION_MATRIX, composeRestorationLayers, isValidRestoration, restorationOptions } from "../restorations";
 

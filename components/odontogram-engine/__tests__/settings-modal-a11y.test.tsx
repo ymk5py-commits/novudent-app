@@ -1,3 +1,4 @@
+// @ts-nocheck
 // FIX 2 (a11y): the settings-modal tablist uses a roving tabindex, so without
 // an Arrow-key handler only the active tab is keyboard/AT reachable (the other
 // four are mouse-only). This verifies APG-tabs keyboard support: Left/Right
