@@ -2,9 +2,6 @@ import { STATUS_EXTRAS } from "./status_extras";
 import { t, onI18nChange, getI18nLanguage } from "./i18n/useI18n";
 import { toLabel, type NumberingSystem } from "./utils/numbering";
 import { type OdontogramPlugin, getQuadrant, LAYER_Z } from "./plugin";
-import { buildFhirBundle } from "./fhir/toFhir";
-import { parseFhirBundle } from "./fhir/fromFhir";
-import type { FhirExportOptions } from "./fhir/types";
 import { allClearLayers } from "./registry/svgLayers";
 import { applyFlagLayers, buildFlagCtx } from "./registry/svgActivate";
 import { validValues, validSurfaces } from "./registry/validate";
@@ -4566,7 +4563,7 @@ function hydrateState(raw: Any, inferLegacySecondaryCaries = true){
   return s;
 }
 
-function collectExportPayload(){
+export function collectExportPayload(){
   const teeth = {};
   for(const toothNo of ALL_TEETH){
     const s = toothState.get(toothNo) ?? defaultState();
@@ -4586,7 +4583,7 @@ function collectExportPayload(){
 }
 
 /** TEST-ONLY: collect the full export payload ({version, globals, teeth}) exactly
- *  as exportStatus()/exportFhir() would serialize it. Not part of the public API. */
+ *  as exportStatus() would serialize it. Not part of the public API. */
 export function __collectExportPayloadForTest(): Any {
   return collectExportPayload();
 }
@@ -4849,22 +4846,11 @@ function exportStatus(){
   downloadJson(collectExportPayload(), "odontogram-status");
 }
 
-/**
- * Export the current odontogram as an HL7 FHIR R4 collection Bundle (JSON).
- * @param options - Optional subject reference (e.g. "Patient/123"); when
- *   omitted a placeholder Patient is embedded.
- */
-export function exportFhir(options?: FhirExportOptions){
-  const bundle = buildFhirBundle(collectExportPayload(), options);
-  downloadJson(bundle, "odontogram-fhir");
-}
-
-function importStatus(data: Any){
+export function importStatus(data: Any){
   if(!data || typeof data !== "object") return;
   // FIX 1: only re-infer the legacy caries∩filling recurrent-caries intersection
-  // for pre-2.3 payloads. A native ≥2.3 payload (including any FHIR bundle, which
-  // parseFhirBundle tags "2.3") carries explicit `secondaryCaries` scores, so an
-  // unscored caried+filled surface stays PRIMARY. A missing version → legacy.
+  // for pre-2.3 payloads. A native ≥2.3 payload carries explicit `secondaryCaries`
+  // scores, so an unscored caried+filled surface stays PRIMARY. A missing version → legacy.
   const inferLegacySecondaryCaries = isLegacyPayloadVersion(data.version);
   const teeth = data.teeth || {};
   for(const toothNo of ALL_TEETH){
@@ -4887,16 +4873,6 @@ function importStatus(data: Any){
   updateSelectionFilterButtons();
   updateSelectionUI();
   notifyStateChange();
-}
-
-/** Import a FHIR R4 Bundle (object or JSON string) produced by this module. */
-export function importFhirBundle(input: Any){
-  let bundle = input;
-  if(typeof input === "string"){
-    try{ bundle = JSON.parse(input); }catch(e){ console.error("Invalid FHIR JSON", e); return; }
-  }
-  const payload = parseFhirBundle(bundle);
-  importStatus(payload);
 }
 
 function applyStatusExtra(option: Any){
@@ -5213,12 +5189,6 @@ async function buildGrid(token: number){
     grid.addEventListener("touchend", onGridTouchEnd);
     buildArchToggle();
   }
-}
-
-let pendingImportFormat: "status" | "fhir" = "status";
-/** Set which parser the next file import uses. Defaults back to "status" after each import. */
-export function setImportFormat(format: "status" | "fhir"){
-  pendingImportFormat = format === "fhir" ? "fhir" : "status";
 }
 
 // ---- Controls wiring ----
@@ -5807,14 +5777,10 @@ function wireControls(){
   });
 
   const exportBtn = $("#btnStatusExport") as HTMLButtonElement | null;
-  const fhirBtn = $("#btnStatusFhirExport") as HTMLButtonElement | null;
   const importBtn = $("#btnStatusImport") as HTMLButtonElement | null;
   const importInput = $("#statusImportInput") as HTMLInputElement | null;
   if(exportBtn){
     exportBtn.onclick = () => exportStatus();
-  }
-  if(fhirBtn){
-    fhirBtn.onclick = () => exportFhir();
   }
   const pngBtn = $("#btnStatusPngExport") as HTMLButtonElement | null;
   const jpgBtn = $("#btnStatusJpgExport") as HTMLButtonElement | null;
@@ -5836,20 +5802,14 @@ function wireControls(){
     importInput.onchange = async ()=>{
       const file = importInput.files?.[0];
       if(!file) return;
-      const format = pendingImportFormat;
       try{
         const text = await file.text();
         const data = JSON.parse(text);
-        if(format === "fhir"){
-          importFhirBundle(data);
-        }else{
-          importStatus(data);
-        }
+        importStatus(data);
       }catch(e){
         console.error("Odontogram import failed", e);
       }finally{
         importInput.value = "";
-        pendingImportFormat = "status";
       }
     };
   }
@@ -5871,7 +5831,7 @@ export function setNumberingSystem(system: NumberingSystem){
  * grid, and start listening for i18n changes. Safe to call multiple times
  * (subsequent calls are no-ops).
  */
-export async function initOdontogram(){
+export async function initOdontogram(onReady?: () => void){
   if(initialized) return;
   initialized = true;
   const token = ++initToken;
@@ -5891,6 +5851,7 @@ export async function initOdontogram(){
   }
   setupBridgeOverlayResize();
   notifyStateChange();
+  onReady?.();
 }
 
 /**
