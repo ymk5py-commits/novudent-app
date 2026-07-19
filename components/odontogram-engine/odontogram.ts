@@ -5830,6 +5830,11 @@ export function setNumberingSystem(system: NumberingSystem){
  * Initialise the odontogram engine: wire up DOM controls, build the SVG tooth
  * grid, and start listening for i18n changes. Safe to call multiple times
  * (subsequent calls are no-ops).
+ * @param onReady - Invoked ONCE, at the end of real initialisation (after the
+ *   grid and controls are ready). NOT invoked on a no-op call (the engine was
+ *   already initialised) nor if `destroyOdontogram()`/a re-init overtook this
+ *   call while `buildGrid` was in flight — callers must treat it as
+ *   best-effort, not guaranteed to fire.
  */
 export async function initOdontogram(onReady?: () => void){
   if(initialized) return;
