@@ -563,10 +563,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
    * clínica cargada en memoria (clinicIdRef), nunca en la global mutable. */
   const fsSave = useCallback((colName: string, id: string, data: unknown) => {
     if (backendRef.current !== "firebase") return;
+    // Un id vacío hace crashear a Firestore doc() (ResourcePath.fromString(undefined));
+    // guardá acá para que un doc mal formado nunca tumbe una operación de escritura.
+    if (!id) { console.warn("fsSave: id vacío, se omite", colName); return; }
     setDoc(doc(fsdb, "clinics", clinicIdRef.current, colName, id), clean(data)).catch((e) => console.warn("fsSave", e));
   }, []);
   const fsDelete = useCallback((colName: string, id: string) => {
     if (backendRef.current !== "firebase") return;
+    if (!id) { console.warn("fsDelete: id vacío, se omite", colName); return; }
     deleteDoc(doc(fsdb, "clinics", clinicIdRef.current, colName, id)).catch((e) => console.warn("fsDelete", e));
   }, []);
   const fsMeta = useCallback((dbNow: DB) => {
@@ -694,7 +698,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (backendRef.current === "firebase") {
           // borrar extras y reescribir semilla
           const delExtras = (colName: string, currentIds: string[], seedIds: string[]) =>
-            currentIds.filter((i) => !seedIds.includes(i)).forEach((i) => fsDelete(colName, i));
+            currentIds.filter((i) => i && !seedIds.includes(i)).forEach((i) => fsDelete(colName, i));
           delExtras("users", db.users.map((x) => x.id), seed.users.map((x) => x.id));
           delExtras("patients", db.patients.map((x) => x.id), seed.patients.map((x) => x.id));
           delExtras("appointments", db.appointments.map((x) => x.id), seed.appointments.map((x) => x.id));
