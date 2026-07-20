@@ -11,7 +11,7 @@ import { useStore, fmtTime, fmtGs, fullName } from "@/lib/store";
 import { patientBalance } from "@/lib/budgets";
 import { can } from "@/lib/rbac";
 import { Card, Badge, StatusBadge } from "@/components/ui";
-import { ToothGlyph } from "@/components/Odontogram";
+import { ToothGlyph } from "@/components/OdontogramShowcase";
 import { ContralorCard } from "@/components/NovudentIA";
 import { WeekBarsChart, StatusDonutChart } from "@/components/Charts";
 import { useClinicPlan } from "@/components/PlanGate";

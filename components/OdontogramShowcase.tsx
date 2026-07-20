@@ -2,9 +2,12 @@
 /** Vitrina visual del odontograma para la landing pública y el dashboard — SVG artesanal
  *  desconectado de datos reales de pacientes. No usar para el flujo clínico real: ver
  *  components/Odontogram.tsx (motor React-Odontogram-Modul vendorizado). */
+import { useMemo, useState } from "react";
+import { Eraser } from "lucide-react";
+import { Btn, Field, inputCls, Modal } from "./ui";
 
-const UPPER = ["18", "17", "16", "15", "14", "13", "12", "11", "21", "22", "23", "24", "25", "26", "27", "28"];
-const LOWER = ["48", "47", "46", "45", "44", "43", "42", "41", "31", "32", "33", "34", "35", "36", "37", "38"];
+export const UPPER = ["18", "17", "16", "15", "14", "13", "12", "11", "21", "22", "23", "24", "25", "26", "27", "28"];
+export const LOWER = ["48", "47", "46", "45", "44", "43", "42", "41", "31", "32", "33", "34", "35", "36", "37", "38"];
 
 /* rojo = pendiente/patología · azul = realizado */
 const RED = "#DC2626";
@@ -119,7 +122,7 @@ const SEG: Record<Exclude<ShowcaseToothSurface, "O">, string> = {
 };
 const ALL_SURFACES: ShowcaseToothSurface[] = ["V", "D", "L", "M", "O"];
 
-function Occlusal({
+export function Occlusal({
   rec, size = "sm", onToggle, interactive = false, value,
 }: {
   rec?: ShowcaseToothRecord;
@@ -176,7 +179,7 @@ function Occlusal({
 }
 
 /* ===== Pieza completa en el tablero ===== */
-function ToothCol({ n, rec, upper, onClick }: { n: string; rec?: ShowcaseToothRecord; upper: boolean; onClick: () => void }) {
+export function ToothCol({ n, rec, upper, onClick }: { n: string; rec?: ShowcaseToothRecord; upper: boolean; onClick: () => void }) {
   const parts = [
     <span key="e" className="transition-transform duration-150 group-hover:scale-110"><Elevation n={n} rec={rec} upper={upper} /></span>,
     <span key="s" className="text-[8px] leading-none text-azure-500">{rec && rec.condition !== "ausente" ? "★" : " "}</span>,
@@ -206,3 +209,172 @@ export interface ShowcaseToothRecord {
 }
 
 export { Elevation as ToothGlyph };
+
+/* ===== Editor de pieza (vitrina — sin auditoría, a diferencia del clínico real) ===== */
+function ToothEditor({
+  tooth, rec, editable, onClose, onSave,
+}: {
+  tooth: string;
+  rec?: ShowcaseToothRecord;
+  editable: boolean;
+  onClose: () => void;
+  onSave: (rec: ShowcaseToothRecord | null) => void;
+}) {
+  const [condition, setCondition] = useState<ShowcaseToothCondition | null>(rec?.condition ?? null);
+  const [surfaces, setSurfaces] = useState<ShowcaseToothSurface[]>(rec?.surfaces ?? []);
+  const [note, setNote] = useState(rec?.note ?? "");
+  const upper = [1, 2, 5, 6].includes(parseInt(tooth[0], 10));
+  const usesSurfaces = condition === "caries" || condition === "restaurado";
+  const preview: ShowcaseToothRecord | undefined = condition
+    ? { condition, surfaces: usesSurfaces ? surfaces : undefined, note: note || undefined }
+    : undefined;
+
+  return (
+    <Modal title={`Pieza ${tooth}`} onClose={onClose}>
+      <div className="mb-4 flex items-center justify-center gap-6 rounded-2xl bg-clinic-bg py-4">
+        <Elevation n={tooth} rec={preview} upper={upper} />
+        <Occlusal
+          rec={preview}
+          size="lg"
+          interactive={editable && usesSurfaces}
+          value={usesSurfaces ? surfaces : undefined}
+          onToggle={(s) => setSurfaces((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]))}
+        />
+      </div>
+      {!editable ? (
+        <div className="space-y-3 text-sm">
+          <p className="font-bold text-clinic-text">
+            {rec ? CONDITIONS[rec.condition].label : "Sana"}
+            {rec?.surfaces?.length ? <span className="ml-2 font-mono text-xs text-clinic-muted">Superficies: {rec.surfaces.join(" · ")}</span> : null}
+          </p>
+          {rec?.note && <p className="rounded-xl bg-clinic-bg p-3 text-clinic-text">{rec.note}</p>}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            {(Object.keys(CONDITIONS) as ShowcaseToothCondition[]).map((k) => {
+              const c = CONDITIONS[k];
+              const active = condition === k;
+              return (
+                <button
+                  key={k}
+                  onClick={() => setCondition(k)}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all ${
+                    active ? `${c.chip} border-transparent ring-2 ring-azure-300` : "border-clinic-border hover:border-azure-300"
+                  }`}
+                >
+                  <span className={`h-2.5 w-2.5 rounded-full ${c.dot}`} /> {c.label}
+                </button>
+              );
+            })}
+          </div>
+          {usesSurfaces && (
+            <p className="rounded-xl bg-azure-50 px-3 py-2 text-xs font-semibold text-azure-700">
+              Tocá las superficies afectadas en el círculo (M · D · V · L · centro = O).{" "}
+              {surfaces.length > 0 ? <span className="font-mono">Seleccionadas: {surfaces.join(" · ")}</span> : "Ninguna seleccionada."}
+            </p>
+          )}
+          <Field label="Nota (opcional)">
+            <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej.: sensibilidad al frío" />
+          </Field>
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <Btn variant="ghost" onClick={() => onSave(null)} tip="Quitar marca — vuelve a estado sano">
+              <Eraser className="h-4 w-4" /> Marcar sana
+            </Btn>
+            <div className="flex gap-2">
+              <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
+              <Btn
+                disabled={!condition}
+                onClick={() => condition && onSave({ condition, surfaces: usesSurfaces && surfaces.length > 0 ? surfaces : undefined, note: note || undefined })}
+              >
+                Guardar pieza
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+/** Tablero interactivo completo — reemplaza al viejo default-export de Odontogram.tsx para uso
+ *  exclusivo de marketing (landing/dashboard). Mismo comportamiento visual e interactivo que
+ *  tenía antes, sobre los tipos Showcase* (sin auditoría, sin conexión a Firestore). */
+export function ShowcaseBoard({
+  value, editable, onChange,
+}: {
+  value: Record<string, ShowcaseToothRecord>;
+  editable: boolean;
+  onChange: (tooth: string, rec: ShowcaseToothRecord | null) => void;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const counts = useMemo(() => {
+    const acc: Partial<Record<ShowcaseToothCondition, number>> = {};
+    Object.values(value).forEach((r) => { acc[r.condition] = (acc[r.condition] ?? 0) + 1; });
+    return acc;
+  }, [value]);
+
+  const Row = ({ teeth, upper }: { teeth: string[]; upper: boolean }) => {
+    const h = Math.ceil(teeth.length / 2);
+    return (
+      <div className="flex justify-center">
+        <div className="flex">{teeth.slice(0, h).map((n) => <ToothCol key={n} n={n} rec={value[n]} upper={upper} onClick={() => setSelected(n)} />)}</div>
+        <div className="mx-1.5 w-px self-stretch bg-clinic-border sm:mx-2.5" />
+        <div className="flex">{teeth.slice(h).map((n) => <ToothCol key={n} n={n} rec={value[n]} upper={upper} onClick={() => setSelected(n)} />)}</div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap gap-2">
+        {(Object.keys(CONDITIONS) as ShowcaseToothCondition[]).map((k) => {
+          const n = counts[k] ?? 0;
+          if (n === 0) return null;
+          const c = CONDITIONS[k];
+          return (
+            <span key={k} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${c.chip}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} /> {n} {c.label.toLowerCase()}
+            </span>
+          );
+        })}
+        {Object.keys(value).length === 0 && <span className="text-sm text-clinic-muted">Sin hallazgos registrados — dentición sana.</span>}
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-clinic-border bg-white p-4 sm:p-6">
+        <div className="min-w-[700px] space-y-1.5">
+          <Row teeth={UPPER} upper />
+          <div className="relative py-2.5">
+            <div className="h-px bg-clinic-border" />
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 font-mono text-[9px] uppercase tracking-widest text-clinic-muted">
+              derecha · línea media · izquierda
+            </span>
+          </div>
+          <Row teeth={LOWER} upper={false} />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-clinic-border bg-white px-4 py-3">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-red-600"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Rojo = patología / pendiente</span>
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-azure-700"><span className="h-2.5 w-2.5 rounded-full bg-azure-600" /> Azul = tratamiento realizado</span>
+        <span className="hidden h-4 w-px bg-clinic-border sm:block" />
+        {(Object.keys(CONDITIONS) as ShowcaseToothCondition[]).map((k) => (
+          <span key={k} className="inline-flex items-center gap-1.5 text-[11px] text-clinic-muted">
+            <span className={`h-2 w-2 rounded-sm ${CONDITIONS[k].dot}`} /> {CONDITIONS[k].label}
+          </span>
+        ))}
+      </div>
+
+      {selected && (
+        <ToothEditor
+          tooth={selected}
+          rec={value[selected]}
+          editable={editable}
+          onClose={() => setSelected(null)}
+          onSave={(rec) => { onChange(selected, rec); setSelected(null); }}
+        />
+      )}
+    </div>
+  );
+}

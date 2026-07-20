@@ -9,8 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, useInView, useMotionValue, animate } from "framer-motion";
 import { ArrowRight, ArrowUpRight, Check, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
-import type { ToothRecord } from "@/lib/types";
-import Odontogram, { ToothGlyph } from "./Odontogram";
+import { ShowcaseBoard, ToothGlyph, type ShowcaseToothRecord } from "./OdontogramShowcase";
 import { FlagBadge } from "./ui";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 
@@ -32,23 +31,23 @@ function Count({ value, suffix = "" }: { value: number; suffix?: string }) {
 }
 
 /* demo del odontograma (estado local) */
-const DEMO_TEETH: Record<string, ToothRecord> = {
-  "16": { condition: "caries", surfaces: ["O"], updatedAt: "", updatedBy: "Demo" },
-  "24": { condition: "caries", surfaces: ["M"], updatedAt: "", updatedBy: "Demo" },
-  "11": { condition: "restaurado", surfaces: ["V"], updatedAt: "", updatedBy: "Demo" },
-  "26": { condition: "corona", updatedAt: "", updatedBy: "Demo" },
-  "36": { condition: "endodoncia", updatedAt: "", updatedBy: "Demo" },
-  "46": { condition: "implante", updatedAt: "", updatedBy: "Demo" },
-  "28": { condition: "ausente", updatedAt: "", updatedBy: "Demo" },
+const DEMO_TEETH: Record<string, ShowcaseToothRecord> = {
+  "16": { condition: "caries", surfaces: ["O"] },
+  "24": { condition: "caries", surfaces: ["M"] },
+  "11": { condition: "restaurado", surfaces: ["V"] },
+  "26": { condition: "corona" },
+  "36": { condition: "endodoncia" },
+  "46": { condition: "implante" },
+  "28": { condition: "ausente" },
 };
 
 /* dientes para el marquee de marca */
-const MARQUEE_TEETH: { n: string; rec?: ToothRecord }[] = [
-  { n: "11" }, { n: "13", rec: { condition: "restaurado", updatedAt: "", updatedBy: "" } },
-  { n: "16" }, { n: "21", rec: { condition: "caries", surfaces: ["O"], updatedAt: "", updatedBy: "" } },
-  { n: "23" }, { n: "26", rec: { condition: "corona", updatedAt: "", updatedBy: "" } },
-  { n: "14" }, { n: "17" }, { n: "12", rec: { condition: "endodoncia", updatedAt: "", updatedBy: "" } },
-  { n: "24" }, { n: "27", rec: { condition: "implante", updatedAt: "", updatedBy: "" } }, { n: "15" },
+const MARQUEE_TEETH: { n: string; rec?: ShowcaseToothRecord }[] = [
+  { n: "11" }, { n: "13", rec: { condition: "restaurado" } },
+  { n: "16" }, { n: "21", rec: { condition: "caries", surfaces: ["O"] } },
+  { n: "23" }, { n: "26", rec: { condition: "corona" } },
+  { n: "14" }, { n: "17" }, { n: "12", rec: { condition: "endodoncia" } },
+  { n: "24" }, { n: "27", rec: { condition: "implante" } }, { n: "15" },
 ];
 
 const CAPACIDADES = [
@@ -65,7 +64,7 @@ const CAPACIDADES = [
 export default function Landing() {
   const { session } = useStore();
   const appHref = session ? "/app" : "/login";
-  const [demoTeeth, setDemoTeeth] = useState<Record<string, ToothRecord>>(DEMO_TEETH);
+  const [demoTeeth, setDemoTeeth] = useState<Record<string, ShowcaseToothRecord>>(DEMO_TEETH);
 
   return (
     <div className="bg-white text-clinic-text">
@@ -140,10 +139,9 @@ export default function Landing() {
                 <span className="hidden rounded-full bg-state-okbg px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-state-ok sm:block">demo en vivo</span>
               </div>
               <div className="p-4 sm:p-6">
-                <Odontogram
+                <ShowcaseBoard
                   value={demoTeeth}
                   editable
-                  authorName="Demo"
                   onChange={(tooth, rec) =>
                     setDemoTeeth((prev) => {
                       const next = { ...prev };
