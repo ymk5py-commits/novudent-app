@@ -32,12 +32,18 @@ const patients: Patient[] = [
       { id: "n2", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-7, 10, 30), kind: "plan", text: "Plan: resina compuesta en 16. Control de placa. Profilaxis en próxima visita." },
     ],
     odontogram: {
-      "16": { condition: "caries", surfaces: ["O"], note: "Oclusal, sensibilidad al frío", updatedAt: at(-7, 10), updatedBy: "Dra. Sofía Benítez" },
-      "24": { condition: "caries", surfaces: ["M"], note: "Interproximal mesial", updatedAt: at(-7, 10), updatedBy: "Dra. Sofía Benítez" },
-      "11": { condition: "restaurado", surfaces: ["V"], note: "Resina 2024", updatedAt: at(-30, 9), updatedBy: "Dra. Sofía Benítez" },
-      "26": { condition: "corona", note: "Corona cerámica", updatedAt: at(-60, 9), updatedBy: "Dra. Sofía Benítez" },
-      "28": { condition: "ausente", updatedAt: at(-90, 9), updatedBy: "Dra. Sofía Benítez" },
+      version: "2.10",
+      globals: {},
+      teeth: {
+        "16": { toothSelection: "tooth-base", caries: ["caries-occlusal"], note: "Oclusal, sensibilidad al frío" },
+        "24": { toothSelection: "tooth-base", caries: ["caries-mesial"], note: "Interproximal mesial" },
+        "11": { toothSelection: "tooth-base", fillingMaterial: "composite", fillingSurfaces: ["buccal"], note: "Resina 2024" },
+        "26": { toothSelection: "tooth-base", restorationType: "crown", restorationMaterial: "metal-ceramic", note: "Corona cerámica" },
+        "28": { toothSelection: "no-tooth-after-extraction", note: "Ausente" },
+      },
     },
+    odontogramUpdatedBy: "Dra. Sofía Benítez",
+    odontogramUpdatedAt: at(-7, 10),
     prescriptions: [
       {
         id: "rx1", date: at(-7, 11), dentistId: "u2", dentistName: "Dra. Sofía Benítez",
@@ -72,10 +78,16 @@ const patients: Patient[] = [
     historyUpdatePending: true,
     emr: [{ id: "n4", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-3, 11), kind: "diagnostico", text: "Resto radicular pieza 28 (K08.3). Indicada exodoncia simple." }],
     odontogram: {
-      "28": { condition: "extraccion", note: "Resto radicular — exodoncia programada", updatedAt: at(-3, 11), updatedBy: "Dra. Sofía Benítez" },
-      "36": { condition: "endodoncia", note: "Endodoncia 2023, asintomática", updatedAt: at(-120, 9), updatedBy: "Dra. Sofía Benítez" },
-      "46": { condition: "implante", note: "Implante + corona 2022", updatedAt: at(-200, 9), updatedBy: "Dra. Sofía Benítez" },
+      version: "2.10",
+      globals: {},
+      teeth: {
+        "28": { toothSelection: "tooth-base", extractionPlan: true, note: "Resto radicular — exodoncia programada" },
+        "36": { toothSelection: "tooth-base", endo: "endo-filling", note: "Endodoncia 2023, asintomática" },
+        "46": { toothSelection: "implant", restorationType: "crown", restorationMaterial: "zircon", note: "Implante + corona 2022" },
+      },
     },
+    odontogramUpdatedBy: "Dra. Sofía Benítez",
+    odontogramUpdatedAt: at(-3, 11),
     nps: { score: 9, comment: "Muy buena atención de la doctora, la exodoncia fue rápida.", at: at(-1, 13) },
   },
   {
