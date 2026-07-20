@@ -9,16 +9,17 @@ import { currentIdToken } from "@/lib/firebase";
 import { resizeToDataUrl } from "@/lib/image";
 import { Card, Btn, Badge, Empty } from "@/components/ui";
 import { Sparkles, Upload, Loader2, Check, Smile, FileSpreadsheet, AlertTriangle } from "lucide-react";
-import type { Patient, ToothCondition, Budget } from "@/lib/types";
+import type { Patient, Budget, RxSeverity } from "@/lib/types";
+import { findingToToothFields, type FindingCondition } from "@/lib/odontogram-findings";
 
-type Finding = { tooth: string; condition: ToothCondition; severity: string; confidence: number; note: string };
+type Finding = { tooth: string; condition: FindingCondition; severity: RxSeverity; confidence: number; note: string };
 type PlanItem = { tooth?: string; cpt: string; description: string; price: number; priority: number };
 
 const COND_LABEL: Record<string, string> = { caries: "Caries", restaurado: "Restaurado", corona: "Corona", endodoncia: "Endodoncia", extraccion: "Extracción", ausente: "Ausente", implante: "Implante" };
 const sevTone = (s: string): "err" | "warn" | "info" | "muted" => (s === "severo" ? "err" : s === "moderado" ? "warn" : s === "leve" ? "info" : "muted");
 
 export function ClinicalCopilot({ patient }: { patient: Patient }) {
-  const { db, session, setTooth, upsertBudget } = useStore();
+  const { db, session, mergeOdontogramTooth, upsertBudget } = useStore();
   const [img, setImg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,10 +59,10 @@ export function ClinicalCopilot({ patient }: { patient: Patient }) {
 
   const aplicarOdontograma = () => {
     if (!res || !session) return;
-    const now = new Date().toISOString();
     res.findings.forEach((f, i) => {
       if (!fSel.has(i)) return;
-      setTooth(patient.id, f.tooth, { condition: f.condition, surfaces: [], note: f.note || `Copilot IA (${Math.round(f.confidence * 100)}%)`, updatedAt: now, updatedBy: session.name });
+      const fields = findingToToothFields({ condition: f.condition, severity: f.severity });
+      mergeOdontogramTooth(patient.id, f.tooth, { ...fields, note: f.note || `Copilot IA (${Math.round(f.confidence * 100)}%)` }, session.name);
     });
     setDone("odontograma");
   };
