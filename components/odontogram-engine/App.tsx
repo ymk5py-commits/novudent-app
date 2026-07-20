@@ -15,11 +15,11 @@ import { applyThemeConfig, type OdontogramThemeConfig } from "./theme";
 export type { OdontogramThemeConfig };
 import type { OdontogramPlugin, PluginLayer } from "./plugin";
 export type { OdontogramPlugin, PluginLayer };
-import icon8Url from "./assets/icon-svgs/icon_8.svg";
-import iconGumUrl from "./assets/icon-svgs/icon_gum.svg";
-import iconNoSelectionUrl from "./assets/icon-svgs/icon_no_selection.svg";
-import iconOcclUrl from "./assets/icon-svgs/icon_occl.svg";
-import iconPulpUrl from "./assets/icon-svgs/icon_pulp.svg";
+const icon8Url = "/odontogram/icon-svgs/icon_8.svg";
+const iconGumUrl = "/odontogram/icon-svgs/icon_gum.svg";
+const iconNoSelectionUrl = "/odontogram/icon-svgs/icon_no_selection.svg";
+const iconOcclUrl = "/odontogram/icon-svgs/icon_occl.svg";
+const iconPulpUrl = "/odontogram/icon-svgs/icon_pulp.svg";
 
 /**
  * Props for the main Odontogram application component.

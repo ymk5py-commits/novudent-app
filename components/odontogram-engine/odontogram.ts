@@ -20,12 +20,12 @@ import {
   defaultMaterialColor,
   type BridgeToothState,
 } from "./bridgeOverlay";
-import tooth11Url from "./assets/teeth-svgs/11.svg";
-import tooth13Url from "./assets/teeth-svgs/13.svg";
-import tooth14Url from "./assets/teeth-svgs/14.svg";
-import tooth16Url from "./assets/teeth-svgs/16.svg";
-import tooth14OcclUrl from "./assets/teeth-svgs/14_occl.svg";
-import tooth16OcclUrl from "./assets/teeth-svgs/16_occl.svg";
+const tooth11Url = "/odontogram/teeth-svgs/11.svg";
+const tooth13Url = "/odontogram/teeth-svgs/13.svg";
+const tooth14Url = "/odontogram/teeth-svgs/14.svg";
+const tooth16Url = "/odontogram/teeth-svgs/16.svg";
+const tooth14OcclUrl = "/odontogram/teeth-svgs/14_occl.svg";
+const tooth16OcclUrl = "/odontogram/teeth-svgs/16_occl.svg";
 /* Tooth SVG Test UI (v2) - vanilla JS */
 
 const TEMPLATES = {

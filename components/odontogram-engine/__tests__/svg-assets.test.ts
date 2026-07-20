@@ -10,7 +10,13 @@ function readSvg(name: string): string {
   // Use Node's own URL (not the jsdom-provided global URL, which mis-resolves
   // relative `file:` URLs against `window.location` under the jsdom test
   // environment) so this always resolves relative to this test file on disk.
-  const url = new NodeURL(`../assets/teeth-svgs/${name}.svg`, import.meta.url);
+  //
+  // These assets are served from `public/odontogram/` (Next.js serves static
+  // files from `public/` by URL path; there is no Vite-style module import
+  // pipeline for `.svg` here) rather than from a vendored `./assets/` dir
+  // inside the engine source tree — see components/odontogram-engine/App.tsx
+  // and odontogram.ts, which reference the same `/odontogram/...` paths.
+  const url = new NodeURL(`../../../public/odontogram/teeth-svgs/${name}.svg`, import.meta.url);
   return readFileSync(fileURLToPath(url), "utf8");
 }
 
