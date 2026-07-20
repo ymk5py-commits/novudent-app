@@ -25,11 +25,13 @@ async function ensureAuth() {
   }
 }
 import type {
-  DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, ToothRecord,
+  DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote,
+  OdontogramStatus, OdontogramToothState,
   Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
   OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo, Branch,
   CrmCard, Campaign, LabOrder, Settlement, Box,
 } from "./types";
+import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { planUserLimitError } from "./plan";
@@ -344,7 +346,12 @@ interface Ctx {
   addEmrNote: (patientId: string, note: EmrNote) => void;
   /** Flujo clipboard: marca la actualización de historial médico como recibida con fecha de envío */
   markHistoryUpdate: (patientId: string, date: string) => void;
-  setTooth: (patientId: string, tooth: string, rec: ToothRecord | null) => void;
+  /** Reemplaza el odontograma completo del paciente (lo llama el wrapper Odontogram.tsx en cada
+   *  guardado — el motor reporta el payload entero, no diffs por diente). */
+  setOdontogram: (patientId: string, status: OdontogramStatus, by: string) => void;
+  /** Mezcla campos puntuales en UNA pieza sin necesitar el motor cargado (lo usa el Copiloto IA al
+   *  aplicar hallazgos de una radiografía). Crea el odontograma si el paciente no tenía uno. */
+  mergeOdontogramTooth: (patientId: string, tooth: string, fields: Partial<OdontogramToothState>, by: string) => void;
   addPerioSession: (patientId: string, session: import("./types").PerioSession) => void;
   upsertBilling: (b: BillingRecord) => void;
   submitBilling: (id: string) => void;
@@ -747,7 +754,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           emr: [...keep.emr, ...remove.emr],
           files: [...(keep.files ?? []), ...(remove.files ?? [])],
           perio: [...(keep.perio ?? []), ...(remove.perio ?? [])],
-          odontogram: { ...(remove.odontogram ?? {}), ...(keep.odontogram ?? {}) },
+          odontogram: (keep.odontogram || remove.odontogram) ? {
+            ...DEFAULT_ODONTOGRAM_STATUS,
+            ...(remove.odontogram ?? {}),
+            ...(keep.odontogram ?? {}),
+            teeth: { ...(remove.odontogram?.teeth ?? {}), ...(keep.odontogram?.teeth ?? {}) },
+          } : undefined,
         };
         const patients = db.patients.filter((p) => p.id !== removeId).map((p) => (p.id === keepId ? merged : p));
         persist({ ...db, patients, appointments, billing, budgets, payments, signatures, radiographs, recoveryMonitors, crmCards, labOrders, patientNotes, fiscalDocs });
@@ -765,11 +777,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         patchPatient(patientId, (p) => ({ ...p, perio: [session, ...(p.perio ?? [])] })),
       markHistoryUpdate: (patientId, date) =>
         patchPatient(patientId, (p) => ({ ...p, historyUpdatePending: false, historyUpdateDate: date })),
-      setTooth: (patientId, tooth, rec) =>
+      setOdontogram: (patientId, status, by) =>
+        patchPatient(patientId, (p) => ({
+          ...p,
+          odontogram: status,
+          odontogramUpdatedBy: by,
+          odontogramUpdatedAt: new Date().toISOString(),
+        })),
+      mergeOdontogramTooth: (patientId, tooth, fields, by) =>
         patchPatient(patientId, (p) => {
-          const od = { ...(p.odontogram ?? {}) };
-          if (rec) od[tooth] = rec; else delete od[tooth];
-          return { ...p, odontogram: od };
+          const base: OdontogramStatus = p.odontogram ?? DEFAULT_ODONTOGRAM_STATUS;
+          const teeth = { ...base.teeth, [tooth]: { ...(base.teeth[tooth] ?? {}), ...fields } };
+          return {
+            ...p,
+            odontogram: { ...base, teeth },
+            odontogramUpdatedBy: by,
+            odontogramUpdatedAt: new Date().toISOString(),
+          };
         }),
       upsertBilling: (b) => {
         persist({ ...db, billing: db.billing.some((x) => x.id === b.id) ? db.billing.map((x) => (x.id === b.id ? b : x)) : [...db.billing, b] });

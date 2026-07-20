@@ -141,6 +141,13 @@ export interface OdontogramStatus {
   teeth: Record<string, OdontogramToothState>;
 }
 
+/** Odontograma vacío pero válido — fallback cuando un paciente todavía no tiene ninguno. */
+export const DEFAULT_ODONTOGRAM_STATUS: OdontogramStatus = {
+  version: "2.10",
+  globals: {},
+  teeth: {},
+};
+
 export interface EmrNote {
   id: string;
   authorId: string;

@@ -12,6 +12,7 @@ import { recordTotal } from "@/lib/billing";
 import { resizeToDataUrl } from "@/lib/image";
 import { can } from "@/lib/rbac";
 import type { EmrNote, PatientForm, Patient } from "@/lib/types";
+import { DEFAULT_ODONTOGRAM_STATUS } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, Empty } from "@/components/ui";
 import Odontogram from "@/components/Odontogram";
 import { RxTab, FilesTab } from "@/components/PatientExtras";
@@ -72,7 +73,7 @@ const GROUPS: GroupDef[] = [
 
 export default function PatientProfile() {
   const { id } = useParams<{ id: string }>();
-  const { db, session, completeForm, addEmrNote, addPerioSession, setTooth, markHistoryUpdate, upsertPatient } = useStore();
+  const { db, session, completeForm, addEmrNote, addPerioSession, setOdontogram, markHistoryUpdate, upsertPatient } = useStore();
   const hasIA = useClinicPlan().features.includes("ia"); // Novudent IA: Plan Clínica+
   const [tab, setTab] = useState<SubTab>("resumen");
   const [fillingForm, setFillingForm] = useState<PatientForm | null>(null);
@@ -299,10 +300,10 @@ export default function PatientProfile() {
             </p>
           )}
           <Odontogram
-            value={p.odontogram ?? {}}
+            value={p.odontogram ?? DEFAULT_ODONTOGRAM_STATUS}
             editable={canWriteEmr}
             authorName={session.name}
-            onChange={(tooth, rec) => setTooth(p.id, tooth, rec)}
+            onChange={(status) => setOdontogram(p.id, status, session.name)}
           />
         </Reveal>
       )}

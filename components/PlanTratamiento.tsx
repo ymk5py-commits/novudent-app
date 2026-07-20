@@ -10,6 +10,7 @@ import { can } from "@/lib/rbac";
 import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, financialStatus, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { orthoProgress } from "@/lib/ortho";
 import type { Patient, Budget, Payment, Appointment } from "@/lib/types";
+import { DEFAULT_ODONTOGRAM_STATUS } from "@/lib/types";
 import { Card, Badge, Empty, Btn, StatusBadge, inputCls } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
 import { PatientBriefButton } from "@/components/NovudentIA";
@@ -356,7 +357,7 @@ function ComentariosPaciente({ budget }: { budget: Budget }) {
 
 /* ---------- Columna clínica (derecha) ---------- */
 function PlanClinico({ budget, patient, isOrtho }: { budget: Budget; patient: Patient; isOrtho: boolean }) {
-  const { session, setTooth } = useStore();
+  const { session, setOdontogram } = useStore();
   const canWriteEmr = session ? can(session.role, "emr.write") : false;
   const [tab, setTab] = useState<"esp" | "plan" | "odo" | "facial">(isOrtho ? "esp" : "plan");
 
@@ -383,10 +384,10 @@ function PlanClinico({ budget, patient, isOrtho }: { budget: Budget; patient: Pa
       {tab === "plan" && !isOrtho && <PrestacionesList budget={budget} />}
       {tab === "odo" && (
         <Odontogram
-          value={patient.odontogram ?? {}}
+          value={patient.odontogram ?? DEFAULT_ODONTOGRAM_STATUS}
           editable={canWriteEmr}
           authorName={session?.name ?? ""}
-          onChange={(tooth, rec) => setTooth(patient.id, tooth, rec)}
+          onChange={(status) => setOdontogram(patient.id, status, session?.name ?? "")}
         />
       )}
       {tab === "facial" && <EsteticaFacial budget={budget} patient={patient} />}
