@@ -13,8 +13,6 @@
 // `importStatus` makes, without a live DOM/SVG grid.
 import { describe, it, expect } from "vitest";
 import { __setToothStateForTest, __getToothStateForTest, __collectExportPayloadForTest } from "../odontogram";
-import { buildFhirBundle } from "../fhir/toFhir";
-import { parseFhirBundle } from "../fhir/fromFhir";
 
 // `__getToothStateForTest` converts `cariesSeverity` to a plain object but leaves
 // `radiographicDepth` as a Map (it is not in that seam's conversion list), so
@@ -33,12 +31,6 @@ describe("SP6 Task 1: payload version 2.4", () => {
     // titles are left as-is, matching the existing convention (e.g. diagnosis-ui.test.ts).
     const payload = __collectExportPayloadForTest();
     expect(payload.version).toBe("2.10");
-  });
-
-  it("parseFhirBundle (fromFhir) emits version 2.4, independent of the input payload's own version tag", () => {
-    const bundle = buildFhirBundle({ version: "1.4", teeth: {} } as never);
-    const out = parseFhirBundle(bundle);
-    expect(out.version).toBe("2.10");
   });
 
   it("rootCaries/cariesSeverity/radiographicDepth survive a JSON export(2.4) -> import round-trip", () => {
@@ -63,27 +55,6 @@ describe("SP6 Task 1: payload version 2.4", () => {
     expect(s.rootCaries).toBe("active-cavitated");
     expect(s.cariesSeverity).toEqual({ mesial: 5, occlusal: 2 });
     expect(Object.fromEntries(s.radiographicDepth)).toEqual({ mesial: "D2", occlusal: "E1" });
-  });
-
-  it("rootCaries/cariesSeverity/radiographicDepth survive a full FHIR export(2.4) -> import round-trip", () => {
-    const payload = {
-      version: "2.4",
-      teeth: {
-        "36": {
-          toothSelection: "tooth-base",
-          caries: ["caries-buccal", "caries-lingual"],
-          rootCaries: "arrested",
-          cariesSeverity: { buccal: 6, lingual: 1 },
-          radiographicDepth: { buccal: "D3", lingual: "E2" },
-        },
-      },
-    };
-    const bundle = buildFhirBundle(payload as never);
-    const out = parseFhirBundle(bundle);
-    expect(out.version).toBe("2.10");
-    expect(out.teeth["36"].rootCaries).toBe("arrested");
-    expect(out.teeth["36"].cariesSeverity).toEqual({ buccal: 6, lingual: 1 });
-    expect(out.teeth["36"].radiographicDepth).toEqual({ buccal: "D3", lingual: "E2" });
   });
 
   it("importer is field-presence-driven: 1.4/2.0/2.1/2.2/2.3/2.4-tagged payloads all hydrate the unified fields identically", () => {

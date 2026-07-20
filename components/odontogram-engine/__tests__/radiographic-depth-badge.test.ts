@@ -1,12 +1,11 @@
 // @ts-nocheck
-// SP5 Task 4: `radiographicDepth` surfaces as (1) a `data-radio` attribute on
-// the existing per-surface indicator element (alongside the ICDAS `data-depth`/
-// `data-icdas` attributes, added by SP5 Task 1 as a plain data field), and
-// (2) its own `radiographic-caries-depth` FHIR Observation (wired by Task 1,
-// reconfirmed here). This is a SEPARATE, independent scale from the visual
-// ICDAS `cariesDepths` — no crosswalk between them (constitution) — so this
-// suite's central proof is that setting `radiographicDepth` does NOT change
-// the SVG-fingerprint render at all (it has no `__renderActiveLayers` path).
+// SP5 Task 4: `radiographicDepth` surfaces as a `data-radio` attribute on the
+// existing per-surface indicator element (alongside the ICDAS `data-depth`/
+// `data-icdas` attributes, added by SP5 Task 1 as a plain data field). This
+// is a SEPARATE, independent scale from the visual ICDAS `cariesDepths` — no
+// crosswalk between them (constitution) — so this suite's central proof is
+// that setting `radiographicDepth` does NOT change the SVG-fingerprint
+// render at all (it has no `__renderActiveLayers` path).
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath, URL as NodeURL } from "node:url";
@@ -18,9 +17,6 @@ import {
   setRadiographicDepthMode,
   VALID_RADIOGRAPHIC_DEPTH,
 } from "../odontogram";
-import { buildFhirBundle } from "../fhir/toFhir";
-import { parseFhirBundle } from "../fhir/fromFhir";
-import type { OdontogramExportPayload } from "../fhir/types";
 
 function svgText(name: string): string {
   return readFileSync(fileURLToPath(new NodeURL(`../assets/teeth-svgs/${name}.svg`, import.meta.url)), "utf8");
@@ -133,47 +129,5 @@ describe("SP5 Task 4: state hydration + JSON round-trip (registry Task 1 behavio
     __setToothStateForTest(32, { toothSelection: "tooth-base", radiographicDepth: { distal: "not-a-real-depth" } });
     const s = __getToothStateForTest(32) as unknown as { radiographicDepth: Map<string, string> };
     expect(s.radiographicDepth.has("distal")).toBe(false);
-  });
-});
-
-describe("SP5 Task 4: FHIR round-trip (registry Task 1 behavior, reconfirmed)", () => {
-  it("radiographicDepth emits its own radiographic-caries-depth Observation, one component per set surface", () => {
-    const payload: OdontogramExportPayload = {
-      version: "2.2",
-      teeth: { "26": { radiographicDepth: { distal: "D2", buccal: "E1" } } },
-    };
-    const bundle = buildFhirBundle(payload);
-    const obs = bundle.entry
-      ?.map((e) => e.resource as any)
-      .find((r) => r?.code?.coding?.[0]?.code === "radiographic-caries-depth");
-    expect(obs).toBeTruthy();
-    const bySurface = Object.fromEntries((obs.component ?? []).map((c: any) => [c.code?.coding?.[0]?.code, c.valueCodeableConcept?.coding?.[0]?.code]));
-    expect(bySurface).toEqual({ distal: "D2", buccal: "E1" });
-    // Only the two set surfaces get a component — not every VALID_FILLING_SURFACES entry.
-    expect(obs.component.length).toBe(2);
-
-    const out = parseFhirBundle(bundle);
-    expect(out.teeth["26"].radiographicDepth).toEqual({ distal: "D2", buccal: "E1" });
-  });
-
-  it("no radiographicDepth set -> no radiographic-caries-depth Observation emitted", () => {
-    const payload: OdontogramExportPayload = { version: "2.2", teeth: { "11": { toothSelection: "tooth-base" } } };
-    const bundle = buildFhirBundle(payload);
-    const found = bundle.entry?.some((e) => (e.resource as any)?.code?.coding?.[0]?.code === "radiographic-caries-depth");
-    expect(found).toBe(false);
-    expect(parseFhirBundle(bundle).teeth["11"]?.radiographicDepth).toBeUndefined();
-  });
-
-  it("a tooth's cariesSeverity (unified visual) and radiographicDepth round-trip independently, side by side", () => {
-    const payload: OdontogramExportPayload = {
-      version: "2.4",
-      teeth: { "16": { toothSelection: "tooth-base", caries: ["caries-occlusal"], cariesSeverity: { occlusal: 6 }, radiographicDepth: { occlusal: "D3" } } },
-    };
-    const bundle = buildFhirBundle(payload);
-    const out = parseFhirBundle(bundle);
-    // SP6 Task 1: severity rides on the caries component; radiographic depth is
-    // its own separate finding — the two round-trip independently.
-    expect(out.teeth["16"].cariesSeverity).toEqual({ occlusal: 6 });
-    expect(out.teeth["16"].radiographicDepth).toEqual({ occlusal: "D3" });
   });
 });

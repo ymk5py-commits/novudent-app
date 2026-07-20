@@ -9,18 +9,10 @@
 // SP6 Task 1 used.
 import { describe, it, expect } from "vitest";
 import { __collectExportPayloadForTest } from "../odontogram";
-import { buildFhirBundle } from "../fhir/toFhir";
-import { parseFhirBundle } from "../fhir/fromFhir";
 
 describe("SP7 Task 6: payload version 2.5", () => {
   it("collectExportPayload emits version 2.5", () => {
     const payload = __collectExportPayloadForTest();
     expect(payload.version).toBe("2.10");
-  });
-
-  it("parseFhirBundle (fromFhir) emits version 2.5, independent of the input payload's own version tag", () => {
-    const bundle = buildFhirBundle({ version: "2.4", teeth: {} } as never);
-    const out = parseFhirBundle(bundle);
-    expect(out.version).toBe("2.10");
   });
 });

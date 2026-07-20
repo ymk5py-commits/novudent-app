@@ -1,14 +1,13 @@
 // @ts-nocheck
 // SP4 Task 1: pulp/apical/resorption diagnosis axes — additive registry
 // scaffolding only (no render/UI wiring yet; see later SP4 tasks). Verifies
-// the 4 new VALID_* sets and that AXES/FIELD_MAPPINGS stay 1:1 after adding
-// them. See docs/superpowers/specs/2026-07-13-odontogram-sp4-endo-pulp-diagnosis-design.md.
+// the 4 new VALID_* sets and their AXES catalog entries.
+// See docs/superpowers/specs/2026-07-13-odontogram-sp4-endo-pulp-diagnosis-design.md.
 import { describe, it, expect } from "vitest";
 import {
   VALID_PULP_DX, VALID_PULP_LATIN, VALID_APICAL_DX, VALID_RESORPTION_TYPE,
 } from "../../odontogram";
 import { AXES } from "../axes";
-import { FIELD_MAPPINGS } from "../../fhir/fieldMappings";
 
 describe("SP4 Task 1: diagnosis axes VALID_* sets", () => {
   it("VALID_PULP_DX has the 4 canonical AAE-parent values", () => {
@@ -38,24 +37,6 @@ describe("SP4 Task 1: diagnosis axes VALID_* sets", () => {
 });
 
 describe("SP4 Task 1: registry catalog stays 1:1 after adding the 4 diagnosis axes", () => {
-  it("AXES.length === FIELD_MAPPINGS.length", () => {
-    expect(AXES.length).toBe(FIELD_MAPPINGS.length);
-  });
-
-  it("each new axis has a matching FIELD_MAPPINGS row (finding code, kind, valueGroup, skipValue)", () => {
-    for (const field of ["pulpDx", "pulpLatin", "apicalDx", "resorptionType"]) {
-      const ax = AXES.find(a => a.field === field);
-      const m = FIELD_MAPPINGS.find(f => f.field === field);
-      expect(ax, field).toBeTruthy();
-      expect(m, field).toBeTruthy();
-      expect(ax!.finding.local).toBe(m!.findingCode);
-      expect(ax!.finding.display).toBe(m!.findingDisplay);
-      expect(ax!.kind).toBe(m!.kind);
-      expect(ax!.valueGroup).toBe((m as { valueGroup?: string }).valueGroup);
-      expect(ax!.skipValue).toBe((m as { skipValue?: string }).skipValue);
-    }
-  });
-
   it("pulpLatin carries the latinPulpDetail flag (unused until a later SP4 task)", () => {
     const ax = AXES.find(a => a.id === "pulpLatin");
     expect(ax?.flag).toBe("latinPulpDetail");

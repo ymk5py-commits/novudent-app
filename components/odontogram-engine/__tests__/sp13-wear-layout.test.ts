@@ -64,10 +64,8 @@ vi.mock("../odontogram", async () => {
       sections: [], implants: null, periodontalTitle: "", periodontalText: "",
     }),
     onStateChange: vi.fn().mockReturnValue(() => {}),
-    exportFhir: vi.fn(),
     exportImage: vi.fn(),
     exportSvg: vi.fn(),
-    setImportFormat: vi.fn(),
     // Real exports under test — not part of the imperative DOM/SVG wiring.
     __wearRowAllowedForTest: actual.__wearRowAllowedForTest,
     VALID_WEAR_EDGE: actual.VALID_WEAR_EDGE,

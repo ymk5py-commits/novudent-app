@@ -4,10 +4,8 @@
 // MATCH these fixtures; re-capturing would make the oracle circular.
 import { writeFileSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { svgCases, payloadCases } from "./matrix";
+import { svgCases } from "./matrix";
 import { __renderActiveLayers } from "../../odontogram";
-import { buildFhirBundle } from "../../fhir/toFhir";
-import { parseFhirBundle } from "../../fhir/fromFhir";
 
 // NOTE: resolved via process.cwd() (the engine package root, since `npm run
 // parity:capture` always runs from there), not import.meta.url — under this
@@ -33,12 +31,6 @@ export function runCapture() {
   });
   write("svg-fingerprints.json", svg);
 
-  const fhir = payloadCases().map(p => ({ name: p.name, bundle: buildFhirBundle(p.payload) }));
-  write("fhir-golden.json", fhir);
-
-  const roundtrip = payloadCases().map(p => ({ name: p.name, parsed: parseFhirBundle(buildFhirBundle(p.payload)) }));
-  write("roundtrip-golden.json", roundtrip);
-
   // eslint-disable-next-line no-console
-  console.log(`captured ${svg.length} svg fingerprints, ${fhir.length} fhir bundles, ${roundtrip.length} round-trips`);
+  console.log(`captured ${svg.length} svg fingerprints`);
 }

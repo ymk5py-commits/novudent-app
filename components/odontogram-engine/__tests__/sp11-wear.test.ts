@@ -2,9 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath, URL as NodeURL } from "node:url";
-import { __renderActiveLayers, __setToothStateForTest, __getToothStateForTest, __collectExportPayloadForTest, VALID_WEAR_EDGE, VALID_WEAR_CERVICAL } from "../odontogram";
-import { buildFhirBundle } from "../fhir/toFhir";
-import { parseFhirBundle } from "../fhir/fromFhir";
+import { __renderActiveLayers, __setToothStateForTest, __getToothStateForTest, VALID_WEAR_EDGE, VALID_WEAR_CERVICAL } from "../odontogram";
 
 const svgText = readFileSync(fileURLToPath(new NodeURL("../assets/teeth-svgs/11.svg", import.meta.url)), "utf8");
 const render = (state: Record<string, unknown>) => __renderActiveLayers(svgText, 11, state);
@@ -37,7 +35,7 @@ describe("SP11: wear enums replace bruxism booleans", () => {
     expect(ids(render({ toothSelection: "tooth-base", wearEdge: "attrition", restorationType: "crown" }))).not.toContain("tooth-bruxism-wear");
     expect(ids(render({ toothSelection: "tooth-base", wearEdge: "attrition", toothSubstrate: "radix" }))).not.toContain("tooth-bruxism-wear");
   });
-  it("migration + modern-wins + FHIR/JSON round-trip", () => {
+  it("migration + modern-wins", () => {
     __setToothStateForTest(11, { toothSelection: "tooth-base", bruxismWear: true, bruxismNeckWear: true });
     const s = __getToothStateForTest(11)!;
     expect(s.wearEdge).toBe("attrition");
@@ -45,11 +43,5 @@ describe("SP11: wear enums replace bruxism booleans", () => {
     expect(s).not.toHaveProperty("bruxismWear");
     __setToothStateForTest(12, { toothSelection: "tooth-base", bruxismWear: true, wearEdge: "erosion" });
     expect(__getToothStateForTest(12)!.wearEdge).toBe("erosion"); // modern wins
-    __setToothStateForTest(13, { toothSelection: "tooth-base", wearEdge: "erosion", wearCervical: "abfraction" });
-    const payload = __collectExportPayloadForTest();
-    expect(payload.version).toBe("2.10");
-    const parsed = parseFhirBundle(buildFhirBundle(payload));
-    expect(parsed.teeth["13"].wearEdge).toBe("erosion");
-    expect(parsed.teeth["13"].wearCervical).toBe("abfraction");
   });
 });

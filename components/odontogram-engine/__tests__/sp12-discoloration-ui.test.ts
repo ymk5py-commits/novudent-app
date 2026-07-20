@@ -62,10 +62,8 @@ vi.mock("../odontogram", async () => {
       sections: [], implants: null, periodontalTitle: "", periodontalText: "",
     }),
     onStateChange: vi.fn().mockReturnValue(() => {}),
-    exportFhir: vi.fn(),
     exportImage: vi.fn(),
     exportSvg: vi.fn(),
-    setImportFormat: vi.fn(),
     // Real exports under test — not part of the imperative DOM/SVG wiring.
     __discolorationRowAllowedForTest: actual.__discolorationRowAllowedForTest,
     VALID_DISCOLORATION: actual.VALID_DISCOLORATION,

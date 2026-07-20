@@ -50,10 +50,8 @@ vi.mock('../odontogram', () => ({
     sections: [], implants: null, periodontalTitle: '', periodontalText: '',
   }),
   onStateChange: vi.fn().mockReturnValue(() => {}),
-  exportFhir: vi.fn(),
   exportImage: vi.fn(),
   exportSvg: vi.fn(),
-  setImportFormat: vi.fn(),
 }));
 
 describe('App.tsx', () => {
