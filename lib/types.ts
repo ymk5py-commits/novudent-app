@@ -115,26 +115,30 @@ export interface PatientForm {
   fields: { label: string; value: string }[];
 }
 
-/* ===== Odontograma (notación FDI) ===== */
-export type ToothCondition =
-  | "caries"
-  | "restaurado"
-  | "corona"
-  | "endodoncia"
-  | "extraccion" // extracción indicada
-  | "ausente"
-  | "implante";
+/* ===== Odontograma (notación FDI, motor externo vendorizado en components/odontogram-engine) ===== */
+/** Estado de UNA pieza en el payload del motor de odontograma (React-Odontogram-Modul,
+ *  vendorizado en components/odontogram-engine). El motor mismo trata estos campos como
+ *  `any` internamente (ver registry/ = fuente de verdad declarativa de los ~30 campos posibles:
+ *  toothSelection, caries, fillingSurfaces, restorationType, endo, mobility, note, etc.) — tiparlo
+ *  campo por campo acá duplicaría esa fuente de verdad y se desincronizaría. Se usa
+ *  Record<string, unknown> deliberadamente; el código propio de Novudent que lee/escribe campos
+ *  puntuales (lib/odontogram-findings.ts, lib/seed.ts) los referencia por nombre con comentario. */
+export interface OdontogramToothState {
+  [field: string]: unknown;
+}
 
-/** Superficies dentales: Mesial, Distal, Vestibular, Lingual/Palatina, Oclusal/Incisal */
-export type ToothSurface = "M" | "D" | "V" | "L" | "O";
-
-export interface ToothRecord {
-  condition: ToothCondition;
-  /** superficies afectadas (aplica a caries y restauraciones) */
-  surfaces?: ToothSurface[];
-  note?: string;
-  updatedAt: string;
-  updatedBy: string;
+/** Payload completo del odontograma de un paciente — mismo shape que
+ *  collectExportPayload()/importStatus() del motor vendorizado. */
+export interface OdontogramStatus {
+  version: string;
+  globals: {
+    wisdomVisible?: boolean;
+    showBase?: boolean;
+    occlusalVisible?: boolean;
+    showHealthyPulp?: boolean;
+    edentulous?: boolean;
+  };
+  teeth: Record<string, OdontogramToothState>;
 }
 
 export interface EmrNote {
@@ -194,7 +198,10 @@ export interface Patient {
   historyUpdateDate?: string;
   emr: EmrNote[];
   /* Odontograma: pieza FDI -> estado (ausencia de entrada = pieza sana) */
-  odontogram?: Record<string, ToothRecord>;
+  odontogram?: OdontogramStatus;
+  /** Auditoría a nivel de documento (el motor no trackea por-diente quién tocó qué). */
+  odontogramUpdatedBy?: string;
+  odontogramUpdatedAt?: string;
   /* Recetas emitidas */
   prescriptions?: Prescription[];
   /* Archivos clínicos (imágenes/documentos) */
