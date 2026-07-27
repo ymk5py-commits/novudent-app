@@ -172,6 +172,11 @@ select:focus{
   gap:4px;
   padding:10px;
   position:relative;
+  /* Novudent: 16 columnas @ 36px min (~650px) no siempre entran en el ancho embebido
+     (ficha/plan de tratamiento, sin el toggle superior/inferior de touch). Antes se
+     recortaban en silencio por el overflow:hidden de .chart — acá scrollea en cambio. */
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
 }
 /* Engine-owned multi-tooth bridge-span overlay. Absolutely positioned so it does
    not consume a grid cell; sits above the tiles but never intercepts pointer

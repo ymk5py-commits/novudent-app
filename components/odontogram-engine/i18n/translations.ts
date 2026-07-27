@@ -1534,7 +1534,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "intro.step12.text": "Das sind die Grundlagen — entdecke die übrigen Funktionen."
   },
   es: {
-    "app.title": "React Odontogram Modul",
+    "app.title": "Odontograma",
     "app.subtitle": "Selecciona un diente en el odontograma y configura las capas.",
     "app.subtitleLang": "En español.",
     "app.subtitleNumbering.FDI": "Usando numeración FDI – ISO 3950.",

@@ -25,3 +25,22 @@ sí le importa a Novudent —el puente de datos `collectExportPayload`/`importSt
 Para correr el suite del motor a mano (requiere instalar `jsdom @testing-library/react
 @testing-library/dom @testing-library/jest-dom @vitejs/plugin-react vite` y un `vitest.config` con
 environment jsdom + `plugins: [react()]`), ver el `README.md` del repo origen.
+
+## Parches de diseño (integración Novudent, embebido en la ficha del paciente)
+
+- `i18n/translations.ts`: `"app.title"` del locale `es` pasa de `"React Odontogram Modul"` (nombre
+  del proyecto upstream) a `"Odontograma"` — Novudent solo usa el locale `es` (`language="es"`
+  fijo), no se tocaron los otros 8 locales.
+- `App.tsx`: se agregan 3 props opcionales (`showTourButton`, `showLanguageSelector`,
+  `showDarkModeToggle`, todas default `true` — el comportamiento upstream no cambia si no se pasan)
+  para poder ocultar botones del topbar que ya estaban fuera de alcance de la integración pero
+  seguían renderizados: el tour interactivo de 12 pasos (explícitamente excluido en el spec de
+  diseño), el selector de idioma (Novudent es español-only, controlado por prop) y el toggle
+  claro/oscuro (Novudent no tiene modo oscuro a nivel app — el toggle deja el widget en un estado
+  mitad-claro/mitad-oscuro real de baja legibilidad porque `themeConfig` solo cubre las variables
+  `--odon-*` compartidas, no las reglas `.dark` propias del motor). `components/Odontogram.tsx` pasa
+  los 3 en `false`.
+- `index.css`: `.tooth-grid` suma `overflow-x:auto` (antes el `overflow:hidden` de `.chart` recortaba
+  en silencio, sin scroll posible, las piezas que no entraban en el ancho embebido — 16 columnas
+  ×36px mín. ⇒ ~650px — en viewports angostos sin puntero táctil; el toggle superior/inferior táctil
+  del motor sigue intacto para `pointer:coarse`).
