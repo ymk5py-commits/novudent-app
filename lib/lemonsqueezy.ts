@@ -52,6 +52,31 @@ export function statusFromLsEvent(evento: string): SubscriptionStatus | null {
   }
 }
 
+/**
+ * Arma el link de checkout hospedado de LS para una clínica.
+ *
+ * El `clinic_id` viaja como custom data y vuelve en el webhook: es lo que nos
+ * dice a QUIÉN activarle el plan. Lo inyecta el servidor desde el token del
+ * usuario (no el cliente), así nadie paga apuntando a otra clínica por error.
+ *
+ * Devuelve `null` si la base no está configurada o no es https (una env mal
+ * cargada no debe convertirse en un open-redirect desde nuestra propia app).
+ */
+export function buildCheckoutUrl(
+  base: string | undefined | null,
+  opts: { clinicId: string; email?: string; name?: string }
+): string | null {
+  if (!base) return null;
+  let url: URL;
+  try { url = new URL(base); } catch { return null; }
+  if (url.protocol !== "https:") return null;
+
+  url.searchParams.set("checkout[custom][clinic_id]", opts.clinicId);
+  if (opts.email) url.searchParams.set("checkout[email]", opts.email);
+  if (opts.name) url.searchParams.set("checkout[name]", opts.name);
+  return url.toString();
+}
+
 /** Mapa variant_id de LS → plan de Novudent. Se configura por env (ver la route). */
 export type VariantPlanMap = Record<string, PlanId>;
 
