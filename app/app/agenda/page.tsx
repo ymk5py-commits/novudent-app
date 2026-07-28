@@ -400,12 +400,12 @@ export default function AgendaPage() {
 
             {tab === "diaria" && (
               <Card className="space-y-2 p-3">
-                <select value={proFilter} onChange={(e) => setProFilter(e.target.value)} className={inputCls}>
+                <select aria-label="Filtrar por profesional" value={proFilter} onChange={(e) => setProFilter(e.target.value)} className={inputCls}>
                   <option value="all">Todos los profesionales</option>
                   {dentists.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
                 {db.branches.length > 1 && (
-                  <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className={inputCls}>
+                  <select aria-label="Filtrar por sucursal" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className={inputCls}>
                     <option value="all">Todas las sucursales</option>
                     {db.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
