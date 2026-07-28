@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.mjs\""
+    "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.mjs\"",
+    "verificar:cobro": "node scripts/verificar-cobro.mjs"
   },
   "dependencies": {
     "firebase": "^12.14.0",
