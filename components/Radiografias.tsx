@@ -614,7 +614,7 @@ function AnnotationCanvas({
               height: `${f.box.h * 100}%`,
             }}
           >
-            <span className={`absolute -top-0.5 left-0 -translate-y-full whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px] font-bold ${st.bg} ${st.text}`}>
+            <span className={`absolute -top-0.5 left-0 -translate-y-full whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-bold ${st.bg} ${st.text}`}>
               {f.label}{f.tooth ? ` · ${f.tooth}` : ""}
               {f.source === "ia" ? "" : " ✎"}
             </span>
@@ -671,7 +671,7 @@ function FindingRow({
   return (
     <div className="rounded-xl border border-clinic-border p-3">
       <div className="mb-2 flex items-center gap-2">
-        <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-sm text-[10px] font-bold ${st.bg} ${st.text}`}>{index}</span>
+        <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-sm text-[11px] font-bold ${st.bg} ${st.text}`}>{index}</span>
         <Badge tone={finding.source === "ia" ? "info" : "muted"}>{finding.source === "ia" ? "IA" : "Profesional"}</Badge>
         <button onClick={onRemove} aria-label="Borrar marca" className="ml-auto grid h-7 w-7 place-items-center rounded-lg text-state-err hover:bg-state-errbg">
           <Trash2 className="h-3.5 w-3.5" />
@@ -757,7 +757,7 @@ function PatientView({
                   height: `${f.box.h * 100}%`,
                 }}
               >
-                <span className={`absolute -top-0.5 left-0 -translate-y-full whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px] font-bold ${st.bg} ${st.text}`}>
+                <span className={`absolute -top-0.5 left-0 -translate-y-full whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-bold ${st.bg} ${st.text}`}>
                   {f.label}{f.tooth ? ` · ${f.tooth}` : ""}
                 </span>
               </div>

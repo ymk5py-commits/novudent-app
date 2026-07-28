@@ -75,7 +75,7 @@ export function ConfiguracionCampos() {
               <th rowSpan={2} className="px-4 py-3 text-left">Campo</th>
               {CONTEXTS.map((c) => <th key={c.key} colSpan={2} className="border-l border-clinic-border px-2 py-2 text-center">{c.label}</th>)}
             </tr>
-            <tr className="border-b border-clinic-border text-[10px] font-bold uppercase text-clinic-muted">
+            <tr className="border-b border-clinic-border text-[11px] font-bold uppercase text-clinic-muted">
               {CONTEXTS.map((c) => (
                 <Fragment key={c.key}>
                   <th className="border-l border-clinic-border px-2 py-1 text-center font-semibold">Pres.</th>

@@ -50,7 +50,7 @@ function MiniRing({ pct }: { pct: number }) {
         <circle cx="22" cy="22" r={r} fill="none" strokeWidth="4" stroke="currentColor" className="text-clinic-border" />
         <circle cx="22" cy="22" r={r} fill="none" strokeWidth="4" strokeLinecap="round" stroke="currentColor" strokeDasharray={c} strokeDashoffset={off} className="text-azure-500" />
       </svg>
-      <span className="absolute inset-0 grid place-items-center text-[10px] font-extrabold text-clinic-text">{pct}%</span>
+      <span className="absolute inset-0 grid place-items-center text-[11px] font-extrabold text-clinic-text">{pct}%</span>
     </div>
   );
 }
@@ -132,7 +132,7 @@ function PlanLista({ patient, budgets, onOpen }: { patient: Patient; budgets: Bu
 function Col({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <div className="text-[10px] font-bold uppercase tracking-wide text-clinic-muted">{label}</div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">{label}</div>
       <div className="mt-0.5 text-sm">{children}</div>
     </div>
   );
@@ -196,7 +196,7 @@ function PlanFinanciero({
     <Card className="h-fit overflow-hidden p-0">
       <div className="mesh-hero px-5 py-4 text-white">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-azure-200">Plan de tratamiento</span>
+          <span className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-azure-200">Plan de tratamiento</span>
           <button onClick={copyId} className="inline-flex items-center gap-1 text-[11px] text-white/70 transition-colors hover:text-white" title="Copiar ID del plan">
             <Copy className="h-3 w-3" /> {copied ? "Copiado" : `#${budget.id}`}
           </button>
@@ -541,7 +541,7 @@ function EsteticaFacial({ budget }: { budget: Budget; patient: Patient }) {
                   <img src={p.dataUrl} alt={p.label || "Foto facial"} className="h-full w-full object-cover" />
                   {canWrite && <button onClick={() => delPhoto(p.id)} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100" title="Eliminar"><Trash2 className="h-3 w-3" /></button>}
                 </div>
-                <input disabled={!canWrite} value={p.label} onChange={(e) => setLabel(p.id, e.target.value)} placeholder="Etiqueta (ej. Pre frontal)" className="w-full border-t border-clinic-border px-2 py-1 text-[10px] text-clinic-text focus:outline-none" />
+                <input disabled={!canWrite} value={p.label} onChange={(e) => setLabel(p.id, e.target.value)} placeholder="Etiqueta (ej. Pre frontal)" className="w-full border-t border-clinic-border px-2 py-1 text-[11px] text-clinic-text focus:outline-none" />
               </div>
             ))}
           </div>

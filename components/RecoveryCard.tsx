@@ -79,7 +79,7 @@ export default function RecoveryCard({ patient }: { patient: Patient }) {
                   <span className="font-bold text-clinic-text">{LABEL[tp.offsetHours]}</span>
                   <span className="text-clinic-muted">{STATUS_LABEL[tp.status]}</span>
                   {tp.pain != null && (
-                    <span className="rounded-full bg-state-warnbg px-2 py-0.5 font-mono text-[10.5px] font-semibold text-state-warn">
+                    <span className="rounded-full bg-state-warnbg px-2 py-0.5 font-mono text-[11px] font-semibold text-state-warn">
                       Dolor {tp.pain}/10
                     </span>
                   )}

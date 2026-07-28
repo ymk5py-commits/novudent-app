@@ -94,12 +94,12 @@ function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (
                 {appts.length > 0 && (
                   <div className="space-y-0.5">
                     {appts.slice(0, 3).map((a) => (
-                      <div key={a.id} className="flex items-center gap-1 truncate text-[10px] text-clinic-muted">
+                      <div key={a.id} className="flex items-center gap-1 truncate text-[11px] text-clinic-muted">
                         <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: STATUS_DOT[a.status] }} />
                         <span className="truncate">{a.start.slice(11, 16)} {a.title || "Cita"}</span>
                       </div>
                     ))}
-                    {appts.length > 3 && <div className="text-[10px] font-bold text-azure-700">+{appts.length - 3} más</div>}
+                    {appts.length > 3 && <div className="text-[11px] font-bold text-azure-700">+{appts.length - 3} más</div>}
                   </div>
                 )}
               </button>
@@ -270,7 +270,7 @@ export default function AgendaPage() {
           <button onClick={exportICS} title="Exportar a tu calendario (Outlook/Apple/Google)" className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-clinic-muted hover:text-clinic-text"><CalendarDays className="h-4 w-4" /> Exportar (.ics)</button>
           <Btn variant="outline" onClick={() => setWaitOpen(true)}>
             <Hourglass className="h-4 w-4" /> Lista de espera
-            {db.waitlist.length > 0 && <span className="rounded-full bg-azure-600 px-1.5 font-mono text-[10px] font-bold text-white">{db.waitlist.length}</span>}
+            {db.waitlist.length > 0 && <span className="rounded-full bg-azure-600 px-1.5 font-mono text-[11px] font-bold text-white">{db.waitlist.length}</span>}
           </Btn>
         </div>
       </Reveal>
@@ -311,7 +311,7 @@ export default function AgendaPage() {
                 <div>
                   {Array.from({ length: 24 }, (_, h) => (
                     <div key={h} className="flex h-14 items-start justify-end border-b border-clinic-border/60 pr-2 pt-1">
-                      <span className="font-mono text-[10px] text-clinic-muted">{String(h).padStart(2, "0")}:00</span>
+                      <span className="font-mono text-[11px] text-clinic-muted">{String(h).padStart(2, "0")}:00</span>
                     </div>
                   ))}
                 </div>
@@ -492,8 +492,8 @@ export default function AgendaPage() {
                           </td>
                           <td className="px-2 py-3">
                             {p ? <a href={`/app/pacientes/${p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(p)}</a> : <span className="text-clinic-muted">—</span>}
-                            {a.source === "online" && <span className="ml-2 rounded bg-state-infobg px-1.5 text-[10px] font-bold text-state-info">Online</span>}
-                            {multi && <span className="ml-2 rounded bg-state-warnbg px-1.5 text-[10px] font-bold text-state-warn">Múltiples citas hoy</span>}
+                            {a.source === "online" && <span className="ml-2 rounded bg-state-infobg px-1.5 text-[11px] font-bold text-state-info">Online</span>}
+                            {multi && <span className="ml-2 rounded bg-state-warnbg px-1.5 text-[11px] font-bold text-state-warn">Múltiples citas hoy</span>}
                             {p?.phone && <div className="mt-0.5 flex items-center gap-1 text-xs text-clinic-muted"><Phone className="h-3 w-3" /> {p.phone}</div>}
                           </td>
                           <td className="px-2 py-3 text-clinic-muted">{dent?.name ?? "—"}</td>

@@ -133,7 +133,7 @@ export default function BudgetsPage() {
                     </div>
                   </div>
                   {b.status === "aceptado" && (
-                    <span className="font-mono text-[10.5px] font-bold uppercase tracking-wide text-clinic-muted">{done}/{b.items.length} realizados</span>
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-wide text-clinic-muted">{done}/{b.items.length} realizados</span>
                   )}
                 </div>
 
@@ -253,7 +253,7 @@ function BudgetDetail({ budget: b, onClose }: { budget: Budget; onClose: () => v
           <tbody className="divide-y divide-clinic-border">
             {b.items.map((it) => (
               <tr key={it.id}>
-                <td className="py-2.5 font-semibold text-clinic-text">{it.description} <span className="font-mono text-[10px] text-clinic-muted">{it.cpt}</span></td>
+                <td className="py-2.5 font-semibold text-clinic-text">{it.description} <span className="font-mono text-[11px] text-clinic-muted">{it.cpt}</span></td>
                 <td className="py-2.5 font-mono text-xs">{it.tooth ?? "—"}</td>
                 <td className="py-2.5 text-right font-mono text-xs font-bold">{fmtGs(it.price)}</td>
                 <td className="py-2.5 text-right print:hidden">
@@ -261,7 +261,7 @@ function BudgetDetail({ budget: b, onClose }: { budget: Budget; onClose: () => v
                     canExec ? (
                       <button
                         onClick={() => toggleItem(it)}
-                        className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                        className={`rounded-full px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wide transition-colors ${
                           it.status === "realizado" ? "bg-state-okbg text-state-ok" : "bg-clinic-bg text-clinic-muted hover:bg-state-infobg hover:text-state-info"
                         }`}
                         title={it.status === "realizado" ? `Realizado ${it.doneAt ? fmtDate(it.doneAt) : ""} por ${it.doneBy ?? ""} — click para desmarcar` : "Marcar como realizado"}

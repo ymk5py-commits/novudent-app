@@ -103,7 +103,7 @@ export default function BillingPage() {
                     {b.extras && b.extras.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {b.extras.map((e, i) => (
-                          <span key={i} className="rounded-md bg-azure-50 px-2 py-0.5 font-mono text-[10px] font-bold text-azure-700" data-tip={`Procedimiento adicional · ${fmtGs(e.amount)}`}>
+                          <span key={i} className="rounded-md bg-azure-50 px-2 py-0.5 font-mono text-[11px] font-bold text-azure-700" data-tip={`Procedimiento adicional · ${fmtGs(e.amount)}`}>
                             + {e.cpt}{e.modifier ? `·${e.modifier}` : ""}
                           </span>
                         ))}

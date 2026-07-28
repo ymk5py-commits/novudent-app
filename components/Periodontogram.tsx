@@ -155,7 +155,7 @@ function PerioTable({ teeth }: { teeth: Record<string, PerioToothRecord> }) {
   return (
     <table className="w-full min-w-[560px] border-collapse text-center font-mono text-[11px]">
       <thead>
-        <tr className="text-[10px] uppercase tracking-wide text-clinic-muted">
+        <tr className="text-[11px] uppercase tracking-wide text-clinic-muted">
           <th className="p-1 text-left">Pieza</th>
           {SITES.map((s) => <th key={s} className="p-1">{s}</th>)}
           <th className="p-1">CAL</th>
@@ -179,7 +179,7 @@ function PerioTable({ teeth }: { teeth: Record<string, PerioToothRecord> }) {
                 return (
                   <td key={i} className={`p-1 ${pdColor(v)}`}>
                     <span>{v ?? "·"}{r.bop[i] && <span className="text-state-err">•</span>}{r.plaque?.[i] && <span className="text-amber-500">▪</span>}</span>
-                    {typeof rec === "number" && rec > 0 && <span className="ml-0.5 text-[9px] font-normal text-clinic-muted">r{rec}</span>}
+                    {typeof rec === "number" && rec > 0 && <span className="ml-0.5 text-[11px] font-normal text-clinic-muted">r{rec}</span>}
                   </td>
                 );
               })}
@@ -462,7 +462,7 @@ function PerioEditor({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-center text-[11px]">
           <thead>
-            <tr className="text-[10px] uppercase tracking-wide text-clinic-muted">
+            <tr className="text-[11px] uppercase tracking-wide text-clinic-muted">
               <th className="p-1 text-left">Pieza</th>
               {SITES.map((s) => <th key={s} className="p-1">{s}</th>)}
               <th className="p-1">Mov.</th>
@@ -509,7 +509,7 @@ function PerioEditor({
                             onChange={(e) => setRecession(t, i, e.target.value)}
                             title="Recesión gingival (mm)"
                             placeholder="rec"
-                            className="h-6 w-10 rounded-md border border-clinic-border/70 text-center font-mono text-[10px] text-clinic-muted outline-none placeholder:text-clinic-muted/50 focus:border-azure-500"
+                            className="h-6 w-10 rounded-md border border-clinic-border/70 text-center font-mono text-[11px] text-clinic-muted outline-none placeholder:text-clinic-muted/50 focus:border-azure-500"
                           />
                           <button
                             type="button"

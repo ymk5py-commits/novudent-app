@@ -321,7 +321,7 @@ export function FilesTab({ patient }: { patient: Patient }) {
                       {f.kind === "imagen" ? <ImageIcon className="h-3.5 w-3.5 shrink-0 text-azure-600" /> : <FileText className="h-3.5 w-3.5 shrink-0 text-azure-600" />}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[11px] font-bold text-clinic-text">{f.name}</span>
-                        <span className="block text-[10px] text-clinic-muted">{f.by}</span>
+                        <span className="block text-[11px] text-clinic-muted">{f.by}</span>
                       </span>
                       {canDelete && (
                         <button onClick={() => removePatientFile(patient.id, f.id)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err" title="Eliminar archivo">

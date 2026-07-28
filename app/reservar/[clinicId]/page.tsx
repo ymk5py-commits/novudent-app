@@ -110,7 +110,7 @@ export default function ReservaOnline() {
       {/* Header público */}
       <header className="bg-navy-800 px-5 py-6 text-white">
         <Reveal y={0} className="mx-auto max-w-xl">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-azure-200">
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-azure-200">
             Reserva online
           </p>
           <h1 className="mt-1 text-2xl font-extrabold">
@@ -132,7 +132,7 @@ export default function ReservaOnline() {
                 (step === "listo" || (["fecha", "horario", "datos"].indexOf(step) > i)) ? "text-state-ok" : ""
               }`}
             >
-              <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] shadow-sm">
+              <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-[11px] shadow-sm">
                 {i + 1}
               </span>
               {s === "fecha" ? "Fecha" : s === "horario" ? "Horario" : "Tus datos"}

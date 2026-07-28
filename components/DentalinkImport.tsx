@@ -172,7 +172,7 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
           <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide">
             {["Datos", "Columnas", "Confirmar"].map((s, i) => (
               <span key={s} className={`flex items-center gap-2 ${i + 1 <= step ? "text-azure-700" : "text-clinic-muted"}`}>
-                <span className={`grid h-5 w-5 place-items-center rounded-full font-mono text-[10px] ${i + 1 <= step ? "bg-azure-600 text-white" : "bg-clinic-bg"}`}>{i + 1}</span>
+                <span className={`grid h-5 w-5 place-items-center rounded-full font-mono text-[11px] ${i + 1 <= step ? "bg-azure-600 text-white" : "bg-clinic-bg"}`}>{i + 1}</span>
                 {s} {i < 2 && <ArrowRight className="h-3 w-3 text-clinic-border" />}
               </span>
             ))}

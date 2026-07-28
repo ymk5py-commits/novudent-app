@@ -75,7 +75,7 @@ function MiniDonut({ title, parts }: { title: string; parts: { label: string; v:
           <DonutSvg parts={parts} total={total} />
           <ul className="mt-3 space-y-1">
             {parts.filter((p) => p.v > 0).map((p) => (
-              <li key={p.label} className="flex items-start gap-1.5 text-[10px] leading-snug">
+              <li key={p.label} className="flex items-start gap-1.5 text-[11px] leading-snug">
                 <span className="mt-[3px] h-2 w-2 shrink-0 rounded-[2px]" style={{ background: p.color }} />
                 <span className="flex-1 text-clinic-muted" title={p.label}>{p.label}</span>
                 <span className="font-bold tabular-nums text-clinic-text">{p.v}</span>

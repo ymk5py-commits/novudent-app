@@ -38,7 +38,7 @@ export function EmailButton({ to, subject, html, label = "Enviar por email", dis
         {state === "sending" ? <Loader2 className="h-4 w-4 animate-spin" /> : state === "sent" ? <Check className="h-4 w-4 text-state-ok" /> : <Mail className="h-4 w-4" />}
         {state === "sent" ? "Enviado" : label}
       </button>
-      {state === "error" && msg && <span className="mt-1 max-w-[220px] text-right text-[10px] leading-tight text-state-err">{msg}</span>}
+      {state === "error" && msg && <span className="mt-1 max-w-[220px] text-right text-[11px] leading-tight text-state-err">{msg}</span>}
     </span>
   );
 }

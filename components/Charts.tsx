@@ -16,7 +16,7 @@ function CardTooltip({ active, payload, label, money }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-clinic-border bg-white px-3.5 py-2.5 shadow-pop">
-      {label !== undefined && <p className="mb-1 font-mono text-[10px] font-extrabold uppercase tracking-wide text-clinic-muted">{label}</p>}
+      {label !== undefined && <p className="mb-1 font-mono text-[11px] font-extrabold uppercase tracking-wide text-clinic-muted">{label}</p>}
       {payload.map((p: any) => (
         <p key={p.dataKey ?? p.name} className="flex items-center gap-2 text-xs font-bold text-clinic-text">
           <span className="h-2 w-2 rounded-full" style={{ background: p.fill === "#fff" ? p.stroke : (p.payload?.fill ?? p.color ?? p.fill) }} />
@@ -94,7 +94,7 @@ export function StatusDonutChart({ parts, centerLabel, glow }: {
         <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
           <div>
             <div className="text-2xl font-extrabold tabular-nums text-clinic-text">{total}</div>
-            <div className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-clinic-muted">{centerLabel}</div>
+            <div className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-clinic-muted">{centerLabel}</div>
           </div>
         </div>
       </div>
@@ -184,7 +184,7 @@ export function FunnelChart({ stages }: { stages: { label: string; value: number
           <div key={s.label} className="relative grid h-[68px] place-items-center text-center text-white" style={{ background: s.color, clipPath: clip }}>
             <div>
               <div className="text-lg font-extrabold leading-none">{s.pct}%</div>
-              <div className="text-[10px] font-bold uppercase tracking-wide opacity-90">{s.label}</div>
+              <div className="text-[11px] font-bold uppercase tracking-wide opacity-90">{s.label}</div>
               <div className="font-mono text-[11px] opacity-90">{s.value.toLocaleString("es-PY")}</div>
             </div>
           </div>

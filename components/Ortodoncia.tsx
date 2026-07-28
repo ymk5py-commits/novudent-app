@@ -86,7 +86,7 @@ function Donut({ pct, label, hint }: { pct: number; label: string; hint: string 
         <span className="absolute inset-0 grid place-items-center text-base font-extrabold text-clinic-text">{pct}%</span>
       </div>
       <span className="text-xs font-bold text-clinic-text">{label}</span>
-      <span className="text-[10px] text-clinic-muted">{hint}</span>
+      <span className="text-[11px] text-clinic-muted">{hint}</span>
     </div>
   );
 }

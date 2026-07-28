@@ -334,7 +334,7 @@ export default function ReportsPage() {
         ) : (
           <div className="mt-4 grid gap-5 lg:grid-cols-[180px_1fr]">
             <div className="rounded-2xl bg-navy-800 p-5 text-center text-white">
-              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-azure-200">NPS</div>
+              <div className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-azure-200">NPS</div>
               <div className="mt-1 font-mono text-4xl font-extrabold">{data.npsScore > 0 ? `+${data.npsScore}` : data.npsScore}</div>
               <div className="mt-1 text-[11px] text-white/60">{data.surveys.length} encuesta{data.surveys.length !== 1 && "s"}</div>
             </div>

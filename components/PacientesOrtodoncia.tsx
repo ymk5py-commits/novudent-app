@@ -95,7 +95,7 @@ export function PacientesOrtodoncia() {
                 <tr key={r.p.id} className="hover:bg-clinic-bg/60">
                   <td className="px-4 py-2.5">
                     <a href={`/app/pacientes/${r.p.id}`} className="font-semibold text-clinic-text hover:text-azure-700">{r.p.firstName} {r.p.lastName}</a>
-                    {r.overdue && <span className="ml-2 rounded-full bg-state-errbg px-1.5 text-[10px] font-bold text-state-err">ATRASADO</span>}
+                    {r.overdue && <span className="ml-2 rounded-full bg-state-errbg px-1.5 text-[11px] font-bold text-state-err">ATRASADO</span>}
                   </td>
                   <td className="px-2 py-2.5 text-clinic-muted">{r.p.sex ?? r.p.gender ?? "—"}</td>
                   <td className="px-2 py-2.5 text-clinic-muted">{r.age ?? "—"}</td>
@@ -126,7 +126,7 @@ function Kpi({ label, value, icon: Icon, tone }: { label: string; value: number;
     <Card className="p-4 text-center">
       <Icon className={`mx-auto h-5 w-5 ${c}`} />
       <div className="mt-1 font-mono text-2xl font-extrabold text-clinic-text">{value}</div>
-      <div className="text-[10px] font-bold uppercase tracking-wide text-clinic-muted">{label}</div>
+      <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">{label}</div>
     </Card>
   );
 }

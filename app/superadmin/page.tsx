@@ -89,7 +89,7 @@ export default function SuperAdminPage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-lg">
         <Reveal y={0} className="mb-6 text-center">
           <div className="font-logo text-3xl tracking-[0.22em] text-white">NOVUdent</div>
-          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-azure-500/20 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-azure-200">
+          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-azure-500/20 px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-azure-200">
             <ShieldCheck className="h-3 w-3" /> Panel del propietario
           </div>
         </Reveal>
@@ -145,7 +145,7 @@ export default function SuperAdminPage() {
               </Field>
 
               <div className="border-t border-clinic-border pt-4">
-                <p className="mb-3 font-mono text-[10px] font-extrabold uppercase tracking-[0.2em] text-clinic-muted">Plan contratado</p>
+                <p className="mb-3 font-mono text-[11px] font-extrabold uppercase tracking-[0.2em] text-clinic-muted">Plan contratado</p>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {(Object.values(PLANS)).map((p) => (
                     <button
@@ -162,19 +162,19 @@ export default function SuperAdminPage() {
                       <span className="block font-mono text-[11px] font-bold text-clinic-muted">
                         {p.priceUsd ? `$${p.priceUsd}/mes` : "A medida"}
                       </span>
-                      <span className="mt-1 block text-[10px] leading-snug text-clinic-muted">
+                      <span className="mt-1 block text-[11px] leading-snug text-clinic-muted">
                         {p.id === "solo" ? "1 profesional" : p.id === "clinica" ? "Hasta 5 prof. · todo incluido" : "Multi-sucursal · ilimitado"}
                       </span>
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 text-[10.5px] leading-relaxed text-clinic-muted">
+                <p className="mt-2 text-[11px] leading-relaxed text-clinic-muted">
                   El plan limita los módulos y la cantidad de profesionales dentro de la app. Se puede cambiar después.
                 </p>
               </div>
 
               <div className="border-t border-clinic-border pt-4">
-                <p className="mb-3 font-mono text-[10px] font-extrabold uppercase tracking-[0.2em] text-clinic-muted">Datos de la clínica</p>
+                <p className="mb-3 font-mono text-[11px] font-extrabold uppercase tracking-[0.2em] text-clinic-muted">Datos de la clínica</p>
                 <div className="space-y-3.5">
                   <Field label="Nombre de la clínica">
                     <div className="relative">
@@ -200,7 +200,7 @@ export default function SuperAdminPage() {
               </div>
 
               <div className="border-t border-clinic-border pt-4">
-                <p className="mb-3 font-mono text-[10px] font-extrabold uppercase tracking-[0.2em] text-clinic-muted">Cuenta del administrador</p>
+                <p className="mb-3 font-mono text-[11px] font-extrabold uppercase tracking-[0.2em] text-clinic-muted">Cuenta del administrador</p>
                 <div className="space-y-3.5">
                   <Field label="Nombre y apellido">
                     <div className="relative">

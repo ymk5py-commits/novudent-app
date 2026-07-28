@@ -184,7 +184,7 @@ export function ToothCol({ n, rec, upper, onClick }: { n: string; rec?: Showcase
     <span key="e" className="transition-transform duration-150 group-hover:scale-110"><Elevation n={n} rec={rec} upper={upper} /></span>,
     <span key="s" className="text-[8px] leading-none text-azure-500">{rec && rec.condition !== "ausente" ? "★" : " "}</span>,
     <Occlusal key="o" rec={rec} />,
-    <span key="n" className={`font-mono text-[9.5px] leading-none ${rec ? "font-bold text-clinic-text" : "text-clinic-muted"}`}>{n}</span>,
+    <span key="n" className={`font-mono text-[11px] leading-none ${rec ? "font-bold text-clinic-text" : "text-clinic-muted"}`}>{n}</span>,
   ];
   return (
     <button
@@ -347,7 +347,7 @@ export function ShowcaseBoard({
           <Row teeth={UPPER} upper />
           <div className="relative py-2.5">
             <div className="h-px bg-clinic-border" />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 font-mono text-[9px] uppercase tracking-widest text-clinic-muted">
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 font-mono text-[11px] uppercase tracking-widest text-clinic-muted">
               derecha · línea media · izquierda
             </span>
           </div>

@@ -177,7 +177,7 @@ export default function Login() {
                       </button>
                     );
                   })}
-                <p className="pt-1 text-center font-mono text-[10px] font-bold uppercase tracking-wide text-clinic-muted">
+                <p className="pt-1 text-center font-mono text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
                   Backend: {backend === "firebase" ? "Firebase conectado" : backend === "local" ? "modo local" : "conectando…"}
                 </p>
               </div>

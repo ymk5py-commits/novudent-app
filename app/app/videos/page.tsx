@@ -73,7 +73,7 @@ export default function VideosPage() {
                 <div className="p-4">
                   <div className="mb-1 flex items-center gap-2">
                     <Badge tone="info">{v.category || "General"}</Badge>
-                    {!id && <span className="inline-flex items-center gap-0.5 text-[10px] text-clinic-muted"><ExternalLink className="h-3 w-3" /> Abre en YouTube</span>}
+                    {!id && <span className="inline-flex items-center gap-0.5 text-[11px] text-clinic-muted"><ExternalLink className="h-3 w-3" /> Abre en YouTube</span>}
                   </div>
                   <div className="text-sm font-bold text-clinic-text">{v.title}</div>
                   {v.description && <p className="mt-1 text-xs text-clinic-muted">{v.description}</p>}

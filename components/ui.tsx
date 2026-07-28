@@ -55,7 +55,7 @@ export function Badge({ tone, children, tip }: { tone: "ok" | "warn" | "err" | "
     muted: "bg-clinic-bg text-clinic-muted",
   }[tone];
   return (
-    <span data-tip={tip} className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-wide ${c}`}>
+    <span data-tip={tip} className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${c}`}>
       {children}
     </span>
   );

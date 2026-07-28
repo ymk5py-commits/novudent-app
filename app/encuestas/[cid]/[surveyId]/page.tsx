@@ -74,7 +74,7 @@ export default function PublicSurveyPage({ params }: { params: { cid: string; su
                         {Array.from({ length: 11 }, (_, n) => (
                           <button key={n} onClick={() => set(q.id, n)} className={`h-9 w-9 rounded-lg border text-sm font-bold transition-colors ${answers[q.id] === n ? "border-azure-600 bg-azure-600 text-white" : "border-clinic-border text-clinic-text hover:border-azure-300"}`}>{n}</button>
                         ))}
-                        <div className="mt-1 flex w-full justify-between text-[10px] text-clinic-muted"><span>Nada probable</span><span>Muy probable</span></div>
+                        <div className="mt-1 flex w-full justify-between text-[11px] text-clinic-muted"><span>Nada probable</span><span>Muy probable</span></div>
                       </div>
                     ) : q.type === "rating" ? (
                       <div className="flex gap-2">

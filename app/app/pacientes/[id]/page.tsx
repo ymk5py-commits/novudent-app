@@ -141,7 +141,7 @@ export default function PatientProfile() {
 
             {/* Identificación */}
             <div className="min-w-0 flex-1 text-white">
-              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-azure-200">ID {p.document}</div>
+              <div className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-azure-200">ID {p.document}</div>
               <h1 className="font-logo text-2xl leading-tight sm:text-3xl">{fullName(p)}</h1>
               <p className="mt-0.5 truncate text-sm text-white/70">
                 CI {p.document}{age != null ? ` · ${age} años` : ""}{p.phone ? ` · ${p.phone}` : ""}{p.insurer ? ` · ${p.insurer}` : ""}
@@ -241,7 +241,7 @@ export default function PatientProfile() {
                   }`}
                 >
                   <t.icon className="h-4 w-4" /> {t.label}
-                  {badge > 0 && <span className="ml-0.5 rounded-full bg-state-warn px-1.5 text-[10px] font-bold text-white">{badge}</span>}
+                  {badge > 0 && <span className="ml-0.5 rounded-full bg-state-warn px-1.5 text-[11px] font-bold text-white">{badge}</span>}
                 </button>
               );
             })}
@@ -545,7 +545,7 @@ function MedBadge({ icon: Icon, label, value, editable, onClick }: { icon: any; 
       onClick={editable ? onClick : undefined}
       className={`glass-dark min-w-[116px] max-w-[190px] rounded-xl px-3 py-2 text-left ${editable ? "transition-colors hover:bg-white/15" : "cursor-default"}`}
     >
-      <span className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wide text-white/80">
+      <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-white/80">
         <Icon className="h-3.5 w-3.5" /> {label}
       </span>
       <span className={`mt-0.5 block truncate text-xs ${value ? "text-white" : "text-white/45"}`}>

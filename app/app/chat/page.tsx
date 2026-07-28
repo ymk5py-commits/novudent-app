@@ -63,13 +63,13 @@ export default function ChatPage() {
             const showDay = i === 0 || messages[i - 1].createdAt.slice(0, 10) !== m.createdAt.slice(0, 10);
             return (
               <div key={m.id}>
-                {showDay && <div className="my-2 text-center text-[10px] font-bold uppercase tracking-wide text-clinic-muted">{fmtDate(m.createdAt)}</div>}
+                {showDay && <div className="my-2 text-center text-[11px] font-bold uppercase tracking-wide text-clinic-muted">{fmtDate(m.createdAt)}</div>}
                 <div className={`flex items-end gap-2 ${mine ? "flex-row-reverse" : ""}`}>
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white" style={{ background: userColor(m.userId) }}>{initials(m.userName)}</span>
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white" style={{ background: userColor(m.userId) }}>{initials(m.userName)}</span>
                   <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-br-sm bg-azure-600 text-white" : "rounded-bl-sm bg-clinic-bg text-clinic-text"}`}>
                     {!mine && <div className="mb-0.5 text-[11px] font-bold text-azure-700">{m.userName}</div>}
                     <div className="whitespace-pre-wrap break-words">{m.text}</div>
-                    <div className={`mt-0.5 text-right text-[9px] ${mine ? "text-white/70" : "text-clinic-muted"}`}>{fmtTime(m.createdAt)}</div>
+                    <div className={`mt-0.5 text-right text-[11px] ${mine ? "text-white/70" : "text-clinic-muted"}`}>{fmtTime(m.createdAt)}</div>
                   </div>
                 </div>
               </div>

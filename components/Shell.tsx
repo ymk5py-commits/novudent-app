@@ -107,7 +107,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             ))}
           </div>
           <div className="h-72 animate-pulse rounded-2xl bg-clinic-border/40" />
-          <p className="text-center font-mono text-[10px] font-bold uppercase tracking-widest text-clinic-muted">Cargando Novudent…</p>
+          <p className="text-center font-mono text-[11px] font-bold uppercase tracking-widest text-clinic-muted">Cargando Novudent…</p>
         </div>
       </div>
     );
@@ -146,7 +146,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
           {nav.map((e) => e.children ? (
             <div key={e.label}>
-              <div className="px-3 pb-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-clinic-muted/80">{e.label}</div>
+              <div className="px-3 pb-1.5 text-[11px] font-extrabold uppercase tracking-[0.18em] text-clinic-muted/80">{e.label}</div>
               <div className="space-y-1">
                 {e.children.map((it) => <DrawerLink key={it.href} {...it} active={isActive(it.href)} />)}
               </div>
@@ -167,7 +167,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </button>
           <a href="/app" className="flex shrink-0 items-baseline gap-2">
             {logo ? <img src={logo} alt={clinicName} className="h-8 w-auto max-w-[150px] object-contain" /> : <span className="font-logo text-xl tracking-[0.16em] text-white">NOVUdent</span>}
-            <span data-tip={`Plan ${plan.label}`} className="hidden rounded-full bg-white/20 px-1.5 py-0.5 font-mono text-[8px] font-extrabold uppercase tracking-wide text-white sm:inline">{plan.label}</span>
+            <span data-tip={`Plan ${plan.label}`} className="hidden rounded-full bg-white/20 px-1.5 py-0.5 font-mono text-[11px] font-extrabold uppercase tracking-wide text-white sm:inline">{plan.label}</span>
           </a>
           {/* Patient Finder */}
           <div className="relative ml-1 min-w-0 w-full max-w-sm">
@@ -199,7 +199,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <span
               data-tip={backend === "firebase" ? "Datos guardados en la nube" : "Sin conexión — datos solo en este navegador"}
               data-tip-pos="down"
-              className={`hidden items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wide sm:inline-flex ${backend === "firebase" ? "bg-state-okbg text-state-ok" : "bg-state-warnbg text-state-warn"}`}
+              className={`hidden items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wide sm:inline-flex ${backend === "firebase" ? "bg-state-okbg text-state-ok" : "bg-state-warnbg text-state-warn"}`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${backend === "firebase" ? "bg-state-ok" : "bg-state-warn"}`} />
               {backend === "firebase" ? "En línea" : "Sin conexión"}
@@ -212,11 +212,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               aria-label="Notificaciones"
             >
               <Bell className="h-[18px] w-[18px]" />
-              {pendings > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 font-mono text-[9.5px] font-bold text-white">{pendings}</span>}
+              {pendings > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 font-mono text-[11px] font-bold text-white">{pendings}</span>}
             </a>
             <span className="hidden text-right sm:block">
               <span className="block text-xs font-bold leading-tight text-white">{session.name}</span>
-              <span className="block text-[10px] leading-tight text-white/75">{ROLE_LABEL[session.role]}</span>
+              <span className="block text-[11px] leading-tight text-white/75">{ROLE_LABEL[session.role]}</span>
             </span>
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white ring-2 ring-white/40" style={{ background: me?.color ?? "#0E8AA3" }}>{initials}</span>
             <button onClick={() => { logout(); router.replace("/login"); }} aria-label="Cerrar sesión" data-tip="Cerrar sesión" data-tip-pos="down-left" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white/80 transition-colors hover:bg-white/15 hover:text-white">
@@ -294,7 +294,7 @@ function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; ic
           <div className="absolute left-0 top-full z-50 mt-0.5 grid w-[460px] max-w-[92vw] grid-cols-2 gap-x-2 rounded-xl border border-clinic-border bg-white p-2 shadow-pop">
             {grouped.map(([title, its]) => (
               <div key={title}>
-                <div className="px-3 pb-1 pt-1 text-[10px] font-extrabold uppercase tracking-wide text-clinic-muted/70">{title}</div>
+                <div className="px-3 pb-1 pt-1 text-[11px] font-extrabold uppercase tracking-wide text-clinic-muted/70">{title}</div>
                 {its.map(renderItem)}
               </div>
             ))}

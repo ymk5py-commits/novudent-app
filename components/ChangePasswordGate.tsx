@@ -48,7 +48,7 @@ export default function ChangePasswordGate() {
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <div className="font-logo text-3xl tracking-[0.22em] text-white">NOVUdent</div>
-          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-azure-500/20 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-azure-200">
+          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-azure-500/20 px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-azure-200">
             <ShieldCheck className="h-3 w-3" /> Seguridad
           </div>
         </div>

@@ -73,7 +73,7 @@ export default function Landing() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <a href="/" className="flex items-baseline gap-2">
             <span className="font-logo text-xl tracking-[0.18em] text-navy-800">NOVUdent</span>
-            <span className="hidden font-mono text-[9px] uppercase tracking-[0.3em] text-clinic-muted sm:block">by NOVUM</span>
+            <span className="hidden font-mono text-[11px] uppercase tracking-[0.3em] text-clinic-muted sm:block">by NOVUM</span>
           </a>
           <nav className="hidden items-center gap-1 text-sm font-semibold text-clinic-muted md:flex">
             {[["#odontograma", "Odontograma"], ["#capacidades", "Capacidades"], ["#flujo", "Cómo se trabaja"], ["#precios", "Precios"]].map(([h, l]) => (
@@ -113,7 +113,7 @@ export default function Landing() {
                   {session ? "Ir al panel" : "Probar la demo gratis"}
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </a>
-                <span className="hidden font-mono text-[10px] uppercase tracking-wide text-clinic-muted lg:block">Sin tarjeta<br />Rol a elección</span>
+                <span className="hidden font-mono text-[11px] uppercase tracking-wide text-clinic-muted lg:block">Sin tarjeta<br />Rol a elección</span>
               </div>
             </div>
           </motion.div>
@@ -133,10 +133,10 @@ export default function Landing() {
                 <span className="flex gap-1.5">
                   <i className="h-2.5 w-2.5 rounded-full bg-red-300" /><i className="h-2.5 w-2.5 rounded-full bg-amber-300" /><i className="h-2.5 w-2.5 rounded-full bg-green-300" />
                 </span>
-                <span className="flex-1 truncate rounded-lg bg-white px-3 py-1 font-mono text-[10.5px] text-clinic-muted ring-1 ring-clinic-border">
+                <span className="flex-1 truncate rounded-lg bg-white px-3 py-1 font-mono text-[11px] text-clinic-muted ring-1 ring-clinic-border">
                   novudent.app / pacientes / maría-gonzález / odontograma
                 </span>
-                <span className="hidden rounded-full bg-state-okbg px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-state-ok sm:block">demo en vivo</span>
+                <span className="hidden rounded-full bg-state-okbg px-2 py-0.5 font-mono text-[11px] font-bold uppercase text-state-ok sm:block">demo en vivo</span>
               </div>
               <div className="p-4 sm:p-6">
                 <ShowcaseBoard
@@ -180,7 +180,7 @@ export default function Landing() {
             {[...MARQUEE_TEETH, ...MARQUEE_TEETH].map((t, i) => (
               <span key={i} className="flex items-center gap-8">
                 <ToothGlyph n={t.n} rec={t.rec} upper />
-                {i % 3 === 2 && <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-clinic-muted">novudent</span>}
+                {i % 3 === 2 && <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-clinic-muted">novudent</span>}
               </span>
             ))}
           </div>
@@ -205,7 +205,7 @@ export default function Landing() {
               </p>
               <div className="mt-8 flex items-baseline gap-3">
                 <span className="font-logo text-6xl text-navy-800">06</span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-clinic-muted">herramientas<br />de trabajo</span>
+                <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-clinic-muted">herramientas<br />de trabajo</span>
               </div>
             </div>
           </Reveal>
@@ -264,14 +264,14 @@ export default function Landing() {
               <div className="rounded-3xl border border-clinic-border bg-white p-5 shadow-card">
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-sm font-extrabold text-navy-800">Agenda · hoy</span>
-                  <span className="rounded-full bg-state-okbg px-2 py-0.5 font-mono text-[10px] font-bold text-state-ok">92% OCUPACIÓN</span>
+                  <span className="rounded-full bg-state-okbg px-2 py-0.5 font-mono text-[11px] font-bold text-state-ok">92% OCUPACIÓN</span>
                 </div>
                 {[["09:00", "María González", "Resina pieza 16", "bg-state-ok"], ["10:30", "Juan Ríos", "Primera consulta", "bg-state-warn"], ["11:00", "+ Crear cita en este hueco", "", "bg-azure-500"], ["11:45", "Camila Ortega", "Profilaxis", "bg-state-ok"]].map(([h, n, t, dot], idx) => (
                   <div key={idx} className={`mb-2 flex items-center gap-3 rounded-xl border px-3 py-2.5 ${t === "" ? "border-dashed border-azure-300 bg-azure-50/60" : "border-clinic-border"}`}>
                     <span className="font-mono text-xs font-bold text-clinic-text">{h}</span>
                     <span className="flex-1">
                       <span className={`block text-xs font-bold ${t === "" ? "text-azure-700" : "text-clinic-text"}`}>{n}</span>
-                      {t && <span className="block text-[10px] text-clinic-muted">{t}</span>}
+                      {t && <span className="block text-[11px] text-clinic-muted">{t}</span>}
                     </span>
                     <span className={`h-2 w-2 rounded-full ${dot}`} />
                   </div>
@@ -296,11 +296,11 @@ export default function Landing() {
                   {[{ n: "14" }, { n: "15" }, { n: "16", rec: { condition: "caries" as const, surfaces: ["O" as const], updatedAt: "", updatedBy: "" } }, { n: "17" }].map((t) => (
                     <div key={t.n} className="flex flex-col items-center gap-1">
                       <ToothGlyph n={t.n} rec={t.rec} upper />
-                      <span className={`font-mono text-[10px] ${t.rec ? "font-bold text-red-600" : "text-clinic-muted"}`}>{t.n}</span>
+                      <span className={`font-mono text-[11px] ${t.rec ? "font-bold text-red-600" : "text-clinic-muted"}`}>{t.n}</span>
                     </div>
                   ))}
                 </div>
-                <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-center font-mono text-[10.5px] font-bold text-red-600">
+                <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-center font-mono text-[11px] font-bold text-red-600">
                   16 · CARIES OCLUSAL (O) — registrado por Dra. Benítez
                 </p>
               </div>
@@ -332,7 +332,7 @@ export default function Landing() {
                     </span>
                     <span className="flex flex-wrap justify-end gap-1">
                       {s.flags.length === 0
-                        ? <span className="rounded-full bg-clinic-bg px-2 py-0.5 font-mono text-[10px] font-bold text-clinic-muted">SIN ENVIAR</span>
+                        ? <span className="rounded-full bg-clinic-bg px-2 py-0.5 font-mono text-[11px] font-bold text-clinic-muted">SIN ENVIAR</span>
                         : s.flags.map((f) => <FlagBadge key={f} flag={f as any} />)}
                     </span>
                   </div>
@@ -361,7 +361,7 @@ export default function Landing() {
             <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-azure-500/20 blur-3xl" />
             <div className="relative">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-azure-200">Plan Clínica · el más elegido</span>
+                <span className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-azure-200">Plan Clínica · el más elegido</span>
               </div>
               <div className="mt-5 flex items-end gap-2">
                 <span className="font-logo text-6xl">$129</span>
@@ -393,7 +393,7 @@ export default function Landing() {
                 <div className="flex h-full flex-col justify-between rounded-[2rem] border border-clinic-border bg-white p-7 shadow-card transition-all hover:-translate-y-1 hover:shadow-pop">
                   <div>
                     <div className="flex items-baseline justify-between">
-                      <span className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-clinic-muted">Plan {p.name}</span>
+                      <span className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-clinic-muted">Plan {p.name}</span>
                       <span className="font-logo text-3xl text-navy-800">{p.price}<span className="ml-1 text-xs font-sans text-clinic-muted">{p.per}</span></span>
                     </div>
                     <p className="mt-3 text-sm leading-relaxed text-clinic-muted">{p.blurb}</p>
@@ -407,7 +407,7 @@ export default function Landing() {
             ))}
           </Stagger>
         </div>
-        <p className="mt-6 font-mono text-[10px] font-bold uppercase tracking-wide text-clinic-muted">
+        <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
           Precios referenciales · Sin contratos largos · Migración de datos incluida
         </p>
       </section>
