@@ -1,6 +1,12 @@
 import { defineConfig } from "vitest/config";
+import { fileURLToPath } from "node:url";
 
 export default defineConfig({
+  // Mismo alias que tsconfig.json, para poder testear las rutas de app/api/*
+  // (que importan con "@/lib/…") además de los helpers de lib/.
+  resolve: {
+    alias: { "@": fileURLToPath(new URL(".", import.meta.url)) },
+  },
   test: {
     // Solo los unit tests de vitest (.test.ts). El test de reglas
     // (test/firestore-rules.test.mjs) usa node:test + el emulador de Firestore
