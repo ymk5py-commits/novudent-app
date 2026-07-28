@@ -21,7 +21,7 @@ import {
   assertFails,
   assertSucceeds,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
 const PROJECT_ID = "novudent-rules-test";
 let testEnv;
@@ -49,6 +49,8 @@ before(async () => {
     await setDoc(doc(db, "clinics/clA/users/dentA"), { id: "dentA", role: "dentist", active: true, clinicId: "clA", email: "dent@a.com", mustChangePassword: true, commissionPct: 25 });
     await setDoc(doc(db, "clinics/clA/users/asisA"), { id: "asisA", role: "assistant", active: true, clinicId: "clA", email: "asis@a.com" });
     await setDoc(doc(db, "clinics/clA/patients/p1"), { id: "p1", firstName: "Ana" });
+    await setDoc(doc(db, "subscriptions/clA"), { clinicId: "clA", plan: "clinica", status: "active" });
+
     await setDoc(doc(db, "clinics/clA/payments/pay1"), { id: "pay1", amount: 1000 });
     await setDoc(doc(db, "clinics/clA/expenses/exp1"), { id: "exp1", amount: 500 });
     // Clínica B
@@ -191,4 +193,32 @@ test("EMR: un DENTISTA SÍ puede escribir el odontograma/EMR del paciente", asyn
 
 test("EMR: un ADMIN SÍ puede escribir el EMR del paciente", async () => {
   await assertSucceeds(updateDoc(doc(authed("adminA"), "clinics/clA/patients/p1"), { emr: [{ note: "control" }] }));
+});
+
+// ---- Monetización: el plan lo fija la suscripción, no el cliente ----
+
+test("MONETIZACIÓN: un admin NO puede auto-ascenderse de plan (clinics/{cid}.plan)", async () => {
+  // El agujero de ingresos: sin esta regla, dos líneas en la consola del
+  // navegador desbloquean todos los módulos premium sin pagar.
+  await assertFails(updateDoc(doc(authed("adminA"), "clinics/clA"), { plan: "cadena" }));
+});
+
+test("MONETIZACIÓN: el admin SÍ puede editar el resto de la config de su clínica", async () => {
+  await assertSucceeds(updateDoc(doc(authed("adminA"), "clinics/clA"), { name: "Clínica A renombrada" }));
+});
+
+test("MONETIZACIÓN: un admin NO puede borrar su clínica", async () => {
+  await assertFails(deleteDoc(doc(authed("adminA"), "clinics/clA")));
+});
+
+test("SUSCRIPCIÓN: un miembro LEE la suscripción de su clínica (gating/banner)", async () => {
+  await assertSucceeds(getDoc(doc(authed("dentA"), "subscriptions/clA")));
+});
+
+test("SUSCRIPCIÓN: ni el admin puede escribirla (solo el webhook/servicio)", async () => {
+  await assertFails(setDoc(doc(authed("adminA"), "subscriptions/clA"), { clinicId: "clA", plan: "cadena", status: "active" }));
+});
+
+test("SUSCRIPCIÓN: no se lee la suscripción de OTRA clínica", async () => {
+  await assertFails(getDoc(doc(authed("adminA"), "subscriptions/clB")));
 });

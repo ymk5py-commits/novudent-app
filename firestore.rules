@@ -102,12 +102,30 @@ service cloud.firestore {
       allow update, delete: if isService();
     }
 
+    // ---- Suscripción SaaS (monetización) ----
+    // Fuente de verdad del plan contratado. Vive ACÁ, fuera de clinics/{cid},
+    // porque ese doc lo escribe el admin de la propia clínica: si el plan
+    // viviera ahí, cualquier cliente se auto-ascendería a Cadena gratis desde
+    // la consola del navegador. La escribe SOLO el usuario de servicio (el
+    // webhook de la pasarela); el cliente apenas la lee para el gating/banner.
+    match /subscriptions/{cid} {
+      allow read:  if isMember(cid) || isService() || isDemo(cid);
+      allow write: if isService();
+    }
+
     // ---- Clínica + subcolecciones ----
     match /clinics/{cid} {
-      // Doc raíz: plan + config. Lectura: miembros/servidor/demo.
-      // Escritura: SOLO admin (cambia plan/config), servidor o demo.
-      allow read:  if isMember(cid) || isService() || isDemo(cid);
-      allow write: if isAdmin(cid)  || isService() || isDemo(cid);
+      // Doc raíz: config de la clínica. Lectura: miembros/servidor/demo.
+      allow read: if isMember(cid) || isService() || isDemo(cid);
+      // Alta/baja de clínicas: solo el servidor (/api/clinicas del panel del
+      // dueño). Un admin de clínica no crea ni borra clínicas.
+      allow create, delete: if isService() || isDemo(cid);
+      // Update: el admin edita la config, PERO NO el campo `plan` — ese lo fija
+      // la suscripción de arriba. Sin esta lista negra, cambiar `plan` a
+      // "cadena" desbloquea todos los módulos premium sin pagar.
+      allow update: if isService() || isDemo(cid)
+        || (isAdmin(cid)
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['plan']));
 
       // Equipo: solo admin gestiona usuarios (anti-escalada de privilegios).
       // NOTA: este bloque NO comparte wildcard con los de datos de abajo, así

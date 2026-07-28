@@ -47,6 +47,32 @@ export interface Clinic {
   };
 }
 
+/* ===== Suscripción SaaS (monetización) =====
+ * Vive en la colección RAÍZ `subscriptions/{cid}`, NO dentro de clinics/{cid}:
+ * el admin de una clínica puede escribir su propio doc de clínica, así que si el
+ * plan viviera ahí podría auto-ascenderse a Cadena gratis. Este doc lo escribe
+ * SOLO el usuario de servicio (webhook de la pasarela) — ver firestore.rules. */
+export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled" | "expired";
+
+export interface Subscription {
+  clinicId: string;
+  /** Plan contratado — fuente de verdad del gating (gana sobre Clinic.plan). */
+  plan: "solo" | "clinica" | "cadena";
+  status: SubscriptionStatus;
+  /** Fin del período pago, en epoch ms. En ms (no ISO) para poder compararlo
+   *  directo en firestore.rules con `request.time.toMillis()`. */
+  currentPeriodEndMs?: number;
+  provider?: "lemonsqueezy" | "manual";
+  /** Ids de Lemon Squeezy para conciliar y para el portal del cliente */
+  lsSubscriptionId?: string;
+  lsCustomerId?: string;
+  lsVariantId?: string;
+  customerPortalUrl?: string;
+  updatedAt: string;
+  /** quién la actualizó: "webhook:lemonsqueezy" o el dueño desde /superadmin */
+  updatedBy?: string;
+}
+
 export interface User {
   id: string;
   clinicId: string;
