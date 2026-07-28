@@ -71,6 +71,51 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role in ['admin', 'dentist'];
     }
 
+    // ---- Monetización: suscripción vigente y plan contratado ----
+    // Los get() al mismo path se cachean dentro de una misma evaluación, así que
+    // usar estos helpers en varias condiciones cuesta UNA sola lectura.
+
+    function subPath(cid) {
+      return /databases/$(database)/documents/subscriptions/$(cid);
+    }
+
+    // ¿La clínica puede ESCRIBIR? Sin doc de suscripción → sí (grandfathering:
+    // las clínicas anteriores al cobro no pueden quedar en solo-lectura de un día
+    // para el otro). Con doc: solo si está al día Y el período no venció — la
+    // fecha se chequea aparte del status por si se perdió un webhook de impago.
+    function subActive(cid) {
+      return !exists(subPath(cid))
+        || (get(subPath(cid)).data.status in ['active', 'trialing']
+            && (!('currentPeriodEndMs' in get(subPath(cid)).data)
+                || request.time.toMillis() < get(subPath(cid)).data.currentPeriodEndMs));
+    }
+
+    // Plan efectivo: el de la suscripción; si no hay doc, el legacy de
+    // clinics/{cid}.plan (seguro de leer: el admin ya no puede modificarlo).
+    // Sin ninguno de los dos → 'clinica', el default histórico.
+    function effectivePlan(cid) {
+      return exists(subPath(cid))
+        ? get(subPath(cid)).data.plan
+        : (exists(/databases/$(database)/documents/clinics/$(cid))
+            && 'plan' in get(/databases/$(database)/documents/clinics/$(cid)).data
+              ? get(/databases/$(database)/documents/clinics/$(cid)).data.plan
+              : 'clinica');
+    }
+
+    // Escritura de datos operativos: miembro + suscripción vigente.
+    // El servicio y la demo nunca se bloquean por cobro.
+    function canWrite(cid) {
+      return (isMember(cid) && subActive(cid)) || isService() || isDemo(cid);
+    }
+
+    // Igual que canWrite pero además exige que el plan incluya el módulo premium.
+    // El gating de plan vivía SOLO en la UI (useClinicPlan/<PlanLocked>): sin
+    // esto, un cliente del plan Solo escribe estas colecciones por SDK directo.
+    function canWritePremium(cid, planes) {
+      return (isMember(cid) && subActive(cid) && effectivePlan(cid) in planes)
+        || isService() || isDemo(cid);
+    }
+
     // Campos del doc de paciente que son EMR clínico (odontograma, evoluciones,
     // recetas, ortodoncia, periodontograma). Solo rol clínico puede cambiarlos.
     // La demografía y el engagement (nombre, teléfono, forms, nps…) NO están acá:
@@ -162,67 +207,155 @@ service cloud.firestore {
       // del RBAC emr.write, no solo de la UI. diff().affectedKeys() solo marca los
       // campos cuyo VALOR cambió, así que un guardado que deja el EMR intacto pasa.
       match /patients/{docId} {
-        allow read, create, delete: if isMember(cid) || isService() || isDemo(cid);
-        allow update: if isService() || isDemo(cid) || isClinical(cid)
-          || (isMember(cid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(patientClinicalFields()));
+        // Lectura SIEMPRE, aunque la suscripción esté vencida: son historias
+        // clínicas y la clínica tiene que poder consultarlas y exportarlas.
+        allow read: if isMember(cid) || isService() || isDemo(cid);
+        allow create, delete: if canWrite(cid);
+        // Escritura: suscripción vigente + el RBAC de EMR (el asistente no toca
+        // los campos clínicos; ver patientClinicalFields()).
+        allow update: if isService() || isDemo(cid)
+          || (isMember(cid) && subActive(cid)
+              && (isClinical(cid)
+                  || !request.resource.data.diff(resource.data).affectedKeys().hasAny(patientClinicalFields())));
       }
-      match /appointments/{docId}{ allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /appointments/{docId}{
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // billing: lo escriben admin (finaliza), asistente (envía a cobro) y
       // dentista (finaliza) — todos los roles según la matriz, así que isMember.
-      match /billing/{docId}     { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
-      match /procedures/{docId}  { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
-      match /budgets/{docId}     { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /billing/{docId}     {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
+      match /procedures/{docId}  {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
+      match /budgets/{docId}     {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Dinero (caja/gastos): el dentista NO maneja dinero. Lectura: cualquier
       // miembro; escritura: solo staff (admin/asistente). Cierra el fraude
       // financiero vía SDK directo saltándose el RBAC de la UI.
       match /payments/{docId}    { allow read: if isMember(cid) || isService() || isDemo(cid);
-                                   allow write: if isStaff(cid) || isService() || isDemo(cid); }
+                                   allow write: if (isStaff(cid) && subActive(cid)) || isService() || isDemo(cid); }
       match /expenses/{docId}    { allow read: if isMember(cid) || isService() || isDemo(cid);
-                                   allow write: if isStaff(cid) || isService() || isDemo(cid); }
-      match /stock/{docId}       { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
-      match /stockMoves/{docId}  { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
-      match /waitlist/{docId}    { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
-      match /outbox/{docId}      { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+                                   allow write: if (isStaff(cid) && subActive(cid)) || isService() || isDemo(cid); }
+      match /stock/{docId}       {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWritePremium(cid, ['clinica','cadena']);
+      }
+      match /stockMoves/{docId}  {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWritePremium(cid, ['clinica','cadena']);
+      }
+      match /waitlist/{docId}    {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
+      match /outbox/{docId}      {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Lock atómico de slots de reserva online (lo crea el service user).
-      match /slotLocks/{docId}   { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /slotLocks/{docId}   {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Monitor de recuperación post-op (lo escriben miembros y el service user)
-      match /recoveryMonitors/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /recoveryMonitors/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Análisis IA de radiografías (lo escriben miembros y el service user)
-      match /radiographs/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /radiographs/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWritePremium(cid, ['clinica','cadena']);
+      }
       // Firma electrónica de consentimientos. La firma remota (página pública
       // /firmar) la escribe el service user vía /api/firmar → cubierta por isService().
-      match /signatures/{sid} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /signatures/{sid} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWritePremium(cid, ['clinica','cadena']);
+      }
       // Módulos de paridad Dentalink (CRM, Laboratorios, Liquidaciones, Box/Sillones)
-      match /crmCards/{docId}    { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
-      match /campaigns/{docId}   { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
-      match /labOrders/{docId}   { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
-      match /settlements/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
-      match /boxes/{docId}       { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /crmCards/{docId}    {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWritePremium(cid, ['cadena']);
+      }
+      match /campaigns/{docId}   {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWritePremium(cid, ['cadena']);
+      }
+      match /labOrders/{docId}   {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWritePremium(cid, ['clinica','cadena']);
+      }
+      match /settlements/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWritePremium(cid, ['clinica','cadena']);
+      }
+      match /boxes/{docId}       {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWritePremium(cid, ['clinica','cadena']);
+      }
       // Notas del paciente: comentarios administrativos / tareas de gestión / emails
-      match /patientNotes/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /patientNotes/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Documentos fiscales: boletas emitidas / devoluciones
-      match /fiscalDocs/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /fiscalDocs/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Sesiones de caja: apertura/cierre con arqueo
-      match /cashSessions/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /cashSessions/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Ciclos de esterilización de instrumental (cumplimiento)
-      match /sterilizationCycles/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /sterilizationCycles/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Chat interno del equipo
-      match /teamMessages/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /teamMessages/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Encuestas (definición): admin escribe; la respuesta pública entra por route de servicio
-      match /surveys/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /surveys/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Respuestas de encuestas: alta pública (sin sesión) vía route de servicio
       match /surveyResponses/{docId} {
         allow read: if isMember(cid) || isService() || isDemo(cid);
         allow write: if isService() || isDemo(cid);
       }
       // Tareas de gestión (bandeja captura/control/cobranza/cita)
-      match /mgmtTasks/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /mgmtTasks/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Registro ambiental de residuos (cumplimiento)
-      match /environmentalLogs/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /environmentalLogs/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Biblioteca de videos educativos / 3D
-      match /eduVideos/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /eduVideos/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // Sucursales / sedes (multi-sede)
-      match /branches/{docId} { allow read, write: if isMember(cid) || isService() || isDemo(cid); }
+      match /branches/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
     }
 
     // Todo lo demás: denegado.

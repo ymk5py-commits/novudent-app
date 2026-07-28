@@ -57,6 +57,26 @@ before(async () => {
     await setDoc(doc(db, "clinics/clB"), { id: "clB", name: "B", plan: "solo" });
     await setDoc(doc(db, "clinics/clB/users/adminB"), { id: "adminB", role: "admin", active: true, clinicId: "clB", email: "admin@b.com" });
     await setDoc(doc(db, "clinics/clB/patients/pb"), { id: "pb", firstName: "Beto" });
+    // Clínica V: suscripción VENCIDA (impago) — para probar el modo solo-lectura
+    await setDoc(doc(db, "clinics/clV"), { id: "clV", name: "V", plan: "clinica" });
+    await setDoc(doc(db, "clinics/clV/users/adminV"), { id: "adminV", role: "admin", active: true, clinicId: "clV", email: "admin@v.com" });
+    await setDoc(doc(db, "clinics/clV/patients/pv"), { id: "pv", firstName: "Vito" });
+    await setDoc(doc(db, "subscriptions/clV"), { clinicId: "clV", plan: "clinica", status: "past_due" });
+
+    // Clínica S: plan SOLO al día — para probar el gating de módulos premium
+    await setDoc(doc(db, "clinics/clS"), { id: "clS", name: "S", plan: "solo" });
+    await setDoc(doc(db, "clinics/clS/users/adminS"), { id: "adminS", role: "admin", active: true, clinicId: "clS", email: "admin@s.com" });
+    await setDoc(doc(db, "subscriptions/clS"), { clinicId: "clS", plan: "solo", status: "active" });
+
+    // Clínica G: SIN doc de suscripción — grandfathering (anterior al cobro)
+    await setDoc(doc(db, "clinics/clG"), { id: "clG", name: "G" });
+    await setDoc(doc(db, "clinics/clG/users/adminG"), { id: "adminG", role: "admin", active: true, clinicId: "clG", email: "admin@g.com" });
+
+    // Clínica E: activa pero con el PERÍODO VENCIDO (webhook de impago perdido)
+    await setDoc(doc(db, "clinics/clE"), { id: "clE", name: "E", plan: "clinica" });
+    await setDoc(doc(db, "clinics/clE/users/adminE"), { id: "adminE", role: "admin", active: true, clinicId: "clE", email: "admin@e.com" });
+    await setDoc(doc(db, "subscriptions/clE"), { clinicId: "clE", plan: "clinica", status: "active", currentPeriodEndMs: 1000 });
+
     // Demo
     await setDoc(doc(db, "clinics/cl_demo"), { id: "cl_demo", name: "Demo" });
     // Service account allowlist
@@ -221,4 +241,57 @@ test("SUSCRIPCIÓN: ni el admin puede escribirla (solo el webhook/servicio)", as
 
 test("SUSCRIPCIÓN: no se lee la suscripción de OTRA clínica", async () => {
   await assertFails(getDoc(doc(authed("adminA"), "subscriptions/clB")));
+});
+
+// ---- Enforcement de cobro en las REGLAS (no solo en la UI) ----
+
+test("COBRO: suscripción vencida (past_due) → NO puede escribir", async () => {
+  await assertFails(setDoc(doc(authed("adminV"), "clinics/clV/patients/nuevo"), { id: "nuevo" }));
+  await assertFails(setDoc(doc(authed("adminV"), "clinics/clV/appointments/a1"), { id: "a1" }));
+});
+
+test("COBRO: suscripción vencida SÍ puede LEER y exportar (historia clínica)", async () => {
+  // Al vencer no se bloquea el acceso: son datos médicos, la clínica debe poder
+  // consultarlos y exportarlos (LGPD / Ley 1581).
+  await assertSucceeds(getDoc(doc(authed("adminV"), "clinics/clV/patients/pv")));
+});
+
+test("COBRO: período vencido corta la escritura aunque el status diga 'active'", async () => {
+  // Defensa en profundidad por si se pierde el webhook de impago.
+  await assertFails(setDoc(doc(authed("adminE"), "clinics/clE/patients/x"), { id: "x" }));
+});
+
+test("COBRO: clínica SIN doc de suscripción sigue escribiendo (grandfathering)", async () => {
+  // Si esto fallara, el deploy dejaría a las clínicas existentes en solo-lectura.
+  await assertSucceeds(setDoc(doc(authed("adminG"), "clinics/clG/patients/x"), { id: "x" }));
+});
+
+test("COBRO: clínica al día escribe normal", async () => {
+  await assertSucceeds(setDoc(doc(authed("adminA"), "clinics/clA/appointments/aOk"), { id: "aOk" }));
+});
+
+test("PLAN: el plan Solo NO escribe módulos premium (radiografías, firma, labs)", async () => {
+  // El gating vivía solo en la UI: por SDK directo un plan Solo los escribía igual.
+  await assertFails(setDoc(doc(authed("adminS"), "clinics/clS/radiographs/r1"), { id: "r1" }));
+  await assertFails(setDoc(doc(authed("adminS"), "clinics/clS/signatures/s1"), { id: "s1" }));
+  await assertFails(setDoc(doc(authed("adminS"), "clinics/clS/labOrders/l1"), { id: "l1" }));
+});
+
+test("PLAN: el plan Clínica SÍ escribe los premium de su plan", async () => {
+  await assertSucceeds(setDoc(doc(authed("adminA"), "clinics/clA/radiographs/r1"), { id: "r1" }));
+  await assertSucceeds(setDoc(doc(authed("adminA"), "clinics/clA/labOrders/l1"), { id: "l1" }));
+});
+
+test("PLAN: el CRM es solo de Cadena — ni Clínica ni Solo lo escriben", async () => {
+  await assertFails(setDoc(doc(authed("adminA"), "clinics/clA/crmCards/c1"), { id: "c1" }));
+  await assertFails(setDoc(doc(authed("adminS"), "clinics/clS/campaigns/c1"), { id: "c1" }));
+});
+
+test("PLAN: el plan Solo SÍ escribe lo básico (agenda, pacientes)", async () => {
+  await assertSucceeds(setDoc(doc(authed("adminS"), "clinics/clS/appointments/a1"), { id: "a1" }));
+  await assertSucceeds(setDoc(doc(authed("adminS"), "clinics/clS/patients/p1"), { id: "p1" }));
+});
+
+test("COBRO: la demo nunca se bloquea por suscripción", async () => {
+  await assertSucceeds(setDoc(doc(anon(), "clinics/cl_demo/radiographs/r1"), { id: "r1" }));
 });
