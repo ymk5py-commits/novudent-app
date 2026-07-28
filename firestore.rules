@@ -113,6 +113,13 @@ service cloud.firestore {
       allow write: if isService();
     }
 
+    // Idempotencia de los webhooks de cobro: un doc por transición ya aplicada,
+    // para que los reintentos de la pasarela no la re-apliquen. Nunca la ve el
+    // cliente (sin esta regla el default-deny haría fallar el webhook en silencio).
+    match /webhookEvents/{eventId} {
+      allow read, write: if isService();
+    }
+
     // ---- Clínica + subcolecciones ----
     match /clinics/{cid} {
       // Doc raíz: config de la clínica. Lectura: miembros/servidor/demo.

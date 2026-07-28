@@ -878,4 +878,7 @@ export interface DB {
   eduVideos: EduVideo[];
   branches: Branch[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
+  /** Suscripción SaaS de la clínica activa (subscriptions/{cid}, solo-lectura
+   *  para el cliente). `null` = clínica anterior al cobro → grandfathered. */
+  subscription?: Subscription | null;
 }

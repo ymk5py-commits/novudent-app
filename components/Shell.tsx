@@ -12,8 +12,10 @@ import {
 import { useStore, fullName } from "@/lib/store";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
 import { planOf, type PlanFeature } from "@/lib/plan";
+import { subscriptionPlanId } from "@/lib/subscription";
 import ChangePasswordGate from "@/components/ChangePasswordGate";
 import { PageTransition } from "@/components/motion";
+import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 
 type NavLeaf = { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature; section?: string };
 type NavTop = { label: string; href?: string; icon?: any; perm?: Permission; feature?: PlanFeature; children?: NavLeaf[] };
@@ -113,7 +115,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   const me = db.users.find((u) => u.id === session.userId);
   if (me?.mustChangePassword) return <ChangePasswordGate />;
-  const plan = planOf(db.clinics[0]);
+  // El plan sale de la suscripción (subscriptions/{cid}), no del doc de clínica:
+  // ese lo escribe el admin de la propia clínica y podría forjar el gating del nav.
+  const plan = planOf(subscriptionPlanId(db.subscription, db.clinics[0]));
   const clinicName = db.clinics[0]?.name ?? "Novudent";
   const logo = db.clinics[0]?.config.logo;
 
@@ -234,6 +238,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-7">
+        <SubscriptionBanner />
         <PageTransition>{children}</PageTransition>
       </main>
     </div>

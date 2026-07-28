@@ -4,6 +4,7 @@
 import { Lock, Check, ArrowRight, Sparkles } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { planOf, PLANS, type PlanFeature } from "@/lib/plan";
+import { subscriptionPlanId, accessMode, subscriptionNotice } from "@/lib/subscription";
 import { Card } from "@/components/ui";
 
 const FEATURE_LABEL: Record<PlanFeature, string> = {
@@ -20,10 +21,25 @@ const FEATURE_LABEL: Record<PlanFeature, string> = {
   boxes: "Box/Sillones",
 };
 
-/** Hook: plan vigente de la clínica activa */
+/** Hook: plan vigente de la clínica activa.
+ *  Sale de `subscriptions/{cid}` (que solo escribe el webhook), NO de
+ *  `clinics/{cid}.plan` — ese lo puede editar el admin de la propia clínica. */
 export function useClinicPlan() {
   const { db } = useStore();
-  return planOf(db.clinics[0]);
+  return planOf(subscriptionPlanId(db.subscription, db.clinics[0]));
+}
+
+/** Hook: "full" | "readonly". Al vencer la suscripción la clínica conserva
+ *  lectura y exportación de sus datos, pero no puede editar. */
+export function useAccessMode() {
+  const { db } = useStore();
+  return accessMode(db.subscription);
+}
+
+/** Hook: aviso de cobro a mostrar en la app, o null si está todo al día. */
+export function useSubscriptionNotice() {
+  const { db } = useStore();
+  return subscriptionNotice(db.subscription);
 }
 
 export function PlanLocked({ feature }: { feature: PlanFeature }) {

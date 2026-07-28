@@ -25,11 +25,7 @@ async function ensureAuth() {
   }
 }
 import type {
-  DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote,
-  OdontogramStatus, OdontogramToothState,
-  Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic,
-  OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo, Branch,
-  CrmCard, Campaign, LabOrder, Settlement, Box,
+  DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, OdontogramStatus, OdontogramToothState, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic, OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo, Branch, CrmCard, Campaign, LabOrder, Settlement, Box, Subscription,
 } from "./types";
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
@@ -110,6 +106,10 @@ async function loadFirestore(): Promise<DB> {
     return seed;
   }
   const meta = clinicSnap.data() as any;
+  /* Suscripción SaaS: colección RAÍZ, solo-lectura para el cliente (la escribe
+   * el webhook con el usuario de servicio). Si no existe, la clínica es
+   * anterior al cobro → grandfathered (ver lib/subscription.ts). */
+  const subSnap = await getDoc(doc(fsdb, "subscriptions", CLINIC_ID)).catch(() => null);
   const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
   const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos, branches] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
@@ -150,6 +150,7 @@ async function loadFirestore(): Promise<DB> {
     eduVideos: eduVideos.docs.map((d) => d.data() as EduVideo),
     branches: branches.docs.map((d) => d.data() as Branch),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
+    subscription: subSnap?.exists() ? (subSnap.data() as Subscription) : null,
   };
   ACTIVE_CURRENCY = (db.clinics[0]?.config?.currency as CurrencyCode) ?? DEFAULT_CURRENCY;
   /* Upgrade v3: bases creadas antes de los módulos nuevos — sembramos
