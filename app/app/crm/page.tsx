@@ -353,7 +353,7 @@ export default function CrmPage() {
                     <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{fullName(p)}</span>
                     <span className="text-[11px] text-clinic-muted">{[p.city, p.gender].filter(Boolean).join(" · ") || "—"}</span>
                   </a>
-                  {p.phone && <a href={waLink(p.phone, `Hola ${p.firstName} 👋 Te escribimos de ${db.clinics[0].name}.`)} target="_blank" rel="noopener noreferrer" className="grid h-8 w-8 place-items-center rounded-lg bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366]/20" title="WhatsApp"><MessageCircle className="h-4 w-4" /></a>}
+                  {p.phone && <a href={waLink(p.phone, `Hola ${p.firstName} 👋 Te escribimos de ${db.clinics[0].name}.`)} target="_blank" rel="noopener noreferrer" className="grid h-8 w-8 place-items-center rounded-lg bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366]/20" title="WhatsApp" aria-label={`Escribir por WhatsApp a ${p.firstName}`}><MessageCircle className="h-4 w-4" /></a>}
                 </li>
               ))}
               {segMatches.length > 30 && <li className="col-span-full text-center text-xs text-clinic-muted">+{segMatches.length - 30} más…</li>}

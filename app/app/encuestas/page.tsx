@@ -49,7 +49,8 @@ export default function EncuestasPage() {
             {surveys.map((s) => {
               const count = responsesOf(s.id).length;
               return (
-                <div key={s.id} role="button" tabIndex={0} onClick={() => setSelId(s.id)} className={`cursor-pointer rounded-2xl border bg-white p-4 shadow-card transition-colors ${sel?.id === s.id ? "border-azure-400 ring-1 ring-azure-300" : "border-clinic-border hover:border-azure-200"}`}>
+                <div key={s.id} role="button" tabIndex={0} onClick={() => setSelId(s.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelId(s.id); } }} className={`cursor-pointer rounded-2xl border bg-white p-4 shadow-card transition-colors ${sel?.id === s.id ? "border-azure-400 ring-1 ring-azure-300" : "border-clinic-border hover:border-azure-200"}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-extrabold text-clinic-text">{s.title}</div>

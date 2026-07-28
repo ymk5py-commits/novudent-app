@@ -129,7 +129,7 @@ export default function TareasPage() {
                       <option value="pendiente">Pendiente</option>
                       <option value="en_proceso">En proceso</option>
                     </select>
-                    {pPhone(t) && <a href={waLink(pPhone(t)!, `Hola ${pName(t)}, te contactamos de la clínica.`)} target="_blank" rel="noopener noreferrer" className="grid h-7 w-7 place-items-center rounded-lg border border-clinic-border text-state-ok hover:bg-state-okbg" title="WhatsApp"><MessageCircle className="h-3.5 w-3.5" /></a>}
+                    {pPhone(t) && <a href={waLink(pPhone(t)!, `Hola ${pName(t)}, te contactamos de la clínica.`)} target="_blank" rel="noopener noreferrer" className="grid h-7 w-7 place-items-center rounded-lg border border-clinic-border text-state-ok hover:bg-state-okbg" title="WhatsApp" aria-label={`Escribir por WhatsApp a ${pName(t)}`}><MessageCircle className="h-3.5 w-3.5" /></a>}
                   </div>
                 )}
                 {canManage && <button onClick={() => { if (confirm("¿Eliminar tarea?")) deleteMgmtTask(t.id); }} className="rounded-lg p-1.5 text-clinic-muted hover:bg-clinic-bg hover:text-state-err" title="Eliminar"><Trash2 className="h-3.5 w-3.5" /></button>}

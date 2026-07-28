@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import QRCode from "qrcode";
 import type { Patient, SignatureDoc, SignatureStatus } from "@/lib/types";
-import { Card, Btn, Badge, Field, inputCls, Empty } from "@/components/ui";
+import { Card, Btn, Badge, Field, inputCls, Empty, useDialogA11y } from "@/components/ui";
 import { useStore, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { useClinicPlan, PlanLocked } from "@/components/PlanGate";
@@ -375,14 +375,16 @@ function ShareInline({ url, onClose }: { url: string; onClose: () => void }) {
 /* ============================================================== */
 
 function PrintViewer({ doc, patientName, onClose }: { doc: SignatureDoc; patientName: string; onClose: () => void }) {
+  // Mismo comportamiento accesible que <Modal>, conservando los estilos print:
+  const { titleId, dialogProps } = useDialogA11y(onClose);
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4 print:static print:bg-transparent print:p-0" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4 print:static print:bg-transparent print:p-0" onClick={onClose} role="presentation">
       <div
-        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-pop print:max-h-none print:w-full print:max-w-none print:rounded-none print:shadow-none"
-        onClick={(e) => e.stopPropagation()}
+        {...dialogProps}
+        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-pop outline-none print:max-h-none print:w-full print:max-w-none print:rounded-none print:shadow-none"
       >
         <div className="mb-4 flex items-center justify-between print:hidden">
-          <h3 className="text-lg font-extrabold text-clinic-text">Consentimiento firmado</h3>
+          <h3 id={titleId} className="text-lg font-extrabold text-clinic-text">Consentimiento firmado</h3>
           <div className="flex items-center gap-2">
             <Btn variant="outline" onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> Imprimir

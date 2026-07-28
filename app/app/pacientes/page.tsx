@@ -111,7 +111,7 @@ export default function PatientsPage() {
                                 <ClipboardList className="h-3.5 w-3.5 text-state-info" />
                               </span>
                             )}
-                            <a href={`/app/pacientes/${p.id}`}><ChevronRight className="h-4 w-4 text-clinic-muted" /></a>
+                            <a href={`/app/pacientes/${p.id}`} aria-label={`Abrir la ficha de ${fullName(p)}`}><ChevronRight className="h-4 w-4 text-clinic-muted" aria-hidden="true" /></a>
                           </span>
                         </td>
                       </tr>

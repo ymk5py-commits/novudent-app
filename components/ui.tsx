@@ -1,5 +1,5 @@
 "use client";
-import { ReactNode } from "react";
+import { ReactNode, useCallback, useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 import type { BillingFlag, AppointmentStatus } from "@/lib/types";
 import { FLAG_INFO } from "@/lib/billing";
@@ -78,15 +78,78 @@ export function StatusBadge({ status }: { status: AppointmentStatus }) {
   return <Badge tone={map.tone}>{map.label}</Badge>;
 }
 
+/** Selector de lo que puede recibir foco dentro del diálogo (para la trampa de foco). */
+const FOCUSABLE =
+  'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+/**
+ * Comportamiento accesible de un diálogo modal (WCAG 2.1 AA):
+ * cierra con Escape, atrapa el foco mientras está abierto (Tab no se escapa al
+ * fondo) y lo devuelve a quien lo abrió al cerrarse — sin esto el usuario de
+ * teclado queda "perdido" al principio de la página.
+ *
+ * Es un hook y no un componente para que cada diálogo conserve su markup (el
+ * visor de consentimientos, por ejemplo, tiene estilos de impresión propios).
+ *
+ * Devuelve los props a esparcir en el panel: `<div {...dialogProps}>`.
+ */
+export function useDialogA11y(onClose: () => void) {
+  const panel = useRef<HTMLDivElement>(null);
+  const abridor = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+
+  const enfocables = useCallback(
+    () => Array.from(panel.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []).filter((el) => el.offsetParent !== null),
+    []
+  );
+
+  useEffect(() => {
+    abridor.current = document.activeElement as HTMLElement | null;
+    // Al abrir, el foco entra al diálogo (si no hay nada enfocable, al panel).
+    (enfocables()[0] ?? panel.current)?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.stopPropagation(); onClose(); return; }
+      if (e.key !== "Tab") return;
+      const els = enfocables();
+      if (els.length === 0) { e.preventDefault(); return; }
+      const primero = els[0], ultimo = els[els.length - 1];
+      // Ciclar dentro del diálogo en vez de salir al fondo.
+      if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
+      else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      abridor.current?.focus?.();
+    };
+  }, [onClose, enfocables]);
+
+  return {
+    titleId,
+    dialogProps: {
+      ref: panel,
+      role: "dialog" as const,
+      "aria-modal": true,
+      "aria-labelledby": titleId,
+      tabIndex: -1,
+      onClick: (e: React.MouseEvent) => e.stopPropagation(),
+    },
+  };
+}
+
+/** Diálogo modal accesible. Ver useDialogA11y. */
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  const { titleId, dialogProps } = useDialogA11y(onClose);
+
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4" onClick={onClose} role="presentation">
       <div
-        className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl bg-white p-6 shadow-pop ${wide ? "max-w-3xl" : "max-w-lg"}`}
-        onClick={(e) => e.stopPropagation()}
+        {...dialogProps}
+        className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl bg-white p-6 shadow-pop outline-none ${wide ? "max-w-3xl" : "max-w-lg"}`}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-extrabold text-clinic-text">{title}</h3>
+          <h3 id={titleId} className="text-lg font-extrabold text-clinic-text">{title}</h3>
           <button onClick={onClose} aria-label="Cerrar" className="grid h-8 w-8 place-items-center rounded-full hover:bg-clinic-bg">
             <X className="h-4 w-4 text-clinic-muted" />
           </button>
