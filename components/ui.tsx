@@ -1,5 +1,6 @@
 "use client";
-import { ReactNode, useCallback, useEffect, useId, useRef } from "react";
+import { ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { BillingFlag, AppointmentStatus } from "@/lib/types";
 import { FLAG_INFO } from "@/lib/billing";
@@ -138,10 +139,25 @@ export function useDialogA11y(onClose: () => void) {
   };
 }
 
-/** Diálogo modal accesible. Ver useDialogA11y. */
-export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
-  const { titleId, dialogProps } = useDialogA11y(onClose);
+/**
+ * Monta en un portal sobre <body>. Necesario para los diálogos: dentro del
+ * árbol de la página quedan atrapados en el contexto de apilamiento que crea
+ * PageTransition (framer-motion aplica transform/opacity), así que su z-50 NO
+ * llega a tapar el header sticky (z-30) — el usuario podía seguir usando el
+ * buscador y cerrar sesión con un modal abierto, contradiciendo aria-modal.
+ */
+function Portal({ children }: { children: ReactNode }) {
+  const [montado, setMontado] = useState(false);
+  useEffect(() => { setMontado(true); }, []);   // en SSR no hay document
+  return montado ? createPortal(children, document.body) : null;
+}
 
+/** Contenido del diálogo. Va aparte de <Modal> a propósito: así useDialogA11y
+ *  se monta DENTRO del portal, cuando el panel ya existe en el DOM. Si el hook
+ *  viviera en Modal, su efecto correría en el primer render —cuando el portal
+ *  todavía devuelve null— y el foco nunca entraría al diálogo. */
+function ModalContent({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  const { titleId, dialogProps } = useDialogA11y(onClose);
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4" onClick={onClose} role="presentation">
       <div
@@ -157,6 +173,15 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
         {children}
       </div>
     </div>
+  );
+}
+
+/** Diálogo modal accesible. Ver useDialogA11y. */
+export function Modal(props: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  return (
+    <Portal>
+      <ModalContent {...props} />
+    </Portal>
   );
 }
 
