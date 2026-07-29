@@ -91,8 +91,12 @@ export default function PatientsPage() {
                     return (
                       <tr key={p.id} className="hover:bg-clinic-bg/60">
                         <td className="px-4 py-2.5">
-                          <a href={`/app/pacientes/${p.id}`} className="flex items-center gap-2 font-semibold text-clinic-text hover:text-azure-700">
-                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-azure-100 to-azure-200 text-xs font-bold text-azure-700">{p.firstName[0]}{p.lastName[0]}</span>
+                          {/* aria-label con el nombre completo: el apellido vive en otra
+                              celda, así que un lector de pantalla que navega por links
+                              solo oiría el nombre de pila. Las iniciales del avatar van
+                              ocultas — son decorativas y se leían pegadas ("AMAndrés"). */}
+                          <a href={`/app/pacientes/${p.id}`} aria-label={`Abrir la ficha de ${fullName(p)}`} className="flex items-center gap-2 font-semibold text-clinic-text hover:text-azure-700">
+                            <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-azure-100 to-azure-200 text-xs font-bold text-azure-700">{p.firstName[0]}{p.lastName[0]}</span>
                             {p.firstName}
                           </a>
                         </td>
@@ -111,7 +115,10 @@ export default function PatientsPage() {
                                 <ClipboardList className="h-3.5 w-3.5 text-state-info" />
                               </span>
                             )}
-                            <a href={`/app/pacientes/${p.id}`} aria-label={`Abrir la ficha de ${fullName(p)}`}><ChevronRight className="h-4 w-4 text-clinic-muted" aria-hidden="true" /></a>
+                            {/* Mismo destino que el link del nombre: se oculta al lector de
+                                pantalla para no anunciar dos links iguales por fila. Sigue
+                                siendo clickeable con el mouse (afordancia visual de "entrar"). */}
+                            <a href={`/app/pacientes/${p.id}`} aria-hidden="true" tabIndex={-1}><ChevronRight className="h-4 w-4 text-clinic-muted" /></a>
                           </span>
                         </td>
                       </tr>
