@@ -204,12 +204,17 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <span className={`h-1.5 w-1.5 rounded-full ${backend === "firebase" ? "bg-state-ok" : "bg-state-warn"}`} />
               {backend === "firebase" ? "En línea" : "Sin conexión"}
             </span>
+            {/* Campana de pendientes. El aria-label pisa el contenido del link, así que
+                el número del badge no se anunciaba: con lector de pantalla se oía
+                "Notificaciones" sin saber cuántos hay. Va el conteo en la etiqueta, y
+                dice "Ver pendientes" porque lleva a la lista de pacientes, no a un
+                panel de notificaciones. */}
             <a
               href={pendings > 0 ? "/app/pacientes" : "#"}
               data-tip={pendings > 0 ? `${pendings} pendiente(s): formularios y retenciones` : "Sin pendientes"}
               data-tip-pos="down-left"
               className="relative grid h-10 w-10 place-items-center rounded-xl border border-white/30 bg-white/10 text-white transition-colors hover:bg-white/20"
-              aria-label="Notificaciones"
+              aria-label={pendings > 0 ? `Ver pendientes (${pendings})` : "Sin pendientes"}
             >
               <Bell className="h-[18px] w-[18px]" />
               {pendings > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 font-mono text-[11px] font-bold text-white">{pendings}</span>}
