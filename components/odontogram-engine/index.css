@@ -30,21 +30,24 @@
   --text: var(--odon-text, #f1f5f9);
   --line: var(--odon-line, #334155);
 }
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+.odontogram-root *{box-sizing:border-box}
+/* El motor venía de una demo standalone y pintaba `html,body` (alto 100%, fondo
+   con degradé, tipografía propia). Embebido en la ficha eso se le escapaba a
+   TODA la app: acá el fondo vive en la raíz del widget, no en el body del host. */
+.odontogram-root{
+  font-family: inherit;
   background: radial-gradient(1200px 600px at 15% 0%, #ffffff 0%, var(--bg) 60%);
-  color:var(--text);
 }
 .topbar{
   display:flex; align-items:center; justify-content:space-between;
-  padding:14px 18px;
+  gap:12px; flex-wrap:wrap;
+  padding:14px 2px;
   border-bottom:1px solid var(--line);
   background: rgba(255,255,255,.85);
   backdrop-filter: blur(10px);
-  position:sticky; top:0; z-index:10;
+  /* Sin sticky: el host ya tiene su propio header fijo en top:0, y este quedaba
+     detrás (z-index menor) — invisible y sin poder clickearse al scrollear. */
+  position:relative; z-index:10;
 }
 .brand{display:flex; gap:12px; align-items:center}
 .dot{width:10px;height:10px;border-radius:999px;background:var(--accent2); box-shadow:0 0 0 6px rgba(18,185,129,.12);}
@@ -138,17 +141,26 @@ select:focus{
   box-shadow: 0 0 0 3px rgba(59,123,255,.18);
 }
 
+/* Dos columnas con flex-wrap en vez de grid + media query: el corte lo decide el
+   ancho de LA CAJA, no el del viewport. Con `@media (max-width:1100px)` el panel
+   seguía al costado en pantallas de 1101-1140px, donde la columna del gráfico ya
+   caía por debajo del mínimo de la grilla (16 piezas × 36px = 656px) y
+   `.chart{overflow:hidden}` recortaba las últimas piezas sin avisar.
+   Sin gutter lateral: los bordes de las tarjetas alinean con los del topbar. */
 .layout{
-  display:grid;
-  grid-template-columns: 1fr 360px;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-start;
   gap:14px;
-  padding:14px;
+  padding:14px 0 0;
 }
 .chart{
   background: rgba(255,255,255,.9);
   border:1px solid var(--line);
   border-radius:18px;
-  overflow:hidden;
+  /* Red de contención: si la caja igual queda por debajo del mínimo de la
+     grilla (móvil), se scrollea en horizontal en lugar de esconder piezas. */
+  overflow:auto hidden;
 }
 .chart-header{
   padding:12px 14px;
@@ -157,13 +169,21 @@ select:focus{
   align-items:center;
   justify-content:space-between;
   gap:12px;
+  flex-wrap:wrap;
 }
+/* El bloque título+ayuda cede ancho antes que la fila de iconos y, si hace falta,
+   baja a su propia línea — antes "Carta dental" se partía en dos renglones
+   mientras el último icono quedaba pegado al borde. */
+.chart-header > :first-child{flex:1 1 200px; min-width:0}
 .chart-title{font-weight:700}
 .chart-hint{font-size:12px;color:var(--muted); margin-top:4px}
 .chart-actions{
   display:flex;
   align-items:center;
   gap:8px;
+  flex:0 0 auto;
+  flex-wrap:wrap;
+  justify-content:flex-end;
 }
 
 .tooth-grid{
@@ -312,6 +332,11 @@ select:focus{
   border:1px solid var(--line);
   border-radius:18px;
   overflow:hidden;
+  /* Base 320px: si no entra junto al gráfico, baja solo y ocupa el ancho
+     completo. El grow 1 vs 3 del gráfico manda el espacio sobrante a las piezas,
+     que es lo que el dentista necesita ver grande. */
+  flex:1 1 320px;
+  min-width:0;
 }
 .panel-header{
   padding:12px 14px;
@@ -569,10 +594,9 @@ select:focus{
 .divider{height:1px;background:var(--line); margin:10px 0}
 .hidden{display:none !important}
 
-@media (max-width: 1100px){
-  .layout{grid-template-columns:1fr}
-  .panel{order:2}
-}
+/* (Acá vivía `@media (max-width:1100px){.layout{grid-template-columns:1fr}}`.
+   Lo reemplaza el flex-wrap de .layout: el panel baja cuando no entra AL LADO
+   del gráfico, midiendo la caja real y no el ancho de la ventana.) */
 
 /* ── Dark mode ────────────────────────────────── */
 .dark{
@@ -963,10 +987,13 @@ select:focus{
 .dark .odon-arch-toggle .odon-arch-btn.active{background: rgba(96,165,250,.2); border-color: rgba(96,165,250,.45)}
 @media (max-width: 600px){
   .odon-arch-toggle{display:flex}
+  /* Se oculta por arcada con clases propias (`.label-row-upper/lower`) y no por
+     posición: los números ya no están en los bordes de la grilla sino pegados a
+     su rueda oclusal, así que `:first-child` / `+` dejaron de identificarlos. */
   .tooth-grid.odon-arch-upper .lower-row,
-  .tooth-grid.odon-arch-upper .lower-row + .tooth-label-row{display:none !important}
+  .tooth-grid.odon-arch-upper .label-row-lower{display:none !important}
   .tooth-grid.odon-arch-lower .upper-row,
-  .tooth-grid.odon-arch-lower .tooth-label-row:first-child{display:none !important}
+  .tooth-grid.odon-arch-lower .label-row-upper{display:none !important}
 }
 
 .odon-export-overlay{position:fixed; inset:0; z-index:130; display:flex; align-items:center; justify-content:center; background:rgba(20,28,40,.55); backdrop-filter:blur(4px)}
@@ -997,7 +1024,7 @@ select:focus{
 .surf-depth.icdas i{display:none}
 
 /* Left column: chart card + the separate tooth-information card stacked below it */
-.chart-column{display:flex; flex-direction:column; gap:14px; min-width:0}
+.chart-column{display:flex; flex-direction:column; gap:14px; min-width:0; flex:3 1 660px}
 
 /* Tooth information panel — its own card below (outside) the dental chart box */
 .tooth-info{margin-top:0}

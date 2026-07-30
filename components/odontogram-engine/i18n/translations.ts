@@ -25,7 +25,7 @@ export type Language = "hu" | "en" | "de" | "es" | "it" | "sk" | "pl" | "ru" | "
  */
 export const translations: Record<Language, Record<string, string>> = {
   hu: {
-    "app.title": "React Odontogram Modul",
+    "app.title": "Odontograma",
     "app.subtitle": "Válassz fogat az odontogramon, majd állítsd be a rétegeket.",
     "app.subtitleLang": "Magyar nyelven.",
     "app.subtitleNumbering.FDI": "FDI – ISO 3950 számozással.",
@@ -528,7 +528,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "intro.step12.text": "Ennyi az alapok — fedezd fel a többi funkciót is."
   },
   en: {
-    "app.title": "React Odontogram Modul",
+    "app.title": "Odontograma",
     "app.subtitle": "Select a tooth on the odontogram, then set the layers.",
     "app.subtitleLang": "In English.",
     "app.subtitleNumbering.FDI": "Using FDI – ISO 3950 numbering.",
@@ -1031,7 +1031,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "intro.step12.text": "That's the basics — explore the rest of the features."
   },
   de: {
-    "app.title": "React Odontogram Modul",
+    "app.title": "Odontograma",
     "app.subtitle": "Wähle einen Zahn im Odontogramm und stelle dann die Ebenen ein.",
     "app.subtitleLang": "Auf Deutsch.",
     "app.subtitleNumbering.FDI": "Mit FDI – ISO 3950 Nummerierung.",
@@ -1534,7 +1534,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "intro.step12.text": "Das sind die Grundlagen — entdecke die übrigen Funktionen."
   },
   es: {
-    "app.title": "React Odontogram Modul",
+    "app.title": "Odontograma",
     "app.subtitle": "Selecciona un diente en el odontograma y configura las capas.",
     "app.subtitleLang": "En español.",
     "app.subtitleNumbering.FDI": "Usando numeración FDI – ISO 3950.",
@@ -2037,7 +2037,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "intro.step12.text": "Eso es lo básico — explora el resto de las funciones."
   },
   it: {
-    "app.title": "React Odontogram Modul",
+    "app.title": "Odontograma",
     "app.subtitle": "Seleziona un dente sull'odontogramma, poi configura i livelli.",
     "app.subtitleLang": "In italiano.",
     "app.subtitleNumbering.FDI": "Con numerazione FDI – ISO 3950.",
@@ -2540,7 +2540,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "intro.step12.text": "Queste sono le basi — esplora le altre funzionalità."
   },
   sk: {
-    "app.title": "React Odontogram Modul",
+    "app.title": "Odontograma",
     "app.subtitle": "Vyber zub na odontograme a nastav vrstvy.",
     "app.subtitleLang": "V slovenčine.",
     "app.subtitleNumbering.FDI": "S číslovaním FDI – ISO 3950.",
@@ -3043,7 +3043,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "intro.step12.text": "To sú základy — preskúmajte ostatné funkcie."
   },
   pl: {
-    "app.title": "React Odontogram Modul",
+    "app.title": "Odontograma",
     "app.subtitle": "Wybierz ząb na odontogramie, a następnie ustaw warstwy.",
     "app.subtitleLang": "Po polsku.",
     "app.subtitleNumbering.FDI": "Używając numeracji FDI – ISO 3950.",
@@ -3546,7 +3546,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "intro.step12.text": "To są podstawy — odkryj pozostałe funkcje."
   },
   ru: {
-    "app.title": "React Odontogram Modul",
+    "app.title": "Odontograma",
     "app.subtitle": "Выберите зуб на одонтограмме, затем настройте слои.",
     "app.subtitleLang": "На русском.",
     "app.subtitleNumbering.FDI": "Используется нумерация FDI – ISO 3950.",
@@ -4049,7 +4049,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "intro.step12.text": "Это основы — изучите остальные возможности."
   },
   "pt-br": {
-    "app.title": "React Odontogram Modul",
+    "app.title": "Odontograma",
     "app.subtitle": "Selecione um dente no odontograma e defina as camadas.",
     "app.subtitleLang": "Em português.",
     "app.subtitleNumbering.FDI": "Usando a numeração FDI (ISO 3950).",

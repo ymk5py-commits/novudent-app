@@ -111,3 +111,32 @@ export function toLabel(fdiTooth: number | string, system: NumberingSystem): str
 
   return String(fdi);
 }
+
+/**
+ * Etiqueta tal como se le MUESTRA al usuario.
+ *
+ * En FDI, Dentalink —y la convención odontológica en LATAM— separa cuadrante y
+ * pieza con un punto: `1.8`, `2.1`, `4.6`. Es la misma notación ISO 3950 que
+ * devuelve `toLabel`, solo que puntuada. Se deja aparte a propósito: `toLabel`
+ * es el contrato interno del motor (lo consumen export/import y sus tests), así
+ * que la forma de presentación vive acá y no lo toca.
+ *
+ * Los otros sistemas (Universal, Palmer) ya traen su propio formato legible y
+ * pasan sin cambios.
+ *
+ * @example
+ * ```ts
+ * toDisplayLabel(18, "FDI");       // "1.8"
+ * toDisplayLabel(55, "FDI");       // "5.5"
+ * toDisplayLabel(14, "UNIVERSAL"); // "5"
+ * ```
+ */
+export function toDisplayLabel(fdiTooth: number | string, system: NumberingSystem): string {
+  if(system !== "FDI") return toLabel(fdiTooth, system);
+
+  const fdi = normalizeFdi(fdiTooth);
+  if(fdi === null) return String(fdiTooth);
+  if(!isAdultFdi(fdi) && !isPrimaryFdi(fdi)) return String(fdi);
+
+  return `${Math.floor(fdi / 10)}.${fdi % 10}`;
+}

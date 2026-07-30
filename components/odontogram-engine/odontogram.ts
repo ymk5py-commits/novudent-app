@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { STATUS_EXTRAS } from "./status_extras";
 import { t, onI18nChange, getI18nLanguage } from "./i18n/useI18n";
-import { toLabel, type NumberingSystem } from "./utils/numbering";
+import { toLabel, toDisplayLabel, type NumberingSystem } from "./utils/numbering";
 import { type OdontogramPlugin, getQuadrant, LAYER_Z } from "./plugin";
 import { allClearLayers } from "./registry/svgLayers";
 import { applyFlagLayers, buildFlagCtx } from "./registry/svgActivate";
@@ -331,9 +331,13 @@ let activeTooth = null;
 let selectedTeeth = new Set();
 let edentulous = false;
 let wisdomVisible = true;
-let showBase = true;
+// PATCH Novudent — arranque con el look de Dentalink: corona en línea + rueda
+// oclusal, sin la banda de encía/hueso ni la pulpa roja. Los datos no se pierden
+// (son capas de VISTA): el profesional los enciende desde los toggles de la
+// cabecera de la carta cuando los necesita.
+let showBase = false;
 let occlusalVisible = true;
-let showHealthyPulp = true;
+let showHealthyPulp = false;
 let suppressEdentulousSync = false;
 let numberingSystem: NumberingSystem = "FDI";
 let readOnly = false;
@@ -824,7 +828,7 @@ function getDisplayedToothNumber(toothNo: Any){
 function updateToothTileNumber(toothNo: Any){
   const tiles = toothTile.get(toothNo);
   if(!tiles) return;
-  const text = toLabel(getDisplayedToothNumber(toothNo), numberingSystem);
+  const text = toDisplayLabel(getDisplayedToothNumber(toothNo), numberingSystem);
   const upper = toothLabelUpper.get(toothNo);
   if(upper) upper.textContent = text;
   const lower = toothLabelLower.get(toothNo);
@@ -3077,7 +3081,7 @@ function updateActiveLabel(){
     label.textContent = t("selection.none");
   }else if(selectedTeeth.size === 1){
     const toothNo = activeTooth ?? Array.from(selectedTeeth)[0];
-    label.textContent = toLabel(getDisplayedToothNumber(toothNo), numberingSystem);
+    label.textContent = toDisplayLabel(getDisplayedToothNumber(toothNo), numberingSystem);
   }else{
     label.textContent = t("selection.count", { count: selectedTeeth.size });
   }
@@ -3264,7 +3268,7 @@ function showZoomPopover(toothNo: number){
   const popover = el("div", { class: "odon-zoom-popover" });
 
   // Header
-  const label = toLabel(toothNo, numberingSystem);
+  const label = toDisplayLabel(toothNo, numberingSystem);
   const header = el("div", { class: "odon-zoom-header" });
   const title = el("span", { class: "odon-zoom-title", text: t("touch.zoom.title", { tooth: label }) });
   const closeBtn = el("button", { class: "odon-zoom-close", text: "✕" });
@@ -3439,7 +3443,7 @@ function showNoteEditor(toothNo: number){
   const tiles = toothTile.get(toothNo);
   const anchorTile = tiles?.find((t: HTMLElement) => t.classList.contains("side-view")) || tiles?.[0];
 
-  const label = toLabel(toothNo, numberingSystem);
+  const label = toDisplayLabel(toothNo, numberingSystem);
   const popover = el("div", { class: "odon-note-popover" });
 
   const header = el("div", { class: "odon-note-header" });
@@ -5096,7 +5100,7 @@ async function buildGrid(token: number){
         tile.setAttribute("role", "option");
         tile.setAttribute("aria-selected", "false");
         tile.setAttribute("tabindex", readOnly ? "-1" : "0");
-        tile.setAttribute("aria-label", toLabel(toothNo, numberingSystem));
+        tile.setAttribute("aria-label", toDisplayLabel(toothNo, numberingSystem));
       }
       if(isTouchDevice()) addTouchToTile(tile, toothNo);
     }else{
@@ -5147,10 +5151,13 @@ async function buildGrid(token: number){
     }
   }
 
-  function addLabelRow(rowTeeth: Any, targetMap: Any){
-    const row = el("div", { class:"tooth-label-row", "aria-hidden":"true" });
+  // `sideClass` ("upper"/"lower") marca a qué arcada pertenece la fila de números.
+  // Antes se deducía por posición (`:first-child`) en el CSS del toggle de arcada
+  // en móvil; al mover los números junto a su rueda esa posición dejó de valer.
+  function addLabelRow(rowTeeth: Any, targetMap: Any, sideClass: Any){
+    const row = el("div", { class:`tooth-label-row label-row-${sideClass}`, "aria-hidden":"true" });
     for(const toothNo of rowTeeth){
-      const cell = el("div", { class:"tooth-label-cell", text: toLabel(toothNo, numberingSystem), tabindex:"-1" });
+      const cell = el("div", { class:"tooth-label-cell", text: toDisplayLabel(toothNo, numberingSystem), tabindex:"-1" });
       cell.addEventListener("click", (e)=>onToothClick(toothNo, e));
       row.appendChild(cell);
       targetMap.set(toothNo, cell);
@@ -5164,12 +5171,22 @@ async function buildGrid(token: number){
   const lowerOcclPlaceholders = new Set([43,42,41,31,32,33]);
 
   if(!initialized || token !== initToken) return;
-  addLabelRow(upperSide, toothLabelUpper);
+  // PATCH Novudent — orden de filas de Dentalink: las coronas quedan por fuera y
+  // la numeración va PEGADA A SU RUEDA OCLUSAL, hacia el centro de la boca.
+  // (El motor las ponía en los bordes de arriba y de abajo, lejos de la rueda.)
+  //
+  //   coronas superiores      ┐
+  //   ruedas oclusales sup.   │ arcada superior
+  //   1.8 1.7 … 2.8           ┘
+  //   ruedas oclusales inf.   ┐
+  //   4.8 4.7 … 3.8           │ arcada inferior
+  //   coronas inferiores      ┘
   addRowSide(upperSide);
   addRowOccl(upperSide, upperOcclPlaceholders);
+  addLabelRow(upperSide, toothLabelUpper, "upper");
   addRowOccl(lowerSide, lowerOcclPlaceholders);
+  addLabelRow(lowerSide, toothLabelLower, "lower");
   addRowSide(lowerSide);
-  addLabelRow(lowerSide, toothLabelLower);
 
   // ARIA on grid container
   grid.setAttribute("role", "listbox");
