@@ -227,13 +227,19 @@ en Novudent (commit `c0ce927`):
 
 ---
 
+## Continúa en
+
+- [02-administracion.md](02-administracion.md) — Arancel, Gastos, Usuarios,
+  Inventario, Laboratorios, Liquidaciones, Convenios, Planes y servicios.
+- [03-reportes-y-crm.md](03-reportes-y-crm.md) — los 15 reportes gráficos,
+  Tareas de gestión, Encuestas, Recibir pago y Plan de tratamiento.
+
 ## Pendiente de relevar
 
-- Recaudación / Recibir pago — `/pagos/registrar/<id>`
-- Administración: Convenios · Gastos · Usuarios · Especialidades · Inventario ·
-  Laboratorios · Liquidaciones · Box/Sillones · Planes y servicios · Agenda Online ·
-  Arancel de precios · Bancos · Opciones de pago · Pagos anulados
-- Los 15 Reportes gráficos y los Reportes Excel
-- CRM: Email Marketing · Encuestas de satisfacción · Tareas de gestión
-- Ficha clínica (evoluciones, antecedentes) y Facturación y pagos del paciente
+- Email Marketing (`/CRM/report`) y el catálogo de Reportes Excel
+- Ficha clínica del paciente (evoluciones, antecedentes) — las sub-rutas cargan
+  de forma diferida y no rindieron estructura desde el DOM
 - Agenda semanal y Diaria global (vistas de calendario)
+- Administración: especialidades, boxes, agenda online, bancos, logotipo,
+  medios de pago y pagos anulados
+- *Planes y servicios*, bloqueado: la sesión usada no es administradora
