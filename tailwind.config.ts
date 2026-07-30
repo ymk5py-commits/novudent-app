@@ -44,7 +44,10 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-manrope)", "ui-sans-serif", "system-ui"],
+        // `sans` = la del panel, igual a Dentalink (verificado en su CSS).
+        // `brand` = Manrope, reservada para la landing y el logo del producto.
+        sans: ["var(--font-open-sans)", "ui-sans-serif", "system-ui"],
+        brand: ["var(--font-manrope)", "ui-sans-serif", "system-ui"],
         logo: ["var(--font-jost)", "ui-sans-serif"],
         mono: ["var(--font-jbmono)", "ui-monospace"],
       },

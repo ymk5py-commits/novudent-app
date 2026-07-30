@@ -1,8 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Manrope, Jost, JetBrains_Mono } from "next/font/google";
+import { Open_Sans, Manrope, Jost, JetBrains_Mono } from "next/font/google";
 import { StoreProvider } from "@/lib/store";
 
+/** Open Sans es la tipografía del panel de Dentalink — verificada leyendo el CSS
+ *  de la app real (`auradentalclinic.dentalink.cl`), no deducida de una captura:
+ *  `body { font: 400 14px "Open Sans", sans-serif; color:#333 }`. Carlos la pidió
+ *  idéntica para la paridad 1:1, así que manda sobre la preferencia general de
+ *  usar tipografías más distintivas. Manrope queda cargada para la landing, que
+ *  es marketing propio y no tiene por qué parecerse a Dentalink. */
+const openSans = Open_Sans({ subsets: ["latin"], weight: ["300", "400", "600", "700"], variable: "--font-open-sans", display: "swap" });
 const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-manrope", display: "swap" });
 const jost = Jost({ subsets: ["latin"], weight: ["300", "400", "500"], variable: "--font-jost", display: "swap" });
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-jbmono", display: "swap" });
@@ -22,7 +29,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${manrope.variable} ${jost.variable} ${mono.variable}`}>
+    <html lang="es" className={`${openSans.variable} ${manrope.variable} ${jost.variable} ${mono.variable}`}>
       <body className="font-sans">
         <StoreProvider>{children}</StoreProvider>
       </body>
