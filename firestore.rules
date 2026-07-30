@@ -241,8 +241,11 @@ service cloud.firestore {
       // financiero vía SDK directo saltándose el RBAC de la UI.
       match /payments/{docId}    { allow read: if isMember(cid) || isService() || isDemo(cid);
                                    allow write: if (isStaff(cid) && subActive(cid)) || isService() || isDemo(cid); }
-      match /expenses/{docId}    { allow read: if isMember(cid) || isService() || isDemo(cid);
-                                   allow write: if (isStaff(cid) && subActive(cid)) || isService() || isDemo(cid); }
+      // Gastos = costos del negocio (alquiler, proveedores, sueldos). Solo el
+      // dueño, y también en LECTURA: el gating de la UI no alcanza porque el
+      // cliente lee Firestore directo y podría sacarlos por SDK.
+      match /expenses/{docId}    { allow read: if isAdmin(cid) || isService() || isDemo(cid);
+                                   allow write: if (isAdmin(cid) && subActive(cid)) || isService() || isDemo(cid); }
       match /stock/{docId}       {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
         allow write: if canWritePremium(cid, ['clinica','cadena']);
@@ -293,9 +296,12 @@ service cloud.firestore {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
         allow write: if canWritePremium(cid, ['clinica','cadena']);
       }
+      // Liquidaciones = cuánto gana cada profesional. Es dato salarial: no lo ve
+      // el resto del equipo (ni siquiera el dentista sus propias comisiones por
+      // esta vía) ni la recepción. Solo el dueño.
       match /settlements/{docId} {
-        allow read:  if isMember(cid) || isService() || isDemo(cid);
-        allow write: if canWritePremium(cid, ['clinica','cadena']);
+        allow read:  if isAdmin(cid) || isService() || isDemo(cid);
+        allow write: if (isAdmin(cid) && canWritePremium(cid, ['clinica','cadena'])) || isService() || isDemo(cid);
       }
       match /boxes/{docId}       {
         allow read:  if isMember(cid) || isService() || isDemo(cid);

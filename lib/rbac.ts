@@ -28,7 +28,10 @@ const MATRIX: Record<Permission, Role[]> = {
   "emr.write": ["admin", "dentist"],
   "billing.submit": ["admin", "assistant"], // dentista: denegado
   "billing.finalize": ["admin", "dentist"], // asistente: denegado (matriz v2)
-  "billing.reports": ["admin", "assistant"], // dentista: denegado (matriz v2)
+  // Números del NEGOCIO (ingresos, producción, análisis, liquidaciones): solo el
+  // dueño. La recepción cobra y hace arqueo (payments.manage) pero no ve la
+  // facturación global ni cuánto gana cada profesional.
+  "billing.reports": ["admin"],
   "engagement.forms": ["admin", "assistant"], // dentista: denegado
   "budgets.manage": ["admin", "dentist", "assistant"],
   "payments.manage": ["admin", "assistant"], // caja: dentista no maneja dinero

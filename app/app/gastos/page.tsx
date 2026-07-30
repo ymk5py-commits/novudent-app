@@ -15,7 +15,9 @@ const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "
 
 export default function GastosPage() {
   const { db, session, deleteExpense } = useStore();
-  const canManage = session ? can(session.role, "payments.manage") : false;
+  // Los costos del negocio (alquiler, proveedores, sueldos) son información del
+  // dueño: la pantalla no tenía guarda, así que la recepción los veía enteros.
+  const canManage = session ? can(session.role, "expenses.manage") : false;
   const now = new Date();
   const [tab, setTab] = useState<"detalle" | "resumen">("detalle");
   const [month, setMonth] = useState(now.getMonth() + 1);

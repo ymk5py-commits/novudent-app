@@ -53,6 +53,7 @@ before(async () => {
 
     await setDoc(doc(db, "clinics/clA/payments/pay1"), { id: "pay1", amount: 1000 });
     await setDoc(doc(db, "clinics/clA/expenses/exp1"), { id: "exp1", amount: 500 });
+    await setDoc(doc(db, "clinics/clA/settlements/liq1"), { id: "liq1", dentistId: "dentA", total: 3000000 });
     // Clínica B
     await setDoc(doc(db, "clinics/clB"), { id: "clB", name: "B", plan: "solo" });
     await setDoc(doc(db, "clinics/clB/users/adminB"), { id: "adminB", role: "admin", active: true, clinicId: "clB", email: "admin@b.com" });
@@ -294,4 +295,39 @@ test("PLAN: el plan Solo SÍ escribe lo básico (agenda, pacientes)", async () =
 
 test("COBRO: la demo nunca se bloquea por suscripción", async () => {
   await assertSucceeds(setDoc(doc(anon(), "clinics/cl_demo/radiographs/r1"), { id: "r1" }));
+});
+
+// ---- Números del negocio: solo el dueño (no alcanza el gating de la UI) ----
+
+test("NEGOCIO: la recepción NO puede LEER los gastos de la clínica", async () => {
+  // La UI ya se los oculta, pero el cliente lee Firestore directo: sin esta
+  // regla, un asistente saca los costos del negocio por SDK en dos líneas.
+  await assertFails(getDoc(doc(authed("asisA"), "clinics/clA/expenses/exp1")));
+});
+
+test("NEGOCIO: el dentista tampoco lee los gastos", async () => {
+  await assertFails(getDoc(doc(authed("dentA"), "clinics/clA/expenses/exp1")));
+});
+
+test("NEGOCIO: el admin SÍ lee y escribe los gastos", async () => {
+  await assertSucceeds(getDoc(doc(authed("adminA"), "clinics/clA/expenses/exp1")));
+  await assertSucceeds(setDoc(doc(authed("adminA"), "clinics/clA/expenses/expNuevo"), { id: "expNuevo", amount: 1 }));
+});
+
+test("NEGOCIO: la recepción ya NO escribe gastos (antes podía, era isStaff)", async () => {
+  await assertFails(setDoc(doc(authed("asisA"), "clinics/clA/expenses/expX"), { id: "expX", amount: 1 }));
+});
+
+test("SALARIOS: nadie salvo el admin lee las liquidaciones", async () => {
+  // Cuánto gana cada profesional es dato salarial.
+  await assertFails(getDoc(doc(authed("asisA"), "clinics/clA/settlements/liq1")));
+  await assertFails(getDoc(doc(authed("dentA"), "clinics/clA/settlements/liq1")));
+  await assertSucceeds(getDoc(doc(authed("adminA"), "clinics/clA/settlements/liq1")));
+});
+
+test("OPERACIÓN INTACTA: la recepción sigue cobrando (caja) y viendo pagos", async () => {
+  // El corte es "números del negocio", NO la operación de mostrador: si esto
+  // fallara, recepción no podría cobrarle a un paciente.
+  await assertSucceeds(getDoc(doc(authed("asisA"), "clinics/clA/payments/pay1")));
+  await assertSucceeds(setDoc(doc(authed("asisA"), "clinics/clA/payments/payNuevo"), { id: "payNuevo", amount: 50000 }));
 });

@@ -37,7 +37,7 @@ const NAV: NavTop[] = [
   },
   {
     label: "Administración", icon: Settings, children: [
-      { href: "/app/gastos", label: "Gastos", icon: Banknote, perm: "payments.manage", section: "Gestión" },
+      { href: "/app/gastos", label: "Gastos", icon: Banknote, perm: "expenses.manage", section: "Gestión" },
       { href: "/app/inventario", label: "Inventario", icon: Package, perm: "inventory.manage", feature: "inventario", section: "Gestión" },
       { href: "/app/laboratorios", label: "Laboratorios", icon: FlaskConical, feature: "laboratorios", section: "Gestión" },
       { href: "/app/liquidaciones", label: "Liquidaciones", icon: Coins, perm: "billing.reports", feature: "liquidaciones", section: "Gestión" },

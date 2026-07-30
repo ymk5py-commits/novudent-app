@@ -34,7 +34,6 @@ describe("can — matriz RBAC", () => {
     // sí
     expect(can("assistant", "emr.read")).toBe(true);
     expect(can("assistant", "billing.submit")).toBe(true);
-    expect(can("assistant", "billing.reports")).toBe(true);
     expect(can("assistant", "payments.manage")).toBe(true);
     expect(can("assistant", "inventory.manage")).toBe(true);
     expect(can("assistant", "engagement.forms")).toBe(true);
@@ -45,11 +44,36 @@ describe("can — matriz RBAC", () => {
     expect(can("assistant", "expenses.manage")).toBe(false);
     expect(can("assistant", "users.manage")).toBe(false);
     expect(can("assistant", "practice.config")).toBe(false);
+    // Números del negocio: NO. La recepción cobra, pero no ve la facturación
+    // global, la producción ni cuánto gana cada profesional.
+    expect(can("assistant", "billing.reports")).toBe(false);
   });
 
   it("ROLE_LABEL cubre los 3 roles", () => {
     expect(ROLE_LABEL.admin).toBe("Administrador");
     expect(ROLE_LABEL.dentist).toBe("Dentista");
     expect(ROLE_LABEL.assistant).toBe("Asistente");
+  });
+});
+
+describe("números del negocio — solo el dueño", () => {
+  it("los reportes financieros son exclusivos del admin", () => {
+    // Ingresos, producción semanal, análisis y liquidaciones (cuánto gana cada
+    // profesional) son información del dueño, no del equipo.
+    expect(can("admin", "billing.reports")).toBe(true);
+    expect(can("assistant", "billing.reports")).toBe(false);
+    expect(can("dentist", "billing.reports")).toBe(false);
+  });
+
+  it("los gastos de la clínica son exclusivos del admin", () => {
+    expect(can("admin", "expenses.manage")).toBe(true);
+    expect(can("assistant", "expenses.manage")).toBe(false);
+    expect(can("dentist", "expenses.manage")).toBe(false);
+  });
+
+  it("PERO la recepción conserva la caja: sin esto no puede cobrarle a un paciente", () => {
+    expect(can("assistant", "payments.manage")).toBe(true);
+    expect(can("assistant", "billing.submit")).toBe(true);
+    expect(can("assistant", "budgets.manage")).toBe(true);
   });
 });
