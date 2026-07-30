@@ -299,7 +299,7 @@ function PlanNameEdit({ budget }: { budget: Budget }) {
     const save = () => { upsertBudget({ ...budget, name: name.trim() || undefined }); setEditing(false); };
     return (
       <div className="mt-1 flex items-center gap-2">
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} className="min-w-0 flex-1 rounded-lg bg-white/15 px-2 py-1 font-logo text-xl text-white outline-none placeholder:text-white/50" />
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} className="min-w-0 flex-1 rounded-lg bg-white/15 px-2 py-1 font-logo text-xl text-white placeholder:text-white/50" />
         <button onClick={save} className="shrink-0 text-white/90 hover:text-white" title="Guardar"><Save className="h-4 w-4" /></button>
       </div>
     );
@@ -324,7 +324,7 @@ function DescuentoRow({ budget }: { budget: Budget }) {
       <span className="text-clinic-muted">Descuento comercial</span>
       {editing ? (
         <span className="flex items-center gap-1">
-          <input type="number" min={0} max={100} value={pct} onChange={(e) => setPct(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} className="w-16 rounded-lg border border-clinic-border px-2 py-0.5 text-right font-bold text-clinic-text outline-none focus:border-azure-400" autoFocus />
+          <input type="number" min={0} max={100} value={pct} onChange={(e) => setPct(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} className="w-16 rounded-lg border border-clinic-border px-2 py-0.5 text-right font-bold text-clinic-text focus:border-azure-400" autoFocus />
           <button onClick={save} className="text-azure-700 hover:underline" title="Guardar"><Save className="h-3.5 w-3.5" /></button>
         </span>
       ) : (
@@ -541,7 +541,7 @@ function EsteticaFacial({ budget }: { budget: Budget; patient: Patient }) {
                   <img src={p.dataUrl} alt={p.label || "Foto facial"} className="h-full w-full object-cover" />
                   {canWrite && <button onClick={() => delPhoto(p.id)} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100" title="Eliminar"><Trash2 className="h-3 w-3" /></button>}
                 </div>
-                <input disabled={!canWrite} value={p.label} onChange={(e) => setLabel(p.id, e.target.value)} placeholder="Etiqueta (ej. Pre frontal)" className="w-full border-t border-clinic-border px-2 py-1 text-[11px] text-clinic-text focus:outline-none" />
+                <input disabled={!canWrite} value={p.label} onChange={(e) => setLabel(p.id, e.target.value)} placeholder="Etiqueta (ej. Pre frontal)" className="w-full border-t border-clinic-border px-2 py-1 text-[11px] text-clinic-text" />
               </div>
             ))}
           </div>

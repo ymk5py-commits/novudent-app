@@ -196,7 +196,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 export const inputCls =
-  "w-full rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm text-clinic-text placeholder:text-clinic-muted/60 focus:border-azure-500 focus:outline-none";
+  "w-full rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm text-clinic-text placeholder:text-clinic-muted/60 focus:border-azure-600";
 
 export function Empty({ title, desc }: { title: string; desc?: string }) {
   return (

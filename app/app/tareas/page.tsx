@@ -121,11 +121,11 @@ export default function TareasPage() {
                 </div>
                 {canManage && t.status !== "cerrada" && (
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <select value={t.assigneeId ?? ""} onChange={(e) => updateMgmtTask({ ...t, assigneeId: e.target.value || undefined })} className="rounded-lg border border-clinic-border px-2 py-1 text-xs text-clinic-text focus:border-azure-400 focus:outline-none">
+                    <select value={t.assigneeId ?? ""} onChange={(e) => updateMgmtTask({ ...t, assigneeId: e.target.value || undefined })} className="rounded-lg border border-clinic-border px-2 py-1 text-xs text-clinic-text focus:border-azure-400">
                       <option value="">Sin asignar</option>
                       {db.users.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </select>
-                    <select value={t.status} onChange={(e) => updateMgmtTask({ ...t, status: e.target.value as MgmtTask["status"] })} className="rounded-lg border border-clinic-border px-2 py-1 text-xs text-clinic-text focus:border-azure-400 focus:outline-none">
+                    <select value={t.status} onChange={(e) => updateMgmtTask({ ...t, status: e.target.value as MgmtTask["status"] })} className="rounded-lg border border-clinic-border px-2 py-1 text-xs text-clinic-text focus:border-azure-400">
                       <option value="pendiente">Pendiente</option>
                       <option value="en_proceso">En proceso</option>
                     </select>

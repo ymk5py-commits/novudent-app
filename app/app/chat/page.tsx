@@ -83,7 +83,7 @@ export default function ChatPage() {
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             placeholder="Escribí un mensaje al equipo…"
-            className="flex-1 rounded-xl border border-clinic-border px-3 py-2 text-sm focus:border-azure-400 focus:outline-none"
+            className="flex-1 rounded-xl border border-clinic-border px-3 py-2 text-sm focus:border-azure-400"
           />
           <button onClick={send} disabled={!text.trim()} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-azure-600 text-white transition-colors hover:bg-azure-700 disabled:opacity-40" aria-label="Enviar"><Send className="h-4 w-4" /></button>
         </div>

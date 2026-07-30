@@ -83,14 +83,14 @@ export default function PublicSurveyPage({ params }: { params: { cid: string; su
                         ))}
                       </div>
                     ) : (
-                      <textarea rows={3} value={String(answers[q.id] ?? "")} onChange={(e) => set(q.id, e.target.value)} className="w-full rounded-xl border border-clinic-border px-3 py-2 text-sm focus:border-azure-400 focus:outline-none" placeholder="Escribí tu comentario…" />
+                      <textarea rows={3} value={String(answers[q.id] ?? "")} onChange={(e) => set(q.id, e.target.value)} className="w-full rounded-xl border border-clinic-border px-3 py-2 text-sm focus:border-azure-400" placeholder="Escribí tu comentario…" />
                     )}
                   </div>
                 ))}
 
                 <div>
                   <label className="mb-2 block text-sm font-bold text-clinic-text">Tu nombre <span className="font-normal text-clinic-muted">(opcional)</span></label>
-                  <input value={patientName} onChange={(e) => setPatientName(e.target.value)} className="w-full rounded-xl border border-clinic-border px-3 py-2 text-sm focus:border-azure-400 focus:outline-none" />
+                  <input value={patientName} onChange={(e) => setPatientName(e.target.value)} className="w-full rounded-xl border border-clinic-border px-3 py-2 text-sm focus:border-azure-400" />
                 </div>
 
                 {error && <p className="rounded-xl bg-state-errbg px-3 py-2 text-xs font-semibold text-state-err">{error}</p>}

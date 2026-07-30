@@ -72,7 +72,7 @@ export default function ConfigPage() {
             <select
               value={clinic?.config.currency ?? "PYG"}
               onChange={(e) => updateClinicConfig({ currency: e.target.value as CurrencyCode })}
-              className="ml-1 rounded-lg border border-clinic-border bg-white px-2 py-1 text-sm font-bold text-clinic-text outline-none focus:border-azure-400"
+              className="ml-1 rounded-lg border border-clinic-border bg-white px-2 py-1 text-sm font-bold text-clinic-text focus:border-azure-400"
             >
               {CURRENCY_LIST.map((c) => <option key={c.code} value={c.code}>{c.symbol} · {c.name} ({c.code})</option>)}
             </select>
@@ -165,7 +165,7 @@ export default function ConfigPage() {
                   onChange={(e) => upsertUser({ ...u, specialty: e.target.value || undefined })}
                   placeholder="Especialidad"
                   list="especialidades-list"
-                  className="w-32 rounded-lg border border-clinic-border px-2 py-1 text-xs text-clinic-text focus:border-azure-400 focus:outline-none"
+                  className="w-32 rounded-lg border border-clinic-border px-2 py-1 text-xs text-clinic-text focus:border-azure-400"
                 />
               )}
               {u.role === "dentist" && (
@@ -173,14 +173,14 @@ export default function ConfigPage() {
                   <Percent className="h-3 w-3 text-clinic-muted" />
                   <input
                     type="number" min={0} max={100}
-                    className="w-10 bg-transparent text-right font-mono text-xs font-bold text-clinic-text focus:outline-none"
+                    className="w-10 bg-transparent text-right font-mono text-xs font-bold text-clinic-text"
                     value={u.commissionPct ?? 0}
                     onChange={(e) => upsertUser({ ...u, commissionPct: Number(e.target.value) || 0 })}
                   />
                 </label>
               )}
               {db.branches.length > 0 && (
-                <select value={u.branchId ?? ""} onChange={(e) => upsertUser({ ...u, branchId: e.target.value || undefined })} className="rounded-lg border border-clinic-border px-2 py-1 text-xs text-clinic-text focus:border-azure-400 focus:outline-none" title="Sucursal asignada">
+                <select value={u.branchId ?? ""} onChange={(e) => upsertUser({ ...u, branchId: e.target.value || undefined })} className="rounded-lg border border-clinic-border px-2 py-1 text-xs text-clinic-text focus:border-azure-400" title="Sucursal asignada">
                   <option value="">Todas las sedes</option>
                   {db.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>

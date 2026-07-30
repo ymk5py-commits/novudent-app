@@ -284,7 +284,7 @@ export default function BoxPage() {
                       {/* picker de asignación */}
                       {db.boxes.length > 0 && (
                         <select
-                          className="rounded-xl border border-clinic-border bg-white px-3 py-1.5 text-sm font-semibold text-clinic-text focus:border-azure-500 focus:outline-none"
+                          className="rounded-xl border border-clinic-border bg-white px-3 py-1.5 text-sm font-semibold text-clinic-text focus:border-azure-600"
                           value=""
                           onChange={(e) => {
                             if (e.target.value) {

@@ -176,7 +176,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar paciente…"
-              className="w-full rounded-xl border border-white/25 bg-white/15 py-2.5 pl-9 pr-3 text-sm text-white transition-colors placeholder:text-white/65 focus:border-white focus:bg-white focus:text-clinic-text focus:outline-none focus:placeholder:text-clinic-muted"
+              className="w-full rounded-xl border border-white/25 bg-white/15 py-2.5 pl-9 pr-3 text-sm text-white transition-colors placeholder:text-white/65 focus:border-white focus:bg-white focus:text-clinic-text focus:placeholder:text-clinic-muted"
             />
             {results.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-clinic-border bg-white shadow-pop">

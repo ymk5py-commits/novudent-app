@@ -26,7 +26,7 @@ type Availability = {
 };
 
 const inputCls =
-  "w-full rounded-xl border border-clinic-border bg-white px-3.5 py-2.5 text-sm text-clinic-text outline-none transition focus:border-azure-500 focus:ring-2 focus:ring-azure-100";
+  "w-full rounded-xl border border-clinic-border bg-white px-3.5 py-2.5 text-sm text-clinic-text transition focus:border-azure-600 focus:ring-2 focus:ring-azure-100";
 
 function fmtDay(d: Date) {
   return d.toLocaleDateString("es-PY", { weekday: "short", day: "numeric", month: "short" });

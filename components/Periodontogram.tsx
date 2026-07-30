@@ -489,7 +489,7 @@ function PerioEditor({
                             value={r?.pd[i] ?? ""}
                             onChange={(e) => setPd(t, i, e.target.value)}
                             title="Profundidad de sondaje (mm)"
-                            className={`h-8 w-10 rounded-md border border-clinic-border text-center font-mono text-xs outline-none focus:border-azure-500 ${pdColor(r?.pd[i] ?? null)}`}
+                            className={`h-8 w-10 rounded-md border border-clinic-border text-center font-mono text-xs focus:border-azure-600 ${pdColor(r?.pd[i] ?? null)}`}
                           />
                           <button
                             type="button"
@@ -509,7 +509,7 @@ function PerioEditor({
                             onChange={(e) => setRecession(t, i, e.target.value)}
                             title="Recesión gingival (mm)"
                             placeholder="rec"
-                            className="h-6 w-10 rounded-md border border-clinic-border/70 text-center font-mono text-[11px] text-clinic-muted outline-none placeholder:text-clinic-muted/50 focus:border-azure-500"
+                            className="h-6 w-10 rounded-md border border-clinic-border/70 text-center font-mono text-[11px] text-clinic-muted placeholder:text-clinic-muted/50 focus:border-azure-600"
                           />
                           <button
                             type="button"
@@ -528,7 +528,7 @@ function PerioEditor({
                       max={3}
                       value={r?.mobility ?? ""}
                       onChange={(e) => setMobility(t, e.target.value)}
-                      className="h-8 w-10 rounded-md border border-clinic-border text-center font-mono text-xs outline-none focus:border-azure-500"
+                      className="h-8 w-10 rounded-md border border-clinic-border text-center font-mono text-xs focus:border-azure-600"
                     />
                   </td>
                 </tr>
