@@ -11,6 +11,7 @@ leyendo el CSS y el estado de la propia app.
 | [01-modulos.md](01-modulos.md) | Agenda · Pacientes · Cajas · Panel de desempeño · Ficha del paciente |
 | [02-administracion.md](02-administracion.md) | Arancel · Gastos · Usuarios · Inventario · Laboratorios · Liquidaciones · Convenios · Planes y servicios |
 | [03-reportes-y-crm.md](03-reportes-y-crm.md) | Los 15 reportes gráficos · Tareas de gestión · Encuestas · Recibir pago · Plan de tratamiento |
+| [04-agenda-crm-y-catalogos.md](04-agenda-crm-y-catalogos.md) | Agenda semanal y global · Box/Sillones · Agenda Online · Email Marketing · Especialidades · Medios de pago · Cheques · **los 74 reportes Excel** |
 
 ## Reglas del relevamiento
 
@@ -27,19 +28,22 @@ Novudent hay que usar lucide (lo que ya usamos) o Font Awesome Free.
 
 ## Cobertura
 
-**Relevado:** Agenda (diaria) · Pacientes · Cajas · Panel de desempeño · Ficha del
-paciente (datos personales) · Recibir pago · Plan de tratamiento · Arancel ·
-Gastos · Usuarios · Inventario · Laboratorios · Liquidaciones · Convenios ·
-Resultados · Morosos · Flujos · Eficiencia por profesional · Estado de
-financiamientos · Tareas de gestión · Encuestas.
+**Relevado:** Agenda (diaria, semanal y global) · Pacientes · Cajas · Panel de
+desempeño · Ficha del paciente (datos personales) · Recibir pago · Plan de
+tratamiento · Arancel · Gastos · Usuarios · Inventario · Laboratorios ·
+Liquidaciones · Convenios · Especialidades · Box/Sillones · Agenda Online ·
+Bancos · Medios de pago · Pagos anulados y cheques · los 15 reportes gráficos ·
+**los 74 reportes Excel** · Tareas de gestión · Encuestas · Email Marketing.
 
-**Pendiente:** Email Marketing · el catálogo de Reportes Excel · las vistas de
-calendario (semanal y diaria global) · Ficha clínica del paciente · especialidades,
-boxes, agenda online, bancos, logotipo, medios de pago y pagos anulados.
+**Pendiente:** Ficha clínica del paciente (evoluciones y antecedentes: las
+sub-rutas cargan diferido y no rindieron estructura desde el DOM, hay que
+recorrerlas a mano) · Logotipo (trivial) · los sub-tabs Agenda Express, Campañas
+y Dashboard de Agenda Online.
 
 **Bloqueado por permisos:** la sesión usada no es administradora
-(`hasAdminPermission: false`), así que *Planes y servicios* devolvió "sin permisos".
-Para completarlo hace falta relevar con un usuario admin.
+(`hasAdminPermission: false`), así que *Planes y servicios* —el panel de
+autogestión de la suscripción y los add-ons— devolvió "sin permisos". Para
+completarlo hace falta entrar con el usuario admin.
 
 ## Hallazgos con más impacto para Novudent
 
@@ -58,3 +62,17 @@ Para completarlo hace falta relevar con un usuario admin.
    del plan de tratamiento.
 9. **Aranceles múltiples** (varias listas de precio) y catálogo de laboratorio separado.
 10. **Gasto con dos fechas** (factura y pago) e imputable a una caja.
+11. **Gestión de cheques** por estado (por cobrar / cobrados / anulados). En
+    Paraguay el cheque diferido sigue siendo corriente en tratamientos largos y en
+    Novudent no existe.
+12. **Retención por medio de pago** (la comisión de la tarjeta) y **permite
+    devolución** por medio. Sin la retención, el resultado operacional reporta
+    ingresos inflados.
+13. **Agenda Online configurable**: link de reserva **por profesional**, bloques
+    por cita, ventana de disponibilidad y **anticipación mínima**. Sin esa última,
+    un paciente reserva para dentro de 10 minutos — es lo que más nos falta.
+14. **Descuento por planilla** es un circuito entero (8 reportes): el convenio
+    donde la empresa descuenta la cuota del sueldo del empleado.
+15. **La especialidad es el nodo que ata todo**: plantillas de prescripción y
+    evolución, motivo de atención de la agenda online, y qué prestaciones del
+    arancel corresponden. Para nosotros hoy es una etiqueta suelta.
