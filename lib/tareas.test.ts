@@ -414,6 +414,23 @@ describe("fusionarTareas", () => {
     expect(r).toHaveLength(0);
   });
 
+  // "Postergar" escribe `snoozedUntil` en el doc igual que en las derivadas: si
+  // la rama de manuales no lo mira, el panel se cierra y al recargar sigue ahí.
+  it("una manual postergada a futuro no aparece", () => {
+    const r = fusionarTareas([], [manual("mt1", { snoozedUntil: "2026-09-01" })], HOY);
+    expect(r).toHaveLength(0);
+  });
+
+  it("una manual postergada a una fecha ya pasada SÍ aparece", () => {
+    const r = fusionarTareas([], [manual("mt1", { snoozedUntil: "2026-07-20" })], HOY);
+    expect(r).toHaveLength(1);
+  });
+
+  it("una manual postergada justo a HOY ya vuelve a aparecer", () => {
+    const r = fusionarTareas([], [manual("mt1", { snoozedUntil: HOY })], HOY);
+    expect(r).toHaveLength(1);
+  });
+
   it("con incluirCerradas=true aparecen las cerradas de ambos orígenes", () => {
     const r = fusionarTareas(
       [derivada("cobranza:p1")],

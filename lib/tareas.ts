@@ -318,6 +318,10 @@ export function fusionarTareas(
   for (const g of guardadas) {
     if (g.derivedKey) continue; // ya se procesó como override (o quedó huérfano)
     if (g.status === "cerrada" && !incluirCerradas) continue;
+    // "Postergar" escribe `snoozedUntil` en cualquier tarea, manual o derivada.
+    // Sin este chequeo, en la manual el panel se cerraba y daba la sensación de
+    // que había funcionado, pero al recargar la tarea seguía en la bandeja.
+    if (g.snoozedUntil && g.snoozedUntil > hoy) continue;
     out.push(g);
   }
 
