@@ -286,3 +286,84 @@ describe("idempotencia de las claves derivadas", () => {
     }
   });
 });
+
+import { fusionarTareas, type DerivedTask } from "./tareas";
+import type { MgmtTask } from "./types";
+
+const derivada = (derivedKey: string, dueDate = "2026-07-25"): DerivedTask => ({
+  derivedKey, type: "cobranza", patientId: "p1", title: "Saldo pendiente de pago",
+  eventAt: "2026-07-18T10:00:00.000Z", dueDate,
+});
+
+const override = (derivedKey: string, extra: Partial<MgmtTask> = {}): MgmtTask => ({
+  id: `ov_${derivedKey}`, clinicId: "c1", type: "cobranza", derivedKey,
+  title: "", status: "pendiente", createdAt: "2026-07-20T10:00:00.000Z", ...extra,
+});
+
+const manual = (id: string, extra: Partial<MgmtTask> = {}): MgmtTask => ({
+  id, clinicId: "c1", type: "personalizada", title: "Llamar al proveedor",
+  status: "pendiente", createdAt: "2026-07-20T10:00:00.000Z", ...extra,
+});
+
+describe("fusionarTareas", () => {
+  it("una derivada sin override aparece tal cual", () => {
+    const r = fusionarTareas([derivada("cobranza:p1")], [], HOY);
+    expect(r).toHaveLength(1);
+    expect(r[0].derivedKey).toBe("cobranza:p1");
+    expect(r[0].status).toBe("pendiente");
+  });
+
+  it("un override CERRADO oculta la derivada", () => {
+    const r = fusionarTareas([derivada("cobranza:p1")], [override("cobranza:p1", { status: "cerrada", resolution: "rechazo" })], HOY);
+    expect(r).toHaveLength(0);
+  });
+
+  it("un override postergado a futuro oculta la derivada", () => {
+    const r = fusionarTareas([derivada("cobranza:p1")], [override("cobranza:p1", { snoozedUntil: "2026-08-15" })], HOY);
+    expect(r).toHaveLength(0);
+  });
+
+  it("un override postergado a una fecha ya pasada NO la oculta", () => {
+    const r = fusionarTareas([derivada("cobranza:p1")], [override("cobranza:p1", { snoozedUntil: "2026-07-20" })], HOY);
+    expect(r).toHaveLength(1);
+  });
+
+  it("el override aporta assigneeId y status sin pisar el título de la derivada", () => {
+    const r = fusionarTareas([derivada("cobranza:p1")], [override("cobranza:p1", { assigneeId: "u3", status: "en_proceso" })], HOY);
+    expect(r[0].assigneeId).toBe("u3");
+    expect(r[0].status).toBe("en_proceso");
+    expect(r[0].title).toBe("Saldo pendiente de pago");
+  });
+
+  it("un override HUÉRFANO (la condición se resolvió) se ignora", () => {
+    const r = fusionarTareas([], [override("cobranza:p1", { assigneeId: "u3" })], HOY);
+    expect(r).toHaveLength(0);
+  });
+
+  it("las tareas manuales pasan intactas", () => {
+    const r = fusionarTareas([], [manual("mt1")], HOY);
+    expect(r).toHaveLength(1);
+    expect(r[0].id).toBe("mt1");
+    expect(r[0].type).toBe("personalizada");
+  });
+
+  it("una manual cerrada no aparece", () => {
+    const r = fusionarTareas([], [manual("mt1", { status: "cerrada", resolution: "acepto" })], HOY);
+    expect(r).toHaveLength(0);
+  });
+
+  it("con incluirCerradas=true aparecen las cerradas de ambos orígenes", () => {
+    const r = fusionarTareas(
+      [derivada("cobranza:p1")],
+      [override("cobranza:p1", { status: "cerrada", resolution: "acepto" }), manual("mt1", { status: "cerrada" })],
+      HOY, true,
+    );
+    expect(r).toHaveLength(2);
+  });
+
+  it("la derivada conserva su id determinístico para que React no pierda el key", () => {
+    const a = fusionarTareas([derivada("cobranza:p1")], [], HOY)[0];
+    const b = fusionarTareas([derivada("cobranza:p1")], [], HOY)[0];
+    expect(a.id).toBe(b.id);
+  });
+});

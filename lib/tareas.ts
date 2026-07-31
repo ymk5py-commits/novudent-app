@@ -7,7 +7,7 @@
  *
  *  Módulo PURO: no importa React, ni Firestore, ni el store. Todo lo que necesita
  *  entra por parámetro y todo lo que produce sale por retorno. */
-import type { Appointment, Budget, MgmtTaskType, Patient, Payment, TaskDeadline, TaskDeadlines } from "./types";
+import type { Appointment, Budget, MgmtTask, MgmtTaskType, Patient, Payment, TaskDeadline, TaskDeadlines } from "./types";
 import { budgetTotal } from "./budgets";
 
 /** Plazos por defecto cuando la clínica no configuró los suyos. */
@@ -207,6 +207,59 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
       eventAt: hoy,
       dueDate: calcularVencimiento(hoy, plazoCita),
     });
+  }
+
+  return out;
+}
+
+/** Combina las derivadas con lo guardado y devuelve lo que ve la UI.
+ *
+ *  Reglas de convivencia: una derivada NUNCA pisa una decisión humana, y un
+ *  override NUNCA revive una tarea cuya condición ya no se cumple.
+ *
+ *  El override huérfano —el que quedó cuando el paciente pagó y la cobranza
+ *  dejó de derivarse— se ignora en silencio. No se borra: borrarlo sería
+ *  escribir en una lectura, y no molesta a nadie donde está. */
+export function fusionarTareas(
+  derivadas: DerivedTask[],
+  guardadas: MgmtTask[],
+  hoy: string,
+  incluirCerradas = false,
+): MgmtTask[] {
+  const porClave = new Map<string, MgmtTask>();
+  for (const g of guardadas) if (g.derivedKey) porClave.set(g.derivedKey, g);
+
+  const out: MgmtTask[] = [];
+
+  for (const d of derivadas) {
+    const ov = porClave.get(d.derivedKey);
+    if (ov?.status === "cerrada" && !incluirCerradas) continue;
+    if (ov?.snoozedUntil && ov.snoozedUntil > hoy) continue;
+    out.push({
+      // Id determinístico: si cambiara entre renders, React perdería el foco y
+      // el scroll de la lista en cada recálculo.
+      id: ov?.id ?? `d_${d.derivedKey}`,
+      clinicId: ov?.clinicId ?? "",
+      type: d.type,
+      patientId: d.patientId,
+      title: d.title,
+      detail: d.detail,
+      budgetId: d.budgetId,
+      derivedKey: d.derivedKey,
+      dueDate: d.dueDate,
+      createdAt: d.eventAt,
+      assigneeId: ov?.assigneeId,
+      snoozedUntil: ov?.snoozedUntil,
+      status: ov?.status ?? "pendiente",
+      resolution: ov?.resolution,
+      updatedAt: ov?.updatedAt,
+    });
+  }
+
+  for (const g of guardadas) {
+    if (g.derivedKey) continue; // ya se procesó como override (o quedó huérfano)
+    if (g.status === "cerrada" && !incluirCerradas) continue;
+    out.push(g);
   }
 
   return out;
