@@ -29,6 +29,12 @@ export type AutoTaskType = Exclude<MgmtTaskType, "personalizada">;
  *  si el paciente no puede, liberar el turno a tiempo. */
 export const VENTANA_CITA_DIAS = 2;
 
+/** Ventana de recencia de la regla `control`: no se persigue a quien terminó su
+ *  tratamiento hace más de esto. Sin el corte, una clínica que migra su historia
+ *  entera abre la bandeja el primer día con una tarea vencida por cada paciente
+ *  que pasó alguna vez — y una bandeja con mil atrasadas no se mira nunca. */
+export const VENTANA_CONTROL_MESES = 12;
+
 /** Plazo efectivo de un tipo: lo que configuró la clínica, o el default. */
 export function plazoDe(type: AutoTaskType, cfg: TaskDeadlines | undefined): TaskDeadline {
   return cfg?.[type] ?? DEFAULT_DEADLINES[type];
@@ -164,6 +170,9 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
 
   // ── control: una POR PACIENTE con tratamiento terminado y sin próxima visita ──
   const plazoControl = plazoDe("control", deadlines);
+  const corte = new Date(hoy);
+  corte.setUTCMonth(corte.getUTCMonth() - VENTANA_CONTROL_MESES);
+  const controlDesde = corte.toISOString().slice(0, 10);
   for (const p of patients) {
     // Continue barato primero: sin presupuestos no hay nada que ordenar ni revisar.
     const budgetsDelPaciente = budgetsPorPaciente.get(p.id);
@@ -187,6 +196,9 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
       .sort()
       .pop();
     const eventAt = ultimaAtencion ?? completados[completados.length - 1].createdAt;
+    // Fuera de la ventana no se persigue: a quien terminó hace años ya no se lo
+    // llama "para el control", y su tarea solo taparía las que sí importan.
+    if (eventAt.slice(0, 10) < controlDesde) continue;
 
     out.push({
       derivedKey: `control:${p.id}`,

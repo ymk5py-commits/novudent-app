@@ -226,6 +226,34 @@ describe("regla control", () => {
     const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "aceptado", 500_000)] }, HOY);
     expect(t.filter((x) => x.type === "control")).toHaveLength(0);
   });
+
+  // Sin el corte, una clínica que migra su historia entera abre la bandeja el
+  // primer día con una tarea vencida por cada paciente que pasó alguna vez.
+  it("NO abre para un tratamiento terminado hace 8 años (fuera de la ventana)", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "completado", 500_000, "2018-04-10T10:00:00.000Z")] }, HOY);
+    expect(t.filter((x) => x.type === "control")).toHaveLength(0);
+  });
+
+  it("SÍ abre para un tratamiento terminado hace 3 meses (dentro de la ventana)", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "completado", 500_000, "2026-04-30T10:00:00.000Z")] }, HOY);
+    expect(t.filter((x) => x.type === "control")).toHaveLength(1);
+  });
+
+  it("la ventana se mide contra el evento real: 1.200 pacientes viejos no llenan la bandeja", () => {
+    const patients = Array.from({ length: 50 }, (_, i) => pac(`p${i}`));
+    const budgets = patients.map((p, i) => bud(`b${i}`, p.id, "completado", 100_000, "2016-01-10T10:00:00.000Z"));
+    const t = derivarTareas({ ...vacio, patients, budgets }, HOY);
+    expect(t.filter((x) => x.type === "control")).toHaveLength(0);
+  });
+
+  it("un tratamiento viejo con una atención RECIENTE sí genera control (el evento manda)", () => {
+    const t = derivarTareas({
+      ...vacio, patients: [pac("p1")],
+      budgets: [bud("b1", "p1", "completado", 500_000, "2018-04-10T10:00:00.000Z")],
+      appointments: [cita("a1", "p1", "2026-06-01T10:00:00.000Z", "completada")],
+    }, HOY);
+    expect(t.filter((x) => x.type === "control")).toHaveLength(1);
+  });
 });
 
 describe("regla cita", () => {
