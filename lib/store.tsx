@@ -712,6 +712,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           delExtras("stockMoves", db.stockMoves.map((x) => x.id), seed.stockMoves.map((x) => x.id));
           delExtras("waitlist", db.waitlist.map((x) => x.id), seed.waitlist.map((x) => x.id));
           delExtras("outbox", db.outbox.map((x) => x.id), seed.outbox.map((x) => x.id));
+          // `mgmtTasks` guarda los OVERRIDES de las tareas automáticas (cerrada,
+          // postergada, asignada). Sin borrarlos acá, "Reiniciar demo" no limpia
+          // nada: el override sobrevive, y como su trabajo es SUPRIMIR la tarea
+          // derivada, la bandeja queda muda para siempre.
+          delExtras("mgmtTasks", db.mgmtTasks.map((x) => x.id), seed.mgmtTasks.map((x) => x.id));
           seedFirestore(seed).catch(() => {});
         }
         persist(seed);
