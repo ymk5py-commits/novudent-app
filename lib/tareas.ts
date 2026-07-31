@@ -84,6 +84,11 @@ export interface DerivedTask {
   patientId: string;
   title: string;
   detail?: string;
+  /** Monto CRUDO, sin formato. El motor es puro y la app maneja 17 monedas
+   *  (`lib/currency.ts`): si acá se armara el texto, una clínica de Colombia
+   *  vería "Gs." sobre pesos y con USD el redondeo se comería los centavos.
+   *  Formatea la página, que es la que sabe cuál es la moneda activa. */
+  amount?: number;
   budgetId?: string;
   /** Fecha del hecho que originó la tarea (ISO). */
   eventAt: string;
@@ -99,11 +104,6 @@ export interface TareasInput {
   payments: Payment[];
   appointments: Appointment[];
   deadlines?: TaskDeadlines;
-}
-
-/** Formatea un monto en guaraníes sin decimales (PYG es zero-decimal). */
-function gs(n: number): string {
-  return `Gs. ${Math.round(n).toLocaleString("es-PY")}`;
 }
 
 export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
@@ -144,7 +144,7 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
       type: "cobranza",
       patientId: p.id,
       title: "Saldo pendiente de pago",
-      detail: gs(saldo),
+      amount: saldo,
       eventAt: desde,
       dueDate: calcularVencimiento(desde, plazoCobranza),
     });
@@ -252,6 +252,9 @@ export interface TaskRow extends MgmtTask {
   /** Id del doc del override, cuando existe. Es lo que hay que actualizar para
    *  cambiar la decisión humana — nunca el `id` de la fila, que es sintético. */
   overrideId?: string;
+  /** Monto crudo de la derivada (ver `DerivedTask.amount`). Lo formatea la
+   *  página con `fmtGs`, que es la que conoce la moneda de la clínica. */
+  amount?: number;
 }
 
 /** Combina las derivadas con lo guardado y devuelve lo que ve la UI.
@@ -296,6 +299,7 @@ export function fusionarTareas(
       patientId: d.patientId,
       title: d.title,
       detail: d.detail,
+      amount: d.amount,
       budgetId: d.budgetId,
       derivedKey: d.derivedKey,
       instanceKey: d.instanceKey,

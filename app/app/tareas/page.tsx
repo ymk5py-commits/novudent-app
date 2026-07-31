@@ -7,7 +7,7 @@
  *  deriva más. Lo guardado en `mgmtTasks` son las manuales y los OVERRIDES: la
  *  decisión humana sobre una derivada (postergarla, asignarla, cerrarla). */
 import { useMemo, useState } from "react";
-import { useStore, fmtDate, fullName, waLink } from "@/lib/store";
+import { useStore, fmtDate, fmtGs, fullName, waLink } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { derivarTareas, fusionarTareas, clasificarTareas, type TaskRow } from "@/lib/tareas";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
@@ -103,6 +103,9 @@ export default function TareasPage() {
 
   const pName = (t: MgmtTask) => { const p = t.patientId ? db.patients.find((x) => x.id === t.patientId) : undefined; return p ? fullName(p) : t.patientName ?? "—"; };
   const pPhone = (t: MgmtTask) => (t.patientId ? db.patients.find((x) => x.id === t.patientId)?.phone : undefined);
+  /** El motor no formatea moneda (la app maneja 17): el monto llega crudo y se
+   *  formatea acá con `fmtGs`, que resuelve por la moneda activa de la clínica. */
+  const detalle = (t: TaskRow) => (t.amount != null ? fmtGs(t.amount) : t.detail);
   const FILTERS: ("todas" | MgmtTaskType)[] = ["todas", "captura", "control", "cobranza", "cita", "personalizada"];
 
   return (
@@ -154,7 +157,7 @@ export default function TareasPage() {
                 {t.dueDate && t.dueDate < hoy && <Badge tone="err">Atrasada</Badge>}
                 {t.status === "cerrada" && t.resolution && <Badge tone="muted">{RES_LABEL[t.resolution]}</Badge>}
               </div>
-              <div className="mt-1 text-xs text-clinic-muted">{pName(t)}{t.detail ? ` · ${t.detail}` : ""}</div>
+              <div className="mt-1 text-xs text-clinic-muted">{pName(t)}{detalle(t) ? ` · ${detalle(t)}` : ""}</div>
             </button>
           ))}
         </div>
@@ -169,7 +172,7 @@ export default function TareasPage() {
                 {sel.derivedKey && <span className="text-[10px] font-bold uppercase tracking-wide text-clinic-muted">Automática</span>}
               </div>
               <p className="text-sm font-bold text-clinic-text">{sel.title}</p>
-              {sel.detail && <p className="text-xs text-clinic-muted">{sel.detail}</p>}
+              {detalle(sel) && <p className="text-xs text-clinic-muted">{detalle(sel)}</p>}
               {sel.patientId && <a href={`/app/pacientes/${sel.patientId}`} className="block text-xs font-bold text-azure-700 hover:underline">{pName(sel)}</a>}
               <dl className="space-y-1 border-t border-clinic-border pt-3 text-xs">
                 <div className="flex justify-between"><dt className="text-clinic-muted">Origen</dt><dd className="font-bold text-clinic-text">{fmtDate(sel.createdAt)}</dd></div>

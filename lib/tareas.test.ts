@@ -142,6 +142,25 @@ describe("regla cobranza", () => {
     expect(t.filter((x) => x.type === "cobranza")).toHaveLength(1);
   });
 
+  // El motor es puro y la app soporta 17 monedas: formatear acá daría "Gs." a
+  // una clínica de Colombia, y con USD el redondeo se comería los centavos.
+  it("lleva el monto CRUDO en `amount`, sin formatear ni redondear", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "aceptado", 1_500_000)], payments: [pay("y1", "p1", 250_000.75)] }, HOY);
+    const cob = t.find((x) => x.type === "cobranza")!;
+    expect(cob.amount).toBe(1_249_999.25);
+    expect(cob.detail).toBeUndefined();
+  });
+
+  it("ninguna tarea derivada trae un símbolo de moneda en el texto", () => {
+    const t = derivarTareas({
+      ...vacio, patients: [pac("p1")],
+      budgets: [bud("b1", "p1", "aceptado", 500_000), bud("b2", "p1", "presentado", 300_000), bud("b3", "p1", "completado", 100_000)],
+      appointments: [cita("a1", "p1", "2026-07-31T10:00:00.000Z", "pendiente")],
+    }, HOY);
+    expect(t.length).toBeGreaterThan(0);
+    for (const x of t) expect(`${x.title} ${x.detail ?? ""}`).not.toMatch(/Gs\.|\$|COP|₡/);
+  });
+
   it("el vencimiento sale del presupuesto con saldo más antiguo + plazo", () => {
     const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [
       bud("b1", "p1", "aceptado", 500_000, "2026-07-01T10:00:00.000Z"),
