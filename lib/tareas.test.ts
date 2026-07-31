@@ -257,3 +257,29 @@ describe("regla cita", () => {
     expect(t.filter((x) => x.type === "cita")).toHaveLength(0);
   });
 });
+
+describe("idempotencia de las claves derivadas", () => {
+  const input = {
+    patients: [pac("p1"), pac("p2", "Beto", "Ejemplo")],
+    budgets: [bud("b1", "p1", "aceptado", 500_000), bud("b2", "p1", "presentado", 200_000), bud("b3", "p2", "completado", 300_000)],
+    payments: [pay("y1", "p1", 100_000)],
+    appointments: [cita("a1", "p1", "2026-07-31T10:00:00.000Z", "pendiente")],
+  };
+
+  it("dos llamadas con el mismo input dan exactamente las mismas claves", () => {
+    const a = derivarTareas(input, HOY).map((t) => t.derivedKey).sort();
+    const b = derivarTareas(input, HOY).map((t) => t.derivedKey).sort();
+    expect(a).toEqual(b);
+  });
+
+  it("no hay claves duplicadas dentro de una misma derivación", () => {
+    const claves = derivarTareas(input, HOY).map((t) => t.derivedKey);
+    expect(new Set(claves).size).toBe(claves.length);
+  });
+
+  it("toda clave tiene la forma tipo:id", () => {
+    for (const t of derivarTareas(input, HOY)) {
+      expect(t.derivedKey).toMatch(/^(cobranza|captura|control|cita):[\w-]+$/);
+    }
+  });
+});
