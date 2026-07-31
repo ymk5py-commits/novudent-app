@@ -367,3 +367,39 @@ describe("fusionarTareas", () => {
     expect(a.id).toBe(b.id);
   });
 });
+
+import { clasificarTareas } from "./tareas";
+
+const conVenc = (id: string, dueDate?: string): MgmtTask => ({
+  id, clinicId: "c1", type: "cobranza", title: "X", status: "pendiente",
+  createdAt: "2026-07-01T10:00:00.000Z", dueDate,
+});
+
+describe("clasificarTareas", () => {
+  it("del día incluye las que vencen hoy y las atrasadas", () => {
+    const { delDia } = clasificarTareas([conVenc("a", "2026-07-30"), conVenc("b", "2026-07-01")], HOY);
+    expect(delDia.map((t) => t.id).sort()).toEqual(["a", "b"]);
+  });
+
+  it("atrasadas son solo las de fecha ANTERIOR a hoy", () => {
+    const { atrasadas } = clasificarTareas([conVenc("a", "2026-07-30"), conVenc("b", "2026-07-01")], HOY);
+    expect(atrasadas.map((t) => t.id)).toEqual(["b"]);
+  });
+
+  it("futuras son las que vencen después de hoy", () => {
+    const { futuras } = clasificarTareas([conVenc("a", "2026-08-10")], HOY);
+    expect(futuras.map((t) => t.id)).toEqual(["a"]);
+  });
+
+  it("una tarea SIN vencimiento cuenta como del día (no se esconde nunca)", () => {
+    const { delDia, futuras } = clasificarTareas([conVenc("a")], HOY);
+    expect(delDia.map((t) => t.id)).toEqual(["a"]);
+    expect(futuras).toHaveLength(0);
+  });
+
+  it("las tres listas particionan el total sin duplicar", () => {
+    const todas = [conVenc("a", "2026-07-01"), conVenc("b", "2026-07-30"), conVenc("c", "2026-08-10"), conVenc("d")];
+    const { delDia, futuras } = clasificarTareas(todas, HOY);
+    expect(delDia.length + futuras.length).toBe(todas.length);
+  });
+});

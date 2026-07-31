@@ -264,3 +264,25 @@ export function fusionarTareas(
 
   return out;
 }
+
+/** Particiona la bandeja en las vistas de Dentalink.
+ *
+ *  `delDia` y `futuras` son una partición exacta del total; `atrasadas` es un
+ *  subconjunto de `delDia` (las que además ya vencieron), que es lo que va en el
+ *  badge con el número. Una tarea sin `dueDate` —las manuales sin fecha— cuenta
+ *  como del día: si la escondiéramos hasta "algún día", no se haría nunca. */
+export function clasificarTareas(tareas: MgmtTask[], hoy: string): {
+  delDia: MgmtTask[];
+  atrasadas: MgmtTask[];
+  futuras: MgmtTask[];
+} {
+  const delDia: MgmtTask[] = [];
+  const atrasadas: MgmtTask[] = [];
+  const futuras: MgmtTask[] = [];
+  for (const t of tareas) {
+    if (t.dueDate && t.dueDate > hoy) { futuras.push(t); continue; }
+    delDia.push(t);
+    if (t.dueDate && t.dueDate < hoy) atrasadas.push(t);
+  }
+  return { delDia, atrasadas, futuras };
+}
