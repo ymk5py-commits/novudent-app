@@ -113,7 +113,10 @@ const cita = (id: string, patientId: string, start: string, status: Appointment[
 });
 
 const HOY = "2026-07-30";
-const vacio = { patients: [] as Patient[], budgets: [] as Budget[], payments: [] as Payment[], appointments: [] as Appointment[] };
+// Anotado en la const (no `as` por campo): mismo resultado sin usar type assertions.
+const vacio: { patients: Patient[]; budgets: Budget[]; payments: Payment[]; appointments: Appointment[] } = {
+  patients: [], budgets: [], payments: [], appointments: [],
+};
 
 describe("regla cobranza", () => {
   it("abre una tarea cuando el paciente tiene saldo positivo", () => {
