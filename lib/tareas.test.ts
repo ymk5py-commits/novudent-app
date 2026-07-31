@@ -38,3 +38,60 @@ describe("plazoDe — configuración de la clínica vs defaults", () => {
     expect(Object.keys(DEFAULT_DEADLINES).sort()).toEqual(["captura", "cita", "cobranza", "control"]);
   });
 });
+
+import { mapaDeSaldos } from "./tareas";
+import { patientBalance } from "./budgets";
+import type { Budget, Payment } from "./types";
+
+const bud = (id: string, patientId: string, status: Budget["status"], monto: number, createdAt = "2026-01-10T10:00:00.000Z"): Budget => ({
+  id, clinicId: "c1", patientId, dentistId: "u1", createdAt, status,
+  items: [{ id: `${id}i`, code: "D001", name: "Prestación", qty: 1, price: monto }],
+} as Budget);
+
+const pay = (id: string, patientId: string, amount: number, voided = false): Payment => ({
+  id, clinicId: "c1", patientId, date: "2026-02-01T10:00:00.000Z", amount,
+  method: "efectivo", concept: "Abono", receivedBy: "u1",
+  ...(voided ? { voidedAt: "2026-02-02T10:00:00.000Z" } : {}),
+} as Payment);
+
+describe("mapaDeSaldos", () => {
+  it("suma aceptados y completados, resta pagos no anulados", () => {
+    const budgets = [bud("b1", "p1", "aceptado", 500_000), bud("b2", "p1", "completado", 300_000)];
+    const payments = [pay("y1", "p1", 200_000)];
+    expect(mapaDeSaldos(budgets, payments).get("p1")).toBe(600_000);
+  });
+
+  it("ignora borrador, presentado y anulado", () => {
+    const budgets = [bud("b1", "p1", "borrador", 100_000), bud("b2", "p1", "presentado", 100_000), bud("b3", "p1", "anulado", 100_000)];
+    expect(mapaDeSaldos(budgets, []).get("p1") ?? 0).toBe(0);
+  });
+
+  it("ignora los pagos anulados", () => {
+    const budgets = [bud("b1", "p1", "aceptado", 500_000)];
+    const payments = [pay("y1", "p1", 500_000, true)];
+    expect(mapaDeSaldos(budgets, payments).get("p1")).toBe(500_000);
+  });
+
+  it("no mezcla pacientes", () => {
+    const budgets = [bud("b1", "p1", "aceptado", 500_000), bud("b2", "p2", "aceptado", 100_000)];
+    const payments = [pay("y1", "p2", 100_000)];
+    const m = mapaDeSaldos(budgets, payments);
+    expect(m.get("p1")).toBe(500_000);
+    expect(m.get("p2")).toBe(0);
+  });
+
+  // EL test que importa: si alguien cambia la regla de saldo en lib/budgets.ts
+  // y no acá, la bandeja y la ficha del paciente empiezan a mentir distinto.
+  it("coincide con patientBalance para cada paciente (equivalencia)", () => {
+    const budgets = [
+      bud("b1", "p1", "aceptado", 500_000), bud("b2", "p1", "completado", 300_000),
+      bud("b3", "p2", "presentado", 900_000), bud("b4", "p2", "aceptado", 250_000),
+      bud("b5", "p3", "anulado", 100_000),
+    ];
+    const payments = [pay("y1", "p1", 200_000), pay("y2", "p2", 250_000), pay("y3", "p1", 50_000, true)];
+    const mapa = mapaDeSaldos(budgets, payments);
+    for (const pid of ["p1", "p2", "p3"]) {
+      expect(mapa.get(pid) ?? 0).toBe(patientBalance(pid, budgets, payments));
+    }
+  });
+});

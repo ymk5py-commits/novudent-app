@@ -7,7 +7,8 @@
  *
  *  Módulo PURO: no importa React, ni Firestore, ni el store. Todo lo que necesita
  *  entra por parámetro y todo lo que produce sale por retorno. */
-import type { MgmtTaskType, TaskDeadline, TaskDeadlines } from "./types";
+import type { Budget, MgmtTaskType, Payment, TaskDeadline, TaskDeadlines } from "./types";
+import { budgetTotal } from "./budgets";
 
 /** Plazos por defecto cuando la clínica no configuró los suyos. */
 export const DEFAULT_DEADLINES: Required<TaskDeadlines> = {
@@ -33,4 +34,26 @@ export function calcularVencimiento(eventAt: string, plazo: TaskDeadline): strin
   const d = new Date(eventAt);
   if (plazo.kind === "dias") d.setUTCDate(d.getUTCDate() + plazo.n);
   return d.toISOString().slice(0, 10);
+}
+
+/** Saldo de TODOS los pacientes en dos pasadas (una por budgets, una por pagos).
+ *
+ *  Misma definición que `patientBalance` de lib/budgets.ts —presupuestos
+ *  aceptados/completados menos pagos no anulados— pero calculada de una sola vez
+ *  para todos. Llamar `patientBalance` por paciente sería O(P × (B + Pg)) y
+ *  congelaría el render de la bandeja en una clínica con historia.
+ *
+ *  `lib/tareas.test.ts` tiene un test de equivalencia contra `patientBalance`
+ *  que falla si las dos definiciones divergen. */
+export function mapaDeSaldos(budgets: Budget[], payments: Payment[]): Map<string, number> {
+  const saldo = new Map<string, number>();
+  for (const b of budgets) {
+    if (b.status !== "aceptado" && b.status !== "completado") continue;
+    saldo.set(b.patientId, (saldo.get(b.patientId) ?? 0) + budgetTotal(b));
+  }
+  for (const p of payments) {
+    if (p.voidedAt) continue;
+    saldo.set(p.patientId, (saldo.get(p.patientId) ?? 0) - p.amount);
+  }
+  return saldo;
 }
