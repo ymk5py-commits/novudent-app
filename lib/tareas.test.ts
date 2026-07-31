@@ -45,17 +45,15 @@ import type { Budget, Payment } from "./types";
 
 const bud = (id: string, patientId: string, status: Budget["status"], monto: number, createdAt = "2026-01-10T10:00:00.000Z"): Budget => ({
   id, clinicId: "c1", patientId, dentistId: "u1", createdAt, status,
-  items: [{ id: `${id}i`, code: "D001", name: "Prestación", qty: 1, price: monto }],
-  // Fixture parcial (falta `history`) — mismo patrón que budgets.test.ts (`as any`,
-  // no `as Budget`): el cast a la interfaz completa rompe tsc porque faltan campos
-  // que no le importan a mapaDeSaldos/patientBalance (solo leen status/items/patientId).
-} as any);
+  items: [{ id: `${id}i`, cpt: "D001", description: "Prestación", price: monto, status: "pendiente" }],
+  history: [],
+});
 
 const pay = (id: string, patientId: string, amount: number, voided = false): Payment => ({
   id, clinicId: "c1", patientId, date: "2026-02-01T10:00:00.000Z", amount,
   method: "efectivo", concept: "Abono", receivedBy: "u1",
   ...(voided ? { voidedAt: "2026-02-02T10:00:00.000Z" } : {}),
-} as Payment);
+});
 
 describe("mapaDeSaldos", () => {
   it("suma aceptados y completados, resta pagos no anulados", () => {
