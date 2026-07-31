@@ -12,7 +12,7 @@ import { can } from "@/lib/rbac";
 import { derivarTareas, fusionarTareas, clasificarTareas, type TaskRow } from "@/lib/tareas";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
-import { ListChecks, Plus, MessageCircle, Trash2, Clock } from "lucide-react";
+import { ListChecks, Plus, MessageCircle, Trash2, Clock, ShieldAlert } from "lucide-react";
 import type { MgmtTask, MgmtTaskType } from "@/lib/types";
 
 const TYPE_LABEL: Record<MgmtTaskType, string> = { cita: "Cita", captura: "Captura", control: "Control", cobranza: "Cobranza", personalizada: "Personalizada" };
@@ -53,6 +53,21 @@ export default function TareasPage() {
       .filter((t) => !soloMias || t.assigneeId === session?.userId)
       .sort((a, b) => (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999"));
   }, [delDia, atrasadas, todas, vista, typeFilter, soloMias, session?.userId]);
+
+  // Guard de RUTA, no solo de botones: la lista muestra una fila por paciente
+  // con deuda y su monto, o sea la cartera de cuentas por cobrar entera. Sin
+  // esto, un dentista la ve escribiendo la URL aunque el ítem del nav no esté.
+  // (Va después de los hooks: no se puede return antes de llamarlos todos.)
+  if (!session) return null;
+  if (!canManage) {
+    return (
+      <Card className="p-10 text-center">
+        <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
+        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <p className="mt-1 text-sm text-clinic-muted">La bandeja de tareas la gestionan el <b>Administrador</b> y la <b>Asistente</b>.</p>
+      </Card>
+    );
+  }
 
   const sel = tasks.find((t) => t.id === selId) ?? null;
 
@@ -98,7 +113,7 @@ export default function TareasPage() {
           <h1 className="text-lg font-extrabold text-clinic-text">Tareas de gestión</h1>
           <p className="text-xs text-clinic-muted">{delDia.length} para hoy · se generan y se cierran solas.</p>
         </div>
-        {canManage && <Btn className="ml-auto" onClick={() => setShowForm(true)}><Plus className="h-4 w-4" /> Nueva tarea</Btn>}
+        <Btn className="ml-auto" onClick={() => setShowForm(true)}><Plus className="h-4 w-4" /> Nueva tarea</Btn>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 border-b border-clinic-border pb-2">
@@ -161,7 +176,7 @@ export default function TareasPage() {
                 {sel.dueDate && <div className="flex justify-between"><dt className="text-clinic-muted">Vence</dt><dd className={`font-bold ${sel.dueDate < hoy ? "text-state-err" : "text-clinic-text"}`}>{sel.dueDate}</dd></div>}
               </dl>
 
-              {canManage && sel.status !== "cerrada" && (
+              {sel.status !== "cerrada" && (
                 <div className="space-y-3 border-t border-clinic-border pt-3">
                   <Field label="Asignar a">
                     <select value={sel.assigneeId ?? ""} onChange={(e) => aplicar(sel, { assigneeId: e.target.value || undefined })} className={inputCls}>
