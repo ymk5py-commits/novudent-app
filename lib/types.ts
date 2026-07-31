@@ -39,6 +39,8 @@ export interface Clinic {
     consentTemplates?: ConsentTemplate[];
     /** Config de campos del paciente: presente/requerido por contexto */
     patientFields?: Record<string, FieldConfig>;
+    /** Plazos de las tareas automáticas de gestión (módulo Tareas). */
+    taskDeadlines?: TaskDeadlines;
     /** Logotipo de la clínica (data URL base64) — header de la app + documentos */
     logo?: string;
     /** Pago online configurable (sin atar a una pasarela ni guardar secretos):
@@ -808,7 +810,24 @@ export interface MgmtTask {
   dueDate?: string;
   createdAt: string;
   updatedAt?: string;
+  /** Clave de la tarea DERIVADA sobre la que este doc actúa como override
+   *  (`cobranza:p_123`). Vacío en las tareas manuales (`personalizada`).
+   *  Las derivadas no se guardan: este doc solo carga la decisión humana. */
+  derivedKey?: string;
+  /** Postergada hasta esta fecha (YYYY-MM-DD). Antes de ella la tarea no
+   *  aparece en la bandeja del día ni cuenta como atrasada. */
+  snoozedUntil?: string;
 }
+
+/** Plazo de una regla automática: cuánto pasa desde el evento que la origina
+ *  hasta que la tarea vence y aparece en "Tareas del día". */
+export type TaskDeadline =
+  | { kind: "inmediato" }
+  | { kind: "dias"; n: number };
+
+/** Plazo por tipo de tarea automática. Vive en `Clinic.config.taskDeadlines`.
+ *  Lo que no esté configurado usa DEFAULT_DEADLINES de lib/tareas.ts. */
+export type TaskDeadlines = Partial<Record<Exclude<MgmtTaskType, "personalizada">, TaskDeadline>>;
 
 /** Registro ambiental de residuos (cumplimiento CO — spec 8.7). */
 export interface EnvironmentalLog {
