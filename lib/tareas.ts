@@ -99,14 +99,28 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
   const out: DerivedTask[] = [];
   const saldos = mapaDeSaldos(budgets, payments);
 
+  // Agrupaciones en una pasada. Sin esto, cada regla recorrería budgets y
+  // appointments COMPLETOS por cada paciente: el mismo O(P × N) que motivó
+  // `mapaDeSaldos`, reintroducido por la puerta de atrás.
+  const budgetsPorPaciente = new Map<string, Budget[]>();
+  for (const b of budgets) {
+    const arr = budgetsPorPaciente.get(b.patientId);
+    if (arr) arr.push(b); else budgetsPorPaciente.set(b.patientId, [b]);
+  }
+  const citasPorPaciente = new Map<string, Appointment[]>();
+  for (const a of appointments) {
+    const arr = citasPorPaciente.get(a.patientId);
+    if (arr) arr.push(a); else citasPorPaciente.set(a.patientId, [a]);
+  }
+
   // ── cobranza: una por paciente con saldo pendiente ──────────────────────
   const plazoCobranza = plazoDe("cobranza", deadlines);
   for (const p of patients) {
     const saldo = saldos.get(p.id) ?? 0;
     if (saldo <= 0) continue;
     // El evento es el presupuesto con saldo más antiguo: la deuda "nació" ahí.
-    const desde = budgets
-      .filter((b) => b.patientId === p.id && (b.status === "aceptado" || b.status === "completado"))
+    const desde = (budgetsPorPaciente.get(p.id) ?? [])
+      .filter((b) => b.status === "aceptado" || b.status === "completado")
       .map((b) => b.createdAt)
       .sort()[0];
     if (!desde) continue;
@@ -140,19 +154,24 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
   // ── control: una POR PACIENTE con tratamiento terminado y sin próxima visita ──
   const plazoControl = plazoDe("control", deadlines);
   for (const p of patients) {
-    const completados = budgets
-      .filter((b) => b.patientId === p.id && b.status === "completado")
+    // Continue barato primero: sin presupuestos no hay nada que ordenar ni revisar.
+    const budgetsDelPaciente = budgetsPorPaciente.get(p.id);
+    if (!budgetsDelPaciente) continue;
+
+    const completados = budgetsDelPaciente
+      .filter((b) => b.status === "completado")
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     if (completados.length === 0) continue;
 
-    const tieneCitaFutura = appointments.some(
-      (a) => a.patientId === p.id && a.start.slice(0, 10) > hoy && a.status !== "cancelada",
+    const citasDelPaciente = citasPorPaciente.get(p.id) ?? [];
+    const tieneCitaFutura = citasDelPaciente.some(
+      (a) => a.start.slice(0, 10) > hoy && a.status !== "cancelada",
     );
     if (tieneCitaFutura) continue;
 
     // El evento es la última atención real; si nunca vino, el fin del tratamiento.
-    const ultimaAtencion = appointments
-      .filter((a) => a.patientId === p.id && a.status === "completada")
+    const ultimaAtencion = citasDelPaciente
+      .filter((a) => a.status === "completada")
       .map((a) => a.start)
       .sort()
       .pop();
