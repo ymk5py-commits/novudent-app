@@ -24,6 +24,11 @@ export const DEFAULT_DEADLINES: Required<TaskDeadlines> = {
 
 export type AutoTaskType = Exclude<MgmtTaskType, "personalizada">;
 
+/** Ventana de anticipación de la regla `cita`: una cita sin confirmar entra a la
+ *  bandeja este número de días antes. Dos días es lo que da margen a llamar y,
+ *  si el paciente no puede, liberar el turno a tiempo. */
+export const VENTANA_CITA_DIAS = 2;
+
 /** Plazo efectivo de un tipo: lo que configuró la clínica, o el default. */
 export function plazoDe(type: AutoTaskType, cfg: TaskDeadlines | undefined): TaskDeadline {
   return cfg?.[type] ?? DEFAULT_DEADLINES[type];
@@ -162,6 +167,26 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
       budgetId: completados[completados.length - 1].id,
       eventAt,
       dueDate: calcularVencimiento(eventAt, plazoControl),
+    });
+  }
+
+  // ── cita: una por cita próxima sin confirmar ────────────────────────────
+  const plazoCita = plazoDe("cita", deadlines);
+  const limite = new Date(hoy);
+  limite.setUTCDate(limite.getUTCDate() + VENTANA_CITA_DIAS);
+  const hasta = limite.toISOString().slice(0, 10);
+  for (const a of appointments) {
+    if (a.status !== "pendiente") continue;
+    const dia = a.start.slice(0, 10);
+    if (dia < hoy || dia > hasta) continue;
+    out.push({
+      derivedKey: `cita:${a.id}`,
+      type: "cita",
+      patientId: a.patientId,
+      title: "Cita sin confirmar",
+      detail: a.title,
+      eventAt: hoy,
+      dueDate: calcularVencimiento(hoy, plazoCita),
     });
   }
 

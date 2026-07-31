@@ -224,3 +224,36 @@ describe("regla control", () => {
     expect(t.filter((x) => x.type === "control")).toHaveLength(0);
   });
 });
+
+describe("regla cita", () => {
+  it("abre para una cita pendiente dentro de los próximos 2 días", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2026-07-31T10:00:00.000Z", "pendiente")] }, HOY);
+    const c = t.filter((x) => x.type === "cita");
+    expect(c).toHaveLength(1);
+    expect(c[0].derivedKey).toBe("cita:a1");
+    expect(c[0].dueDate).toBe(HOY);
+  });
+
+  it("abre para una cita pendiente de HOY", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2026-07-30T16:00:00.000Z", "pendiente")] }, HOY);
+    expect(t.filter((x) => x.type === "cita")).toHaveLength(1);
+  });
+
+  it.each(["confirmada", "en_atencion", "completada", "cancelada", "ausente"] as const)(
+    "NO abre para una cita en estado %s — auto-cierre al confirmar",
+    (status) => {
+      const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2026-07-31T10:00:00.000Z", status)] }, HOY);
+      expect(t.filter((x) => x.type === "cita")).toHaveLength(0);
+    },
+  );
+
+  it("NO abre para una cita más allá de la ventana de 2 días", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2026-08-10T10:00:00.000Z", "pendiente")] }, HOY);
+    expect(t.filter((x) => x.type === "cita")).toHaveLength(0);
+  });
+
+  it("NO abre para una cita que ya pasó — auto-cierre por fecha", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2026-07-20T10:00:00.000Z", "pendiente")] }, HOY);
+    expect(t.filter((x) => x.type === "cita")).toHaveLength(0);
+  });
+});
