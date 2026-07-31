@@ -184,8 +184,11 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
     if (completados.length === 0) continue;
 
     const citasDelPaciente = citasPorPaciente.get(p.id) ?? [];
+    // `>=`, no `>`: la cita de hoy todavía no pasó, y la regla `cita` también
+    // cuenta el día de hoy. Con `>` estricto, al paciente que viene esta tarde
+    // se le abría igual un "Control post-tratamiento".
     const tieneCitaFutura = citasDelPaciente.some(
-      (a) => a.start.slice(0, 10) > hoy && a.status !== "cancelada",
+      (a) => a.start.slice(0, 10) >= hoy && a.status !== "cancelada",
     );
     if (tieneCitaFutura) continue;
 

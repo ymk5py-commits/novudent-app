@@ -214,6 +214,13 @@ describe("regla control", () => {
     expect(t.filter((x) => x.type === "control")).toHaveLength(0);
   });
 
+  // La regla `cita` incluye el día de hoy; ésta usaba `>` estricto, así que el
+  // paciente que viene esta tarde igual aparecía como "sin próxima visita".
+  it("una cita de HOY cuenta como próxima visita y NO abre control", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "completado", 500_000)], appointments: [cita("a1", "p1", `${HOY}T16:00:00.000Z`, "confirmada")] }, HOY);
+    expect(t.filter((x) => x.type === "control")).toHaveLength(0);
+  });
+
   it("una cita futura CANCELADA no cuenta como cita futura", () => {
     const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "completado", 500_000)], appointments: [cita("a1", "p1", "2026-08-15T10:00:00.000Z", "cancelada")] }, HOY);
     expect(t.filter((x) => x.type === "control")).toHaveLength(1);

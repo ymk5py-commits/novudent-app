@@ -212,13 +212,16 @@ export default function TareasPage() {
                       <MessageCircle className="h-3.5 w-3.5" /> Escribir por WhatsApp
                     </a>
                   )}
-                  {!sel.derivedKey && (
-                    <button onClick={() => { if (confirm("¿Eliminar tarea?")) { deleteMgmtTask(sel.id); setSelId(null); } }}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-bold text-clinic-muted hover:text-state-err">
-                      <Trash2 className="h-3 w-3" /> Eliminar tarea
-                    </button>
-                  )}
                 </div>
+              )}
+
+              {/* Fuera del gate de "cerrada": una manual cerrada también se
+                  borra. Adentro, la única forma de sacarla era no cerrarla. */}
+              {!sel.derivedKey && (
+                <button onClick={() => { if (confirm("¿Eliminar tarea?")) { deleteMgmtTask(sel.id); setSelId(null); } }}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border-t border-clinic-border pt-3 text-[11px] font-bold text-clinic-muted hover:text-state-err">
+                  <Trash2 className="h-3 w-3" /> Eliminar tarea
+                </button>
               )}
             </div>
           )}
