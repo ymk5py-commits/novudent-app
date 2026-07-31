@@ -290,9 +290,9 @@ describe("idempotencia de las claves derivadas", () => {
 import { fusionarTareas, type DerivedTask } from "./tareas";
 import type { MgmtTask } from "./types";
 
-const derivada = (derivedKey: string, dueDate = "2026-07-25"): DerivedTask => ({
+const derivada = (derivedKey: string, dueDate = "2026-07-25", instanceKey = "i1"): DerivedTask => ({
   derivedKey, type: "cobranza", patientId: "p1", title: "Saldo pendiente de pago",
-  eventAt: "2026-07-18T10:00:00.000Z", dueDate,
+  instanceKey, eventAt: "2026-07-18T10:00:00.000Z", dueDate,
 });
 
 const override = (derivedKey: string, extra: Partial<MgmtTask> = {}): MgmtTask => ({
@@ -313,9 +313,24 @@ describe("fusionarTareas", () => {
     expect(r[0].status).toBe("pendiente");
   });
 
-  it("un override CERRADO oculta la derivada", () => {
-    const r = fusionarTareas([derivada("cobranza:p1")], [override("cobranza:p1", { status: "cerrada", resolution: "rechazo" })], HOY);
+  it("un override CERRADO contra la MISMA instancia oculta la derivada", () => {
+    const r = fusionarTareas([derivada("cobranza:p1")], [override("cobranza:p1", { status: "cerrada", resolution: "rechazo", closedInstance: "i1" })], HOY);
     expect(r).toHaveLength(0);
+  });
+
+  // El bug que cuesta plata: `cobranza:p1` se reusa toda la vida del paciente,
+  // así que un cierre atado solo a la clave enterraba la regla para siempre.
+  it("un override cerrado contra OTRA instancia NO la oculta: reaparece pendiente y sin la resolución vieja", () => {
+    const r = fusionarTareas([derivada("cobranza:p1", "2026-07-25", "2000000")], [override("cobranza:p1", { status: "cerrada", resolution: "rechazo", closedInstance: "500000" })], HOY);
+    expect(r).toHaveLength(1);
+    expect(r[0].status).toBe("pendiente");
+    expect(r[0].resolution).toBeUndefined();
+  });
+
+  it("un override cerrado SIN closedInstance (dato viejo) NO la oculta — default seguro", () => {
+    const r = fusionarTareas([derivada("cobranza:p1")], [override("cobranza:p1", { status: "cerrada", resolution: "rechazo" })], HOY);
+    expect(r).toHaveLength(1);
+    expect(r[0].status).toBe("pendiente");
   });
 
   it("un override postergado a futuro oculta la derivada", () => {
@@ -355,7 +370,7 @@ describe("fusionarTareas", () => {
   it("con incluirCerradas=true aparecen las cerradas de ambos orígenes", () => {
     const r = fusionarTareas(
       [derivada("cobranza:p1")],
-      [override("cobranza:p1", { status: "cerrada", resolution: "acepto" }), manual("mt1", { status: "cerrada" })],
+      [override("cobranza:p1", { status: "cerrada", resolution: "acepto", closedInstance: "i1" }), manual("mt1", { status: "cerrada" })],
       HOY, true,
     );
     expect(r).toHaveLength(2);
@@ -365,6 +380,90 @@ describe("fusionarTareas", () => {
     const a = fusionarTareas([derivada("cobranza:p1")], [], HOY)[0];
     const b = fusionarTareas([derivada("cobranza:p1")], [], HOY)[0];
     expect(a.id).toBe(b.id);
+  });
+});
+
+/** El escenario que motivó todo: la clave `cobranza:p1` vive para siempre, la
+ *  deuda no. Si el cierre se pega a la clave, la clínica deja de cobrar. */
+describe("C1 · el cierre se ata a la instancia, no al paciente", () => {
+  const p = [pac("p1")];
+
+  it("cobranza: cierro con saldo 500.000 → paga todo → firma plan de 2.000.000 → la tarea VUELVE", () => {
+    // 1. Debe 500.000. Recepción llama, el paciente se niega, cierran "Rechazó".
+    const etapa1 = derivarTareas({ ...vacio, patients: p, budgets: [bud("b1", "p1", "aceptado", 500_000)] }, HOY);
+    const cob1 = etapa1.find((t) => t.type === "cobranza")!;
+    expect(cob1.instanceKey).toBe("500000");
+    const ov = override("cobranza:p1", { status: "cerrada", resolution: "rechazo", closedInstance: cob1.instanceKey });
+    expect(fusionarTareas(etapa1, [ov], HOY)).toHaveLength(0);
+
+    // 2. Después paga: la derivada deja de producirse y el override queda huérfano.
+    const etapa2 = derivarTareas({ ...vacio, patients: p, budgets: [bud("b1", "p1", "aceptado", 500_000)], payments: [pay("y1", "p1", 500_000)] }, HOY);
+    expect(fusionarTareas(etapa2, [ov], HOY)).toHaveLength(0);
+
+    // 3. Meses después firma un plan de 2.000.000 y no paga nada: OTRA situación.
+    const etapa3 = derivarTareas({
+      ...vacio, patients: p,
+      budgets: [bud("b1", "p1", "aceptado", 500_000), bud("b2", "p1", "aceptado", 2_000_000, "2026-07-01T10:00:00.000Z")],
+      payments: [pay("y1", "p1", 500_000)],
+    }, HOY);
+    const fusionada = fusionarTareas(etapa3, [ov], HOY);
+    expect(fusionada).toHaveLength(1);
+    expect(fusionada[0].type).toBe("cobranza");
+    expect(fusionada[0].status).toBe("pendiente");
+    expect(fusionada[0].resolution).toBeUndefined();
+  });
+
+  it("cobranza: si la deuda NO cambió, el cierre sigue valiendo", () => {
+    const d = derivarTareas({ ...vacio, patients: p, budgets: [bud("b1", "p1", "aceptado", 500_000)] }, HOY);
+    const ov = override("cobranza:p1", { status: "cerrada", resolution: "rechazo", closedInstance: "500000" });
+    expect(fusionarTareas(d, [ov], HOY)).toHaveLength(0);
+  });
+
+  it("captura: la instancia es el id del presupuesto, así que cerrarla la deja cerrada", () => {
+    const input = { ...vacio, patients: p, budgets: [bud("b1", "p1", "presentado", 300_000)] };
+    const d = derivarTareas(input, HOY);
+    const cap = d.find((t) => t.type === "captura")!;
+    expect(cap.instanceKey).toBe("b1");
+    const ov = override("captura:b1", { type: "captura", status: "cerrada", resolution: "rechazo", closedInstance: "b1" });
+    expect(fusionarTareas(d, [ov], HOY)).toHaveLength(0);
+    // Y sigue cerrada en la lectura siguiente: la instancia no se mueve.
+    expect(fusionarTareas(derivarTareas(input, HOY), [ov], HOY)).toHaveLength(0);
+  });
+
+  it("cita: la instancia es el id de la cita, así que cerrarla la deja cerrada", () => {
+    const input = { ...vacio, patients: p, appointments: [cita("a1", "p1", "2026-07-31T10:00:00.000Z", "pendiente")] };
+    const d = derivarTareas(input, HOY);
+    const c = d.find((t) => t.type === "cita")!;
+    expect(c.instanceKey).toBe("a1");
+    const ov = override("cita:a1", { type: "cita", status: "cerrada", resolution: "acepto", closedInstance: "a1" });
+    expect(fusionarTareas(d, [ov], HOY)).toHaveLength(0);
+    expect(fusionarTareas(derivarTareas(input, HOY), [ov], HOY)).toHaveLength(0);
+  });
+
+  it("control: la instancia es el eventAt, así que un tratamiento terminado DESPUÉS reabre el control", () => {
+    // Los tratamientos van pagados: si no, el paciente arrastraría además una
+    // cobranza y el test estaría midiendo dos reglas a la vez.
+    const base = {
+      ...vacio, patients: p,
+      budgets: [bud("b1", "p1", "completado", 500_000, "2026-05-10T10:00:00.000Z")],
+      payments: [pay("y1", "p1", 500_000)],
+    };
+    const d1 = derivarTareas(base, HOY);
+    const ctl1 = d1.find((t) => t.type === "control")!;
+    expect(ctl1.instanceKey).toBe("2026-05-10T10:00:00.000Z");
+    const ov = override("control:p1", { type: "control", status: "cerrada", resolution: "acepto", closedInstance: ctl1.instanceKey });
+    expect(fusionarTareas(d1, [ov], HOY)).toHaveLength(0);
+
+    // Termina OTRO tratamiento más tarde: el cierre viejo ya no describe esto.
+    const d2 = derivarTareas({
+      ...base,
+      budgets: [...base.budgets, bud("b2", "p1", "completado", 200_000, "2026-07-20T10:00:00.000Z")],
+      payments: [pay("y1", "p1", 700_000)],
+    }, HOY);
+    const fusionada = fusionarTareas(d2, [ov], HOY);
+    expect(fusionada).toHaveLength(1);
+    expect(fusionada[0].type).toBe("control");
+    expect(fusionada[0].status).toBe("pendiente");
   });
 });
 

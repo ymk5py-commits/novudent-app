@@ -68,6 +68,12 @@ export interface DerivedTask {
   /** Clave determinística `${tipo}:${idDeLaEntidad}`. Es lo que permite que una
    *  decisión humana se pegue a una tarea que no existe como fila. */
   derivedKey: string;
+  /** Identifica ESTA instancia de la condición, no el casillero.
+   *  `derivedKey` se reusa toda la vida del paciente (`cobranza:p1`), así que un
+   *  cierre humano atado solo a la clave enterraría la regla para siempre: el
+   *  paciente firma un plan nuevo, no paga, y la tarea nunca vuelve a aparecer.
+   *  El cierre se guarda contra esta instancia y deja de aplicar cuando cambia. */
+  instanceKey: string;
   type: AutoTaskType;
   patientId: string;
   title: string;
@@ -126,6 +132,9 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
     if (!desde) continue;
     out.push({
       derivedKey: `cobranza:${p.id}`,
+      // Si la deuda cambió —creció, o pagó una parte— es otra situación y
+      // merece otra mirada, aunque alguien haya cerrado la anterior.
+      instanceKey: String(saldo),
       type: "cobranza",
       patientId: p.id,
       title: "Saldo pendiente de pago",
@@ -141,6 +150,8 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
     if (b.status !== "presentado") continue;
     out.push({
       derivedKey: `captura:${b.id}`,
+      // La clave ya es única por presupuesto: la instancia es trivialmente estable.
+      instanceKey: b.id,
       type: "captura",
       patientId: b.patientId,
       title: "Presupuesto presentado sin aceptar",
@@ -179,6 +190,9 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
 
     out.push({
       derivedKey: `control:${p.id}`,
+      // Un tratamiento terminado DESPUÉS mueve el evento y reabre el control:
+      // el cierre viejo se refería a la atención anterior, no a esta.
+      instanceKey: eventAt,
       type: "control",
       patientId: p.id,
       title: "Control post-tratamiento",
@@ -200,6 +214,8 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
     if (dia < hoy || dia > hasta) continue;
     out.push({
       derivedKey: `cita:${a.id}`,
+      // Ídem captura: una clave por cita, así que la instancia no se mueve.
+      instanceKey: a.id,
       type: "cita",
       patientId: a.patientId,
       title: "Cita sin confirmar",
@@ -212,10 +228,27 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
   return out;
 }
 
+/** Una fila de la bandeja: un `MgmtTask` más lo que solo existe en memoria.
+ *
+ *  Estos tres campos NO se persisten —son de la derivada, que no es un doc— y
+ *  por eso viven acá y no en `MgmtTask`: si estuvieran en el tipo guardado,
+ *  cualquier `{...t}` los escribiría en Firestore como basura. */
+export interface TaskRow extends MgmtTask {
+  /** Instancia de la condición de la derivada (ver `DerivedTask.instanceKey`).
+   *  La UI lo necesita para saber CONTRA QUÉ está cerrando. */
+  instanceKey?: string;
+  /** Id del doc del override, cuando existe. Es lo que hay que actualizar para
+   *  cambiar la decisión humana — nunca el `id` de la fila, que es sintético. */
+  overrideId?: string;
+}
+
 /** Combina las derivadas con lo guardado y devuelve lo que ve la UI.
  *
  *  Reglas de convivencia: una derivada NUNCA pisa una decisión humana, y un
  *  override NUNCA revive una tarea cuya condición ya no se cumple.
+ *
+ *  El cierre humano vale solo para la instancia contra la que se cerró: la
+ *  clave `cobranza:p1` dura toda la vida del paciente, la deuda no.
  *
  *  El override huérfano —el que quedó cuando el paciente pagó y la cobranza
  *  dejó de derivarse— se ignora en silencio. No se borra: borrarlo sería
@@ -225,20 +258,27 @@ export function fusionarTareas(
   guardadas: MgmtTask[],
   hoy: string,
   incluirCerradas = false,
-): MgmtTask[] {
+): TaskRow[] {
   const porClave = new Map<string, MgmtTask>();
   for (const g of guardadas) if (g.derivedKey) porClave.set(g.derivedKey, g);
 
-  const out: MgmtTask[] = [];
+  const out: TaskRow[] = [];
 
   for (const d of derivadas) {
     const ov = porClave.get(d.derivedKey);
-    if (ov?.status === "cerrada" && !incluirCerradas) continue;
+    // Un cierre sin `closedInstance` es dato viejo (anterior a este campo):
+    // cuenta como instancia que NO coincide. Preferimos mostrar una tarea de
+    // más que perder plata por una cobranza enterrada.
+    const cierreVigente = ov?.status === "cerrada" && ov.closedInstance === d.instanceKey;
+    const cierreCaduco = ov?.status === "cerrada" && !cierreVigente;
+    if (cierreVigente && !incluirCerradas) continue;
     if (ov?.snoozedUntil && ov.snoozedUntil > hoy) continue;
     out.push({
-      // Id determinístico: si cambiara entre renders, React perdería el foco y
-      // el scroll de la lista en cada recálculo.
-      id: ov?.id ?? `d_${d.derivedKey}`,
+      // Id determinístico y SIEMPRE el mismo: no puede depender de si existe el
+      // override, porque entonces cambiaría justo al crearlo y la fila
+      // seleccionada se le escaparía al panel de detalle.
+      id: `d_${d.derivedKey}`,
+      overrideId: ov?.id,
       clinicId: ov?.clinicId ?? "",
       type: d.type,
       patientId: d.patientId,
@@ -246,12 +286,15 @@ export function fusionarTareas(
       detail: d.detail,
       budgetId: d.budgetId,
       derivedKey: d.derivedKey,
+      instanceKey: d.instanceKey,
       dueDate: d.dueDate,
       createdAt: d.eventAt,
       assigneeId: ov?.assigneeId,
       snoozedUntil: ov?.snoozedUntil,
-      status: ov?.status ?? "pendiente",
-      resolution: ov?.resolution,
+      // El cierre caduco no describe la situación de hoy: ni el estado ni la
+      // resolución de entonces siguen valiendo.
+      status: cierreCaduco ? "pendiente" : ov?.status ?? "pendiente",
+      resolution: cierreCaduco ? undefined : ov?.resolution,
       updatedAt: ov?.updatedAt,
     });
   }
@@ -271,14 +314,14 @@ export function fusionarTareas(
  *  subconjunto de `delDia` (las que además ya vencieron), que es lo que va en el
  *  badge con el número. Una tarea sin `dueDate` —las manuales sin fecha— cuenta
  *  como del día: si la escondiéramos hasta "algún día", no se haría nunca. */
-export function clasificarTareas(tareas: MgmtTask[], hoy: string): {
-  delDia: MgmtTask[];
-  atrasadas: MgmtTask[];
-  futuras: MgmtTask[];
+export function clasificarTareas<T extends { dueDate?: string }>(tareas: T[], hoy: string): {
+  delDia: T[];
+  atrasadas: T[];
+  futuras: T[];
 } {
-  const delDia: MgmtTask[] = [];
-  const atrasadas: MgmtTask[] = [];
-  const futuras: MgmtTask[] = [];
+  const delDia: T[] = [];
+  const atrasadas: T[] = [];
+  const futuras: T[] = [];
   for (const t of tareas) {
     if (t.dueDate && t.dueDate > hoy) { futuras.push(t); continue; }
     delDia.push(t);

@@ -814,6 +814,10 @@ export interface MgmtTask {
    *  (`cobranza:p_123`). Vacío en las tareas manuales (`personalizada`).
    *  Las derivadas no se guardan: este doc solo carga la decisión humana. */
   derivedKey?: string;
+  /** Instancia de la condición contra la que se cerró esta tarea derivada
+   *  (ver `DerivedTask.instanceKey`). Si la instancia actual es otra, el cierre
+   *  ya no aplica: es una situación nueva, no la que el humano resolvió. */
+  closedInstance?: string;
   /** Postergada hasta esta fecha (YYYY-MM-DD). Antes de ella la tarea no
    *  aparece en la bandeja del día ni cuenta como atrasada. */
   snoozedUntil?: string;

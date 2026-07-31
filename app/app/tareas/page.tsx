@@ -9,7 +9,7 @@
 import { useMemo, useState } from "react";
 import { useStore, fmtDate, fullName, waLink } from "@/lib/store";
 import { can } from "@/lib/rbac";
-import { derivarTareas, fusionarTareas, clasificarTareas } from "@/lib/tareas";
+import { derivarTareas, fusionarTareas, clasificarTareas, type TaskRow } from "@/lib/tareas";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 import { ListChecks, Plus, MessageCircle, Trash2, Clock } from "lucide-react";
@@ -59,7 +59,7 @@ export default function TareasPage() {
   /** Aplica un cambio a una tarea. Si es manual, actualiza su doc. Si es derivada,
    *  crea o actualiza el OVERRIDE: el doc que guarda la decisión humana sobre una
    *  tarea que no existe como fila. */
-  const aplicar = (t: MgmtTask, cambio: Partial<MgmtTask>) => {
+  const aplicar = (t: TaskRow, cambio: Partial<MgmtTask>) => {
     if (!t.derivedKey) { updateMgmtTask({ ...t, ...cambio, updatedAt: new Date().toISOString() }); return; }
     const existente = db.mgmtTasks.find((x) => x.derivedKey === t.derivedKey);
     if (existente) { updateMgmtTask({ ...existente, ...cambio, updatedAt: new Date().toISOString() }); return; }
@@ -76,8 +76,12 @@ export default function TareasPage() {
     });
   };
 
-  const cerrar = (t: MgmtTask, resolution: MgmtTask["resolution"]) => aplicar(t, { status: "cerrada", resolution });
-  const postergar = (t: MgmtTask, dias: number) => {
+  /** Cerrar una derivada guarda CONTRA QUÉ se cerró. Sin eso el cierre queda
+   *  pegado a la clave (`cobranza:p1`), que dura toda la vida del paciente: el
+   *  día que firme un plan nuevo y no pague, la tarea nunca volvería a salir. */
+  const cerrar = (t: TaskRow, resolution: MgmtTask["resolution"]) =>
+    aplicar(t, { status: "cerrada", resolution, ...(t.instanceKey ? { closedInstance: t.instanceKey } : {}) });
+  const postergar = (t: TaskRow, dias: number) => {
     const d = new Date(); d.setUTCDate(d.getUTCDate() + dias);
     aplicar(t, { snoozedUntil: d.toISOString().slice(0, 10) });
   };
