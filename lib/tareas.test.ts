@@ -445,6 +445,22 @@ describe("fusionarTareas", () => {
     const b = fusionarTareas([derivada("cobranza:p1")], [], HOY)[0];
     expect(a.id).toBe(b.id);
   });
+
+  // El id NO puede depender de si existe el override: al asignar la tarea se
+  // crea el doc, y si el id saltara a `ov_…` la fila seleccionada dejaría de
+  // encontrarse y el panel de detalle se vaciaría solo.
+  it("el id de una derivada es el MISMO con y sin override", () => {
+    const sinOv = fusionarTareas([derivada("cobranza:p1")], [], HOY)[0];
+    const conOv = fusionarTareas([derivada("cobranza:p1")], [override("cobranza:p1", { assigneeId: "u3" })], HOY)[0];
+    expect(conOv.id).toBe(sinOv.id);
+    expect(conOv.id).toBe("d_cobranza:p1");
+  });
+
+  it("el id del doc del override viaja aparte, en `overrideId`", () => {
+    const conOv = fusionarTareas([derivada("cobranza:p1")], [override("cobranza:p1", { assigneeId: "u3" })], HOY)[0];
+    expect(conOv.overrideId).toBe("ov_cobranza:p1");
+    expect(fusionarTareas([derivada("cobranza:p1")], [], HOY)[0].overrideId).toBeUndefined();
+  });
 });
 
 /** El escenario que motivó todo: la clave `cobranza:p1` vive para siempre, la

@@ -73,10 +73,13 @@ export default function TareasPage() {
 
   /** Aplica un cambio a una tarea. Si es manual, actualiza su doc. Si es derivada,
    *  crea o actualiza el OVERRIDE: el doc que guarda la decisión humana sobre una
-   *  tarea que no existe como fila. */
+   *  tarea que no existe como fila.
+   *
+   *  El doc a tocar sale de `overrideId`, no del `id` de la fila: ese es
+   *  sintético (`d_cobranza:p1`) y no existe en Firestore. */
   const aplicar = (t: TaskRow, cambio: Partial<MgmtTask>) => {
     if (!t.derivedKey) { updateMgmtTask({ ...t, ...cambio, updatedAt: new Date().toISOString() }); return; }
-    const existente = db.mgmtTasks.find((x) => x.derivedKey === t.derivedKey);
+    const existente = t.overrideId ? db.mgmtTasks.find((x) => x.id === t.overrideId) : undefined;
     if (existente) { updateMgmtTask({ ...existente, ...cambio, updatedAt: new Date().toISOString() }); return; }
     addMgmtTask({
       id: `ov_${t.derivedKey.replace(":", "_")}_${Date.now()}`,
