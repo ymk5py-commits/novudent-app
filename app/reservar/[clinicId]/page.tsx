@@ -23,6 +23,10 @@ type Availability = {
   dentists: { id: string; name: string }[];
   slots: Record<string, string[]>;
   closed?: boolean;
+  /** Anticipación mínima configurada por la clínica, en horas. La usamos solo
+   *  para explicarle al paciente por qué no ve turnos; el filtro real lo hace
+   *  el servidor. */
+  minLeadHoras?: number;
 };
 
 const inputCls =
@@ -235,7 +239,11 @@ export default function ReservaOnline() {
                     </button>
                   ))}
                   {(avail.slots[d.id] || []).length === 0 && (
-                    <span className="text-xs text-clinic-muted">Sin horarios libres este día.</span>
+                    <span className="text-xs text-clinic-muted">
+                      {avail.minLeadHoras && avail.minLeadHoras > 0
+                        ? `Sin horarios disponibles. Los turnos se reservan con al menos ${avail.minLeadHoras} h de anticipación.`
+                        : "Sin horarios libres este día."}
+                    </span>
                   )}
                 </div>
               </div>

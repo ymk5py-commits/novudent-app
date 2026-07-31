@@ -41,6 +41,13 @@ export interface Clinic {
     patientFields?: Record<string, FieldConfig>;
     /** Plazos de las tareas automáticas de gestión (módulo Tareas). */
     taskDeadlines?: TaskDeadlines;
+    /** Reserva online del paciente (paridad Dentalink). */
+    onlineBooking?: {
+      /** Anticipación mínima en horas: cuánto tiene que faltar para el turno
+       *  para que el paciente todavía pueda tomarlo. 0 = hasta la hora misma.
+       *  Se evalúa en la zona horaria de la clínica (`config.timezone`). */
+      minLeadHoras?: number;
+    };
     /** Logotipo de la clínica (data URL base64) — header de la app + documentos */
     logo?: string;
     /** Pago online configurable (sin atar a una pasarela ni guardar secretos):

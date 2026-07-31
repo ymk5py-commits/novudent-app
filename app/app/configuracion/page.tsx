@@ -2,11 +2,12 @@
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon, MapPin, CalendarClock, ListChecks } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon, MapPin, CalendarClock, ListChecks, Clock } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
 import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
 import { can, ROLE_LABEL } from "@/lib/rbac";
 import { DEFAULT_DEADLINES } from "@/lib/tareas";
+import { anticipacionDe } from "@/lib/reserva-online";
 import type { Role, User, Procedure, BotikaConfig, ConsentTemplate, Branch, TaskDeadline } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
@@ -465,6 +466,39 @@ export default function ConfigPage() {
         templates={clinic.config.consentTemplates ?? []}
         onSave={saveConsentTemplates}
       />
+      </Reveal>
+
+      {/* Reserva online: con cuánta anticipación se puede tomar un turno. Antes
+          estaba hardcodeado ("mañana en adelante"); ahora la clínica decide, y el
+          cálculo usa SU zona horaria, no la del servidor. */}
+      <Reveal>
+      <Card className="p-5">
+        <div id="reserva-online" className="mb-1 flex scroll-mt-24 items-center gap-2"><Clock className="h-4 w-4 text-azure-600" /><h2 className="text-sm font-extrabold text-clinic-text">Reserva online</h2></div>
+        <p className="mt-1 text-xs text-clinic-muted">Con cuánta anticipación mínima puede el paciente tomar un turno desde la web.</p>
+        <div className="mt-4 max-w-sm">
+          <Field label="Anticipación mínima" hint={`Se calcula en la zona horaria de la clínica (${clinic.config.timezone || "sin configurar"}).`}>
+            <select
+              value={String(anticipacionDe(clinic.config))}
+              onChange={(e) => updateClinicConfig({ onlineBooking: { ...clinic.config.onlineBooking, minLeadHoras: Number(e.target.value) } })}
+              className={inputCls}
+            >
+              {/* El default (12) tiene que figurar en la lista aunque no sea una
+                  opción "de Dentalink": un <select> controlado cuyo value no
+                  matchea ninguna opción se renderiza en blanco. */}
+              <option value="0">Sin anticipación (hasta la hora del turno)</option>
+              <option value="1">1 hora</option>
+              <option value="2">2 horas</option>
+              <option value="4">4 horas</option>
+              <option value="8">8 horas</option>
+              <option value="12">12 horas</option>
+              <option value="24">24 horas</option>
+            </select>
+          </Field>
+        </div>
+        <p className="mt-3 text-[11px] text-clinic-muted">
+          Con <b>0</b> el paciente puede reservar para hoy mismo hasta la hora del turno. Con <b>24</b> necesita al menos un día completo de aviso.
+        </p>
+      </Card>
       </Reveal>
 
       {/* Plazos de las tareas automáticas: cuánto pasa desde el evento (deuda,

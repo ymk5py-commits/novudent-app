@@ -7,6 +7,7 @@ import {
   createIfAbsent,
 } from "@/lib/server/firestore-rest";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
+import { ahoraEnZona, slotAlcanzaAnticipacion, anticipacionDe } from "@/lib/reserva-online";
 
 /**
  * Agendamiento online — Fase 3 Novudent.
@@ -43,6 +44,14 @@ function isValidId(s: string): boolean {
   return /^[a-zA-Z0-9_-]{2,64}$/.test(s);
 }
 
+/** Suma días a un YYYY-MM-DD y devuelve otro YYYY-MM-DD. Se opera en UTC puro
+ *  para que el horario de verano no corra la cuenta un día. */
+function sumarDias(fecha: string, dias: number): string {
+  const d = new Date(`${fecha}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
 export async function GET(req: NextRequest) {
   const rl = rateLimit(`reservas-get:${clientIp(req)}`, { limit: 40, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
@@ -59,14 +68,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Parámetros inválidos" }, { status: 400 });
   }
 
-  // Rango permitido: mañana → +30 días (hoy no, para dar margen a la clínica).
   const day = new Date(`${date}T00:00:00`);
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const max = new Date(today); max.setDate(today.getDate() + BOOKING_DAYS_AHEAD);
-  if (!(day > today && day <= max)) {
-    return NextResponse.json({ ok: false, error: "Fecha fuera del rango de reserva" }, { status: 400 });
-  }
-  // Domingo cerrado.
+  // Domingo cerrado. Se evalúa sobre el string de fecha (medianoche local del
+  // proceso), así que no depende de la hora y es estable.
   if (day.getDay() === 0) {
     return NextResponse.json({ ok: true, clinic: null, dentists: [], slots: {}, closed: true });
   }
@@ -75,6 +79,18 @@ export async function GET(req: NextRequest) {
     const clinic = await getDocument(`clinics/${clinicId}`);
     if (!clinic) {
       return NextResponse.json({ ok: false, error: "Clínica no encontrada" }, { status: 404 });
+    }
+
+    // El rango de fechas y la anticipación se miden en la zona de la CLÍNICA, no
+    // en la del servidor: esto corre en Vercel (UTC) y las clínicas están en
+    // UTC-3, así que con la hora del proceso, de 21:00 a medianoche hora local
+    // "hoy" ya era el día siguiente y se perdía una noche de reservas.
+    const tz = String((clinic.config as Record<string, unknown> | undefined)?.timezone || "UTC");
+    const minLead = anticipacionDe(clinic.config as { onlineBooking?: { minLeadHoras?: number } } | undefined);
+    const hoyLocal = ahoraEnZona(Date.now(), tz).fecha;
+    const maxLocal = sumarDias(hoyLocal, BOOKING_DAYS_AHEAD);
+    if (date < hoyLocal || date > maxLocal) {
+      return NextResponse.json({ ok: false, error: "Fecha fuera del rango de reserva" }, { status: 400 });
     }
     const users = await listCollection(`clinics/${clinicId}`, "users");
     const dentists = users
@@ -92,7 +108,10 @@ export async function GET(req: NextRequest) {
       busy[dId].add(start.slice(11, 16));
     }
 
-    const grid = gridSlots();
+    // Se filtra por anticipación ANTES de responder: el paciente no debería ver
+    // un turno que después el POST le va a rechazar.
+    const ahora = Date.now();
+    const grid = gridSlots().filter((t) => slotAlcanzaAnticipacion(date, t, ahora, tz, minLead));
     const slots: Record<string, string[]> = {};
     for (const d of dentists) {
       slots[d.id] = grid.filter((t) => !busy[d.id]?.has(t));
@@ -103,6 +122,7 @@ export async function GET(req: NextRequest) {
       clinic: { name: String(clinic.name || "Clínica") },
       dentists,
       slots,
+      minLeadHoras: minLead,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -153,12 +173,12 @@ export async function POST(req: NextRequest) {
     );
   }
   const startISO = `${date}T${time}:00`;
+  // Instante de la cita en la hora local del proceso. Solo se usa para derivar
+  // el fin del turno y para el texto del recordatorio; el control de rango y de
+  // anticipación va aparte, en la zona horaria de la clínica.
   const day = new Date(startISO);
-  // Misma política que el GET: mañana → +30 días, domingo cerrado (no "hoy").
-  const dayMidnight = new Date(`${date}T00:00:00`);
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const max = new Date(today); max.setDate(today.getDate() + BOOKING_DAYS_AHEAD);
-  if (!(dayMidnight > today && dayMidnight <= max) || day.getDay() === 0) {
+  // Domingo cerrado (no depende de la hora, sale del string de fecha).
+  if (new Date(`${date}T00:00:00`).getDay() === 0) {
     return NextResponse.json({ ok: false, error: "Horario no disponible" }, { status: 400 });
   }
 
@@ -166,6 +186,17 @@ export async function POST(req: NextRequest) {
     const clinic = await getDocument(`clinics/${clinicId}`);
     if (!clinic) {
       return NextResponse.json({ ok: false, error: "Clínica no encontrada" }, { status: 404 });
+    }
+
+    // El chequeo de anticipación se repite acá y no se confía en el del GET: el
+    // POST es la frontera real. Un cliente puede saltearse la UI y postear un
+    // turno para dentro de cinco minutos, y sin esto entraría.
+    const tz = String((clinic.config as Record<string, unknown> | undefined)?.timezone || "UTC");
+    const minLead = anticipacionDe(clinic.config as { onlineBooking?: { minLeadHoras?: number } } | undefined);
+    const hoyLocal = ahoraEnZona(Date.now(), tz).fecha;
+    const maxLocal = sumarDias(hoyLocal, BOOKING_DAYS_AHEAD);
+    if (date < hoyLocal || date > maxLocal || !slotAlcanzaAnticipacion(date, time, Date.now(), tz, minLead)) {
+      return NextResponse.json({ ok: false, error: "Horario no disponible" }, { status: 400 });
     }
 
     // Lock de slot para serializar reservas concurrentes del mismo horario.
