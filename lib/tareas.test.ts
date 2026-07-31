@@ -177,3 +177,50 @@ describe("regla captura", () => {
     expect(t.find((x) => x.type === "captura")!.detail).toBe("Ortodoncia fija");
   });
 });
+
+describe("regla control", () => {
+  it("abre cuando hay tratamiento completado y ninguna cita futura", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "completado", 500_000, "2026-01-10T10:00:00.000Z")] }, HOY);
+    const ctl = t.filter((x) => x.type === "control");
+    expect(ctl).toHaveLength(1);
+    expect(ctl[0].derivedKey).toBe("control:p1");
+    expect(ctl[0].dueDate).toBe("2026-07-09"); // 2026-01-10 + 180
+  });
+
+  it("NO abre si el paciente ya tiene una cita futura — auto-cierre al agendar", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "completado", 500_000)], appointments: [cita("a1", "p1", "2026-08-15T10:00:00.000Z", "confirmada")] }, HOY);
+    expect(t.filter((x) => x.type === "control")).toHaveLength(0);
+  });
+
+  it("una cita futura CANCELADA no cuenta como cita futura", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "completado", 500_000)], appointments: [cita("a1", "p1", "2026-08-15T10:00:00.000Z", "cancelada")] }, HOY);
+    expect(t.filter((x) => x.type === "control")).toHaveLength(1);
+  });
+
+  it("una cita PASADA no evita la tarea de control", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "completado", 500_000)], appointments: [cita("a1", "p1", "2026-06-01T10:00:00.000Z", "completada")] }, HOY);
+    expect(t.filter((x) => x.type === "control")).toHaveLength(1);
+  });
+
+  it("un paciente con TRES tratamientos completados deriva UNA sola tarea", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [
+      bud("b1", "p1", "completado", 100_000, "2023-01-10T10:00:00.000Z"),
+      bud("b2", "p1", "completado", 200_000, "2024-05-10T10:00:00.000Z"),
+      bud("b3", "p1", "completado", 300_000, "2026-01-10T10:00:00.000Z"),
+    ] }, HOY);
+    expect(t.filter((x) => x.type === "control")).toHaveLength(1);
+  });
+
+  it("el evento es la última cita completada si existe", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "completado", 500_000, "2026-01-10T10:00:00.000Z")], appointments: [
+      cita("a1", "p1", "2026-02-01T10:00:00.000Z", "completada"),
+      cita("a2", "p1", "2026-03-15T10:00:00.000Z", "completada"),
+    ] }, HOY);
+    expect(t.find((x) => x.type === "control")!.dueDate).toBe("2026-09-11"); // 2026-03-15 + 180
+  });
+
+  it("NO abre si el paciente no tiene ningún tratamiento completado", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "aceptado", 500_000)] }, HOY);
+    expect(t.filter((x) => x.type === "control")).toHaveLength(0);
+  });
+});

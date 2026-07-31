@@ -90,7 +90,7 @@ function gs(n: number): string {
 }
 
 export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
-  const { patients, budgets, payments, deadlines } = input;
+  const { patients, budgets, payments, appointments, deadlines } = input;
   const out: DerivedTask[] = [];
   const saldos = mapaDeSaldos(budgets, payments);
 
@@ -129,6 +129,39 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
       budgetId: b.id,
       eventAt: b.createdAt,
       dueDate: calcularVencimiento(b.createdAt, plazoCaptura),
+    });
+  }
+
+  // ── control: una POR PACIENTE con tratamiento terminado y sin próxima visita ──
+  const plazoControl = plazoDe("control", deadlines);
+  for (const p of patients) {
+    const completados = budgets
+      .filter((b) => b.patientId === p.id && b.status === "completado")
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    if (completados.length === 0) continue;
+
+    const tieneCitaFutura = appointments.some(
+      (a) => a.patientId === p.id && a.start.slice(0, 10) > hoy && a.status !== "cancelada",
+    );
+    if (tieneCitaFutura) continue;
+
+    // El evento es la última atención real; si nunca vino, el fin del tratamiento.
+    const ultimaAtencion = appointments
+      .filter((a) => a.patientId === p.id && a.status === "completada")
+      .map((a) => a.start)
+      .sort()
+      .pop();
+    const eventAt = ultimaAtencion ?? completados[completados.length - 1].createdAt;
+
+    out.push({
+      derivedKey: `control:${p.id}`,
+      type: "control",
+      patientId: p.id,
+      title: "Control post-tratamiento",
+      detail: "Tratamiento finalizado — agendar control.",
+      budgetId: completados[completados.length - 1].id,
+      eventAt,
+      dueDate: calcularVencimiento(eventAt, plazoControl),
     });
   }
 
