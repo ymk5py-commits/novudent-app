@@ -1,0 +1,354 @@
+/** Motor de tareas automáticas de gestión.
+ *
+ *  Las tareas automáticas NO se guardan: se derivan del estado de la clínica en
+ *  cada lectura. Eso hace que el auto-cierre sea implícito — si el paciente pagó,
+ *  la condición "tiene saldo" deja de cumplirse y la tarea no se deriva más. No
+ *  hay proceso que la cierre porque no hay nada que cerrar.
+ *
+ *  Módulo PURO: no importa React, ni Firestore, ni el store. Todo lo que necesita
+ *  entra por parámetro y todo lo que produce sale por retorno. */
+import type { Appointment, Budget, MgmtTask, MgmtTaskType, Patient, Payment, TaskDeadline, TaskDeadlines } from "./types";
+import { budgetTotal } from "./budgets";
+
+/** Plazos por defecto cuando la clínica no configuró los suyos. */
+export const DEFAULT_DEADLINES: Required<TaskDeadlines> = {
+  // Margen para que el pago entre por otra vía antes de salir a perseguirlo.
+  cobranza: { kind: "dias", n: 7 },
+  // El presupuesto se enfría rápido: a los 3 días ya hay que llamar.
+  captura: { kind: "dias", n: 3 },
+  // Control semestral, el estándar odontológico.
+  control: { kind: "dias", n: 180 },
+  // Una cita sin confirmar es trabajo de hoy.
+  cita: { kind: "inmediato" },
+};
+
+export type AutoTaskType = Exclude<MgmtTaskType, "personalizada">;
+
+/** Ventana de anticipación de la regla `cita`: una cita sin confirmar entra a la
+ *  bandeja este número de días antes. Dos días es lo que da margen a llamar y,
+ *  si el paciente no puede, liberar el turno a tiempo. */
+export const VENTANA_CITA_DIAS = 2;
+
+/** Ventana de recencia de la regla `control`: no se persigue a quien terminó su
+ *  tratamiento hace más de esto. Sin el corte, una clínica que migra su historia
+ *  entera abre la bandeja el primer día con una tarea vencida por cada paciente
+ *  que pasó alguna vez — y una bandeja con mil atrasadas no se mira nunca. */
+export const VENTANA_CONTROL_MESES = 12;
+
+/** Plazo efectivo de un tipo: lo que configuró la clínica, o el default. */
+export function plazoDe(type: AutoTaskType, cfg: TaskDeadlines | undefined): TaskDeadline {
+  return cfg?.[type] ?? DEFAULT_DEADLINES[type];
+}
+
+/** Fecha (YYYY-MM-DD) en que una tarea originada en `eventAt` pasa a estar vencida. */
+export function calcularVencimiento(eventAt: string, plazo: TaskDeadline): string {
+  const d = new Date(eventAt);
+  if (plazo.kind === "dias") d.setUTCDate(d.getUTCDate() + plazo.n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Saldo de TODOS los pacientes en dos pasadas (una por budgets, una por pagos).
+ *
+ *  Misma definición que `patientBalance` de lib/budgets.ts —presupuestos
+ *  aceptados/completados menos pagos no anulados— pero calculada de una sola vez
+ *  para todos. Llamar `patientBalance` por paciente sería O(P × (B + Pg)) y
+ *  congelaría el render de la bandeja en una clínica con historia.
+ *
+ *  `lib/tareas.test.ts` tiene un test de equivalencia contra `patientBalance`
+ *  que falla si las dos definiciones divergen. */
+export function mapaDeSaldos(budgets: Budget[], payments: Payment[]): Map<string, number> {
+  const saldo = new Map<string, number>();
+  for (const b of budgets) {
+    if (b.status !== "aceptado" && b.status !== "completado") continue;
+    saldo.set(b.patientId, (saldo.get(b.patientId) ?? 0) + budgetTotal(b));
+  }
+  for (const p of payments) {
+    if (p.voidedAt) continue;
+    saldo.set(p.patientId, (saldo.get(p.patientId) ?? 0) - p.amount);
+  }
+  return saldo;
+}
+
+/** Una tarea automática recién derivada. Todavía no pasó por los overrides. */
+export interface DerivedTask {
+  /** Clave determinística `${tipo}:${idDeLaEntidad}`. Es lo que permite que una
+   *  decisión humana se pegue a una tarea que no existe como fila. */
+  derivedKey: string;
+  /** Identifica ESTA instancia de la condición, no el casillero.
+   *  `derivedKey` se reusa toda la vida del paciente (`cobranza:p1`), así que un
+   *  cierre humano atado solo a la clave enterraría la regla para siempre: el
+   *  paciente firma un plan nuevo, no paga, y la tarea nunca vuelve a aparecer.
+   *  El cierre se guarda contra esta instancia y deja de aplicar cuando cambia. */
+  instanceKey: string;
+  type: AutoTaskType;
+  patientId: string;
+  title: string;
+  detail?: string;
+  /** Monto CRUDO, sin formato. El motor es puro y la app maneja 17 monedas
+   *  (`lib/currency.ts`): si acá se armara el texto, una clínica de Colombia
+   *  vería "Gs." sobre pesos y con USD el redondeo se comería los centavos.
+   *  Formatea la página, que es la que sabe cuál es la moneda activa. */
+  amount?: number;
+  budgetId?: string;
+  /** Fecha del hecho que originó la tarea (ISO). */
+  eventAt: string;
+  /** eventAt + plazo (YYYY-MM-DD). Antes de esta fecha la tarea no vence. */
+  dueDate: string;
+}
+
+/** Lo mínimo que necesitan las reglas. Se pasa un objeto plano y no el `DB`
+ *  entero para poder testear el motor sin construir una base completa. */
+export interface TareasInput {
+  patients: Patient[];
+  budgets: Budget[];
+  payments: Payment[];
+  appointments: Appointment[];
+  deadlines?: TaskDeadlines;
+}
+
+export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
+  const { patients, budgets, payments, appointments, deadlines } = input;
+  const out: DerivedTask[] = [];
+  const saldos = mapaDeSaldos(budgets, payments);
+
+  // Agrupaciones en una pasada. Sin esto, cada regla recorrería budgets y
+  // appointments COMPLETOS por cada paciente: el mismo O(P × N) que motivó
+  // `mapaDeSaldos`, reintroducido por la puerta de atrás.
+  const budgetsPorPaciente = new Map<string, Budget[]>();
+  for (const b of budgets) {
+    const arr = budgetsPorPaciente.get(b.patientId);
+    if (arr) arr.push(b); else budgetsPorPaciente.set(b.patientId, [b]);
+  }
+  const citasPorPaciente = new Map<string, Appointment[]>();
+  for (const a of appointments) {
+    const arr = citasPorPaciente.get(a.patientId);
+    if (arr) arr.push(a); else citasPorPaciente.set(a.patientId, [a]);
+  }
+
+  // ── cobranza: una por paciente con saldo pendiente ──────────────────────
+  const plazoCobranza = plazoDe("cobranza", deadlines);
+  for (const p of patients) {
+    const saldo = saldos.get(p.id) ?? 0;
+    if (saldo <= 0) continue;
+    // El evento es el presupuesto con saldo más antiguo: la deuda "nació" ahí.
+    const desde = (budgetsPorPaciente.get(p.id) ?? [])
+      .filter((b) => b.status === "aceptado" || b.status === "completado")
+      .map((b) => b.createdAt)
+      .sort()[0];
+    if (!desde) continue;
+    out.push({
+      derivedKey: `cobranza:${p.id}`,
+      // Si la deuda cambió —creció, o pagó una parte— es otra situación y
+      // merece otra mirada, aunque alguien haya cerrado la anterior.
+      instanceKey: String(saldo),
+      type: "cobranza",
+      patientId: p.id,
+      title: "Saldo pendiente de pago",
+      amount: saldo,
+      eventAt: desde,
+      dueDate: calcularVencimiento(desde, plazoCobranza),
+    });
+  }
+
+  // ── captura: una por presupuesto presentado que no avanzó ───────────────
+  const plazoCaptura = plazoDe("captura", deadlines);
+  for (const b of budgets) {
+    if (b.status !== "presentado") continue;
+    out.push({
+      derivedKey: `captura:${b.id}`,
+      // La clave ya es única por presupuesto: la instancia es trivialmente estable.
+      instanceKey: b.id,
+      type: "captura",
+      patientId: b.patientId,
+      title: "Presupuesto presentado sin aceptar",
+      detail: b.name ?? "Presupuesto",
+      budgetId: b.id,
+      eventAt: b.createdAt,
+      dueDate: calcularVencimiento(b.createdAt, plazoCaptura),
+    });
+  }
+
+  // ── control: una POR PACIENTE con tratamiento terminado y sin próxima visita ──
+  const plazoControl = plazoDe("control", deadlines);
+  const corte = new Date(hoy);
+  corte.setUTCMonth(corte.getUTCMonth() - VENTANA_CONTROL_MESES);
+  const controlDesde = corte.toISOString().slice(0, 10);
+  for (const p of patients) {
+    // Continue barato primero: sin presupuestos no hay nada que ordenar ni revisar.
+    const budgetsDelPaciente = budgetsPorPaciente.get(p.id);
+    if (!budgetsDelPaciente) continue;
+
+    const completados = budgetsDelPaciente
+      .filter((b) => b.status === "completado")
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    if (completados.length === 0) continue;
+
+    const citasDelPaciente = citasPorPaciente.get(p.id) ?? [];
+    // `>=`, no `>`: la cita de hoy todavía no pasó, y la regla `cita` también
+    // cuenta el día de hoy. Con `>` estricto, al paciente que viene esta tarde
+    // se le abría igual un "Control post-tratamiento".
+    const tieneCitaFutura = citasDelPaciente.some(
+      (a) => a.start.slice(0, 10) >= hoy && a.status !== "cancelada",
+    );
+    if (tieneCitaFutura) continue;
+
+    // El evento es la última atención real; si nunca vino, el fin del tratamiento.
+    const ultimaAtencion = citasDelPaciente
+      .filter((a) => a.status === "completada")
+      .map((a) => a.start)
+      .sort()
+      .pop();
+    const eventAt = ultimaAtencion ?? completados[completados.length - 1].createdAt;
+    // Fuera de la ventana no se persigue: a quien terminó hace años ya no se lo
+    // llama "para el control", y su tarea solo taparía las que sí importan.
+    if (eventAt.slice(0, 10) < controlDesde) continue;
+
+    out.push({
+      derivedKey: `control:${p.id}`,
+      // Un tratamiento terminado DESPUÉS mueve el evento y reabre el control:
+      // el cierre viejo se refería a la atención anterior, no a esta.
+      instanceKey: eventAt,
+      type: "control",
+      patientId: p.id,
+      title: "Control post-tratamiento",
+      detail: "Tratamiento finalizado — agendar control.",
+      budgetId: completados[completados.length - 1].id,
+      eventAt,
+      dueDate: calcularVencimiento(eventAt, plazoControl),
+    });
+  }
+
+  // ── cita: una por cita próxima sin confirmar ────────────────────────────
+  const plazoCita = plazoDe("cita", deadlines);
+  const limite = new Date(hoy);
+  limite.setUTCDate(limite.getUTCDate() + VENTANA_CITA_DIAS);
+  const hasta = limite.toISOString().slice(0, 10);
+  for (const a of appointments) {
+    if (a.status !== "pendiente") continue;
+    const dia = a.start.slice(0, 10);
+    if (dia < hoy || dia > hasta) continue;
+    out.push({
+      derivedKey: `cita:${a.id}`,
+      // Ídem captura: una clave por cita, así que la instancia no se mueve.
+      instanceKey: a.id,
+      type: "cita",
+      patientId: a.patientId,
+      title: "Cita sin confirmar",
+      detail: a.title,
+      eventAt: hoy,
+      dueDate: calcularVencimiento(hoy, plazoCita),
+    });
+  }
+
+  return out;
+}
+
+/** Una fila de la bandeja: un `MgmtTask` más lo que solo existe en memoria.
+ *
+ *  Estos tres campos NO se persisten —son de la derivada, que no es un doc— y
+ *  por eso viven acá y no en `MgmtTask`: si estuvieran en el tipo guardado,
+ *  cualquier `{...t}` los escribiría en Firestore como basura. */
+export interface TaskRow extends MgmtTask {
+  /** Instancia de la condición de la derivada (ver `DerivedTask.instanceKey`).
+   *  La UI lo necesita para saber CONTRA QUÉ está cerrando. */
+  instanceKey?: string;
+  /** Id del doc del override, cuando existe. Es lo que hay que actualizar para
+   *  cambiar la decisión humana — nunca el `id` de la fila, que es sintético. */
+  overrideId?: string;
+  /** Monto crudo de la derivada (ver `DerivedTask.amount`). Lo formatea la
+   *  página con `fmtGs`, que es la que conoce la moneda de la clínica. */
+  amount?: number;
+}
+
+/** Combina las derivadas con lo guardado y devuelve lo que ve la UI.
+ *
+ *  Reglas de convivencia: una derivada NUNCA pisa una decisión humana, y un
+ *  override NUNCA revive una tarea cuya condición ya no se cumple.
+ *
+ *  El cierre humano vale solo para la instancia contra la que se cerró: la
+ *  clave `cobranza:p1` dura toda la vida del paciente, la deuda no.
+ *
+ *  El override huérfano —el que quedó cuando el paciente pagó y la cobranza
+ *  dejó de derivarse— se ignora en silencio. No se borra: borrarlo sería
+ *  escribir en una lectura, y no molesta a nadie donde está. */
+export function fusionarTareas(
+  derivadas: DerivedTask[],
+  guardadas: MgmtTask[],
+  hoy: string,
+  incluirCerradas = false,
+): TaskRow[] {
+  const porClave = new Map<string, MgmtTask>();
+  for (const g of guardadas) if (g.derivedKey) porClave.set(g.derivedKey, g);
+
+  const out: TaskRow[] = [];
+
+  for (const d of derivadas) {
+    const ov = porClave.get(d.derivedKey);
+    // Un cierre sin `closedInstance` es dato viejo (anterior a este campo):
+    // cuenta como instancia que NO coincide. Preferimos mostrar una tarea de
+    // más que perder plata por una cobranza enterrada.
+    const cierreVigente = ov?.status === "cerrada" && ov.closedInstance === d.instanceKey;
+    const cierreCaduco = ov?.status === "cerrada" && !cierreVigente;
+    if (cierreVigente && !incluirCerradas) continue;
+    if (ov?.snoozedUntil && ov.snoozedUntil > hoy) continue;
+    out.push({
+      // Id determinístico y SIEMPRE el mismo: no puede depender de si existe el
+      // override, porque entonces cambiaría justo al crearlo y la fila
+      // seleccionada se le escaparía al panel de detalle.
+      id: `d_${d.derivedKey}`,
+      overrideId: ov?.id,
+      clinicId: ov?.clinicId ?? "",
+      type: d.type,
+      patientId: d.patientId,
+      title: d.title,
+      detail: d.detail,
+      amount: d.amount,
+      budgetId: d.budgetId,
+      derivedKey: d.derivedKey,
+      instanceKey: d.instanceKey,
+      dueDate: d.dueDate,
+      createdAt: d.eventAt,
+      assigneeId: ov?.assigneeId,
+      snoozedUntil: ov?.snoozedUntil,
+      // El cierre caduco no describe la situación de hoy: ni el estado ni la
+      // resolución de entonces siguen valiendo.
+      status: cierreCaduco ? "pendiente" : ov?.status ?? "pendiente",
+      resolution: cierreCaduco ? undefined : ov?.resolution,
+      updatedAt: ov?.updatedAt,
+    });
+  }
+
+  for (const g of guardadas) {
+    if (g.derivedKey) continue; // ya se procesó como override (o quedó huérfano)
+    if (g.status === "cerrada" && !incluirCerradas) continue;
+    // "Postergar" escribe `snoozedUntil` en cualquier tarea, manual o derivada.
+    // Sin este chequeo, en la manual el panel se cerraba y daba la sensación de
+    // que había funcionado, pero al recargar la tarea seguía en la bandeja.
+    if (g.snoozedUntil && g.snoozedUntil > hoy) continue;
+    out.push(g);
+  }
+
+  return out;
+}
+
+/** Particiona la bandeja en las vistas de Dentalink.
+ *
+ *  `delDia` y `futuras` son una partición exacta del total; `atrasadas` es un
+ *  subconjunto de `delDia` (las que además ya vencieron), que es lo que va en el
+ *  badge con el número. Una tarea sin `dueDate` —las manuales sin fecha— cuenta
+ *  como del día: si la escondiéramos hasta "algún día", no se haría nunca. */
+export function clasificarTareas<T extends { dueDate?: string }>(tareas: T[], hoy: string): {
+  delDia: T[];
+  atrasadas: T[];
+  futuras: T[];
+} {
+  const delDia: T[] = [];
+  const atrasadas: T[] = [];
+  const futuras: T[] = [];
+  for (const t of tareas) {
+    if (t.dueDate && t.dueDate > hoy) { futuras.push(t); continue; }
+    delDia.push(t);
+    if (t.dueDate && t.dueDate < hoy) atrasadas.push(t);
+  }
+  return { delDia, atrasadas, futuras };
+}

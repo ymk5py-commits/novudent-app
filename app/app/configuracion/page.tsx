@@ -2,11 +2,12 @@
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon, MapPin, CalendarClock } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon, MapPin, CalendarClock, ListChecks } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
 import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
 import { can, ROLE_LABEL } from "@/lib/rbac";
-import type { Role, User, Procedure, BotikaConfig, ConsentTemplate, Branch } from "@/lib/types";
+import { DEFAULT_DEADLINES } from "@/lib/tareas";
+import type { Role, User, Procedure, BotikaConfig, ConsentTemplate, Branch, TaskDeadline } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
 import DentalinkImport from "@/components/DentalinkImport";
@@ -464,6 +465,49 @@ export default function ConfigPage() {
         templates={clinic.config.consentTemplates ?? []}
         onSave={saveConsentTemplates}
       />
+      </Reveal>
+
+      {/* Plazos de las tareas automáticas: cuánto pasa desde el evento (deuda,
+          presupuesto presentado, tratamiento terminado, cita sin confirmar) hasta que
+          la tarea aparece en "Tareas del día". Vive acá y no en la bandeja porque es
+          una política de la clínica, no una decisión de quien atiende el mostrador —
+          la página entera ya está gateada por `practice.config`. */}
+      <Reveal>
+      <Card className="p-5">
+        <div id="tareas" className="mb-1 flex scroll-mt-24 items-center gap-2"><ListChecks className="h-4 w-4 text-azure-600" /><h2 className="text-sm font-extrabold text-clinic-text">Plazos de tareas automáticas</h2></div>
+        <p className="mt-1 text-xs text-clinic-muted">Cuánto esperar antes de que la tarea entre a la bandeja del día.</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {([["cobranza", "Cobranza"], ["captura", "Captura de presupuesto"], ["control", "Control post-tratamiento"], ["cita", "Cita sin confirmar"]] as const).map(([key, label]) => {
+            const actual = clinic.config.taskDeadlines?.[key] ?? DEFAULT_DEADLINES[key];
+            const valor = actual.kind === "inmediato" ? "0" : String(actual.n);
+            return (
+              <Field key={key} label={label}>
+                <select
+                  value={valor}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    const plazo: TaskDeadline = n === 0 ? { kind: "inmediato" } : { kind: "dias", n };
+                    updateClinicConfig({ taskDeadlines: { ...clinic.config.taskDeadlines, [key]: plazo } });
+                  }}
+                  className={inputCls}
+                >
+                  {/* Los 4 defaults de DEFAULT_DEADLINES (0 / 3 / 7 / 180) tienen que
+                      estar sí o sí en la lista: un <select> controlado cuyo value no
+                      matchea ninguna opción se renderiza en blanco. */}
+                  <option value="0">Inmediato</option>
+                  <option value="1">1 día</option>
+                  <option value="3">3 días</option>
+                  <option value="7">1 semana</option>
+                  <option value="30">1 mes</option>
+                  <option value="180">6 meses</option>
+                  <option value="365">1 año</option>
+                </select>
+              </Field>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-[11px] text-clinic-muted">Las tareas automáticas no se guardan: se recalculan solas. Cambiar un plazo se refleja en <a href="/app/tareas" className="font-bold text-azure-700">Tareas de gestión</a> al instante.</p>
+      </Card>
       </Reveal>
 
       {addingUser && (
