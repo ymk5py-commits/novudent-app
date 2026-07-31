@@ -147,3 +147,33 @@ describe("regla cobranza", () => {
     expect(t.find((x) => x.type === "cobranza")!.dueDate).toBe("2026-07-08"); // 2026-07-01 + 7
   });
 });
+
+describe("regla captura", () => {
+  it("abre una tarea por cada presupuesto presentado", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "presentado", 500_000, "2026-07-20T10:00:00.000Z")] }, HOY);
+    const cap = t.filter((x) => x.type === "captura");
+    expect(cap).toHaveLength(1);
+    expect(cap[0].derivedKey).toBe("captura:b1");
+    expect(cap[0].budgetId).toBe("b1");
+    expect(cap[0].dueDate).toBe("2026-07-23"); // +3 días
+  });
+
+  it.each(["borrador", "aceptado", "completado", "anulado"] as const)(
+    "NO abre para un presupuesto en estado %s — esto es el auto-cierre",
+    (status) => {
+      const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", status, 500_000)] }, HOY);
+      expect(t.filter((x) => x.type === "captura")).toHaveLength(0);
+    },
+  );
+
+  it("dos presupuestos presentados dan dos tareas con claves distintas", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "presentado", 100_000), bud("b2", "p1", "presentado", 200_000)] }, HOY);
+    expect(t.filter((x) => x.type === "captura").map((x) => x.derivedKey).sort()).toEqual(["captura:b1", "captura:b2"]);
+  });
+
+  it("usa el nombre del plan como detalle si lo tiene", () => {
+    const b: Budget = { ...bud("b1", "p1", "presentado", 100_000), name: "Ortodoncia fija" };
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [b] }, HOY);
+    expect(t.find((x) => x.type === "captura")!.detail).toBe("Ortodoncia fija");
+  });
+});

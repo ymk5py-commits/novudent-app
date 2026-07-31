@@ -116,5 +116,21 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
     });
   }
 
+  // ── captura: una por presupuesto presentado que no avanzó ───────────────
+  const plazoCaptura = plazoDe("captura", deadlines);
+  for (const b of budgets) {
+    if (b.status !== "presentado") continue;
+    out.push({
+      derivedKey: `captura:${b.id}`,
+      type: "captura",
+      patientId: b.patientId,
+      title: "Presupuesto presentado sin aceptar",
+      detail: b.name ?? "Presupuesto",
+      budgetId: b.id,
+      eventAt: b.createdAt,
+      dueDate: calcularVencimiento(b.createdAt, plazoCaptura),
+    });
+  }
+
   return out;
 }
