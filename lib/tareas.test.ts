@@ -96,3 +96,54 @@ describe("mapaDeSaldos", () => {
     }
   });
 });
+
+import { derivarTareas } from "./tareas";
+import type { Patient, Appointment } from "./types";
+
+// Helpers de fixtures tipados de verdad (sin `as`) — la red que estos tests
+// vienen a tender se rompe si algo cast-ea el shape en vez de completarlo.
+const pac = (id: string, firstName = "Ana", lastName = "Prueba"): Patient => ({
+  id, clinicId: "c1", firstName, lastName, document: "1234567", phone: "+595981000000",
+  forms: [], historyUpdatePending: false, emr: [],
+});
+
+const cita = (id: string, patientId: string, start: string, status: Appointment["status"]): Appointment => ({
+  id, clinicId: "c1", patientId, dentistId: "u1", title: "Consulta",
+  start, end: start, status, amount: 0, discount: 0,
+});
+
+const HOY = "2026-07-30";
+const vacio = { patients: [] as Patient[], budgets: [] as Budget[], payments: [] as Payment[], appointments: [] as Appointment[] };
+
+describe("regla cobranza", () => {
+  it("abre una tarea cuando el paciente tiene saldo positivo", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "aceptado", 500_000)] }, HOY);
+    const cob = t.filter((x) => x.type === "cobranza");
+    expect(cob).toHaveLength(1);
+    expect(cob[0].derivedKey).toBe("cobranza:p1");
+    expect(cob[0].patientId).toBe("p1");
+  });
+
+  it("NO abre cuando el saldo es cero — este es el auto-cierre", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "aceptado", 500_000)], payments: [pay("y1", "p1", 500_000)] }, HOY);
+    expect(t.filter((x) => x.type === "cobranza")).toHaveLength(0);
+  });
+
+  it("NO abre cuando el paciente abonó de más (saldo negativo)", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "aceptado", 500_000)], payments: [pay("y1", "p1", 700_000)] }, HOY);
+    expect(t.filter((x) => x.type === "cobranza")).toHaveLength(0);
+  });
+
+  it("una sola tarea por paciente aunque deba en varios presupuestos", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "aceptado", 500_000), bud("b2", "p1", "completado", 300_000)] }, HOY);
+    expect(t.filter((x) => x.type === "cobranza")).toHaveLength(1);
+  });
+
+  it("el vencimiento sale del presupuesto con saldo más antiguo + plazo", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [
+      bud("b1", "p1", "aceptado", 500_000, "2026-07-01T10:00:00.000Z"),
+      bud("b2", "p1", "aceptado", 200_000, "2026-07-20T10:00:00.000Z"),
+    ] }, HOY);
+    expect(t.find((x) => x.type === "cobranza")!.dueDate).toBe("2026-07-08"); // 2026-07-01 + 7
+  });
+});

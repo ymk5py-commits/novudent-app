@@ -7,7 +7,7 @@
  *
  *  Módulo PURO: no importa React, ni Firestore, ni el store. Todo lo que necesita
  *  entra por parámetro y todo lo que produce sale por retorno. */
-import type { Budget, MgmtTaskType, Payment, TaskDeadline, TaskDeadlines } from "./types";
+import type { Appointment, Budget, MgmtTaskType, Patient, Payment, TaskDeadline, TaskDeadlines } from "./types";
 import { budgetTotal } from "./budgets";
 
 /** Plazos por defecto cuando la clínica no configuró los suyos. */
@@ -56,4 +56,65 @@ export function mapaDeSaldos(budgets: Budget[], payments: Payment[]): Map<string
     saldo.set(p.patientId, (saldo.get(p.patientId) ?? 0) - p.amount);
   }
   return saldo;
+}
+
+/** Una tarea automática recién derivada. Todavía no pasó por los overrides. */
+export interface DerivedTask {
+  /** Clave determinística `${tipo}:${idDeLaEntidad}`. Es lo que permite que una
+   *  decisión humana se pegue a una tarea que no existe como fila. */
+  derivedKey: string;
+  type: AutoTaskType;
+  patientId: string;
+  title: string;
+  detail?: string;
+  budgetId?: string;
+  /** Fecha del hecho que originó la tarea (ISO). */
+  eventAt: string;
+  /** eventAt + plazo (YYYY-MM-DD). Antes de esta fecha la tarea no vence. */
+  dueDate: string;
+}
+
+/** Lo mínimo que necesitan las reglas. Se pasa un objeto plano y no el `DB`
+ *  entero para poder testear el motor sin construir una base completa. */
+export interface TareasInput {
+  patients: Patient[];
+  budgets: Budget[];
+  payments: Payment[];
+  appointments: Appointment[];
+  deadlines?: TaskDeadlines;
+}
+
+/** Formatea un monto en guaraníes sin decimales (PYG es zero-decimal). */
+function gs(n: number): string {
+  return `Gs. ${Math.round(n).toLocaleString("es-PY")}`;
+}
+
+export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
+  const { patients, budgets, payments, deadlines } = input;
+  const out: DerivedTask[] = [];
+  const saldos = mapaDeSaldos(budgets, payments);
+
+  // ── cobranza: una por paciente con saldo pendiente ──────────────────────
+  const plazoCobranza = plazoDe("cobranza", deadlines);
+  for (const p of patients) {
+    const saldo = saldos.get(p.id) ?? 0;
+    if (saldo <= 0) continue;
+    // El evento es el presupuesto con saldo más antiguo: la deuda "nació" ahí.
+    const desde = budgets
+      .filter((b) => b.patientId === p.id && (b.status === "aceptado" || b.status === "completado"))
+      .map((b) => b.createdAt)
+      .sort()[0];
+    if (!desde) continue;
+    out.push({
+      derivedKey: `cobranza:${p.id}`,
+      type: "cobranza",
+      patientId: p.id,
+      title: "Saldo pendiente de pago",
+      detail: gs(saldo),
+      eventAt: desde,
+      dueDate: calcularVencimiento(desde, plazoCobranza),
+    });
+  }
+
+  return out;
 }
