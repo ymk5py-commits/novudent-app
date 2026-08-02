@@ -57,9 +57,23 @@ export function patientBalance(patientId: string, budgets: Budget[], payments: P
   return owed - paid;
 }
 
+export type CheckStatus = "pendiente" | "cobrado" | "anulado";
+
+/** Deriva el estado del cheque — nunca se guarda como campo propio. Guardarlo
+ *  aparte permitiría el estado imposible "voidedAt seteado pero status:
+ *  pendiente"; derivarlo lo hace irrepresentable. `anulado` gana sobre
+ *  `cobrado` a propósito: un cheque que se descubre rebotado DESPUÉS de
+ *  marcarlo cobrado tiene que poder anularse igual. */
+export function checkStatus(p: Payment): CheckStatus {
+  if (p.voidedAt) return "anulado";
+  if (p.check?.cobradoAt) return "cobrado";
+  return "pendiente";
+}
+
 export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   efectivo: "Efectivo",
   tarjeta: "Tarjeta",
   transferencia: "Transferencia",
+  cheque: "Cheque",
   qr: "QR / billetera",
 };
