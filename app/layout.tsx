@@ -2,6 +2,11 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Open_Sans, Jost, Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import { StoreProvider } from "@/lib/store";
+import HydrationGuard from "@/components/HydrationGuard";
+/** OJO: estas constantes se importan del módulo PLANO, no de HydrationGuard.
+ *  Este archivo es un Server Component; importarlas de un módulo `"use client"`
+ *  las convierte en proxies y el script inline sale con `[object Object]`. */
+import { MOTION_FALLBACK_CLASS, HYDRATION_GRACE_MS } from "@/lib/motion-fallback";
 
 /** DOS SISTEMAS TIPOGRÁFICOS, a propósito.
  *
@@ -39,10 +44,19 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+/** Arranca el temporizador anti-página-en-blanco ANTES de que corra nada de
+ *  React. Si el bundle no hidrata, a los 4 s marca <html> y el CSS revela todo
+ *  lo que framer-motion dejó en opacity:0 en el HTML del servidor.
+ *  `HydrationGuard` lo cancela cuando React efectivamente hidrata.
+ *  Ver components/HydrationGuard.tsx para el razonamiento completo. */
+const MOTION_FALLBACK_BOOT = `window.__novudentMotionTimer=setTimeout(function(){document.documentElement.classList.add("${MOTION_FALLBACK_CLASS}")},${HYDRATION_GRACE_MS})`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${openSans.variable} ${jost.variable} ${display.variable} ${body.variable} ${mono.variable}`}>
       <body className="font-sans">
+        <script dangerouslySetInnerHTML={{ __html: MOTION_FALLBACK_BOOT }} />
+        <HydrationGuard />
         <StoreProvider>{children}</StoreProvider>
       </body>
     </html>

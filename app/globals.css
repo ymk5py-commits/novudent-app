@@ -110,18 +110,30 @@ html, body {
   box-shadow: 0 2px 0 0 var(--color-ink);
 }
 
-/* Red de seguridad sin JavaScript.
+/* ===================================================================
+   RED DE SEGURIDAD CONTRA LA PÁGINA EN BLANCO
    `Reveal`/`Stagger` (components/motion.tsx) usan `whileInView` con
-   `initial opacity 0`, y framer-motion SERIALIZA ese estado en el HTML: hoy la
-   landing sale del servidor con 27 nodos en `opacity:0`. Con JS apagado la
-   página se ve prácticamente vacía. Esto lo tapa. NO cubre el caso de "JS
-   habilitado pero el bundle falla" — ese arreglo va en motion.tsx, que es
-   compartido con el panel, y no se toca sin decisión explícita. */
+   `initial opacity 0`, y framer-motion SERIALIZA ese estado en el HTML del
+   servidor: la landing sale con ~27 nodos en `opacity:0`. Si el JS nunca toma
+   el control, el navegador se queda con ese HTML y la página se ve VACÍA.
+   Dos coberturas, una por cada forma de que eso pase.
+   =================================================================== */
+
+/* 1. JS apagado por el usuario o por política del navegador. */
 @media (scripting: none) {
   [style*="opacity:0"] {
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* 2. JS habilitado pero el bundle NO hidrata: red mala, CDN caída, un proxy
+      que lo corta. El script inline del layout marca <html> a los 4 s si React
+      todavía no llegó, y `HydrationGuard` cancela ese temporizador cuando sí
+      llega. Ver components/HydrationGuard.tsx para el razonamiento completo. */
+html.motion-fallback [style*="opacity:0"] {
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 /* Área táctil de 44 px en móvil sin engordar el diseño en escritorio.

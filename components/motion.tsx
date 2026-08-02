@@ -73,6 +73,12 @@ export function Stagger({
 }) {
   const reduce = useReducedMotion();
   const wc = useDropWillChange();
+  // Con movimiento reducido se renderiza estático, igual que Reveal y
+  // PageTransition. Antes solo se ponía el escalonado en 0, pero los
+  // <StaggerItem> seguían entrando con un desplazamiento de 16 px: para alguien
+  // con sensibilidad vestibular una lista de veinte filas que se deslizan sigue
+  // siendo veinte movimientos, aunque salgan todas juntas.
+  if (reduce) return <div className={className}>{children}</div>;
   return (
     <motion.div
       ref={wc.ref}
@@ -81,7 +87,7 @@ export function Stagger({
       initial="hidden"
       whileInView="show"
       viewport={{ once, margin: "-60px" }}
-      variants={{ show: { transition: { staggerChildren: reduce ? 0 : gap } } }}
+      variants={{ show: { transition: { staggerChildren: gap } } }}
     >
       {children}
     </motion.div>
@@ -93,9 +99,14 @@ const itemVariants: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE } },
 };
 
-/** Hijo de <Stagger>. Hereda el delay escalonado del contenedor. */
+/** Hijo de <Stagger>. Hereda el delay escalonado del contenedor.
+ *  Chequea el movimiento reducido por su cuenta: puede usarse suelto, y con
+ *  `Stagger` en modo estático quedaría con `variants` y sin padre que los
+ *  dispare — o sea, invisible. */
 export function StaggerItem({ children, className }: { children: ReactNode; className?: string }) {
+  const reduce = useReducedMotion();
   const wc = useDropWillChange();
+  if (reduce) return <div className={className}>{children}</div>;
   return (
     <motion.div ref={wc.ref} onAnimationComplete={wc.onAnimationComplete} className={className} variants={itemVariants}>
       {children}
