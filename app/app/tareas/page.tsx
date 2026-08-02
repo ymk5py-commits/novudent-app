@@ -15,8 +15,10 @@ import { Reveal } from "@/components/motion";
 import { ListChecks, Plus, MessageCircle, Trash2, Clock, ShieldAlert } from "lucide-react";
 import type { MgmtTask, MgmtTaskType } from "@/lib/types";
 
-const TYPE_LABEL: Record<MgmtTaskType, string> = { cita: "Cita", captura: "Captura", control: "Control", cobranza: "Cobranza", personalizada: "Personalizada" };
-const TYPE_TONE: Record<MgmtTaskType, "info" | "ok" | "warn" | "err" | "muted"> = { cita: "info", captura: "warn", control: "ok", cobranza: "err", personalizada: "muted" };
+const TYPE_LABEL: Record<MgmtTaskType, string> = { cita: "Cita", captura: "Captura", control: "Control", cobranza: "Cobranza", cheque: "Cheque", personalizada: "Personalizada" };
+// "warn" — mismo tono que captura: plata que todavía no se puede dar por
+// perdida, pero tampoco por segura hasta que se acredite.
+const TYPE_TONE: Record<MgmtTaskType, "info" | "ok" | "warn" | "err" | "muted"> = { cita: "info", captura: "warn", control: "ok", cobranza: "err", cheque: "warn", personalizada: "muted" };
 const RES_LABEL: Record<string, string> = { acepto: "Aceptó", contacto_posterior: "Contacto posterior", rechazo: "Rechazó" };
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 
@@ -109,7 +111,7 @@ export default function TareasPage() {
   /** El motor no formatea moneda (la app maneja 17): el monto llega crudo y se
    *  formatea acá con `fmtGs`, que resuelve por la moneda activa de la clínica. */
   const detalle = (t: TaskRow) => (t.amount != null ? fmtGs(t.amount) : t.detail);
-  const FILTERS: ("todas" | MgmtTaskType)[] = ["todas", "captura", "control", "cobranza", "cita", "personalizada"];
+  const FILTERS: ("todas" | MgmtTaskType)[] = ["todas", "captura", "control", "cobranza", "cheque", "cita", "personalizada"];
 
   return (
     <Reveal className="space-y-5">
