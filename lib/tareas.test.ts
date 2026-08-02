@@ -112,6 +112,18 @@ const cita = (id: string, patientId: string, start: string, status: Appointment[
   start, end: start, status, amount: 0, discount: 0,
 });
 
+// Definido acá arriba (y no junto al describe de la regla cheque, más abajo en
+// el archivo) porque `describe("idempotencia…")` arma su `input` en el cuerpo
+// del describe, que vitest ejecuta apenas colecciona el archivo: si `payCheque`
+// fuera un const declarado más abajo, esa lectura temprana rompería por TDZ
+// ("usado antes de declararlo").
+const payCheque = (id: string, patientId: string, amount: number, check: { cashDate: string; cobradoAt?: string }, extra: Partial<Payment> = {}): Payment => ({
+  id, clinicId: "c1", patientId, date: "2026-07-20T10:00:00.000Z", amount,
+  method: "cheque", concept: "Cheque", receivedBy: "u1",
+  check: { number: "001", bank: "Banco Test", ...check },
+  ...extra,
+});
+
 const HOY = "2026-07-30";
 // Anotado en la const (no `as` por campo): mismo resultado sin usar type assertions.
 const vacio: { patients: Patient[]; budgets: Budget[]; payments: Payment[]; appointments: Appointment[] } = {
@@ -319,7 +331,7 @@ describe("idempotencia de las claves derivadas", () => {
   const input = {
     patients: [pac("p1"), pac("p2", "Beto", "Ejemplo")],
     budgets: [bud("b1", "p1", "aceptado", 500_000), bud("b2", "p1", "presentado", 200_000), bud("b3", "p2", "completado", 300_000)],
-    payments: [pay("y1", "p1", 100_000)],
+    payments: [pay("y1", "p1", 100_000), payCheque("y2", "p1", 375_000, { cashDate: "2026-08-05" })],
     appointments: [cita("a1", "p1", "2026-07-31T10:00:00.000Z", "pendiente")],
   };
 
@@ -336,7 +348,7 @@ describe("idempotencia de las claves derivadas", () => {
 
   it("toda clave tiene la forma tipo:id", () => {
     for (const t of derivarTareas(input, HOY)) {
-      expect(t.derivedKey).toMatch(/^(cobranza|captura|control|cita):[\w-]+$/);
+      expect(t.derivedKey).toMatch(/^(cobranza|captura|control|cita|cheque):[\w-]+$/);
     }
   });
 });
@@ -587,5 +599,46 @@ describe("clasificarTareas", () => {
     const todas = [conVenc("a", "2026-07-01"), conVenc("b", "2026-07-30"), conVenc("c", "2026-08-10"), conVenc("d")];
     const { delDia, futuras } = clasificarTareas(todas, HOY);
     expect(delDia.length + futuras.length).toBe(todas.length);
+  });
+});
+
+describe("regla cheque", () => {
+  it("abre una tarea para un cheque pendiente, con dueDate = cashDate tal cual", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], payments: [payCheque("y1", "p1", 375_000, { cashDate: "2026-08-05" })] }, HOY);
+    const c = t.filter((x) => x.type === "cheque");
+    expect(c).toHaveLength(1);
+    expect(c[0].derivedKey).toBe("cheque:y1");
+    expect(c[0].instanceKey).toBe("y1");
+    expect(c[0].dueDate).toBe("2026-08-05");
+    expect(c[0].amount).toBe(375_000);
+    expect(c[0].patientId).toBe("p1");
+  });
+
+  it("NO abre para un pago que no es cheque", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], payments: [pay("y1", "p1", 375_000)] }, HOY);
+    expect(t.filter((x) => x.type === "cheque")).toHaveLength(0);
+  });
+
+  it("NO abre si el cheque ya se marcó cobrado — auto-cierre", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], payments: [payCheque("y1", "p1", 375_000, { cashDate: "2026-08-05", cobradoAt: "2026-07-31T10:00:00.000Z" })] }, HOY);
+    expect(t.filter((x) => x.type === "cheque")).toHaveLength(0);
+  });
+
+  it("NO abre si el cheque está anulado — auto-cierre", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], payments: [payCheque("y1", "p1", 375_000, { cashDate: "2026-08-05" }, { voidedAt: "2026-07-31T10:00:00.000Z" })] }, HOY);
+    expect(t.filter((x) => x.type === "cheque")).toHaveLength(0);
+  });
+
+  it("dos cheques del mismo paciente derivan DOS tareas — a diferencia de cobranza/control", () => {
+    const t = derivarTareas({
+      ...vacio, patients: [pac("p1")],
+      payments: [payCheque("y1", "p1", 100_000, { cashDate: "2026-08-05" }), payCheque("y2", "p1", 200_000, { cashDate: "2026-08-10" })],
+    }, HOY);
+    expect(t.filter((x) => x.type === "cheque")).toHaveLength(2);
+  });
+
+  it("el detalle trae banco y número", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], payments: [payCheque("y1", "p1", 375_000, { cashDate: "2026-08-05" })] }, HOY);
+    expect(t.find((x) => x.type === "cheque")!.detail).toBe("Banco Test · N° 001");
   });
 });
