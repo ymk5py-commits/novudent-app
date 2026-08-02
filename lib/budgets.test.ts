@@ -63,3 +63,47 @@ describe("checkStatus", () => {
     expect(checkStatus({ id: "y2", clinicId: "c1", patientId: "p1", date: "2026-07-20T10:00:00.000Z", amount: 100_000, method: "efectivo", concept: "Abono", receivedBy: "u1" })).toBe("pendiente");
   });
 });
+
+import { retentionPct, netAmount } from "./budgets";
+import type { PaymentRetention } from "./types";
+
+describe("retentionPct", () => {
+  it("devuelve el % configurado para el medio", () => {
+    expect(retentionPct("tarjeta", { tarjeta: 5 })).toBe(5);
+  });
+  it("0% si el medio no tiene entrada en la config", () => {
+    expect(retentionPct("efectivo", { tarjeta: 5 })).toBe(0);
+  });
+  it("0% si la config es undefined", () => {
+    expect(retentionPct("tarjeta", undefined)).toBe(0);
+  });
+  it("acota un valor negativo a 0", () => {
+    expect(retentionPct("tarjeta", { tarjeta: -10 })).toBe(0);
+  });
+  it("acota un valor mayor a 100 a 100", () => {
+    expect(retentionPct("tarjeta", { tarjeta: 250 })).toBe(100);
+  });
+  it("0% si el valor no es numérico (NaN)", () => {
+    expect(retentionPct("tarjeta", { tarjeta: NaN })).toBe(0);
+  });
+});
+
+describe("netAmount", () => {
+  const cfg: PaymentRetention = { tarjeta: 5 };
+
+  it("PYG (0 decimales): 5% sobre 1.000.000 → 950.000", () => {
+    expect(netAmount({ amount: 1_000_000, method: "tarjeta" }, cfg, "PYG")).toBe(950_000);
+  });
+  it("0% de retención → monto idéntico al bruto", () => {
+    expect(netAmount({ amount: 100_000, method: "efectivo" }, cfg, "PYG")).toBe(100_000);
+  });
+  it("PYG redondea a entero: 5% sobre 333 → 316 (no 316.35)", () => {
+    expect(netAmount({ amount: 333, method: "tarjeta" }, cfg, "PYG")).toBe(316);
+  });
+  it("100% de retención → 0", () => {
+    expect(netAmount({ amount: 50_000, method: "tarjeta" }, { tarjeta: 100 }, "PYG")).toBe(0);
+  });
+  it("moneda de 2 decimales (USD): 5% sobre 50 → 47.5, NO se redondea a entero", () => {
+    expect(netAmount({ amount: 50, method: "tarjeta" }, { tarjeta: 5 }, "USD")).toBe(47.5);
+  });
+});

@@ -1,4 +1,5 @@
-import type { Budget, BudgetStatus, Payment } from "./types";
+import type { Budget, BudgetStatus, Payment, PaymentMethod, PaymentRetention } from "./types";
+import { CURRENCIES, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
 
 /* ===== Presupuestos: totales, saldos y estados ===== */
 
@@ -77,3 +78,30 @@ export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   cheque: "Cheque",
   qr: "QR / billetera",
 };
+
+/** % de retención vigente para un medio. Sanea basura: un valor negativo, no
+ *  numérico o mayor a 100 no puede producir un neto negativo ni inflar el
+ *  ingreso — se acota a [0, 100]. */
+export function retentionPct(method: PaymentMethod, cfg: PaymentRetention | undefined): number {
+  const v = cfg?.[method];
+  if (typeof v !== "number" || !Number.isFinite(v)) return 0;
+  return Math.min(100, Math.max(0, v));
+}
+
+/** Monto que efectivamente entra a la clínica después de la retención del
+ *  medio, redondeado a los decimales REALES de la moneda de la clínica.
+ *
+ *  ⚠️ `budgetTotal` (más arriba en este archivo) redondea siempre a entero —
+ *  está bien ahí porque nació pensando en PYG. Copiarle ese `Math.round` acá
+ *  sería un bug real: de las 17 monedas de `lib/currency.ts` solo
+ *  PYG/CLP/COP/CRC son zero-decimal, las otras 13 (USD, ARS, BRL, MXN…)
+ *  tienen 2 decimales. Un pago de USD 50 con 5% de retención tiene que dar
+ *  47.50, no redondearse a 48. */
+export function netAmount(
+  p: Pick<Payment, "amount" | "method">,
+  cfg: PaymentRetention | undefined,
+  currency: CurrencyCode = DEFAULT_CURRENCY,
+): number {
+  const factor = 10 ** CURRENCIES[currency].decimals;
+  return Math.round(p.amount * (1 - retentionPct(p.method, cfg) / 100) * factor) / factor;
+}
