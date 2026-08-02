@@ -302,6 +302,9 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
   const [budgetId, setBudgetId] = useState("");
   const [amount, setAmount] = useState(0);
   const [method, setMethod] = useState<PaymentMethod>("efectivo");
+  const [checkNumber, setCheckNumber] = useState("");
+  const [checkBank, setCheckBank] = useState("");
+  const [checkCashDate, setCheckCashDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [concept, setConcept] = useState("");
 
   const openBudgets = db.budgets.filter((b) => b.patientId === patientId && (b.status === "aceptado" || b.status === "completado") && budgetBalance(b, db.payments) > 0);
@@ -339,11 +342,22 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
             </select>
           </Field>
         </div>
+        {method === "cheque" && (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="N° de cheque"><input className={inputCls} value={checkNumber} onChange={(e) => setCheckNumber(e.target.value)} placeholder="00012345" /></Field>
+            <Field label="Banco"><input className={inputCls} value={checkBank} onChange={(e) => setCheckBank(e.target.value)} placeholder="Banco Continental" /></Field>
+            <Field label="Fecha de cobro"><input type="date" className={inputCls} value={checkCashDate} onChange={(e) => setCheckCashDate(e.target.value)} /></Field>
+          </div>
+        )}
         <Field label="Concepto"><input className={inputCls} value={concept} onChange={(e) => setConcept(e.target.value)} placeholder="Ej: Cuota ortodoncia, profilaxis…" /></Field>
         <div className="flex justify-end gap-2">
           <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
-          <Btn disabled={!patientId || amount <= 0 || !concept.trim()} onClick={() => {
-            const pay: Payment = { id: `pay_${Date.now()}`, clinicId: db.clinics[0].id, patientId, budgetId: budgetId || undefined, date: new Date().toISOString(), amount, method, concept: concept.trim(), receivedBy: session!.name };
+          <Btn disabled={!patientId || amount <= 0 || !concept.trim() || (method === "cheque" && (!checkNumber.trim() || !checkBank.trim()))} onClick={() => {
+            const pay: Payment = {
+              id: `pay_${Date.now()}`, clinicId: db.clinics[0].id, patientId, budgetId: budgetId || undefined,
+              date: new Date().toISOString(), amount, method, concept: concept.trim(), receivedBy: session!.name,
+              ...(method === "cheque" ? { check: { number: checkNumber.trim(), bank: checkBank.trim(), cashDate: checkCashDate } } : {}),
+            };
             store.addPayment(pay);
             onClose();
           }}>Registrar {amount > 0 && fmtGs(amount)}</Btn>
