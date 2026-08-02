@@ -182,6 +182,7 @@ const payments: Payment[] = [
   { id: "pay3", clinicId: CLINIC_ID, patientId: "p4", budgetId: "g3", date: at(-1, 11), amount: 750000, method: "tarjeta", concept: "Exodoncia 28 + consulta", receivedBy: "Carlos Admin", paymentNumber: "3625", receiptNumber: "2875" },
   { id: "pay4", clinicId: CLINIC_ID, patientId: "p3", date: at(0, 10), amount: 225000, method: "efectivo", concept: "Profilaxis (con descuento)", receivedBy: "Paola Asistente" },
   { id: "pay5", clinicId: CLINIC_ID, patientId: "p1", budgetId: "g1", date: at(0, 12), amount: 200000, method: "qr", concept: "Anticipo presupuesto resinas", receivedBy: "Paola Asistente" },
+  { id: "pay6", clinicId: CLINIC_ID, patientId: "p6", budgetId: "g2", date: at(0, 9), amount: 375000, method: "cheque", concept: "Cuota mensual ortodoncia (cheque)", receivedBy: "Carlos Admin", check: { number: "00456123", bank: "Banco Itaú", cashDate: at(3, 0).slice(0, 10) } },
 ];
 
 /* ===== Gastos ===== */

@@ -9,14 +9,16 @@
 import { useMemo, useState } from "react";
 import { useStore, fmtDate, fmtGs, fullName, waLink } from "@/lib/store";
 import { can } from "@/lib/rbac";
-import { derivarTareas, fusionarTareas, clasificarTareas, type TaskRow } from "@/lib/tareas";
+import { derivarTareas, fusionarTareas, clasificarTareas, detalleTarea, type TaskRow } from "@/lib/tareas";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 import { ListChecks, Plus, MessageCircle, Trash2, Clock, ShieldAlert } from "lucide-react";
 import type { MgmtTask, MgmtTaskType } from "@/lib/types";
 
-const TYPE_LABEL: Record<MgmtTaskType, string> = { cita: "Cita", captura: "Captura", control: "Control", cobranza: "Cobranza", personalizada: "Personalizada" };
-const TYPE_TONE: Record<MgmtTaskType, "info" | "ok" | "warn" | "err" | "muted"> = { cita: "info", captura: "warn", control: "ok", cobranza: "err", personalizada: "muted" };
+const TYPE_LABEL: Record<MgmtTaskType, string> = { cita: "Cita", captura: "Captura", control: "Control", cobranza: "Cobranza", cheque: "Cheque", personalizada: "Personalizada" };
+// "warn" — mismo tono que captura: plata que todavía no se puede dar por
+// perdida, pero tampoco por segura hasta que se acredite.
+const TYPE_TONE: Record<MgmtTaskType, "info" | "ok" | "warn" | "err" | "muted"> = { cita: "info", captura: "warn", control: "ok", cobranza: "err", cheque: "warn", personalizada: "muted" };
 const RES_LABEL: Record<string, string> = { acepto: "Aceptó", contacto_posterior: "Contacto posterior", rechazo: "Rechazó" };
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 
@@ -107,9 +109,11 @@ export default function TareasPage() {
   const pName = (t: MgmtTask) => { const p = t.patientId ? db.patients.find((x) => x.id === t.patientId) : undefined; return p ? fullName(p) : t.patientName ?? "—"; };
   const pPhone = (t: MgmtTask) => (t.patientId ? db.patients.find((x) => x.id === t.patientId)?.phone : undefined);
   /** El motor no formatea moneda (la app maneja 17): el monto llega crudo y se
-   *  formatea acá con `fmtGs`, que resuelve por la moneda activa de la clínica. */
-  const detalle = (t: TaskRow) => (t.amount != null ? fmtGs(t.amount) : t.detail);
-  const FILTERS: ("todas" | MgmtTaskType)[] = ["todas", "captura", "control", "cobranza", "cita", "personalizada"];
+   *  formatea acá con `fmtGs`, que resuelve por la moneda activa de la clínica.
+   *  amount y detail pueden coexistir (la regla cheque setea los dos) — por eso
+   *  se concatenan en vez de elegir uno, ver detalleTarea en lib/tareas.ts. */
+  const detalle = (t: TaskRow) => detalleTarea(t, fmtGs);
+  const FILTERS: ("todas" | MgmtTaskType)[] = ["todas", "captura", "control", "cobranza", "cheque", "cita", "personalizada"];
 
   return (
     <Reveal className="space-y-5">

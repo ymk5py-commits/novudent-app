@@ -18,6 +18,9 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
 
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [method, setMethod] = useState<PaymentMethod>("efectivo");
+  const [checkNumber, setCheckNumber] = useState("");
+  const [checkBank, setCheckBank] = useState("");
+  const [checkCashDate, setCheckCashDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [concept, setConcept] = useState("");
   const [flash, setFlash] = useState<string | null>(null);
@@ -49,12 +52,16 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
         clinicId: patient.clinicId, patientId: patient.id, budgetId: b.id,
         date: new Date(date + "T12:00:00").toISOString(), amount: saldo, method,
         concept: concept.trim() || `Abono plan #${b.id}`, receivedBy: session.name,
+        ...(method === "cheque" ? { check: { number: checkNumber.trim(), bank: checkBank.trim(), cashDate: checkCashDate } } : {}),
       });
       count++;
     }
     setFlash(`${count} pago(s) registrado(s) por ${fmtGs(totalSel)}. El saldo se actualizó.`);
     setSel(new Set());
     setConcept("");
+    // Limpiamos N°/Banco para no reusar por accidente el mismo cheque en el
+    // próximo pago (la fecha de cobro NO se resetea, ver pagarCuota).
+    if (method === "cheque") { setCheckNumber(""); setCheckBank(""); }
   };
 
   const linkPago = () => {
@@ -73,8 +80,11 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
       clinicId: patient.clinicId, patientId: patient.id, budgetId: b.id,
       date: new Date().toISOString(), amount: c.saldo, method,
       concept: `Cuota #${c.numero} — plan #${b.id}`, receivedBy: session.name,
+      ...(method === "cheque" ? { check: { number: checkNumber.trim(), bank: checkBank.trim(), cashDate: checkCashDate } } : {}),
     });
     setFlash(`Cuota #${c.numero} registrada por ${fmtGs(c.saldo)}.`);
+    // Mismo motivo que en pagar(): no reusar N°/Banco de un cheque anterior.
+    if (method === "cheque") { setCheckNumber(""); setCheckBank(""); }
   };
 
   return (
@@ -134,14 +144,22 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
                   <option value="efectivo">Efectivo</option>
                   <option value="tarjeta">Tarjeta</option>
                   <option value="transferencia">Transferencia</option>
+                  <option value="cheque">Cheque</option>
                   <option value="qr">QR / billetera</option>
                 </select>
               </Field>
               <Field label="Concepto"><input className={inputCls} value={concept} onChange={(e) => setConcept(e.target.value)} placeholder="Abono…" /></Field>
-              <Btn disabled={selBudgets.length === 0} onClick={pagar} className="w-full justify-center">
+              <Btn disabled={selBudgets.length === 0 || (method === "cheque" && (!checkNumber.trim() || !checkBank.trim()))} onClick={pagar} className="w-full justify-center">
                 <Wallet className="h-4 w-4" /> Pagar tratamiento(s){totalSel > 0 ? ` · ${fmtGs(totalSel)}` : ""}
               </Btn>
             </div>
+            {method === "cheque" && (
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label="N° de cheque"><input className={inputCls} value={checkNumber} onChange={(e) => setCheckNumber(e.target.value)} placeholder="00012345" /></Field>
+                <Field label="Banco"><input className={inputCls} value={checkBank} onChange={(e) => setCheckBank(e.target.value)} placeholder="Banco Continental" /></Field>
+                <Field label="Fecha de cobro"><input type="date" className={inputCls} value={checkCashDate} onChange={(e) => setCheckCashDate(e.target.value)} /></Field>
+              </div>
+            )}
           </Card>
         </div>
       )}
@@ -156,7 +174,7 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
               <Card key={b.id} className="overflow-hidden p-0">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-clinic-border px-4 py-2.5">
                   <span className="text-xs font-bold text-clinic-text">Plan #{b.id} · {b.planType === "ortodoncia" ? "Ortodoncia" : "General"} · {cuotas.length} cuotas</span>
-                  {next && <Btn onClick={() => pagarCuota(b, next)}><Wallet className="h-4 w-4" /> Pagar cuota #{next.numero} · {fmtGs(next.saldo)}</Btn>}
+                  {next && <Btn disabled={method === "cheque" && (!checkNumber.trim() || !checkBank.trim())} onClick={() => pagarCuota(b, next)}><Wallet className="h-4 w-4" /> Pagar cuota #{next.numero} · {fmtGs(next.saldo)}</Btn>}
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[460px] text-sm">

@@ -425,6 +425,19 @@ export interface Payment {
   /** Anulación (soft-delete) → "Pagos eliminados" */
   voidedAt?: string;
   voidedBy?: string;
+  /** Motivo de anulación (libre: "Rebotó", "El paciente lo retiró"…). Aplica a
+   *  cualquier pago anulado, no solo cheques. */
+  voidReason?: string;
+  /** Datos del cheque. Presente únicamente cuando `method === "cheque"`. */
+  check?: {
+    number: string;
+    bank: string;
+    /** Fecha en que se puede cobrar (YYYY-MM-DD) — el "vencimiento" del cheque. */
+    cashDate: string;
+    /** Cuándo se confirmó que el banco lo acreditó. Ausente = todavía pendiente. */
+    cobradoAt?: string;
+    cobradoBy?: string;
+  };
 }
 
 export interface Expense {
@@ -801,7 +814,7 @@ export interface SurveyResponse {
 }
 
 /** Tarea de gestión (spec 3.2 / 6.5 / 7.2): bandeja de captura/control/cobranza/cita. */
-export type MgmtTaskType = "cita" | "captura" | "control" | "cobranza" | "personalizada";
+export type MgmtTaskType = "cita" | "captura" | "control" | "cobranza" | "cheque" | "personalizada";
 export interface MgmtTask {
   id: string;
   clinicId: string;
@@ -838,7 +851,11 @@ export type TaskDeadline =
 
 /** Plazo por tipo de tarea automática. Vive en `Clinic.config.taskDeadlines`.
  *  Lo que no esté configurado usa DEFAULT_DEADLINES de lib/tareas.ts. */
-export type TaskDeadlines = Partial<Record<Exclude<MgmtTaskType, "personalizada">, TaskDeadline>>;
+// Los 4 tipos cuyo vencimiento es "evento + plazo configurable". "cheque" queda
+// afuera a propósito: su vencimiento YA es una fecha absoluta (la fecha de cobro
+// del cheque), no un plazo que sumar — agregarlo acá obligaría a un default sin
+// uso real (ver lib/tareas.ts, PlazoTaskType).
+export type TaskDeadlines = Partial<Record<"cita" | "captura" | "control" | "cobranza", TaskDeadline>>;
 
 /** Registro ambiental de residuos (cumplimiento CO — spec 8.7). */
 export interface EnvironmentalLog {

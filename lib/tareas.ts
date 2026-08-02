@@ -8,7 +8,7 @@
  *  Módulo PURO: no importa React, ni Firestore, ni el store. Todo lo que necesita
  *  entra por parámetro y todo lo que produce sale por retorno. */
 import type { Appointment, Budget, MgmtTask, MgmtTaskType, Patient, Payment, TaskDeadline, TaskDeadlines } from "./types";
-import { budgetTotal } from "./budgets";
+import { budgetTotal, checkStatus } from "./budgets";
 
 /** Plazos por defecto cuando la clínica no configuró los suyos. */
 export const DEFAULT_DEADLINES: Required<TaskDeadlines> = {
@@ -22,7 +22,11 @@ export const DEFAULT_DEADLINES: Required<TaskDeadlines> = {
   cita: { kind: "inmediato" },
 };
 
-export type AutoTaskType = Exclude<MgmtTaskType, "personalizada">;
+// Los 4 con vencimiento configurable ("evento + plazo"). Mismo conjunto que las
+// claves de TaskDeadlines — se nombra aparte para que la firma de plazoDe()
+// quede explícita y no dependa de un keyof indirecto.
+export type PlazoTaskType = "cita" | "captura" | "control" | "cobranza";
+export type AutoTaskType = PlazoTaskType | "cheque";
 
 /** Ventana de anticipación de la regla `cita`: una cita sin confirmar entra a la
  *  bandeja este número de días antes. Dos días es lo que da margen a llamar y,
@@ -35,8 +39,12 @@ export const VENTANA_CITA_DIAS = 2;
  *  que pasó alguna vez — y una bandeja con mil atrasadas no se mira nunca. */
 export const VENTANA_CONTROL_MESES = 12;
 
-/** Plazo efectivo de un tipo: lo que configuró la clínica, o el default. */
-export function plazoDe(type: AutoTaskType, cfg: TaskDeadlines | undefined): TaskDeadline {
+/** Plazo efectivo de un tipo: lo que configuró la clínica, o el default.
+ *  El parámetro es PlazoTaskType, no AutoTaskType: pasarle "cheque" acá tiene
+ *  que ser un error de compilación. Es lo que impide cablear por error la
+ *  regla de cheque a través de un mecanismo de plazos que no le corresponde —
+ *  su vencimiento es una fecha absoluta (cashDate), no evento+plazo. */
+export function plazoDe(type: PlazoTaskType, cfg: TaskDeadlines | undefined): TaskDeadline {
   return cfg?.[type] ?? DEFAULT_DEADLINES[type];
 }
 
@@ -240,6 +248,29 @@ export function derivarTareas(input: TareasInput, hoy: string): DerivedTask[] {
     });
   }
 
+  // ── cheque: uno por cheque recibido y todavía no resuelto ───────────────
+  // Cada cheque es su propio Payment: la clave ya es única por instancia, así
+  // que —a diferencia de cobranza/control— acá no hace falta indexar por
+  // paciente ni colapsar varios en una sola tarea.
+  for (const p of payments) {
+    if (p.method !== "cheque" || !p.check) continue;
+    if (checkStatus(p) !== "pendiente") continue;
+    out.push({
+      derivedKey: `cheque:${p.id}`,
+      instanceKey: p.id,
+      type: "cheque",
+      patientId: p.patientId,
+      title: "Cheque por cobrar",
+      detail: `${p.check.bank} · N° ${p.check.number}`,
+      amount: p.amount,
+      budgetId: p.budgetId,
+      eventAt: p.date,
+      // No pasa por plazoDe/calcularVencimiento: la fecha de cobro YA es la
+      // fecha de vencimiento, no hay plazo que sumarle a un evento.
+      dueDate: p.check.cashDate,
+    });
+  }
+
   return out;
 }
 
@@ -351,4 +382,17 @@ export function clasificarTareas<T extends { dueDate?: string }>(tareas: T[], ho
     if (t.dueDate && t.dueDate < hoy) atrasadas.push(t);
   }
   return { delDia, atrasadas, futuras };
+}
+
+/** Arma el texto secundario de una fila de la bandeja. `amount` y `detail`
+ *  pueden coexistir —la regla `cheque` es la primera en setear los dos: el
+ *  monto Y "<banco> · N° <número>"— así que se concatenan en vez de elegir
+ *  uno. El formateador de moneda entra por parámetro: este módulo es puro y
+ *  no sabe qué moneda tiene activa la clínica (ver nota de `DerivedTask.amount`). */
+export function detalleTarea(t: { amount?: number; detail?: string }, fmt?: (n: number) => string): string | undefined {
+  const partes = [
+    t.amount != null && fmt ? fmt(t.amount) : null,
+    t.detail ?? null,
+  ].filter((x): x is string => x != null && x !== "");
+  return partes.length > 0 ? partes.join(" · ") : undefined;
 }

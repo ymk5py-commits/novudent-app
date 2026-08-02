@@ -9,7 +9,7 @@ import {
 import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink } from "@/lib/store";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { can } from "@/lib/rbac";
-import { budgetTotal, budgetBalance, patientBalance, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
+import { budgetTotal, budgetBalance, patientBalance, PAYMENT_METHOD_LABEL, checkStatus } from "@/lib/budgets";
 import type { Payment, PaymentMethod, CashSession, Expense } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
@@ -29,7 +29,7 @@ function sessionTotals(s: CashSession, payments: Payment[], expenses: Expense[])
   return { pays, exps, ingresos, egresos, efectivo, acumulado: s.openingBalance + ingresos - egresos, expectedCash: s.openingBalance + efectivo - egresos };
 }
 
-type Tab = "mi" | "abiertas" | "cerradas";
+type Tab = "mi" | "abiertas" | "cerradas" | "cheques";
 
 export default function CashPage() {
   const { db, session } = useStore();
@@ -55,8 +55,9 @@ export default function CashPage() {
   const abiertas = sessions.filter((s) => s.status === "abierta");
   const cerradas = sessions.filter((s) => s.status === "cerrada");
   const miCaja = abiertas.find((s) => s.userId === session.userId) ?? null;
+  const chequesPorCobrar = db.payments.filter((p) => p.method === "cheque" && p.check && checkStatus(p) === "pendiente").length;
 
-  const TABS: [Tab, string][] = [["mi", "Mi caja"], ["abiertas", "Cajas abiertas"], ["cerradas", "Cajas cerradas"]];
+  const TABS: [Tab, string][] = [["mi", "Mi caja"], ["abiertas", "Cajas abiertas"], ["cerradas", "Cajas cerradas"], ["cheques", "Cheques"]];
 
   return (
     <div className="space-y-4">
@@ -65,7 +66,9 @@ export default function CashPage() {
         <div className="flex flex-wrap gap-1 rounded-xl border border-clinic-border bg-white p-1">
           {TABS.map(([k, label]) => (
             <button key={k} onClick={() => setTab(k)} className={`rounded-lg px-3 py-1.5 text-sm font-bold transition-colors ${tab === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
-              {label}{k === "abiertas" && abiertas.length > 0 ? ` (${abiertas.length})` : ""}
+              {label}
+              {k === "abiertas" && abiertas.length > 0 ? ` (${abiertas.length})` : ""}
+              {k === "cheques" && chequesPorCobrar > 0 ? ` (${chequesPorCobrar})` : ""}
             </button>
           ))}
         </div>
@@ -86,6 +89,7 @@ export default function CashPage() {
       ))}
       {tab === "abiertas" && <SesionesTable sessions={abiertas} kind="open" onCerrar={setCerrar} />}
       {tab === "cerradas" && <SesionesTable sessions={cerradas} kind="closed" />}
+      {tab === "cheques" && <ChequesPanel />}
 
       {newPay && <PaymentForm onClose={() => setNewPay(false)} />}
       {abrir && <AbrirCajaModal onClose={() => setAbrir(false)} />}
@@ -302,6 +306,9 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
   const [budgetId, setBudgetId] = useState("");
   const [amount, setAmount] = useState(0);
   const [method, setMethod] = useState<PaymentMethod>("efectivo");
+  const [checkNumber, setCheckNumber] = useState("");
+  const [checkBank, setCheckBank] = useState("");
+  const [checkCashDate, setCheckCashDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [concept, setConcept] = useState("");
 
   const openBudgets = db.budgets.filter((b) => b.patientId === patientId && (b.status === "aceptado" || b.status === "completado") && budgetBalance(b, db.payments) > 0);
@@ -339,14 +346,125 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
             </select>
           </Field>
         </div>
+        {method === "cheque" && (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="N° de cheque"><input className={inputCls} value={checkNumber} onChange={(e) => setCheckNumber(e.target.value)} placeholder="00012345" /></Field>
+            <Field label="Banco"><input className={inputCls} value={checkBank} onChange={(e) => setCheckBank(e.target.value)} placeholder="Banco Continental" /></Field>
+            <Field label="Fecha de cobro"><input type="date" className={inputCls} value={checkCashDate} onChange={(e) => setCheckCashDate(e.target.value)} /></Field>
+          </div>
+        )}
         <Field label="Concepto"><input className={inputCls} value={concept} onChange={(e) => setConcept(e.target.value)} placeholder="Ej: Cuota ortodoncia, profilaxis…" /></Field>
         <div className="flex justify-end gap-2">
           <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
-          <Btn disabled={!patientId || amount <= 0 || !concept.trim()} onClick={() => {
-            const pay: Payment = { id: `pay_${Date.now()}`, clinicId: db.clinics[0].id, patientId, budgetId: budgetId || undefined, date: new Date().toISOString(), amount, method, concept: concept.trim(), receivedBy: session!.name };
+          <Btn disabled={!patientId || amount <= 0 || !concept.trim() || (method === "cheque" && (!checkNumber.trim() || !checkBank.trim()))} onClick={() => {
+            const pay: Payment = {
+              id: `pay_${Date.now()}`, clinicId: db.clinics[0].id, patientId, budgetId: budgetId || undefined,
+              date: new Date().toISOString(), amount, method, concept: concept.trim(), receivedBy: session!.name,
+              ...(method === "cheque" ? { check: { number: checkNumber.trim(), bank: checkBank.trim(), cashDate: checkCashDate } } : {}),
+            };
             store.addPayment(pay);
             onClose();
           }}>Registrar {amount > 0 && fmtGs(amount)}</Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/* ===== Cheques ===== */
+type ChequeVista = "porCobrar" | "cobrados" | "anulados";
+
+function ChequesPanel() {
+  const { db, session, markCheckCobrado } = useStore();
+  const [vista, setVista] = useState<ChequeVista>("porCobrar");
+  const [anular, setAnular] = useState<Payment | null>(null);
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  const cheques = db.payments.filter((p): p is Payment & { check: NonNullable<Payment["check"]> } => p.method === "cheque" && !!p.check);
+  const porCobrar = cheques.filter((p) => checkStatus(p) === "pendiente").sort((a, b) => a.check.cashDate.localeCompare(b.check.cashDate));
+  const cobrados = cheques.filter((p) => checkStatus(p) === "cobrado").sort((a, b) => (b.check.cobradoAt ?? "").localeCompare(a.check.cobradoAt ?? ""));
+  const anulados = cheques.filter((p) => checkStatus(p) === "anulado").sort((a, b) => (b.voidedAt ?? "").localeCompare(a.voidedAt ?? ""));
+
+  const lista = vista === "porCobrar" ? porCobrar : vista === "cobrados" ? cobrados : anulados;
+  const VISTAS: [ChequeVista, string][] = [["porCobrar", "Por cobrar"], ["cobrados", "Cobrados"], ["anulados", "Anulados"]];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-1 rounded-xl border border-clinic-border bg-white p-1">
+        {VISTAS.map(([k, label]) => (
+          <button key={k} onClick={() => setVista(k)} className={`rounded-lg px-3 py-1.5 text-sm font-bold transition-colors ${vista === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
+            {label}{k === "porCobrar" && porCobrar.length > 0 ? ` (${porCobrar.length})` : ""}
+          </button>
+        ))}
+      </div>
+
+      {lista.length === 0 ? (
+        <Empty title="Sin cheques acá" desc={vista === "porCobrar" ? "Los cheques que recibas van a aparecer acá hasta cobrarse o anularse." : "Todavía no hay cheques en este estado."} />
+      ) : (
+        <Card className="overflow-x-auto p-0">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead>
+              <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                <th className="px-4 py-3">Paciente</th>
+                <th className="px-2 py-3">N° cheque</th>
+                <th className="px-2 py-3">Banco</th>
+                <th className="px-2 py-3">Fecha de cobro</th>
+                <th className="px-2 py-3 text-right">Monto</th>
+                <th className="px-2 py-3">Recibido por</th>
+                {vista === "porCobrar" && <th className="px-2 py-3"></th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-clinic-border">
+              {lista.map((p) => {
+                const patient = db.patients.find((x) => x.id === p.patientId);
+                const atrasado = vista === "porCobrar" && p.check.cashDate < hoy;
+                return (
+                  <tr key={p.id} className="hover:bg-clinic-bg/60">
+                    <td className="px-4 py-2.5">
+                      {patient ? <a href={`/app/pacientes/${patient.id}`} className="font-semibold text-clinic-text hover:text-azure-700">{fullName(patient)}</a> : "—"}
+                    </td>
+                    <td className="px-2 py-2.5 font-mono text-clinic-muted">{p.check.number}</td>
+                    <td className="px-2 py-2.5 text-clinic-muted">{p.check.bank}</td>
+                    <td className="px-2 py-2.5">
+                      <span className={atrasado ? "font-bold text-state-err" : "text-clinic-muted"}>{fmtDate(p.check.cashDate)}</span>
+                      {atrasado && <Badge tone="err">Atrasado</Badge>}
+                    </td>
+                    <td className="px-2 py-2.5 text-right font-mono font-bold">{fmtGs(p.amount)}</td>
+                    <td className="px-2 py-2.5 text-clinic-muted">{p.receivedBy}</td>
+                    {vista === "porCobrar" && (
+                      <td className="px-2 py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => markCheckCobrado(p.id, session!.name)} className="rounded-lg border border-state-ok/40 bg-state-okbg px-2 py-1 text-[11px] font-bold text-state-ok hover:brightness-95">Marcar cobrado</button>
+                          <button onClick={() => setAnular(p)} className="rounded-lg border border-state-err/40 bg-state-errbg px-2 py-1 text-[11px] font-bold text-state-err hover:brightness-95">Anular</button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
+      {anular && <AnularChequeModal payment={anular} onClose={() => setAnular(null)} />}
+    </div>
+  );
+}
+
+function AnularChequeModal({ payment, onClose }: { payment: Payment; onClose: () => void }) {
+  const { session, voidPayment } = useStore();
+  const [reason, setReason] = useState("");
+  return (
+    <Modal title="Anular cheque" onClose={onClose}>
+      <div className="space-y-3">
+        <p className="text-sm text-clinic-muted">
+          El cheque N° {payment.check?.number} pasa a "Anulados" y el saldo vuelve a la deuda del paciente — igual que cualquier pago anulado.
+        </p>
+        <Field label="Motivo (opcional)"><input className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej.: Rebotó, el paciente lo retiró…" /></Field>
+        <div className="flex justify-end gap-2">
+          <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
+          <Btn onClick={() => { voidPayment(payment.id, session!.name, reason.trim() || undefined); onClose(); }}>Anular cheque</Btn>
         </div>
       </div>
     </Modal>

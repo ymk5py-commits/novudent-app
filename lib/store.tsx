@@ -409,7 +409,10 @@ interface Ctx {
   deletePatientNote: (id: string) => void;
   addFiscalDoc: (d: FiscalDoc) => void;
   deleteFiscalDoc: (id: string) => void;
-  voidPayment: (id: string, by: string) => void;
+  voidPayment: (id: string, by: string, reason?: string) => void;
+  /** Cheque acreditado en el banco. No toca el saldo del paciente — ya bajó al
+   *  recibir el cheque; esto solo cambia su estado (ver checkStatus en lib/budgets.ts). */
+  markCheckCobrado: (id: string, by: string) => void;
   openCashSession: (s: CashSession) => void;
   closeCashSession: (id: string, countedCash: number, note: string) => void;
   /* — Esterilización (cumplimiento) — */
@@ -986,10 +989,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         persist({ ...db, fiscalDocs: db.fiscalDocs.filter((x) => x.id !== id) });
         fsDelete("fiscalDocs", id);
       },
-      voidPayment: (id: string, by: string) => {
+      voidPayment: (id, by, reason) => {
         const p = db.payments.find((x) => x.id === id);
         if (!p) return;
-        const up = { ...p, voidedAt: new Date().toISOString(), voidedBy: by };
+        const up = { ...p, voidedAt: new Date().toISOString(), voidedBy: by, ...(reason ? { voidReason: reason } : {}) };
+        persist({ ...db, payments: db.payments.map((x) => (x.id === id ? up : x)) });
+        fsSave("payments", id, up);
+      },
+      markCheckCobrado: (id, by) => {
+        const p = db.payments.find((x) => x.id === id);
+        if (!p || !p.check) return;
+        const up = { ...p, check: { ...p.check, cobradoAt: new Date().toISOString(), cobradoBy: by } };
         persist({ ...db, payments: db.payments.map((x) => (x.id === id ? up : x)) });
         fsSave("payments", id, up);
       },
