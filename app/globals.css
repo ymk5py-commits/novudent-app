@@ -2,11 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===================================================================
+   TOKENS EDITORIALES — landing y páginas públicas
+   La copia portable vive en /tokens.css (misma fuente de verdad).
+   El PANEL no consume ninguno de estos: sigue con su paleta clinic-*
+   y Open Sans, por la paridad 1:1 con Dentalink.
+   =================================================================== */
+:root {
+  /* Papel — entintado hacia el navy de marca. Nada de #fff puro: el blanco
+     absoluto es lo que hace que una página se lea "por defecto". */
+  --color-paper:      oklch(98.4% 0.003 260);
+  --color-paper-2:    oklch(96.2% 0.006 260);
+  --color-paper-3:    oklch(93.2% 0.008 260);
+  --color-rule:       oklch(88.5% 0.010 260);
+
+  /* Tinta y marca — valores NOVUM existentes, no se reinventan */
+  --color-ink:        oklch(24.8% 0.052 262);  /* #13233F */
+  --color-ink-muted:  oklch(50.5% 0.038 262);  /* #5B6B85 */
+  --color-navy:       oklch(21.5% 0.056 262);  /* #0F1F3D */
+  --color-navy-deep:  oklch(17.0% 0.050 262);  /* #0B1D3D */
+  --color-accent:     oklch(55.8% 0.089 212);  /* #0D8199 azure-600 */
+  --color-accent-lo:  oklch(93.5% 0.024 212);  /* #E7F6F9 azure-50  */
+  --color-focus:      oklch(62.0% 0.130 245);
+
+  /* Tipografía — el par editorial. Ver app/layout.tsx para el porqué. */
+  --font-display-stack: var(--font-display), ui-sans-serif, system-ui;
+  --font-body-stack:    var(--font-body), ui-sans-serif, system-ui;
+  --font-mono-stack:    var(--font-jbmono), ui-monospace;
+
+  /* Escala de display: fluida, con techo. La medida manda sobre el tamaño —
+     un titular largo NO se sirve en el cuerpo más grande. */
+  --text-display:   clamp(2.75rem, 1.6rem + 5.2vw, 5.75rem);
+  --text-display-s: clamp(2.25rem, 1.5rem + 3.4vw, 4rem);
+  --text-h2:        clamp(1.9rem, 1.35rem + 2.4vw, 3rem);
+  --text-h3:        clamp(1.25rem, 1.05rem + 0.9vw, 1.6rem);
+
+  /* Ritmo — escala 4pt */
+  --space-2xs: 0.25rem;  --space-xs: 0.5rem;   --space-sm: 0.75rem;
+  --space-md: 1rem;      --space-lg: 1.5rem;   --space-xl: 2.5rem;
+  --space-2xl: 4rem;     --space-3xl: 6.5rem;
+
+  --rule-hair: 1px;
+  --radius-sm: 4px;  --radius-md: 8px;  --radius-lg: 14px;
+
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:     cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;  --dur-base: 260ms;  --dur-slow: 520ms;
+}
+
 html, body {
   background: #f5f7fb;
   color: #13233f;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "tnum" on;
+  /* `clip`, NO `hidden`: hidden crearía un contenedor de scroll y rompería
+     todos los `position: sticky` del panel (cabeceras de tabla, sidebar).
+     clip corta el desborde horizontal sin ese efecto secundario. */
+  overflow-x: clip;
 }
 
 ::selection { background: #14a6c0; color: #fff; }
@@ -39,48 +92,78 @@ html, body {
 }
 .btn-shine:hover::after { transform: translateX(120%); }
 
-/* ===== Landing (tema claro) ===== */
-.lp-grid {
-  background-image:
-    linear-gradient(to right, rgba(15, 31, 61, 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(15, 31, 61, 0.045) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(75% 65% at 50% 35%, #000 0%, transparent 80%);
-  -webkit-mask-image: radial-gradient(75% 65% at 50% 35%, #000 0%, transparent 80%);
+/* ===================================================================
+   PRIMITIVAS EDITORIALES — landing y públicas
+   Se fueron de acá: `.lp-grid` (retícula con máscara radial), el haz cónico
+   giratorio `.border-beam-light` y `.glass-card` (esta última sin un solo uso
+   en el repo). Las dos primeras eran adorno sin trabajo: no comunicaban nada
+   y son de los efectos más reconocibles como "generado". El vidrio esmerilado
+   además está prohibido en registro editorial — el medio es papel, no vidrio.
+   Ojo: `.glass-dark`, `.mesh-hero`, `.card-3d`, `.icon-3d`, `.ring-glow` y
+   `.chart-glow` SIGUEN vivas más abajo porque las usa el PANEL, que está fuera
+   de alcance por la paridad Dentalink.
+   =================================================================== */
+
+/* Doble filete de la cabecera — la firma de una masthead impresa */
+.ed-rule-double {
+  border-bottom: 3px solid var(--color-ink);
+  box-shadow: 0 2px 0 0 var(--color-ink);
 }
 
-@property --beam-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
+/* Red de seguridad sin JavaScript.
+   `Reveal`/`Stagger` (components/motion.tsx) usan `whileInView` con
+   `initial opacity 0`, y framer-motion SERIALIZA ese estado en el HTML: hoy la
+   landing sale del servidor con 27 nodos en `opacity:0`. Con JS apagado la
+   página se ve prácticamente vacía. Esto lo tapa. NO cubre el caso de "JS
+   habilitado pero el bundle falla" — ese arreglo va en motion.tsx, que es
+   compartido con el panel, y no se toca sin decisión explícita. */
+@media (scripting: none) {
+  [style*="opacity:0"] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
-.border-beam-light {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.5px;
-  background: conic-gradient(
-    from var(--beam-angle),
-    transparent 0 64%,
-    rgba(46, 131, 245, 0.45) 76%,
-    #2e83f5 84%,
-    rgba(46, 131, 245, 0.45) 92%,
-    transparent 100%
-  );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-  animation: beam-spin 6s linear infinite;
-  pointer-events: none;
-}
-@keyframes beam-spin { to { --beam-angle: 360deg; } }
 
-@keyframes lp-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-.lp-marquee { animation: lp-marquee 32s linear infinite; }
-.lp-marquee-mask {
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
-          mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+/* Área táctil de 44 px en móvil sin engordar el diseño en escritorio.
+   Los enlaces tipográficos del masthead, de precios y del colofón miden ~20 px
+   de alto: perfecto con mouse, por debajo del mínimo AA con el dedo. Se agranda
+   la caja de golpe SOLO abajo de 640 px, donde el dedo es el puntero. */
+@media (max-width: 639.98px) {
+  .ed-tap {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* Enlace tipográfico: el subrayado engrosa, no se mueve nada más. */
+.ed-link {
+  background-image: linear-gradient(var(--color-accent), var(--color-accent));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 1px;
+  transition: background-size var(--dur-base) var(--ease-out);
+}
+.ed-link:hover { background-size: 100% 2px; }
+
+/* Marco honesto para el producto real: filete y nada más. Sin barra de
+   navegador dibujada, sin semáforo de puntitos — el navegador de verdad ya
+   está alrededor de la página. */
+.ed-figure {
+  border: var(--rule-hair) solid var(--color-rule);
+  background: #fff;
+}
+
+/* Espécimen de piezas FDI. No es un adorno en scroll: son los glifos reales
+   del odontograma del producto, puestos como muestrario tipográfico. */
+@keyframes ed-specimen { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ed-specimen { animation: ed-specimen 46s linear infinite; }
+.ed-specimen-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+          mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ed-specimen { animation: none; }
 }
 
 /* ===== Profundidad 3D + glass (dashboard moderno) ===== */
@@ -95,17 +178,7 @@ html, body {
     0 8px 18px -10px rgba(46, 131, 245, 0.22);
 }
 
-/* Vidrio esmerilado real (blur + saturación + borde de luz) */
-.glass-card {
-  background: rgba(255, 255, 255, 0.68);
-  backdrop-filter: blur(16px) saturate(1.5);
-  -webkit-backdrop-filter: blur(16px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  box-shadow:
-    0 8px 32px -12px rgba(15, 31, 61, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
-}
-/* Variante oscura — paneles flotando sobre el hero navy */
+/* Variante oscura — paneles flotando sobre el hero navy del PANEL */
 .glass-dark {
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(14px) saturate(1.3);

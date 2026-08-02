@@ -1,36 +1,33 @@
 "use client";
-/**
- * Landing Novudent — editorial, asimétrica, con el producto vivo en el hero.
- * Reglas aplicadas (impeccable): sin grillas de cards idénticas, sin hero de
- * plantilla, color comprometido (bandas navy), tipografía display propia (Jost),
- * y la identidad dental (glifos de dientes) como elemento gráfico de marca.
+/* Hallmark · genre: editorial · macrostructure: Split Studio
+ * theme: custom (tuned) · vibe: "clinical broadsheet, paraguayan software"
+ * paper oklch(98.4% 0.003 260) · accent oklch(55.8% 0.089 212) · light / display-heavy / cool
+ * type: Bricolage Grotesque (display) + Instrument Sans (body) + JetBrains Mono (data)
+ * nav: N6 Newspaper masthead — knobs: issue-line=below, wordmark=2xl, rule=double
+ * footer: Ft4 Dense colophon — knobs: family=mono, layout=log-style, includes=date+attribution
+ * hero: H2 Split diptych — knobs: ratio=7/5, right=proof column (live product), divider=negative space
+ * section heads: S2 Hanging · features: F3 Tabular spec sheet · proof: T4 Stat strip · CTA: C3 Typographic link
+ * enrichment: none — el odontograma es el producto real, no una maqueta
+ * motion: cross-fade escalonado · subrayado que engrosa (2)
+ * pre-emit critique: P5 H5 E4 S5 R4 V5
  */
-import { useEffect, useRef, useState } from "react";
-import { motion, useInView, useMotionValue, animate } from "framer-motion";
-import { ArrowRight, ArrowUpRight, Check, Plus } from "lucide-react";
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { ArrowRight, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ShowcaseBoard, ToothGlyph, type ShowcaseToothRecord } from "./OdontogramShowcase";
 import { FlagBadge } from "./ui";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 
-/* count-up editorial (sin card) */
-function Count({ value, suffix = "" }: { value: number; suffix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-40px" });
-  const mv = useMotionValue(0);
-  useEffect(() => {
-    if (!inView) return;
-    const c = animate(mv, value, {
-      duration: 1.4,
-      ease: [0.16, 1, 0.3, 1],
-      onUpdate: (v) => { if (ref.current) ref.current.textContent = `${Math.round(v)}${suffix}`; },
-    });
-    return () => c.stop();
-  }, [inView, value, suffix]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <span ref={ref}>0{suffix}</span>;
-}
+/* Acá vivía un contador que subía de 0 al valor real al entrar en cuadro.
+   Se fue por dos razones. La primera es un bug de verdad: dependía de
+   `useInView`, y si el IntersectionObserver no dispara —scroll muy rápido,
+   navegador que lo tiene trabado, o directamente sin JS— la franja se queda
+   mostrando "0 piezas FDI con morfología real", que no es una animación a
+   medias sino un dato FALSO en la cara del que evalúa comprar. La segunda es
+   que la animación no aportaba nada: el número importa, no su llegada. Menos
+   motion, cero riesgo de mentir. */
 
-/* demo del odontograma (estado local) */
 const DEMO_TEETH: Record<string, ShowcaseToothRecord> = {
   "16": { condition: "caries", surfaces: ["O"] },
   "24": { condition: "caries", surfaces: ["M"] },
@@ -41,8 +38,8 @@ const DEMO_TEETH: Record<string, ShowcaseToothRecord> = {
   "28": { condition: "ausente" },
 };
 
-/* dientes para el marquee de marca */
-const MARQUEE_TEETH: { n: string; rec?: ShowcaseToothRecord }[] = [
+/* Espécimen de piezas: glifos reales del odontograma, no iconos decorativos. */
+const SPECIMEN_TEETH: { n: string; rec?: ShowcaseToothRecord }[] = [
   { n: "11" }, { n: "13", rec: { condition: "restaurado" } },
   { n: "16" }, { n: "21", rec: { condition: "caries", surfaces: ["O"] } },
   { n: "23" }, { n: "26", rec: { condition: "corona" } },
@@ -50,395 +47,401 @@ const MARQUEE_TEETH: { n: string; rec?: ShowcaseToothRecord }[] = [
   { n: "24" }, { n: "27", rec: { condition: "implante" } }, { n: "15" },
 ];
 
-const CAPACIDADES = [
-  { n: "01", t: "Agenda + confirmación de citas", d: "Calendario semanal 00–24 h, lista de espera y recordatorios por WhatsApp con plantilla propia. Clic en una franja vacía y la cita existe." },
-  { n: "02", t: "Odontograma por superficies", d: "32 piezas FDI con morfología real. Caries en mesial, corona en la 26: dos clics, queda auditado quién y cuándo." },
-  { n: "03", t: "Presupuestos y cobro en cuotas", d: "Plan de tratamiento con convenios y descuento automático. Borrador → presentado → aceptado, ejecución por pieza e impresión en PDF." },
-  { n: "04", t: "Caja, gastos y morosidad", d: "Arqueo diario por método de pago, control de gastos y cuentas por cobrar con recordatorio de deuda en un clic." },
-  { n: "05", t: "Inventario y comisiones", d: "Bodega virtual con alertas de reposición, y cálculo automático del pago a cada odontólogo según su producción cobrada." },
-  { n: "06", t: "Ortodoncia, recetas y archivos", d: "Módulo de ortodoncia con controles mensuales, recetas con plantillas listas para imprimir y radiografías en la ficha." },
-  { n: "07", t: "Informes de gestión", d: "KPIs de 30 días, tasa de aceptación de presupuestos y reportes descargables en Excel: pagos, gastos, comisiones, pacientes." },
-  { n: "08", t: "Roles, formularios y facturación", d: "RBAC de 3 roles, anamnesis digital con flujo del lápiz y máquina de estados MBILLED → HOLD → FACTURADO con validaciones CPT." },
+/* Hoja de especificaciones (F3): cada fila es una capacidad con su dato duro.
+   La columna `k` es el dato, no un adorno — es lo que un dueño de clínica
+   compara contra lo que ya usa. */
+const CAPACIDADES: { t: string; d: string; k: string }[] = [
+  { t: "Agenda y confirmación", d: "Calendario 00–24 h, lista de espera y recordatorios por WhatsApp con plantilla propia. Clic en una franja vacía y la cita existe.", k: "24 h" },
+  { t: "Odontograma por superficies", d: "Piezas FDI con morfología real. Caries en mesial, corona en la 26: dos clics, y queda auditado quién y cuándo.", k: "5 caras" },
+  { t: "Presupuestos y cuotas", d: "Plan de tratamiento con convenios y descuento automático. Borrador → presentado → aceptado, con ejecución por pieza.", k: "4 estados" },
+  { t: "Caja, gastos y morosidad", d: "Arqueo diario por medio de pago, control de gastos y cuentas por cobrar con recordatorio de deuda en un clic.", k: "5 medios" },
+  { t: "Inventario y comisiones", d: "Bodega con alertas de reposición y cálculo del pago a cada odontólogo según su producción efectivamente cobrada.", k: "auto" },
+  { t: "Ortodoncia y recetas", d: "Controles mensuales, recetas con plantillas listas para imprimir y radiografías guardadas dentro de la ficha.", k: "mensual" },
+  { t: "Informes de gestión", d: "KPIs de 30 días, tasa de aceptación de presupuestos y descargas en Excel: pagos, gastos, comisiones, pacientes.", k: "8 reportes" },
+  { t: "Roles y facturación", d: "Tres roles con permisos estrictos, anamnesis digital y máquina de estados con validación de códigos antes de cada envío.", k: "3 roles" },
+];
+
+const FAQ = [
+  { q: "¿Necesito instalar algo?", a: "No. Novudent es 100 % web: entrás desde el navegador de la computadora, la tablet o el celular, con los datos en la nube." },
+  { q: "¿El odontograma marca superficies?", a: "Sí. Cada pieza tiene su vista oclusal de cinco superficies (M·D·V·L·O). Marcás caries en mesial o una restauración en vestibular y queda pintado en el tablero, con autor y fecha." },
+  { q: "¿Puedo traer mis datos de Dentalink?", a: "Sí. Exportás tus pacientes a Excel desde Dentalink, los pegás en Novudent y el sistema detecta las columnas solo: omite duplicados por CI y, si hay columna de deuda, la carga directo en cuentas por cobrar." },
+  { q: "¿Quién crea los usuarios?", a: "Solo el administrador de la clínica, desde Configuración. Cada persona entra con su email y contraseña, con los permisos de su rol." },
+  { q: "¿Puedo probarlo gratis?", a: "Sí. La demo está abierta con datos de ejemplo y sin tarjeta. Elegís un rol y la usás como si fuera tu clínica." },
 ];
 
 export default function Landing() {
   const { session } = useStore();
   const appHref = session ? "/app" : "/login";
   const [demoTeeth, setDemoTeeth] = useState<Record<string, ShowcaseToothRecord>>(DEMO_TEETH);
+  const hoy = new Date().toLocaleDateString("es-PY", { day: "2-digit", month: "long", year: "numeric" });
 
   return (
-    <div className="bg-white text-clinic-text">
-      {/* ===== NAV ===== */}
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-clinic-border/70 bg-white/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
-          <a href="/" className="flex items-baseline gap-2">
-            <span className="font-logo text-xl tracking-[0.18em] text-navy-800">NOVUdent</span>
-            <span className="hidden font-mono text-[11px] uppercase tracking-[0.3em] text-clinic-muted sm:block">by NOVUM</span>
-          </a>
-          <nav className="hidden items-center gap-1 text-sm font-semibold text-clinic-muted md:flex">
-            {[["#odontograma", "Odontograma"], ["#capacidades", "Capacidades"], ["#flujo", "Cómo se trabaja"], ["#precios", "Precios"]].map(([h, l]) => (
-              <a key={h} href={h} className="rounded-lg px-3 py-2 transition-colors hover:bg-clinic-bg hover:text-clinic-text">{l}</a>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
-            <a href="/login" className="hidden rounded-xl px-3.5 py-2 text-sm font-bold text-clinic-text transition-colors hover:bg-clinic-bg sm:block">Iniciar sesión</a>
-            <a href={appHref} className="btn-shine rounded-xl bg-navy-800 px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5">
-              {session ? "Ir al panel" : "Probar demo"}
-            </a>
+    <div className="bg-paper font-body text-clinic-text">
+      {/* ===== N6 · MASTHEAD ===== */}
+      <header className="ed-rule-double bg-paper">
+        <div className="mx-auto max-w-6xl px-5">
+          {/* fila de fecha/edición — la línea fina de un diario */}
+          <div className="flex items-center justify-between gap-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-clinic-muted">
+            <span className="hidden sm:block">Asunción, Paraguay</span>
+            <span className="truncate">{hoy}</span>
+            <a href="/login" className="ed-link ed-tap shrink-0 font-semibold text-clinic-text">Iniciar sesión</a>
           </div>
+          {/* wordmark */}
+          <div className="border-t border-clinic-border/70 py-4 text-center sm:py-5">
+            <a href="/" className="ed-tap inline-block">
+              <span className="font-display text-3xl font-extrabold tracking-[-0.02em] text-navy-800 sm:text-4xl">NOVUdent</span>
+            </a>
+            <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.3em] text-clinic-muted">
+              Software de gestión odontológica
+            </p>
+          </div>
+          {/* fila de enlaces */}
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 border-t border-clinic-border/70 py-2.5 text-sm">
+            {[["#capacidades", "Capacidades"], ["#flujo", "Cómo se trabaja"], ["#precios", "Precios"], ["#faq", "Preguntas"]].map(([h, l]) => (
+              <a key={h} href={h} className="ed-link ed-tap font-semibold text-clinic-muted hover:text-clinic-text">{l}</a>
+            ))}
+            <a href={appHref} className="ed-link ed-tap font-bold text-azure-600">
+              {session ? "Ir al panel →" : "Probar la demo →"}
+            </a>
+          </nav>
         </div>
       </header>
 
-      {/* ===== HERO: el producto vivo ===== */}
-      <section className="relative overflow-hidden pt-28 sm:pt-32">
-        <div className="lp-grid absolute inset-0" />
-        <div className="relative mx-auto max-w-6xl px-5">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}>
-            <div className="flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-clinic-muted">
-              <span className="h-px w-10 bg-azure-500" />
-              Software odontológico · Paraguay
-            </div>
-            <h1 className="mt-5 max-w-4xl font-logo text-[2.6rem] font-medium leading-[1.04] tracking-tight text-navy-800 sm:text-6xl lg:text-[4.2rem]">
-              La clínica entera,
-              <br />
-              en <span className="text-azure-600">una sola pantalla</span>.
-            </h1>
-            <div className="mt-6 flex flex-wrap items-end justify-between gap-6">
-              <p className="max-w-md text-lg leading-relaxed text-clinic-muted">
-                Agenda, odontograma por superficies, ficha clínica y facturación con
-                estados. Esto que ves abajo <b className="text-clinic-text">es el producto real</b> — tocalo.
-              </p>
-              <div className="flex items-center gap-4">
-                <a href={appHref} className="btn-shine group inline-flex items-center gap-2 rounded-2xl bg-azure-600 px-6 py-3.5 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-all hover:-translate-y-0.5 hover:bg-azure-700">
-                  {session ? "Ir al panel" : "Probar la demo gratis"}
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </a>
-                <span className="hidden font-mono text-[11px] uppercase tracking-wide text-clinic-muted lg:block">Sin tarjeta<br />Rol a elección</span>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* ventana de producto con odontograma VIVO */}
+      {/* ===== H2 · HERO DÍPTICO — afirmación izquierda, prueba derecha ===== */}
+      <section className="mx-auto max-w-6xl px-5 pb-16 pt-12 sm:pt-16">
+        <div className="grid items-start gap-x-10 gap-y-10 lg:grid-cols-12">
           <motion.div
-            initial={{ opacity: 0, y: 36 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.85, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="relative mt-12"
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-7"
           >
-            <div className="absolute -inset-x-8 -bottom-10 top-1/3 -z-10 rounded-[3rem] bg-azure-500/10 blur-3xl" />
-            <div className="relative overflow-hidden rounded-t-3xl border border-b-0 border-clinic-border bg-white shadow-pop">
-              <span className="border-beam-light rounded-t-3xl" />
-              {/* barra de navegador */}
-              <div className="flex items-center gap-3 border-b border-clinic-border bg-clinic-bg/60 px-4 py-2.5">
-                <span className="flex gap-1.5">
-                  <i className="h-2.5 w-2.5 rounded-full bg-red-300" /><i className="h-2.5 w-2.5 rounded-full bg-amber-300" /><i className="h-2.5 w-2.5 rounded-full bg-green-300" />
-                </span>
-                <span className="flex-1 truncate rounded-lg bg-white px-3 py-1 font-mono text-[11px] text-clinic-muted ring-1 ring-clinic-border">
-                  novudent.app / pacientes / maría-gonzález / odontograma
-                </span>
-                <span className="hidden rounded-full bg-state-okbg px-2 py-0.5 font-mono text-[11px] font-bold uppercase text-state-ok sm:block">demo en vivo</span>
-              </div>
-              <div className="p-4 sm:p-6">
-                <ShowcaseBoard
-                  value={demoTeeth}
-                  editable
-                  onChange={(tooth, rec) =>
-                    setDemoTeeth((prev) => {
-                      const next = { ...prev };
-                      if (rec) next[tooth] = rec; else delete next[tooth];
-                      return next;
-                    })
-                  }
-                />
-              </div>
+            <h1 className="max-w-[13ch] font-display font-extrabold leading-[0.94] tracking-[-0.035em] text-navy-800" style={{ fontSize: "var(--text-display)" }}>
+              La clínica entera, en <span className="text-azure-600">una sola pantalla</span>.
+            </h1>
+            <p className="mt-6 max-w-[52ch] text-lg leading-relaxed text-clinic-muted">
+              Agenda, odontograma por superficies, ficha clínica y facturación con
+              estados. Hecho en Paraguay, para cómo se trabaja acá.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-4">
+              <a
+                href={appHref}
+                className="group inline-flex min-h-[44px] items-center gap-2 border border-navy-800 bg-navy-800 px-6 py-3 text-sm font-bold text-white transition-colors duration-200 hover:bg-navy-700"
+              >
+                {session ? "Ir al panel" : "Probar la demo gratis"}
+                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </a>
+              <p className="font-mono text-[11px] uppercase leading-relaxed tracking-[0.14em] text-clinic-muted">
+                Sin tarjeta · sin instalación
+                <br />
+                Elegís el rol y entrás
+              </p>
             </div>
           </motion.div>
-        </div>
 
-        {/* banda navy de números, pegada a la ventana */}
-        <div className="bg-navy-800">
-          <div className="mx-auto grid max-w-6xl grid-cols-2 gap-y-8 px-5 py-12 sm:grid-cols-4 sm:py-14">
-            {[
-              { v: 32, s: "", l: "piezas FDI con morfología real" },
-              { v: 5, s: "", l: "superficies marcables por pieza" },
-              { v: 6, s: "", l: "estados de facturación auditados" },
-              { v: 3, s: "", l: "roles con permisos estrictos" },
-            ].map((x) => (
-              <div key={x.l} className="border-l border-white/10 pl-5">
-                <div className="font-logo text-5xl text-white sm:text-6xl"><Count value={x.v} suffix={x.s} /></div>
-                <div className="mt-1.5 max-w-[160px] text-xs leading-relaxed text-white/55">{x.l}</div>
-              </div>
-            ))}
-          </div>
+          {/* Lámina comparativa: la MISMA pieza 16 en cuatro estados. Son los
+              glifos reales del odontograma, no ilustraciones — el tablero entero
+              necesita 700 px y por eso vive a todo el ancho, más abajo. */}
+          <motion.figure
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+            className="ed-figure lg:col-span-5"
+          >
+            <figcaption className="border-b border-clinic-border px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-clinic-text">
+              Pieza 16 · cuatro estados
+            </figcaption>
+            <div className="grid grid-cols-4">
+              {([
+                { rec: undefined, l: "Sana" },
+                { rec: { condition: "caries" as const, surfaces: ["O" as const] }, l: "Caries" },
+                { rec: { condition: "restaurado" as const, surfaces: ["O" as const] }, l: "Resina" },
+                { rec: { condition: "corona" as const }, l: "Corona" },
+              ]).map((s, i) => (
+                /* Fondo entintado a propósito: el cuerpo del diente se dibuja con
+                   relleno blanco y contorno azure-400 fino — sobre blanco puro el
+                   estado "restaurado" se leía como un cuadradito suelto. */
+                <div key={s.l} className={`flex min-w-0 flex-col items-center gap-2 bg-paper-2 py-6 ${i > 0 ? "border-l border-clinic-border" : ""}`}>
+                  <span className="[&_svg]:h-16 [&_svg]:w-auto">
+                    <ToothGlyph n="16" rec={s.rec} upper />
+                  </span>
+                  <span className="truncate px-1 font-mono text-[11px] uppercase tracking-[0.1em] text-clinic-muted">{s.l}</span>
+                </div>
+              ))}
+            </div>
+            <p className="border-t border-clinic-border px-4 py-2.5 text-[13px] leading-relaxed text-clinic-muted">
+              Cinco superficies por pieza. Cada marca guarda autor y fecha.
+            </p>
+          </motion.figure>
         </div>
       </section>
 
-      {/* ===== MARQUEE DE DIENTES (firma visual) ===== */}
-      <section aria-hidden className="border-b border-clinic-border bg-white py-6">
-        <div className="lp-marquee-mask overflow-hidden">
-          <div className="lp-marquee flex w-max items-center gap-8 opacity-80">
-            {[...MARQUEE_TEETH, ...MARQUEE_TEETH].map((t, i) => (
-              <span key={i} className="flex items-center gap-8">
+      {/* ===== EL PRODUCTO, A TODO EL ANCHO — no es una captura ===== */}
+      <section className="mx-auto max-w-6xl px-5 pb-20">
+        <Reveal y={20}>
+          <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 border-b-2 border-clinic-text pb-3">
+            <h2 className="font-display text-2xl font-extrabold tracking-[-0.025em] text-navy-800 sm:text-3xl">
+              El odontograma de verdad, acá abajo
+            </h2>
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-azure-600">
+              Tocá un diente — es interactivo
+            </p>
+          </div>
+          {/* Sin marco propio: ShowcaseBoard ya trae el suyo. Envolverlo sería
+              una tarjeta dentro de otra. */}
+          <ShowcaseBoard
+            value={demoTeeth}
+            editable
+            onChange={(tooth, rec) =>
+              setDemoTeeth((prev) => {
+                const next = { ...prev };
+                if (rec) next[tooth] = rec; else delete next[tooth];
+                return next;
+              })
+            }
+          />
+        </Reveal>
+      </section>
+
+      {/* ===== T4 · FRANJA DE CIFRAS ===== */}
+      <section className="border-y border-clinic-border bg-navy-800">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-y-9 px-5 py-11 sm:grid-cols-4">
+          {[
+            { v: 32, l: "piezas FDI con morfología real" },
+            { v: 5, l: "superficies marcables por pieza" },
+            { v: 6, l: "estados de facturación auditados" },
+            { v: 3, l: "roles con permisos estrictos" },
+          ].map((x) => (
+            <div key={x.l} className="border-l border-white/15 pl-4 sm:pl-5">
+              <div className="font-display text-5xl font-extrabold tabular-nums tracking-tight text-white sm:text-6xl">
+                {x.v}
+              </div>
+              <div className="mt-1.5 max-w-[17ch] text-[13px] leading-snug text-white/60">{x.l}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== ESPÉCIMEN DE PIEZAS ===== */}
+      <section aria-hidden className="border-b border-clinic-border bg-paper-2 py-5">
+        <div className="ed-specimen-mask overflow-hidden">
+          <div className="ed-specimen flex w-max items-center gap-9 opacity-70">
+            {[...SPECIMEN_TEETH, ...SPECIMEN_TEETH].map((t, i) => (
+              <span key={i} className="flex items-center gap-9">
                 <ToothGlyph n={t.n} rec={t.rec} upper />
-                {i % 3 === 2 && <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-clinic-muted">novudent</span>}
+                {i % 4 === 3 && (
+                  <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-clinic-muted">FDI</span>
+                )}
               </span>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ===== CAPACIDADES (índice editorial, sin cards) ===== */}
-      <section id="capacidades" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
-        <div className="grid gap-12 lg:grid-cols-12">
-          <Reveal y={24} className="lg:col-span-4">
-            <div className="lg:sticky lg:top-28">
-              <div className="flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-clinic-muted">
-                <span className="h-px w-10 bg-azure-500" /> Capacidades
-              </div>
-              <h2 className="mt-4 font-logo text-4xl leading-tight text-navy-800 sm:text-5xl">
-                Sin módulos
-                <br />de relleno.
-              </h2>
-              <p className="mt-5 max-w-xs text-sm leading-relaxed text-clinic-muted">
-                Las seis herramientas que mueven una clínica dental, pulidas hasta el detalle.
-                Nada más — y nada menos.
+      {/* ===== F3 · CAPACIDADES COMO HOJA DE ESPECIFICACIONES ===== */}
+      <section id="capacidades" className="mx-auto max-w-6xl scroll-mt-8 px-5 py-20 sm:py-24">
+        {/* S2 · encabezado colgado en el aire, sin filete ni etiqueta al margen */}
+        <Reveal y={20}>
+          <h2 className="max-w-[16ch] font-display font-extrabold leading-[1.02] tracking-[-0.03em] text-navy-800" style={{ fontSize: "var(--text-h2)" }}>
+            Ocho herramientas. Ningún módulo de relleno.
+          </h2>
+          <p className="mt-4 max-w-[58ch] leading-relaxed text-clinic-muted">
+            Todo lo que sigue ya está construido y funcionando en la demo — no es un
+            roadmap.
+          </p>
+        </Reveal>
+
+        <Stagger className="mt-11 border-t border-clinic-border">
+          {CAPACIDADES.map((c) => (
+            <StaggerItem
+              key={c.t}
+              className="group grid grid-cols-12 items-baseline gap-x-5 gap-y-1.5 border-b border-clinic-border py-6 transition-colors duration-200 hover:bg-paper-2"
+            >
+              <h3 className="col-span-9 font-display text-xl font-bold leading-tight tracking-[-0.015em] text-navy-800 sm:col-span-4 sm:text-[1.35rem]">
+                {c.t}
+              </h3>
+              <span className="col-span-3 justify-self-end font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-azure-600 sm:order-last sm:col-span-2">
+                {c.k}
+              </span>
+              <p className="col-span-12 text-[15px] leading-relaxed text-clinic-muted sm:col-span-6">
+                {c.d}
               </p>
-              <div className="mt-8 flex items-baseline gap-3">
-                <span className="font-logo text-6xl text-navy-800">06</span>
-                <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-clinic-muted">herramientas<br />de trabajo</span>
-              </div>
-            </div>
-          </Reveal>
-          <div className="lg:col-span-8">
-            <Stagger className="border-t border-clinic-border">
-              {CAPACIDADES.map((c) => (
-                <StaggerItem
-                  key={c.n}
-                  className="group relative grid grid-cols-12 items-baseline gap-x-4 gap-y-2 border-b border-clinic-border py-7"
-                >
-                  <span className="pointer-events-none absolute inset-x-[-12px] inset-y-0 rounded-2xl bg-gradient-to-r from-azure-50 via-azure-50/40 to-transparent opacity-0 transition-opacity duration-400 group-hover:opacity-100" />
-                  <div className="relative col-span-2 sm:col-span-1">
-                    <span className="font-mono text-xs font-bold text-azure-600">{c.n}</span>
-                  </div>
-                  <div className="relative col-span-10 sm:col-span-5">
-                    <h3 className="font-logo text-2xl leading-tight text-navy-800 transition-transform duration-300 group-hover:translate-x-1 sm:text-[1.7rem]">
-                      {c.t}
-                    </h3>
-                  </div>
-                  <div className="relative col-span-12 text-sm leading-relaxed text-clinic-muted sm:col-span-5">
-                    {c.d}
-                  </div>
-                  <div className="relative col-span-1 hidden justify-end self-center sm:flex">
-                    <ArrowUpRight className="h-4 w-4 text-clinic-border transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-azure-600" />
-                  </div>
-                </StaggerItem>
-              ))}
-            </Stagger>
-          </div>
-        </div>
+            </StaggerItem>
+          ))}
+        </Stagger>
       </section>
 
-      {/* ===== CÓMO SE TRABAJA (showcase zigzag) ===== */}
-      <section id="flujo" className="border-y border-clinic-border bg-clinic-bg py-20 sm:py-28">
-        <div className="mx-auto max-w-6xl space-y-20 px-5">
-          <Reveal y={24}>
-            <div className="flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-clinic-muted">
-              <span className="h-px w-10 bg-azure-500" /> Cómo se trabaja
-            </div>
-            <h2 className="mt-4 max-w-2xl font-logo text-4xl leading-tight text-navy-800 sm:text-5xl">
-              Un día en tu clínica, <span className="text-azure-600">sin fricción</span>.
+      {/* ===== DÍPTICOS ALTERNADOS — cada afirmación con su prueba al lado ===== */}
+      <section id="flujo" className="scroll-mt-8 border-y border-clinic-border bg-paper-2 py-20 sm:py-24">
+        <div className="mx-auto max-w-6xl px-5">
+          <Reveal y={20}>
+            <h2 className="max-w-[18ch] font-display font-extrabold leading-[1.02] tracking-[-0.03em] text-navy-800" style={{ fontSize: "var(--text-h2)" }}>
+              Un día en tu clínica, sin fricción.
             </h2>
           </Reveal>
 
-          {/* 01 agenda */}
-          <Reveal y={24} className="grid items-center gap-10 lg:grid-cols-12">
-            <div className="lg:col-span-5">
-              <span className="font-logo text-7xl text-clinic-border">01</span>
-              <h3 className="-mt-4 font-logo text-3xl text-navy-800">La mañana arranca sola</h3>
-              <p className="mt-3 max-w-md leading-relaxed text-clinic-muted">
-                La recepcionista abre la agenda: los turnos confirmados por WhatsApp en verde,
-                los pendientes en ámbar. Un hueco a las 11:00 — clic, y la cita queda creada.
-              </p>
-            </div>
-            <div className="lg:col-span-7">
-              <div className="rounded-3xl border border-clinic-border bg-white p-5 shadow-card">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-sm font-extrabold text-navy-800">Agenda · hoy</span>
-                  <span className="rounded-full bg-state-okbg px-2 py-0.5 font-mono text-[11px] font-bold text-state-ok">92% OCUPACIÓN</span>
-                </div>
-                {[["09:00", "María González", "Resina pieza 16", "bg-state-ok"], ["10:30", "Juan Ríos", "Primera consulta", "bg-state-warn"], ["11:00", "+ Crear cita en este hueco", "", "bg-azure-500"], ["11:45", "Camila Ortega", "Profilaxis", "bg-state-ok"]].map(([h, n, t, dot], idx) => (
-                  <div key={idx} className={`mb-2 flex items-center gap-3 rounded-xl border px-3 py-2.5 ${t === "" ? "border-dashed border-azure-300 bg-azure-50/60" : "border-clinic-border"}`}>
-                    <span className="font-mono text-xs font-bold text-clinic-text">{h}</span>
-                    <span className="flex-1">
-                      <span className={`block text-xs font-bold ${t === "" ? "text-azure-700" : "text-clinic-text"}`}>{n}</span>
-                      {t && <span className="block text-[11px] text-clinic-muted">{t}</span>}
-                    </span>
-                    <span className={`h-2 w-2 rounded-full ${dot}`} />
-                  </div>
-                ))}
+          <div className="mt-14 space-y-16">
+            {/* — díptico 1: texto izquierda / prueba derecha — */}
+            <Reveal y={20} className="grid items-center gap-x-10 gap-y-7 lg:grid-cols-12">
+              <div className="lg:col-span-5">
+                <h3 className="font-display font-bold leading-tight tracking-[-0.02em] text-navy-800" style={{ fontSize: "var(--text-h3)" }}>
+                  La mañana arranca sola
+                </h3>
+                <p className="mt-3 max-w-[46ch] leading-relaxed text-clinic-muted">
+                  La recepcionista abre la agenda: confirmados por WhatsApp en verde,
+                  pendientes en ámbar. Un hueco a las 11:00 — clic, y la cita queda creada.
+                </p>
               </div>
-            </div>
-          </Reveal>
-
-          {/* 02 ficha + odontograma (invertido) */}
-          <Reveal y={24} className="grid items-center gap-10 lg:grid-cols-12">
-            <div className="order-1 lg:order-2 lg:col-span-5">
-              <span className="font-logo text-7xl text-clinic-border">02</span>
-              <h3 className="-mt-4 font-logo text-3xl text-navy-800">El hallazgo queda en la pieza</h3>
-              <p className="mt-3 max-w-md leading-relaxed text-clinic-muted">
-                La doctora marca caries oclusal en la 16 directamente sobre el diente.
-                Rojo = pendiente, azul = resuelto. Quién, cuándo y en qué superficie: auditado.
-              </p>
-            </div>
-            <div className="order-2 lg:order-1 lg:col-span-7">
-              <div className="rounded-3xl border border-clinic-border bg-white p-6 shadow-card">
-                <div className="flex items-center justify-center gap-7">
-                  {[{ n: "14" }, { n: "15" }, { n: "16", rec: { condition: "caries" as const, surfaces: ["O" as const], updatedAt: "", updatedBy: "" } }, { n: "17" }].map((t) => (
-                    <div key={t.n} className="flex flex-col items-center gap-1">
-                      <ToothGlyph n={t.n} rec={t.rec} upper />
-                      <span className={`font-mono text-[11px] ${t.rec ? "font-bold text-red-600" : "text-clinic-muted"}`}>{t.n}</span>
+              <div className="ed-figure lg:col-span-7">
+                <div className="flex items-center justify-between border-b border-clinic-border px-4 py-2.5">
+                  <span className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-clinic-text">Agenda · hoy</span>
+                  <span className="font-mono text-[11px] font-bold tabular-nums text-state-ok">92 % ocupación</span>
+                </div>
+                <div className="divide-y divide-clinic-border">
+                  {[
+                    ["09:00", "María González", "Resina pieza 16", "bg-state-ok"],
+                    ["10:30", "Juan Ríos", "Primera consulta", "bg-state-warn"],
+                    ["11:00", "Crear cita en este hueco", "", "bg-azure-500"],
+                    ["11:45", "Camila Ortega", "Profilaxis", "bg-state-ok"],
+                  ].map(([h, n, t, dot], idx) => (
+                    <div key={idx} className={`flex items-center gap-3.5 px-4 py-3 ${t === "" ? "bg-azure-50/70" : ""}`}>
+                      <span className="font-mono text-xs font-bold tabular-nums text-clinic-text">{h}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className={`block truncate text-[13px] font-bold ${t === "" ? "text-azure-700" : "text-clinic-text"}`}>{n}</span>
+                        {t && <span className="block truncate text-[12px] text-clinic-muted">{t}</span>}
+                      </span>
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />
                     </div>
                   ))}
                 </div>
-                <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-center font-mono text-[11px] font-bold text-red-600">
-                  16 · CARIES OCLUSAL (O) — registrado por Dra. Benítez
+              </div>
+            </Reveal>
+
+            {/* — díptico 2: prueba izquierda / texto derecha (alterna) — */}
+            <Reveal y={20} className="grid items-center gap-x-10 gap-y-7 lg:grid-cols-12">
+              <div className="order-1 lg:order-2 lg:col-span-5">
+                <h3 className="font-display font-bold leading-tight tracking-[-0.02em] text-navy-800" style={{ fontSize: "var(--text-h3)" }}>
+                  El hallazgo queda en la pieza
+                </h3>
+                <p className="mt-3 max-w-[46ch] leading-relaxed text-clinic-muted">
+                  La doctora marca caries oclusal en la 16 sobre el diente mismo. Rojo es
+                  pendiente, azul es resuelto. Quién, cuándo y en qué superficie: auditado.
                 </p>
               </div>
-            </div>
-          </Reveal>
+              <div className="ed-figure order-2 lg:order-1 lg:col-span-7">
+                <div className="flex flex-wrap items-end justify-center gap-x-8 gap-y-4 px-4 py-7">
+                  {[{ n: "14" }, { n: "15" }, { n: "16", rec: { condition: "caries" as const, surfaces: ["O" as const], updatedAt: "", updatedBy: "" } }, { n: "17" }].map((t) => (
+                    <div key={t.n} className="flex flex-col items-center gap-1">
+                      <ToothGlyph n={t.n} rec={t.rec} upper />
+                      <span className={`font-mono text-[11px] tabular-nums ${t.rec ? "font-bold text-state-err" : "text-clinic-muted"}`}>{t.n}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="border-t border-clinic-border px-4 py-2.5 text-center font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-state-err">
+                  16 · caries oclusal — Dra. Benítez
+                </p>
+              </div>
+            </Reveal>
 
-          {/* 03 facturación */}
-          <Reveal y={24} className="grid items-center gap-10 lg:grid-cols-12">
-            <div className="lg:col-span-5">
-              <span className="font-logo text-7xl text-clinic-border">03</span>
-              <h3 className="-mt-4 font-logo text-3xl text-navy-800">El cobro no se escapa</h3>
-              <p className="mt-3 max-w-md leading-relaxed text-clinic-muted">
-                La asistente envía a cobro. El sistema valida los códigos, aplica la retención
-                correcta y nada queda en el limbo: cada reclamo tiene un estado y un historial.
-              </p>
-            </div>
-            <div className="lg:col-span-7">
-              <div className="rounded-3xl border border-clinic-border bg-white p-5 shadow-card">
+            {/* — díptico 3: texto izquierda / prueba derecha — */}
+            <Reveal y={20} className="grid items-center gap-x-10 gap-y-7 lg:grid-cols-12">
+              <div className="lg:col-span-5">
+                <h3 className="font-display font-bold leading-tight tracking-[-0.02em] text-navy-800" style={{ fontSize: "var(--text-h3)" }}>
+                  El cobro no se escapa
+                </h3>
+                <p className="mt-3 max-w-[46ch] leading-relaxed text-clinic-muted">
+                  La asistente envía a cobro. El sistema valida los códigos, aplica la
+                  retención y nada queda en el limbo: cada reclamo tiene estado e historial.
+                </p>
+              </div>
+              <div className="ed-figure divide-y divide-clinic-border lg:col-span-7">
                 {[
                   { flags: [] as string[], label: "Registro creado", sub: "Códigos CPT-DX · POS · MOD validados en vivo" },
                   { flags: ["MBILLED", "HOLD"], label: "Enviado a cobro", sub: "Retención automática del e-claim" },
                   { flags: ["FACTURADO", "ACH"], label: "Liberado y facturado", sub: "Pago automático activo" },
                 ].map((s, i) => (
-                  <div key={i} className="mb-2 flex items-center gap-3 rounded-2xl border border-clinic-border px-4 py-3">
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-azure-50 font-mono text-xs font-bold text-azure-700">{i + 1}</span>
-                    <span className="flex-1">
-                      <span className="block text-sm font-bold text-clinic-text">{s.label}</span>
-                      <span className="block text-[11px] text-clinic-muted">{s.sub}</span>
+                  <div key={i} className="flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 py-3.5">
+                    <span className="font-mono text-xs font-bold tabular-nums text-azure-600">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-bold text-clinic-text">{s.label}</span>
+                      <span className="block text-[12px] leading-snug text-clinic-muted">{s.sub}</span>
                     </span>
-                    <span className="flex flex-wrap justify-end gap-1">
+                    <span className="flex flex-wrap gap-1">
                       {s.flags.length === 0
-                        ? <span className="rounded-full bg-clinic-bg px-2 py-0.5 font-mono text-[11px] font-bold text-clinic-muted">SIN ENVIAR</span>
+                        ? <span className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-clinic-muted">sin enviar</span>
                         : s.flags.map((f) => <FlagBadge key={f} flag={f as any} />)}
                     </span>
                   </div>
                 ))}
               </div>
-            </div>
-          </Reveal>
+            </Reveal>
+          </div>
         </div>
       </section>
 
-      {/* ===== PRECIOS (panel asimétrico) ===== */}
-      <section id="precios" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
-        <Reveal y={24}>
-          <div className="flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-clinic-muted">
-            <span className="h-px w-10 bg-azure-500" /> Precios
-          </div>
-          <h2 className="mt-4 font-logo text-4xl leading-tight text-navy-800 sm:text-5xl">
-            Claros. <span className="text-azure-600">Sin sorpresas.</span>
+      {/* ===== PRECIOS ===== */}
+      <section id="precios" className="mx-auto max-w-6xl scroll-mt-8 px-5 py-20 sm:py-24">
+        <Reveal y={20}>
+          <h2 className="font-display font-extrabold leading-[1.02] tracking-[-0.03em] text-navy-800" style={{ fontSize: "var(--text-h2)" }}>
+            Precios claros, sin sorpresas.
           </h2>
         </Reveal>
 
-        <div className="mt-10 grid gap-5 lg:grid-cols-12">
-          {/* plan principal */}
-          <Reveal y={24} className="relative overflow-hidden rounded-[2rem] bg-navy-800 p-8 text-white lg:col-span-7 sm:p-10">
-            <span className="border-beam-light rounded-[2rem]" />
-            <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-azure-500/20 blur-3xl" />
-            <div className="relative">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-azure-200">Plan Clínica · el más elegido</span>
+        {/* Tabla de planes: hairlines, no cards flotantes. */}
+        <Stagger className="mt-10 border-t-2 border-clinic-text">
+          {[
+            { name: "Solo", price: "$45", per: "USD / mes", blurb: "Odontólogo independiente: un sillón, odontograma, agenda y facturación.", cta: "Probar gratis" },
+            { name: "Clínica", price: "$129", per: "USD / mes", blurb: "Hasta cinco sillones con todo Novudent adentro: financiamiento, formularios, consentimientos y soporte prioritario.", cta: "Probar gratis", featured: true },
+            { name: "Cadena", price: "A medida", per: "", blurb: "Multi-sucursal: comisiones, laboratorio, integraciones propias y account manager.", cta: "Hablar con ventas" },
+          ].map((p) => (
+            <StaggerItem
+              key={p.name}
+              className={`grid grid-cols-12 items-baseline gap-x-5 gap-y-2.5 border-b border-clinic-border py-7 ${p.featured ? "bg-azure-50/45" : ""}`}
+            >
+              <div className="col-span-12 sm:col-span-3">
+                <span className="font-display text-2xl font-extrabold tracking-[-0.02em] text-navy-800">{p.name}</span>
+                {p.featured && (
+                  <span className="ml-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-azure-600">El más elegido</span>
+                )}
               </div>
-              <div className="mt-5 flex items-end gap-2">
-                <span className="font-logo text-6xl">$129</span>
-                <span className="mb-2 text-sm text-white/50">USD / mes</span>
+              <div className="col-span-6 sm:col-span-2">
+                <span className="font-display text-2xl font-extrabold tabular-nums tracking-[-0.02em] text-navy-800">{p.price}</span>
+                {p.per && <span className="ml-1.5 font-mono text-[11px] uppercase tracking-[0.1em] text-clinic-muted">{p.per}</span>}
               </div>
-              <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/65">
-                Para clínicas en crecimiento: hasta 5 sillones con todo Novudent adentro.
-              </p>
-              <ul className="mt-7 grid gap-2.5 sm:grid-cols-2">
-                {["Hasta 5 sillones / profesionales", "Odontograma por superficies", "Financiamiento y morosidad", "Formularios y consentimientos", "Facturación con estados", "Soporte prioritario"].map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-white/85">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-azure-300" strokeWidth={2.5} /> {f}
-                  </li>
-                ))}
-              </ul>
-              <a href={appHref} className="btn-shine mt-8 inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-extrabold text-navy-800 transition-all hover:-translate-y-0.5">
-                Probar gratis <ArrowRight className="h-4 w-4" />
+              <p className="col-span-12 text-[15px] leading-relaxed text-clinic-muted sm:col-span-5">{p.blurb}</p>
+              <a
+                href={appHref}
+                className="ed-link ed-tap col-span-6 justify-self-end whitespace-nowrap text-sm font-bold text-azure-600 sm:col-span-2"
+              >
+                {p.cta} →
               </a>
-            </div>
-          </Reveal>
-
-          {/* planes secundarios apilados */}
-          <Stagger className="grid gap-5 lg:col-span-5">
-            {[
-              { name: "Solo", price: "$45", per: "USD / mes", blurb: "Odontólogo independiente: 1 sillón, odontograma, agenda y facturación básica." },
-              { name: "Cadena", price: "A medida", per: "", blurb: "Multi-sucursal: comisiones, laboratorio, integraciones propias y account manager." },
-            ].map((p) => (
-              <StaggerItem key={p.name} className="h-full">
-                <div className="flex h-full flex-col justify-between rounded-[2rem] border border-clinic-border bg-white p-7 shadow-card transition-all hover:-translate-y-1 hover:shadow-pop">
-                  <div>
-                    <div className="flex items-baseline justify-between">
-                      <span className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-clinic-muted">Plan {p.name}</span>
-                      <span className="font-logo text-3xl text-navy-800">{p.price}<span className="ml-1 text-xs font-sans text-clinic-muted">{p.per}</span></span>
-                    </div>
-                    <p className="mt-3 text-sm leading-relaxed text-clinic-muted">{p.blurb}</p>
-                  </div>
-                  <a href={appHref} className="group mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-azure-600 hover:text-azure-700">
-                    {p.price === "A medida" ? "Hablar con ventas" : "Probar gratis"}
-                    <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                  </a>
-                </div>
-              </StaggerItem>
-            ))}
-          </Stagger>
-        </div>
-        <p className="mt-6 font-mono text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
-          Precios referenciales · Sin contratos largos · Migración de datos incluida
+            </StaggerItem>
+          ))}
+        </Stagger>
+        <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.14em] text-clinic-muted">
+          Precios referenciales · sin contratos largos · migración de datos incluida
         </p>
       </section>
 
       {/* ===== FAQ ===== */}
-      <section className="border-t border-clinic-border bg-clinic-bg py-20 sm:py-24">
-        <div className="mx-auto grid max-w-6xl gap-10 px-5 lg:grid-cols-12">
-          <Reveal y={24} className="lg:col-span-4">
-            <div className="flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-clinic-muted">
-              <span className="h-px w-10 bg-azure-500" /> FAQ
-            </div>
-            <h2 className="mt-4 font-logo text-4xl leading-tight text-navy-800">Lo que todos preguntan.</h2>
+      <section id="faq" className="scroll-mt-8 border-t border-clinic-border bg-paper-2 py-20 sm:py-24">
+        <div className="mx-auto max-w-3xl px-5">
+          <Reveal y={20}>
+            <h2 className="font-display font-extrabold leading-[1.02] tracking-[-0.03em] text-navy-800" style={{ fontSize: "var(--text-h2)" }}>
+              Lo que todos preguntan.
+            </h2>
           </Reveal>
-          <Stagger className="space-y-3 lg:col-span-8">
-            {[
-              { q: "¿Necesito instalar algo?", a: "No. Novudent es 100% web: navegador de computadora, tablet o celular, con tus datos seguros en la nube (Firebase)." },
-              { q: "¿El odontograma marca superficies?", a: "Sí: cada pieza tiene su vista oclusal de 5 superficies (M·D·V·L·O). Marcás caries en mesial o una restauración en vestibular y queda pintado en el tablero, con autor y fecha." },
-              { q: "¿Cómo evita errores de facturación?", a: "Con una máquina de estados estricta y validación de emparejamientos CPT-DX, POS-CPT y modificadores antes de cada envío. Las retenciones (HOLD/MGRHOLD) se asignan solas." },
-              { q: "¿Quién crea los usuarios?", a: "Solo el administrador de la clínica, desde Configuración. Cada usuario entra con su email y contraseña, con los permisos de su rol." },
-              { q: "¿Puedo probarlo gratis?", a: "Sí: la demo está abierta con datos de ejemplo y sin tarjeta. Elegí un rol y usala como si fuera tu clínica." },
-            ].map((f, i) => (
+          <Stagger className="mt-9 border-t border-clinic-border">
+            {FAQ.map((f) => (
               <StaggerItem key={f.q}>
-                <details className="group rounded-2xl border border-clinic-border bg-white shadow-card">
-                  <summary className="flex cursor-pointer list-none items-center gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
-                    <span className="font-mono text-xs font-bold text-azure-600">{String(i + 1).padStart(2, "0")}</span>
-                    <h3 className="flex-1 text-sm font-extrabold text-navy-800 sm:text-base">{f.q}</h3>
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-clinic-bg">
-                      <Plus className="h-3.5 w-3.5 text-clinic-muted transition-transform duration-300 group-open:rotate-45" />
+                <details className="group border-b border-clinic-border">
+                  <summary className="flex cursor-pointer list-none items-center gap-4 py-4 [&::-webkit-details-marker]:hidden">
+                    <h3 className="flex-1 font-display text-lg font-bold leading-snug tracking-[-0.015em] text-navy-800">{f.q}</h3>
+                    <span className="grid h-6 w-6 shrink-0 place-items-center border border-clinic-border">
+                      <Plus className="h-3.5 w-3.5 text-clinic-muted transition-transform duration-200 group-open:rotate-45" />
                     </span>
                   </summary>
-                  <p className="px-5 pb-5 pl-[3.25rem] text-sm leading-relaxed text-clinic-muted">{f.a}</p>
+                  <p className="max-w-[62ch] pb-5 text-[15px] leading-relaxed text-clinic-muted">{f.a}</p>
                 </details>
               </StaggerItem>
             ))}
@@ -446,44 +449,41 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ===== CTA FINAL ===== */}
-      <section className="bg-navy-800">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 sm:py-20 lg:grid-cols-12">
-          <Reveal y={24} className="lg:col-span-8">
-            <h2 className="font-logo text-4xl leading-tight text-white sm:text-5xl">
-              La demo está lista.
-              <br /><span className="text-azure-200">Tu clínica también.</span>
+      {/* ===== CTA FINAL — una sola acción ===== */}
+      <section className="border-t border-clinic-border bg-navy-800">
+        <div className="mx-auto max-w-6xl px-5 py-16 sm:py-20">
+          <Reveal y={20}>
+            <h2 className="max-w-[15ch] font-display font-extrabold leading-[1.0] tracking-[-0.03em] text-white" style={{ fontSize: "var(--text-display-s)" }}>
+              La demo está lista. Tu clínica también.
             </h2>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-white/60">
-              Entrá con un clic, elegí tu rol y recorré la agenda, el odontograma y la facturación
-              con datos reales de ejemplo.
+            <p className="mt-5 max-w-[52ch] leading-relaxed text-white/60">
+              Entrás con un clic, elegís tu rol y recorrés la agenda, el odontograma y la
+              facturación con datos de ejemplo.
             </p>
-            <a href={appHref} className="btn-shine group mt-7 inline-flex items-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-sm font-extrabold text-navy-800 transition-all hover:-translate-y-0.5">
+            <a
+              href={appHref}
+              className="group mt-8 inline-flex min-h-[44px] items-center gap-2 border border-white bg-white px-7 py-3 text-sm font-bold text-navy-800 transition-colors duration-200 hover:bg-azure-100"
+            >
               {session ? "Ir al panel" : "Probar la demo gratis"}
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
             </a>
-          </Reveal>
-          <Reveal y={24} className="hidden justify-end gap-5 opacity-40 lg:col-span-4 lg:flex">
-            <div aria-hidden className="flex gap-5">
-              {[{ n: "13" }, { n: "11", rec: { condition: "restaurado" as const, updatedAt: "", updatedBy: "" } }, { n: "16" }].map((t) => (
-                <span key={t.n} className="[&_svg]:h-24 [&_svg]:w-14 [&_*]:!stroke-white/60">
-                  <ToothGlyph n={t.n} rec={t.rec} upper />
-                </span>
-              ))}
-            </div>
           </Reveal>
         </div>
       </section>
 
-      {/* ===== FOOTER ===== */}
-      <footer className="border-t border-white/10 bg-navy-900">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 sm:flex-row">
-          <span className="font-logo tracking-[0.16em] text-white">NOVUdent</span>
-          <p className="text-xs text-white/45">
-            © {new Date().getFullYear()} Novudent · un producto de{" "}
-            <a href="https://novum-web-six.vercel.app" className="font-bold text-azure-300 hover:underline">NOVUM Holding</a> · Asunción, Paraguay
+      {/* ===== Ft4 · COLOFÓN ===== */}
+      <footer className="border-t border-white/10 bg-navy-900 py-9">
+        <div className="mx-auto max-w-6xl px-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
+            <span className="font-display text-lg font-extrabold tracking-[-0.02em] text-white">NOVUdent</span>
+            <a href="/login" className="ed-link ed-tap text-[13px] font-bold text-white/75 hover:text-white">Iniciar sesión →</a>
+          </div>
+          <p className="mt-4 max-w-[74ch] font-mono text-[11px] leading-relaxed text-white/45">
+            Novudent — software de gestión para clínicas dentales. Un producto de{" "}
+            <a href="https://novum-web-six.vercel.app" className="ed-link font-bold text-azure-300">NOVUM Holding</a>,
+            Asunción, Paraguay. Odontograma con numeración FDI de dos dígitos. Datos
+            alojados en Firebase. © {new Date().getFullYear()}, todos los derechos reservados.
           </p>
-          <a href="/login" className="text-xs font-bold text-white/70 hover:text-white">Iniciar sesión →</a>
         </div>
       </footer>
     </div>
