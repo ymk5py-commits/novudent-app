@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ShieldAlert, Download, TrendingUp, TrendingDown, Scale, FileSpreadsheet, Percent, Bot, Star } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
-import { budgetTotal, patientBalance, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
+import { budgetTotal, patientBalance, netAmount, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { Card, Btn, Badge } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { ReportsIAPanel } from "@/components/NovudentIA";
@@ -49,6 +49,15 @@ export default function ReportsPage() {
     const collected = pays.reduce((s, p) => s + p.amount, 0);
     const spent = exps.reduce((s, e) => s + e.amount, 0);
 
+    // Neto de la retención del medio de pago (comisión de la tarjeta/banco) —
+    // se recalcula siempre con la tasa VIGENTE en Clinic.config, nunca se
+    // congela por pago. Solo alimenta "Resultado"; el resto de este useMemo
+    // sigue en bruto a propósito (ver tabla "Qué queda en bruto" de la spec).
+    const currency = db.clinics[0]?.config.currency;
+    const retentionCfg = db.clinics[0]?.config?.paymentRetention;
+    const collectedNet = pays.reduce((s, p) => s + netAmount(p, retentionCfg, currency), 0);
+    const retention = collected - collectedNet;
+
     const presented = db.budgets.filter((b) => b.status !== "borrador" && b.status !== "anulado");
     const accepted = db.budgets.filter((b) => b.status === "aceptado" || b.status === "completado");
     const acceptRate = presented.length ? Math.round((accepted.length / presented.length) * 100) : 0;
@@ -90,7 +99,7 @@ export default function ReportsPage() {
     const detr = surveys.filter((s) => s.score <= 6).length;
     const npsScore = surveys.length ? Math.round(((prom - detr) / surveys.length) * 100) : null;
 
-    return { pays, exps, collected, spent, presented, accepted, acceptRate, production, maxProd, cashflow, debtors, surveys, prom, pasv, detr, npsScore };
+    return { pays, exps, collected, spent, collectedNet, retention, presented, accepted, acceptRate, production, maxProd, cashflow, debtors, surveys, prom, pasv, detr, npsScore };
   }, [db]);
 
   const plan = useClinicPlan();
@@ -246,8 +255,8 @@ export default function ReportsPage() {
         <StaggerItem className="block h-full">
         <Card className="p-5">
           <div className="flex items-center gap-2 text-azure-600"><Scale className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Resultado</span></div>
-          <div className={`mt-1 font-mono text-xl font-extrabold ${data.collected - data.spent >= 0 ? "text-state-ok" : "text-state-err"}`}>{fmtGs(data.collected - data.spent)}</div>
-          <div className="mt-1 text-[11px] text-clinic-muted">cobrado − gastos</div>
+          <div className={`mt-1 font-mono text-xl font-extrabold ${data.collectedNet - data.spent >= 0 ? "text-state-ok" : "text-state-err"}`}>{fmtGs(data.collectedNet - data.spent)}</div>
+          <div className="mt-1 text-[11px] text-clinic-muted">{data.retention > 0 ? `cobrado neto − gastos · retención ${fmtGs(data.retention)}` : "cobrado − gastos"}</div>
         </Card>
         </StaggerItem>
         <StaggerItem className="block h-full">
@@ -274,7 +283,7 @@ export default function ReportsPage() {
         {/* producción + comisiones */}
         <Card className="p-5">
           <h2 className="font-extrabold text-clinic-text">Producción y comisiones por profesional</h2>
-          <p className="text-[11px] text-clinic-muted">Pagos cobrados (30 días) sobre presupuestos de cada profesional.</p>
+          <p className="text-[11px] text-clinic-muted">Pagos cobrados (30 días) sobre presupuestos de cada profesional. Comisiones calculadas sobre el monto bruto cobrado (la retención del medio de pago la absorbe la clínica).</p>
           <div className="mt-4">
             <ProductionBarsChart data={data.production.map((x) => ({ name: x.d.name, v: x.collected, color: x.d.color }))} />
             <div className="mt-2 space-y-1.5">
