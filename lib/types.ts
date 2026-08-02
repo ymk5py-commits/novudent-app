@@ -53,6 +53,8 @@ export interface Clinic {
     /** Pago online configurable (sin atar a una pasarela ni guardar secretos):
      *  link de checkout del gateway de la clínica + datos de transferencia. */
     payments?: { checkoutUrl?: string; bankInfo?: string };
+    /** Retención por medio de pago (módulo Reportes — ingreso neto). */
+    paymentRetention?: PaymentRetention;
   };
 }
 
@@ -406,6 +408,11 @@ export interface Budget {
 
 /* ===== Caja: pagos y gastos ===== */
 export type PaymentMethod = "efectivo" | "tarjeta" | "transferencia" | "cheque" | "qr";
+
+/** Retención (comisión) que se queda cada medio de pago, en % 0-100.
+ *  Sin entrada = 0%. La aplican los REPORTES al vuelo con la tasa vigente —
+ *  nunca se congela en el Payment (decisión: derivar, no guardar). */
+export type PaymentRetention = Partial<Record<PaymentMethod, number>>;
 
 export interface Payment {
   id: string;
