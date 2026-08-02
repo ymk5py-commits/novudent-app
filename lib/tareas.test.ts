@@ -642,3 +642,23 @@ describe("regla cheque", () => {
     expect(t.find((x) => x.type === "cheque")!.detail).toBe("Banco Test · N° 001");
   });
 });
+
+import { detalleTarea } from "./tareas";
+
+describe("detalleTarea", () => {
+  it("con solo detail, devuelve detail", () => {
+    expect(detalleTarea({ detail: "Plan dental integral" })).toBe("Plan dental integral");
+  });
+
+  it("con solo amount, devuelve el monto formateado con el formateador que le pasan", () => {
+    expect(detalleTarea({ amount: 375_000 }, (n) => `Gs. ${n}`)).toBe("Gs. 375000");
+  });
+
+  it("con AMBOS —el caso de cheque— muestra los dos, monto primero", () => {
+    expect(detalleTarea({ amount: 375_000, detail: "Banco Itaú · N° 00456123" }, (n) => `Gs. ${n}`)).toBe("Gs. 375000 · Banco Itaú · N° 00456123");
+  });
+
+  it("sin ninguno de los dos, devuelve undefined", () => {
+    expect(detalleTarea({})).toBeUndefined();
+  });
+});

@@ -383,3 +383,16 @@ export function clasificarTareas<T extends { dueDate?: string }>(tareas: T[], ho
   }
   return { delDia, atrasadas, futuras };
 }
+
+/** Arma el texto secundario de una fila de la bandeja. `amount` y `detail`
+ *  pueden coexistir —la regla `cheque` es la primera en setear los dos: el
+ *  monto Y "<banco> · N° <número>"— así que se concatenan en vez de elegir
+ *  uno. El formateador de moneda entra por parámetro: este módulo es puro y
+ *  no sabe qué moneda tiene activa la clínica (ver nota de `DerivedTask.amount`). */
+export function detalleTarea(t: { amount?: number; detail?: string }, fmt?: (n: number) => string): string | undefined {
+  const partes = [
+    t.amount != null && fmt ? fmt(t.amount) : null,
+    t.detail ?? null,
+  ].filter((x): x is string => x != null && x !== "");
+  return partes.length > 0 ? partes.join(" · ") : undefined;
+}
