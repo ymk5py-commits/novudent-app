@@ -102,6 +102,7 @@ export function netAmount(
   cfg: PaymentRetention | undefined,
   currency: CurrencyCode = DEFAULT_CURRENCY,
 ): number {
-  const factor = 10 ** CURRENCIES[currency].decimals;
+  const def = CURRENCIES[currency] ?? CURRENCIES[DEFAULT_CURRENCY];
+  const factor = 10 ** def.decimals;
   return Math.round(p.amount * (1 - retentionPct(p.method, cfg) / 100) * factor) / factor;
 }

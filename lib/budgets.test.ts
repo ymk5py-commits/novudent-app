@@ -106,4 +106,7 @@ describe("netAmount", () => {
   it("moneda de 2 decimales (USD): 5% sobre 50 → 47.5, NO se redondea a entero", () => {
     expect(netAmount({ amount: 50, method: "tarjeta" }, { tarjeta: 5 }, "USD")).toBe(47.5);
   });
+  it("moneda inválida/desconocida cae a DEFAULT_CURRENCY en vez de crashear", () => {
+    expect(netAmount({ amount: 1_000_000, method: "tarjeta" }, cfg, "XYZ" as any)).toBe(950_000);
+  });
 });
