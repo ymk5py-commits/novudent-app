@@ -8,7 +8,8 @@ import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
 import { can, ROLE_LABEL } from "@/lib/rbac";
 import { DEFAULT_DEADLINES } from "@/lib/tareas";
 import { anticipacionDe } from "@/lib/reserva-online";
-import type { Role, User, Procedure, BotikaConfig, ConsentTemplate, Branch, TaskDeadline } from "@/lib/types";
+import type { Role, User, Procedure, BotikaConfig, ConsentTemplate, Branch, TaskDeadline, PaymentMethod } from "@/lib/types";
+import { PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
 import DentalinkImport from "@/components/DentalinkImport";
@@ -541,6 +542,37 @@ export default function ConfigPage() {
           })}
         </div>
         <p className="mt-3 text-[11px] text-clinic-muted">Las tareas automáticas no se guardan: se recalculan solas. Cambiar un plazo se refleja en <a href="/app/tareas" className="font-bold text-azure-700">Tareas de gestión</a> al instante.</p>
+      </Card>
+      </Reveal>
+
+      {/* Retención por medio de pago: el % que se queda la tarjeta/banco antes
+          de que la plata entre a la clínica. Vive acá (no en Reportes) porque
+          es una tasa pactada con el banco, no un filtro del reporte — mismo
+          criterio que Plazos de tareas automáticas. */}
+      <Reveal>
+      <Card className="p-5">
+        <div id="retencion" className="mb-1 flex scroll-mt-24 items-center gap-2"><Percent className="h-4 w-4 text-azure-600" /><h2 className="text-sm font-extrabold text-clinic-text">Retención por medio de pago</h2></div>
+        <p className="mt-1 text-xs text-clinic-muted">El % que se queda el medio de pago (ej.: comisión de la tarjeta). Los reportes muestran el ingreso neto descontándolo. La caja y el arqueo siguen en bruto.</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((method) => (
+            <Field key={method} label={PAYMENT_METHOD_LABEL[method]}>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number" min={0} max={100} step={0.1}
+                  className={inputCls}
+                  value={clinic.config.paymentRetention?.[method] ?? ""}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const n = raw === "" ? undefined : Number(raw);
+                    updateClinicConfig({ paymentRetention: { ...clinic.config.paymentRetention, [method]: n } });
+                  }}
+                  placeholder="0"
+                />
+                <span className="text-sm font-bold text-clinic-muted">%</span>
+              </div>
+            </Field>
+          ))}
+        </div>
       </Card>
       </Reveal>
 
