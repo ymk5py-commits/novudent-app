@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ShieldAlert, Download, TrendingUp, TrendingDown, Scale, FileSpreadsheet, Percent, Bot, Star } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
-import { budgetTotal, patientBalance, netAmount, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
+import { budgetTotal, patientBalance, netAmount, retentionPct, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { Card, Btn, Badge } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { ReportsIAPanel } from "@/components/NovudentIA";
@@ -123,10 +123,18 @@ export default function ReportsPage() {
   const EXPORTS: { label: string; file: string; rows: () => (string | number)[][] }[] = [
     {
       label: "Pagos", file: "pagos.csv",
-      rows: () => [
-        ["Fecha", "Paciente", "Concepto", "Método", "Monto Gs", "Recibido por"],
-        ...db.payments.map((p) => [p.date.slice(0, 10), patientName(p.patientId), p.concept, PAYMENT_METHOD_LABEL[p.method], p.amount, p.receivedBy]),
-      ],
+      rows: () => {
+        const cfg = db.clinics[0]?.config?.paymentRetention;
+        const currency = db.clinics[0]?.config.currency;
+        return [
+          ["Fecha", "Paciente", "Concepto", "Método", "Monto Gs", "Retención %", "Monto neto", "Recibido por"],
+          ...db.payments.map((p) => [
+            p.date.slice(0, 10), patientName(p.patientId), p.concept, PAYMENT_METHOD_LABEL[p.method], p.amount,
+            retentionPct(p.method, cfg), netAmount(p, cfg, currency),
+            p.receivedBy,
+          ]),
+        ];
+      },
     },
     {
       label: "Gastos", file: "gastos.csv",
@@ -186,9 +194,11 @@ export default function ReportsPage() {
   // la DB cruda. Nombres en español para que el modelo los entienda.
   const iaDatos = {
     ventana: "últimos 30 días",
-    cobradoGs: data.collected,
+    cobradoBrutoGs: data.collected,
+    retencionMediosGs: data.retention,
+    cobradoNetoGs: data.collectedNet,
     gastadoGs: data.spent,
-    resultadoGs: data.collected - data.spent,
+    resultadoGs: data.collectedNet - data.spent,
     presupuestos: {
       presentados: data.presented.length,
       aceptados: data.accepted.length,
