@@ -6,15 +6,15 @@
  * pone su nombre, firma en el pad y envía. Todo pasa por /api/firmar — el
  * navegador nunca toca Firestore y el `token` ES la credencial.
  *
- * Mobile-first: pensada para el celular del paciente. Marca Novudent (navy),
- * reusa los tokens de la app (clinic-bg / navy / azure / shadow-card).
+ * Mobile-first: pensada para el celular del paciente.
+ *
+ * Registro visual: el sistema editorial de la landing (components/Landing.tsx).
+ * Acá encaja como anillo al dedo — esto ES un documento legal, así que se lee
+ * como documento impreso (masthead, filetes, cuerpo con medida) y no como app.
  */
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import {
-  CheckCircle2, Loader2, PenLine, ShieldAlert, FileSignature,
-} from "lucide-react";
-import { Reveal } from "@/components/motion";
+import { CheckCircle2, Loader2, ShieldAlert } from "lucide-react";
 import SignaturePad, { type SignaturePadHandle } from "@/components/SignaturePad";
 
 type DocData = {
@@ -24,8 +24,13 @@ type DocData = {
   patientName: string;
 };
 
+/** Caja de texto editorial: esquinas rectas, filete de 1 px, 44 px de alto. */
 const inputCls =
-  "w-full rounded-xl border border-clinic-border bg-white px-3.5 py-2.5 text-sm text-clinic-text transition focus:border-azure-600 focus:ring-2 focus:ring-azure-100";
+  "w-full min-h-[44px] border border-clinic-border bg-white px-3.5 py-2.5 text-[15px] text-clinic-text placeholder:text-clinic-muted/70 transition-colors focus:border-azure-600 focus:outline-none focus:ring-1 focus:ring-azure-600";
+
+/** Rótulo de sección: la banda mono que corona cada marco. */
+const capCls =
+  "border-b border-clinic-border px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-clinic-text";
 
 export default function FirmarConsentimiento() {
   const { cid, token } = useParams<{ cid: string; token: string }>();
@@ -102,80 +107,102 @@ export default function FirmarConsentimiento() {
   const pendiente = doc?.status === "pendiente";
 
   return (
-    <main className="min-h-dvh bg-clinic-bg">
-      {/* Header público con marca Novudent */}
-      <header className="bg-navy-800 px-5 py-6 text-white">
-        <div className="mx-auto max-w-xl">
-          <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-azure-200">
-            <FileSignature className="h-3.5 w-3.5" /> Novudent · Firma electrónica
-          </p>
-          <h1 className="mt-1 text-2xl font-extrabold">
-            {doc?.title || "Consentimiento informado"}
-          </h1>
-          <p className="mt-1 text-sm text-white/65">
-            Leé el documento y firmá desde tu celular.
-          </p>
+    <main className="min-h-dvh bg-paper font-body text-clinic-text">
+      {/* ===== Masthead — cabecera de documento, no de app ===== */}
+      <header className="ed-rule-double bg-paper">
+        <div className="mx-auto max-w-xl px-5">
+          <div className="flex items-center justify-between gap-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-clinic-muted">
+            <span className="truncate">Novudent · Firma electrónica</span>
+            <span className="shrink-0">Consentimiento</span>
+          </div>
+          <div className="border-t border-clinic-border/70 py-5">
+            <h1 className="font-display text-[1.9rem] font-extrabold leading-[1.03] tracking-[-0.03em] text-navy-800 sm:text-4xl">
+              {doc?.title || "Consentimiento informado"}
+            </h1>
+            <p className="mt-2 max-w-[44ch] leading-relaxed text-clinic-muted">
+              Leé el documento y firmá desde tu celular.
+            </p>
+          </div>
         </div>
       </header>
 
+      {/* Sin <Reveal> a propósito — ver la nota en /reservar. Acá pesa más todavía:
+          esto es un CONSENTIMIENTO legal que el paciente tiene que leer y firmar.
+          Una animación de entrada que puede no dispararse no puede ser lo que se
+          interpone entre el paciente y el documento. */}
       <div className="mx-auto max-w-xl space-y-4 px-5 py-6">
         {/* Cargando */}
         {loading && (
-          <section className="rounded-3xl bg-white p-8 text-center shadow-card">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-azure-500" />
-            <p className="mt-3 text-sm text-clinic-muted">Cargando documento…</p>
+          <section className="ed-figure">
+            <div className={capCls}>Documento</div>
+            <p className="flex items-center justify-center gap-2 px-5 py-14 font-mono text-[11px] uppercase tracking-[0.16em] text-clinic-muted">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Cargando documento…
+            </p>
           </section>
         )}
 
         {/* Error de carga real (no 404) */}
         {!loading && loadError && (
-          <section className="rounded-3xl bg-white p-8 text-center shadow-card">
-            <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-            <h2 className="mt-3 text-lg font-extrabold text-clinic-text">No se pudo cargar</h2>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-clinic-muted">{loadError}</p>
+          <section className="ed-figure">
+            <div className={capCls}>No se pudo cargar</div>
+            <div className="px-5 py-7 sm:px-7">
+              <ShieldAlert className="h-8 w-8 text-state-warn" />
+              <h2 className="mt-4 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-navy-800">
+                El documento no se pudo abrir
+              </h2>
+              <p className="mt-2 max-w-[46ch] leading-relaxed text-clinic-muted">{loadError}</p>
+            </div>
           </section>
         )}
 
         {/* No disponible: 404 / firmado / anulado */}
         {!loading && !loadError && !pendiente && (
-          <Reveal>
-            <section className="rounded-3xl bg-white p-8 text-center shadow-card">
-              <ShieldAlert className="mx-auto h-10 w-10 text-clinic-muted" />
-              <h2 className="mt-3 text-lg font-extrabold text-clinic-text">
+          <section className="ed-figure">
+            <div className={capCls}>Estado del documento</div>
+            <div className="px-5 py-7 sm:px-7">
+              <ShieldAlert className="h-8 w-8 text-clinic-muted" />
+              <h2 className="mt-4 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-navy-800">
                 Documento no disponible
               </h2>
-              <p className="mx-auto mt-2 max-w-sm text-sm text-clinic-muted">
+              <p className="mt-2 max-w-[46ch] leading-relaxed text-clinic-muted">
                 {doc?.status === "firmado"
                   ? "Este documento ya fue firmado."
                   : "Este enlace ya no está disponible o el documento fue anulado."}
               </p>
-            </section>
-          </Reveal>
+              <p className="mt-5 border-t border-clinic-border pt-4 font-mono text-[11px] uppercase leading-relaxed tracking-[0.14em] text-clinic-muted">
+                Si creés que es un error, pedile a la clínica un enlace nuevo.
+              </p>
+            </div>
+          </section>
         )}
 
         {/* Firmado con éxito */}
         {!loading && done && (
-          <Reveal>
-            <section className="rounded-3xl bg-white p-8 text-center shadow-card">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-state-ok" />
-              <h2 className="mt-3 text-xl font-extrabold text-clinic-text">
-                ¡Gracias! Documento firmado ✓
+          <section className="ed-figure">
+            <div className={capCls}>Firma registrada</div>
+            <div className="px-5 py-7 sm:px-7">
+              <CheckCircle2 className="h-9 w-9 text-state-ok" />
+              <h2 className="mt-4 font-display text-2xl font-extrabold leading-tight tracking-[-0.025em] text-navy-800">
+                ¡Gracias! Documento firmado
               </h2>
-              <p className="mx-auto mt-2 max-w-sm text-sm text-clinic-muted">
+              <p className="mt-2 max-w-[46ch] leading-relaxed text-clinic-muted">
                 Tu firma quedó registrada. Ya podés cerrar esta página.
               </p>
-            </section>
-          </Reveal>
+            </div>
+          </section>
         )}
 
         {/* Documento pendiente: leer + firmar */}
         {!loading && !loadError && pendiente && !done && doc && (
-          <Reveal>
-            <section className="space-y-4">
-              {/* Texto del consentimiento */}
-              <article className="rounded-3xl bg-white p-5 shadow-card">
-                <h2 className="text-base font-extrabold text-clinic-text">{doc.title}</h2>
-                <div className="mt-3 space-y-3 text-sm leading-relaxed text-clinic-text/90">
+          <>
+            {/* Texto del consentimiento — cuerpo con medida de lectura */}
+            <article className="ed-figure">
+              <div className={capCls}>Documento · pendiente de firma</div>
+              <div className="px-5 py-6 sm:px-7">
+                <h2 className="font-display text-xl font-bold leading-tight tracking-[-0.02em] text-navy-800">
+                  {doc.title}
+                </h2>
+                <div className="mt-4 max-w-[62ch] space-y-4 text-[15px] leading-[1.7] text-clinic-text">
                   {doc.body
                     .split(/\n{2,}/)
                     .map((p) => p.trim())
@@ -186,34 +213,42 @@ export default function FirmarConsentimiento() {
                       </p>
                     ))}
                 </div>
-              </article>
+              </div>
+            </article>
 
-              {/* Firma */}
-              <section className="rounded-3xl bg-white p-5 shadow-card">
-                <label className="block text-xs font-bold uppercase tracking-wide text-clinic-muted">
-                  Tu nombre
+            {/* Firma */}
+            <section className="ed-figure">
+              <div className={capCls}>Firma del paciente</div>
+              <div className="px-5 py-6 sm:px-7">
+                <label className="block">
+                  <span className="mb-1.5 block font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-clinic-muted">
+                    Tu nombre
+                  </span>
+                  <input
+                    className={inputCls}
+                    placeholder="Nombre y apellido"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    maxLength={120}
+                    autoComplete="name"
+                  />
                 </label>
-                <input
-                  className={`mt-1.5 ${inputCls}`}
-                  placeholder="Nombre y apellido"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  maxLength={120}
-                  autoComplete="name"
-                />
 
-                <p className="mt-4 text-xs font-bold uppercase tracking-wide text-clinic-muted">
+                <p className="mt-5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-clinic-muted">
                   Tu firma
                 </p>
+                {/* SignaturePad es compartido con el panel (ficha → Consentimientos), así
+                    que no se toca: acá le cuadramos las esquinas y le damos 44 px al
+                    botón «Borrar» desde afuera, con variantes de Tailwind. */}
                 <SignaturePad
-                  className="mt-1.5"
+                  className="mt-1.5 [&>div]:rounded-none [&_button]:min-h-[44px] [&_button]:rounded-none"
                   placeholder="Firmá acá con el dedo"
                   onChange={(dataUrl) => setHasStroke(!!dataUrl)}
                   ref={padRef}
                 />
 
                 {submitError && (
-                  <p className="mt-3 rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold text-state-err">
+                  <p className="mt-4 border-l-2 border-state-err bg-state-errbg px-3.5 py-2.5 text-[13px] font-semibold leading-relaxed text-state-err">
                     {submitError}
                   </p>
                 )}
@@ -222,18 +257,18 @@ export default function FirmarConsentimiento() {
                   type="button"
                   onClick={() => void submit()}
                   disabled={!canSubmit}
-                  className="btn-shine mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-azure-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-azure-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center gap-2 border border-navy-800 bg-navy-800 px-6 py-3 text-sm font-bold text-white transition-colors duration-200 hover:bg-navy-700 disabled:cursor-not-allowed disabled:border-clinic-border disabled:bg-clinic-border disabled:text-clinic-muted"
                 >
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
+                  {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   Firmar
                 </button>
 
-                <p className="mt-3 text-center text-[11px] leading-relaxed text-clinic-muted">
+                <p className="mt-4 border-t border-clinic-border pt-4 font-mono text-[11px] uppercase leading-relaxed tracking-[0.14em] text-clinic-muted">
                   Firma electrónica simple — válida para consentimiento clínico.
                 </p>
-              </section>
+              </div>
             </section>
-          </Reveal>
+          </>
         )}
       </div>
     </main>
