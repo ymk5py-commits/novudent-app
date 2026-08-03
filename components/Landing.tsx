@@ -8,16 +8,24 @@
  * hero: H2 Split diptych — knobs: ratio=7/5, right=proof column (live product), divider=negative space
  * section heads: S2 Hanging · features: F3 Tabular spec sheet · proof: T4 Stat strip · CTA: C3 Typographic link
  * enrichment: none — el odontograma es el producto real, no una maqueta
- * motion: cross-fade escalonado · subrayado que engrosa (2)
+ * motion: solo el subrayado que engrosa al hover (1)
+ *   SIN revelado por scroll: causaba secciones invisibles en producción. Ver la
+ *   nota abajo del import.
  * pre-emit critique: P5 H5 E4 S5 R4 V5
  */
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { ArrowRight, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ShowcaseBoard, ToothGlyph, type ShowcaseToothRecord } from "./OdontogramShowcase";
 import { FlagBadge } from "./ui";
-import { Reveal, Stagger, StaggerItem } from "@/components/motion";
+
+/* SIN <Reveal>/<Stagger> en esta página, a propósito.
+   framer-motion serializa su `opacity:0` inicial en el HTML del servidor y lo
+   levanta recién cuando el IntersectionObserver avisa que entraste en cuadro.
+   Si ese observer no dispara —lo vi fallar en un navegador Chromium, y el dueño
+   lo reportó viendo secciones en blanco— el contenido no aparece NUNCA. Una
+   animación linda no puede ser lo que decide si se ve la página o no.
+   El panel las sigue usando; acá no valen el riesgo. */
 
 /* Acá vivía un contador que subía de 0 al valor real al entrar en cuadro.
    Se fue por dos razones. La primera es un bug de verdad: dependía de
@@ -110,10 +118,7 @@ export default function Landing() {
       {/* ===== H2 · HERO DÍPTICO — afirmación izquierda, prueba derecha ===== */}
       <section className="mx-auto max-w-6xl px-5 pb-16 pt-12 sm:pt-16">
         <div className="grid items-start gap-x-10 gap-y-10 lg:grid-cols-12">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          <div
             className="lg:col-span-7"
           >
             <h1 className="max-w-[13ch] font-display font-extrabold leading-[0.94] tracking-[-0.035em] text-navy-800" style={{ fontSize: "var(--text-display)" }}>
@@ -137,15 +142,12 @@ export default function Landing() {
                 Elegís el rol y entrás
               </p>
             </div>
-          </motion.div>
+          </div>
 
           {/* Lámina comparativa: la MISMA pieza 16 en cuatro estados. Son los
               glifos reales del odontograma, no ilustraciones — el tablero entero
               necesita 700 px y por eso vive a todo el ancho, más abajo. */}
-          <motion.figure
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+          <figure
             className="ed-figure lg:col-span-5"
           >
             <figcaption className="border-b border-clinic-border px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-clinic-text">
@@ -172,13 +174,13 @@ export default function Landing() {
             <p className="border-t border-clinic-border px-4 py-2.5 text-[13px] leading-relaxed text-clinic-muted">
               Cinco superficies por pieza. Cada marca guarda autor y fecha.
             </p>
-          </motion.figure>
+          </figure>
         </div>
       </section>
 
       {/* ===== EL PRODUCTO, A TODO EL ANCHO — no es una captura ===== */}
       <section className="mx-auto max-w-6xl px-5 pb-20">
-        <Reveal y={20}>
+        <div >
           <div className="mb-5 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 border-b-2 border-clinic-text pb-3">
             <h2 className="font-display text-2xl font-extrabold tracking-[-0.025em] text-navy-800 sm:text-3xl">
               El odontograma de verdad, acá abajo
@@ -200,7 +202,7 @@ export default function Landing() {
               })
             }
           />
-        </Reveal>
+        </div>
       </section>
 
       {/* ===== T4 · FRANJA DE CIFRAS ===== */}
@@ -241,7 +243,7 @@ export default function Landing() {
       {/* ===== F3 · CAPACIDADES COMO HOJA DE ESPECIFICACIONES ===== */}
       <section id="capacidades" className="mx-auto max-w-6xl scroll-mt-8 px-5 py-20 sm:py-24">
         {/* S2 · encabezado colgado en el aire, sin filete ni etiqueta al margen */}
-        <Reveal y={20}>
+        <div >
           <h2 className="max-w-[16ch] font-display font-extrabold leading-[1.02] tracking-[-0.03em] text-navy-800" style={{ fontSize: "var(--text-h2)" }}>
             Ocho herramientas. Ningún módulo de relleno.
           </h2>
@@ -249,11 +251,11 @@ export default function Landing() {
             Todo lo que sigue ya está construido y funcionando en la demo — no es un
             roadmap.
           </p>
-        </Reveal>
+        </div>
 
-        <Stagger className="mt-11 border-t border-clinic-border">
+        <div className="mt-11 border-t border-clinic-border">
           {CAPACIDADES.map((c) => (
-            <StaggerItem
+            <div
               key={c.t}
               className="group grid grid-cols-12 items-baseline gap-x-5 gap-y-1.5 border-b border-clinic-border py-6 transition-colors duration-200 hover:bg-paper-2"
             >
@@ -266,23 +268,23 @@ export default function Landing() {
               <p className="col-span-12 text-[15px] leading-relaxed text-clinic-muted sm:col-span-6">
                 {c.d}
               </p>
-            </StaggerItem>
+            </div>
           ))}
-        </Stagger>
+        </div>
       </section>
 
       {/* ===== DÍPTICOS ALTERNADOS — cada afirmación con su prueba al lado ===== */}
       <section id="flujo" className="scroll-mt-8 border-y border-clinic-border bg-paper-2 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-5">
-          <Reveal y={20}>
+          <div >
             <h2 className="max-w-[18ch] font-display font-extrabold leading-[1.02] tracking-[-0.03em] text-navy-800" style={{ fontSize: "var(--text-h2)" }}>
               Un día en tu clínica, sin fricción.
             </h2>
-          </Reveal>
+          </div>
 
           <div className="mt-14 space-y-16">
             {/* — díptico 1: texto izquierda / prueba derecha — */}
-            <Reveal y={20} className="grid items-center gap-x-10 gap-y-7 lg:grid-cols-12">
+            <div className="grid items-center gap-x-10 gap-y-7 lg:grid-cols-12">
               <div className="lg:col-span-5">
                 <h3 className="font-display font-bold leading-tight tracking-[-0.02em] text-navy-800" style={{ fontSize: "var(--text-h3)" }}>
                   La mañana arranca sola
@@ -315,10 +317,10 @@ export default function Landing() {
                   ))}
                 </div>
               </div>
-            </Reveal>
+            </div>
 
             {/* — díptico 2: prueba izquierda / texto derecha (alterna) — */}
-            <Reveal y={20} className="grid items-center gap-x-10 gap-y-7 lg:grid-cols-12">
+            <div className="grid items-center gap-x-10 gap-y-7 lg:grid-cols-12">
               <div className="order-1 lg:order-2 lg:col-span-5">
                 <h3 className="font-display font-bold leading-tight tracking-[-0.02em] text-navy-800" style={{ fontSize: "var(--text-h3)" }}>
                   El hallazgo queda en la pieza
@@ -341,10 +343,10 @@ export default function Landing() {
                   16 · caries oclusal — Dra. Benítez
                 </p>
               </div>
-            </Reveal>
+            </div>
 
             {/* — díptico 3: texto izquierda / prueba derecha — */}
-            <Reveal y={20} className="grid items-center gap-x-10 gap-y-7 lg:grid-cols-12">
+            <div className="grid items-center gap-x-10 gap-y-7 lg:grid-cols-12">
               <div className="lg:col-span-5">
                 <h3 className="font-display font-bold leading-tight tracking-[-0.02em] text-navy-800" style={{ fontSize: "var(--text-h3)" }}>
                   El cobro no se escapa
@@ -374,27 +376,27 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-            </Reveal>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ===== PRECIOS ===== */}
       <section id="precios" className="mx-auto max-w-6xl scroll-mt-8 px-5 py-20 sm:py-24">
-        <Reveal y={20}>
+        <div >
           <h2 className="font-display font-extrabold leading-[1.02] tracking-[-0.03em] text-navy-800" style={{ fontSize: "var(--text-h2)" }}>
             Precios claros, sin sorpresas.
           </h2>
-        </Reveal>
+        </div>
 
         {/* Tabla de planes: hairlines, no cards flotantes. */}
-        <Stagger className="mt-10 border-t-2 border-clinic-text">
+        <div className="mt-10 border-t-2 border-clinic-text">
           {[
             { name: "Solo", price: "$45", per: "USD / mes", blurb: "Odontólogo independiente: un sillón, odontograma, agenda y facturación.", cta: "Probar gratis" },
             { name: "Clínica", price: "$129", per: "USD / mes", blurb: "Hasta cinco sillones con todo Novudent adentro: financiamiento, formularios, consentimientos y soporte prioritario.", cta: "Probar gratis", featured: true },
             { name: "Cadena", price: "A medida", per: "", blurb: "Multi-sucursal: comisiones, laboratorio, integraciones propias y account manager.", cta: "Hablar con ventas" },
           ].map((p) => (
-            <StaggerItem
+            <div
               key={p.name}
               className={`grid grid-cols-12 items-baseline gap-x-5 gap-y-2.5 border-b border-clinic-border py-7 ${p.featured ? "bg-azure-50/45" : ""}`}
             >
@@ -415,9 +417,9 @@ export default function Landing() {
               >
                 {p.cta} →
               </a>
-            </StaggerItem>
+            </div>
           ))}
-        </Stagger>
+        </div>
         <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.14em] text-clinic-muted">
           Precios referenciales · sin contratos largos · migración de datos incluida
         </p>
@@ -426,14 +428,14 @@ export default function Landing() {
       {/* ===== FAQ ===== */}
       <section id="faq" className="scroll-mt-8 border-t border-clinic-border bg-paper-2 py-20 sm:py-24">
         <div className="mx-auto max-w-3xl px-5">
-          <Reveal y={20}>
+          <div >
             <h2 className="font-display font-extrabold leading-[1.02] tracking-[-0.03em] text-navy-800" style={{ fontSize: "var(--text-h2)" }}>
               Lo que todos preguntan.
             </h2>
-          </Reveal>
-          <Stagger className="mt-9 border-t border-clinic-border">
+          </div>
+          <div className="mt-9 border-t border-clinic-border">
             {FAQ.map((f) => (
-              <StaggerItem key={f.q}>
+              <div key={f.q}>
                 <details className="group border-b border-clinic-border">
                   <summary className="flex cursor-pointer list-none items-center gap-4 py-4 [&::-webkit-details-marker]:hidden">
                     <h3 className="flex-1 font-display text-lg font-bold leading-snug tracking-[-0.015em] text-navy-800">{f.q}</h3>
@@ -443,16 +445,16 @@ export default function Landing() {
                   </summary>
                   <p className="max-w-[62ch] pb-5 text-[15px] leading-relaxed text-clinic-muted">{f.a}</p>
                 </details>
-              </StaggerItem>
+              </div>
             ))}
-          </Stagger>
+          </div>
         </div>
       </section>
 
       {/* ===== CTA FINAL — una sola acción ===== */}
       <section className="border-t border-clinic-border bg-navy-800">
         <div className="mx-auto max-w-6xl px-5 py-16 sm:py-20">
-          <Reveal y={20}>
+          <div >
             <h2 className="max-w-[15ch] font-display font-extrabold leading-[1.0] tracking-[-0.03em] text-white" style={{ fontSize: "var(--text-display-s)" }}>
               La demo está lista. Tu clínica también.
             </h2>
@@ -467,7 +469,7 @@ export default function Landing() {
               {session ? "Ir al panel" : "Probar la demo gratis"}
               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
             </a>
-          </Reveal>
+          </div>
         </div>
       </section>
 

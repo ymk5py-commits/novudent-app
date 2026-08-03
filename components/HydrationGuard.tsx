@@ -24,6 +24,12 @@
  *  animaciones de esa carga y no pasa nada; el contenido es lo que importa.
  */
 import { useEffect } from "react";
+import { MOTION_FALLBACK_CLASS } from "@/lib/motion-fallback";
+
+/** Cuánto se espera, ya hidratado, antes de revisar si el revelado por scroll
+ *  realmente funcionó. Holgado: la animación de entrada dura 0,55 s, así que
+ *  a los 6 s cualquier cosa dentro del viewport ya tendría que estar visible. */
+const OBSERVER_CHECK_MS = 6000;
 
 export default function HydrationGuard() {
   useEffect(() => {
@@ -33,6 +39,24 @@ export default function HydrationGuard() {
       w.__novudentMotionTimer = undefined;
     }
     // A propósito NO se remueve MOTION_FALLBACK_CLASS: ver la nota de arriba.
+
+    /* TERCER MODO DE FALLA: hidrata bien, pero el IntersectionObserver no
+       dispara. Lo vi pasar en un navegador basado en Chromium — el objeto
+       existe, así que detectar la feature no sirve de nada; simplemente nunca
+       llama al callback. `whileInView` depende de él, o sea que el contenido
+       se queda invisible para siempre igual que si el bundle no hubiera
+       llegado.
+       La evidencia es inequívoca y no hace falta adivinar: si algo sigue en
+       `opacity:0` estando DENTRO del viewport, el revelado está roto. Lo que
+       está abajo del pliegue no se toca — ese sí tiene que esperar su scroll. */
+    const t = window.setTimeout(() => {
+      const atascado = Array.from(document.querySelectorAll<HTMLElement>('[style*="opacity:0"]')).some((el) => {
+        const r = el.getBoundingClientRect();
+        return r.height > 0 && r.top < window.innerHeight && r.bottom > 0;
+      });
+      if (atascado) document.documentElement.classList.add(MOTION_FALLBACK_CLASS);
+    }, OBSERVER_CHECK_MS);
+    return () => clearTimeout(t);
   }, []);
   return null;
 }
