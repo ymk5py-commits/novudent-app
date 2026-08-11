@@ -17,10 +17,15 @@
  *    cara de quien está evaluando comprar. El número importa, no su llegada.
  */
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { ArrowRight, ArrowUpRight, Check, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ShowcaseBoard, ToothGlyph, type ShowcaseToothRecord } from "./OdontogramShowcase";
 import { FlagBadge } from "./ui";
+
+/* three.js pesa ~150 kB gz: chunk aparte, solo cliente. Mientras carga no se
+   muestra nada (es decoración) — la sección jamás espera por él. */
+const Tooth3D = dynamic(() => import("./Tooth3D"), { ssr: false, loading: () => null });
 
 /* demo del odontograma (estado local) */
 const DEMO_TEETH: Record<string, ShowcaseToothRecord> = {
@@ -74,7 +79,7 @@ export default function Landing() {
           </nav>
           <div className="flex items-center gap-2">
             <a href="/login" className="hidden rounded-xl px-3.5 py-2 text-sm font-bold text-clinic-text transition-colors hover:bg-clinic-bg sm:block">Iniciar sesión</a>
-            <a href={appHref} className="btn-shine rounded-xl bg-navy-800 px-4 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5">
+            <a href={appHref} className="btn-shine rounded-xl bg-navy-800 px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5">
               {session ? "Ir al panel" : "Probar demo"}
             </a>
           </div>
@@ -101,7 +106,7 @@ export default function Landing() {
                 estados. Esto que ves abajo <b className="text-clinic-text">es el producto real</b> — tocalo.
               </p>
               <div className="flex items-center gap-4">
-                <a href={appHref} className="btn-shine group inline-flex items-center gap-2 rounded-2xl bg-azure-600 px-6 py-3.5 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-all hover:-translate-y-0.5 hover:bg-azure-700">
+                <a href={appHref} className="btn-shine group inline-flex items-center gap-2 rounded-2xl bg-azure-600 px-6 py-3.5 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition hover:-translate-y-0.5 hover:bg-azure-700">
                   {session ? "Ir al panel" : "Probar la demo gratis"}
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </a>
@@ -111,9 +116,7 @@ export default function Landing() {
           </div>
 
           {/* ventana de producto con odontograma VIVO */}
-          <div
-            className="relative mt-12"
-          >
+          <div id="odontograma" className="relative mt-12 scroll-mt-24">
             <div className="absolute -inset-x-8 -bottom-10 top-1/3 -z-10 rounded-[3rem] bg-azure-500/10 blur-3xl" />
             <div className="relative overflow-hidden rounded-t-3xl border border-b-0 border-clinic-border bg-white shadow-pop">
               <span className="border-beam-light rounded-t-3xl" />
@@ -177,7 +180,7 @@ export default function Landing() {
       </section>
 
       {/* ===== CAPACIDADES (índice editorial, sin cards) ===== */}
-      <section id="capacidades" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
+      <section id="capacidades" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-20 sm:py-28">
         <div className="grid gap-12 lg:grid-cols-12">
           <div className="lg:col-span-4">
             <div className="lg:sticky lg:top-28">
@@ -218,7 +221,7 @@ export default function Landing() {
                     {c.d}
                   </div>
                   <div className="relative col-span-1 hidden justify-end self-center sm:flex">
-                    <ArrowUpRight className="h-4 w-4 text-clinic-border transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-azure-600" />
+                    <ArrowUpRight className="h-4 w-4 text-clinic-border transition duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-azure-600" />
                   </div>
                 </div>
               ))}
@@ -228,7 +231,7 @@ export default function Landing() {
       </section>
 
       {/* ===== CÓMO SE TRABAJA (showcase zigzag) ===== */}
-      <section id="flujo" className="border-y border-clinic-border bg-clinic-bg py-20 sm:py-28">
+      <section id="flujo" className="scroll-mt-20 border-y border-clinic-border bg-clinic-bg py-20 sm:py-28">
         <div className="mx-auto max-w-6xl space-y-20 px-5">
           <div >
             <div className="flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-clinic-muted">
@@ -333,7 +336,7 @@ export default function Landing() {
       </section>
 
       {/* ===== PRECIOS (panel asimétrico) ===== */}
-      <section id="precios" className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
+      <section id="precios" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-20 sm:py-28">
         <div >
           <div className="flex items-center gap-3 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-clinic-muted">
             <span className="h-px w-10 bg-azure-500" /> Precios
@@ -366,7 +369,7 @@ export default function Landing() {
                   </li>
                 ))}
               </ul>
-              <a href={appHref} className="btn-shine mt-8 inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-extrabold text-navy-800 transition-all hover:-translate-y-0.5">
+              <a href={appHref} className="btn-shine mt-8 inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-extrabold text-navy-800 transition hover:-translate-y-0.5">
                 Probar gratis <ArrowRight className="h-4 w-4" />
               </a>
             </div>
@@ -379,7 +382,7 @@ export default function Landing() {
               { name: "Cadena", price: "A medida", per: "", blurb: "Multi-sucursal: comisiones, laboratorio, integraciones propias y account manager." },
             ].map((p) => (
               <div key={p.name} className="h-full">
-                <div className="flex h-full flex-col justify-between rounded-[2rem] border border-clinic-border bg-white p-7 shadow-card transition-all hover:-translate-y-1 hover:shadow-pop">
+                <div className="flex h-full flex-col justify-between rounded-[2rem] border border-clinic-border bg-white p-7 shadow-card transition hover:-translate-y-1 hover:shadow-pop">
                   <div>
                     <div className="flex items-baseline justify-between">
                       <span className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-clinic-muted">Plan {p.name}</span>
@@ -447,19 +450,17 @@ export default function Landing() {
               Entrá con un clic, elegí tu rol y recorré la agenda, el odontograma y la facturación
               con datos reales de ejemplo.
             </p>
-            <a href={appHref} className="btn-shine group mt-7 inline-flex items-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-sm font-extrabold text-navy-800 transition-all hover:-translate-y-0.5">
+            <a href={appHref} className="btn-shine group mt-7 inline-flex items-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-sm font-extrabold text-navy-800 transition hover:-translate-y-0.5">
               {session ? "Ir al panel" : "Probar la demo gratis"}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </a>
           </div>
-          <div className="hidden justify-end gap-5 opacity-40 lg:col-span-4 lg:flex">
-            <div aria-hidden className="flex gap-5">
-              {[{ n: "13" }, { n: "11", rec: { condition: "restaurado" as const, updatedAt: "", updatedBy: "" } }, { n: "16" }].map((t) => (
-                <span key={t.n} className="[&_svg]:h-24 [&_svg]:w-14 [&_*]:!stroke-white/60">
-                  <ToothGlyph n={t.n} rec={t.rec} upper />
-                </span>
-              ))}
-            </div>
+          {/* Diente 3D (three.js) — cerámica con luz de contra azure girando
+              despacio sobre el navy. Decoración de escritorio: mejora
+              progresiva pura, si WebGL falla el componente devuelve null y la
+              sección queda completa igual. */}
+          <div className="hidden lg:col-span-4 lg:block">
+            <Tooth3D className="h-72 w-full" />
           </div>
         </div>
       </section>
