@@ -30,15 +30,6 @@ const config: Config = {
           text: "#13233F",
           muted: "#5B6B85",
         },
-        // Papel editorial — SOLO landing y páginas públicas, no el panel.
-        // Nada de blanco puro: el papel se entinta hacia el navy de marca, que
-        // es lo que hace que la página se lea impresa y no "por defecto".
-        paper: {
-          DEFAULT: "#FAFBFC",  // oklch(98.4% 0.003 260) — papel base
-          2: "#F2F4F8",        // oklch(96.2% 0.006 260) — banda alterna
-          3: "#E8EBF1",        // oklch(93.2% 0.008 260) — reposo/hover
-          rule: "#D8DEE8",     // hairline, más presente que clinic-border
-        },
         state: {
           ok: "#0B7E57",
           okbg: "#DEF7EC",
@@ -55,13 +46,8 @@ const config: Config = {
       fontFamily: {
         // `sans` = la del panel, igual a Dentalink (verificado en su CSS). No tocar.
         sans: ["var(--font-open-sans)", "ui-sans-serif", "system-ui"],
-        // `logo` = Jost. Sigue viva porque la usan 33 lugares, varios DENTRO del
-        // panel (Shell, configuración, presupuestos, ficha). Cambiarla acá
-        // reescribiría el panel en silencio y rompería la paridad Dentalink.
+        // `logo` = Jost, para display de la landing y el logotipo del producto.
         logo: ["var(--font-jost)", "ui-sans-serif"],
-        // Par editorial — landing y páginas públicas, nada del panel.
-        display: ["var(--font-display)", "ui-sans-serif", "system-ui"],
-        body: ["var(--font-body)", "ui-sans-serif", "system-ui"],
         mono: ["var(--font-jbmono)", "ui-monospace"],
       },
       boxShadow: {

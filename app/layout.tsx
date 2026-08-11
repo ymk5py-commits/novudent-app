@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Open_Sans, Jost, Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono } from "next/font/google";
+import { Open_Sans, Jost, JetBrains_Mono } from "next/font/google";
 import { StoreProvider } from "@/lib/store";
 import HydrationGuard from "@/components/HydrationGuard";
 /** OJO: estas constantes se importan del módulo PLANO, no de HydrationGuard.
@@ -8,27 +8,17 @@ import HydrationGuard from "@/components/HydrationGuard";
  *  las convierte en proxies y el script inline sale con `[object Object]`. */
 import { MOTION_FALLBACK_CLASS, HYDRATION_GRACE_MS } from "@/lib/motion-fallback";
 
-/** DOS SISTEMAS TIPOGRÁFICOS, a propósito.
+/** TIPOGRAFÍA.
  *
- *  1. EL PANEL (`/app/*`) usa **Open Sans**: es la tipografía del panel de
- *     Dentalink, verificada leyendo el CSS de la app real
- *     (`auradentalclinic.dentalink.cl`), no deducida de una captura:
- *     `body { font: 400 14px "Open Sans", sans-serif; color:#333 }`. Carlos la
- *     pidió idéntica para la paridad 1:1. Esa directiva manda sobre cualquier
- *     preferencia estética — no tocar.
+ *  El PANEL (`/app/*`) usa **Open Sans**: es la del panel de Dentalink,
+ *  verificada leyendo el CSS de la app real (`auradentalclinic.dentalink.cl`),
+ *  no deducida de una captura: `body { font: 400 14px "Open Sans", sans-serif }`.
+ *  Carlos la pidió idéntica para la paridad 1:1 — no tocar.
  *
- *  2. LA LANDING y las páginas públicas son marketing propio y NO tienen por qué
- *     parecerse a Dentalink. Ahí va el par editorial: **Bricolage Grotesque**
- *     para display (variable, con carácter — sin Inter ni Geist) e **Instrument
- *     Sans** para cuerpo. JetBrains Mono queda para datos y etiquetas, que es
- *     donde un mono se gana el lugar (cifras tabulares, códigos FDI, estados).
- *
- *  Bricolage e Instrument son variables: next/font NO admite `weight` en fuentes
- *  variables — el eje se pide desde CSS con font-weight/font-variation-settings. */
+ *  La landing y las páginas públicas usan **Jost** para display (`font-logo`) y
+ *  **JetBrains Mono** para datos y etiquetas. */
 const openSans = Open_Sans({ subsets: ["latin"], weight: ["300", "400", "600", "700"], variable: "--font-open-sans", display: "swap" });
 const jost = Jost({ subsets: ["latin"], weight: ["300", "400", "500"], variable: "--font-jost", display: "swap" });
-const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display", display: "swap" });
-const body = Instrument_Sans({ subsets: ["latin"], variable: "--font-body", display: "swap" });
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-jbmono", display: "swap" });
 
 export const metadata: Metadata = {
@@ -53,7 +43,7 @@ const MOTION_FALLBACK_BOOT = `window.__novudentMotionTimer=setTimeout(function()
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${openSans.variable} ${jost.variable} ${display.variable} ${body.variable} ${mono.variable}`}>
+    <html lang="es" className={`${openSans.variable} ${jost.variable} ${mono.variable}`}>
       <body className="font-sans">
         <script dangerouslySetInnerHTML={{ __html: MOTION_FALLBACK_BOOT }} />
         <HydrationGuard />
