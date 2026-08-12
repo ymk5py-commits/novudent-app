@@ -22,6 +22,11 @@ function friendlyAuthError(e: any): string {
 export default function Login() {
   const { db, login, loginWithEmail, seedDemo, ready, backend } = useStore();
   const router = useRouter();
+  /* La demo ya no se ofrece al público: Novudent se vende con acceso
+     solicitado. NO se borró — sigue viva en `/login?demo=1` para mostrarla en
+     una reunión de venta. Borrarla habría dejado a Carlos sin su herramienta de
+     demostración, que es justo lo contrario de lo que se busca. */
+  const demoHabilitada = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("demo");
   const [tab, setTab] = useState<"auth" | "demo">("auth");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
@@ -86,6 +91,7 @@ export default function Login() {
 
           <div className="rounded-3xl border border-clinic-border bg-white p-7 shadow-pop">
             {/* Tabs */}
+            {demoHabilitada && (
             <div className="mb-6 flex rounded-2xl bg-clinic-bg p-1">
               {([["auth", "Iniciar sesión"], ["demo", "Ver demo"]] as const).map(([k, l]) => (
                 <button
@@ -97,8 +103,9 @@ export default function Login() {
                 </button>
               ))}
             </div>
+            )}
 
-            {tab === "auth" ? (
+            {tab === "auth" || !demoHabilitada ? (
               <form onSubmit={submit} className="space-y-4">
                 <div>
                   <h1 className="text-xl font-extrabold text-navy-800">Bienvenido de nuevo</h1>
@@ -131,7 +138,7 @@ export default function Login() {
                 </button>
                 <p className="text-center text-[11px] leading-relaxed text-clinic-muted">
                   ¿Sin cuenta? Las cuentas las crea el <b>administrador</b> de tu clínica
-                  (Configuración → Usuarios). ¿Querés conocer Novudent? Usá la pestaña <b>Ver demo</b>.
+                  (Configuración → Usuarios). ¿Querés conocer Novudent? <a href="/#acceso" className="font-bold text-azure-700 hover:underline">Pedí tu acceso</a>.
                 </p>
               </form>
             ) : (

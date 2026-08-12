@@ -21,6 +21,7 @@ import dynamic from "next/dynamic";
 import { ArrowRight, ArrowUpRight, Check, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ShowcaseBoard, ToothGlyph, type ShowcaseToothRecord } from "./OdontogramShowcase";
+import SolicitarAcceso from "./SolicitarAcceso";
 import { FlagBadge } from "./ui";
 
 /* three.js pesa ~150 kB gz: chunk aparte, solo cliente. Mientras carga no se
@@ -60,7 +61,9 @@ const CAPACIDADES = [
 
 export default function Landing() {
   const { session } = useStore();
-  const appHref = session ? "/app" : "/login";
+  /* La demo abierta se retiró: Novudent se vende con acceso solicitado. Quien ya
+     tiene sesión conserva el atajo al panel; el resto va al formulario. */
+  const appHref = session ? "/app" : "#acceso";
   const [demoTeeth, setDemoTeeth] = useState<Record<string, ShowcaseToothRecord>>(DEMO_TEETH);
 
   return (
@@ -80,7 +83,7 @@ export default function Landing() {
           <div className="flex items-center gap-2">
             <a href="/login" className="hidden rounded-xl px-3.5 py-2 text-sm font-bold text-clinic-text transition-colors hover:bg-clinic-bg sm:block">Iniciar sesión</a>
             <a href={appHref} className="btn-shine rounded-xl bg-navy-800 px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5">
-              {session ? "Ir al panel" : "Probar demo"}
+              {session ? "Ir al panel" : "Solicitar acceso"}
             </a>
           </div>
         </div>
@@ -107,10 +110,10 @@ export default function Landing() {
               </p>
               <div className="flex items-center gap-4">
                 <a href={appHref} className="btn-shine group inline-flex items-center gap-2 rounded-2xl bg-azure-600 px-6 py-3.5 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition hover:-translate-y-0.5 hover:bg-azure-700">
-                  {session ? "Ir al panel" : "Probar la demo gratis"}
+                  {session ? "Ir al panel" : "Solicitar acceso"}
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </a>
-                <span className="hidden font-mono text-[11px] uppercase tracking-wide text-clinic-muted lg:block">Sin tarjeta<br />Rol a elección</span>
+                <span className="hidden font-mono text-[11px] uppercase tracking-wide text-clinic-muted lg:block">Respondemos en<br />menos de 24 h</span>
               </div>
             </div>
           </div>
@@ -443,25 +446,41 @@ export default function Landing() {
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 sm:py-20 lg:grid-cols-12">
           <div className="lg:col-span-8">
             <h2 className="font-logo text-4xl leading-tight text-white sm:text-5xl">
-              La demo está lista.
-              <br /><span className="text-azure-200">Tu clínica también.</span>
+              Tu clínica,
+              <br /><span className="text-azure-200">funcionando en Novudent.</span>
             </h2>
             <p className="mt-4 max-w-md text-sm leading-relaxed text-white/60">
-              Entrá con un clic, elegí tu rol y recorré la agenda, el odontograma y la facturación
-              con datos reales de ejemplo.
+              Te mostramos el sistema con los datos de tu clínica y migramos lo que
+              ya tenés — venga de Dentalink, de planillas o de papel.
             </p>
-            <a href={appHref} className="btn-shine group mt-7 inline-flex items-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-sm font-extrabold text-navy-800 transition hover:-translate-y-0.5">
-              {session ? "Ir al panel" : "Probar la demo gratis"}
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
+            {session ? (
+              <a href="/app" className="btn-shine group mt-7 inline-flex items-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-sm font-extrabold text-navy-800 transition hover:-translate-y-0.5">
+                Ir al panel
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </a>
+            ) : (
+              <ul className="mt-7 space-y-2.5">
+                {["Migración de tus datos incluida", "Capacitación del equipo", "Respuesta en menos de 24 h hábiles"].map((t) => (
+                  <li key={t} className="flex items-start gap-2.5 text-sm text-white/85">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-azure-300" strokeWidth={2.5} /> {t}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          {/* Diente 3D (three.js) — cerámica con luz de contra azure girando
-              despacio sobre el navy. Decoración de escritorio: mejora
-              progresiva pura, si WebGL falla el componente devuelve null y la
-              sección queda completa igual. */}
-          <div className="hidden lg:col-span-4 lg:block">
-            <Tooth3D className="h-72 w-full" />
-          </div>
+          {/* Con sesión abierta va el diente 3D (three.js): cerámica con luz de
+              contra azure girando despacio sobre el navy. Mejora progresiva
+              pura — si WebGL falla devuelve null y la sección queda completa.
+              Sin sesión manda el formulario: acá es donde se vende. */}
+          {session ? (
+            <div className="hidden lg:col-span-4 lg:block">
+              <Tooth3D className="h-72 w-full" />
+            </div>
+          ) : (
+            <div className="lg:col-span-4">
+              <SolicitarAcceso />
+            </div>
+          )}
         </div>
       </section>
 
