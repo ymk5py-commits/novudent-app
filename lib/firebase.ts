@@ -50,6 +50,28 @@ export async function currentIdToken(): Promise<string | null> {
   }
 }
 
+/** Manda el correo de "olvidé mi contraseña" de Firebase Auth.
+ *
+ *  Sin esto, cada olvido de contraseña era un llamado a Carlos para que
+ *  recreara la cuenta a mano — no escala pasadas un puñado de clínicas.
+ *
+ *  Firebase hace el trabajo pesado: genera el link firmado, arma el correo y lo
+ *  manda desde su propia infraestructura — nada de esto toca nuestro backend, y
+ *  por eso no hace falta el usuario de servicio ni una ruta nueva en /api.
+ *
+ *  A propósito NO distingue "email inexistente" de "correo enviado": Firebase sí
+ *  puede tirar `auth/user-not-found`, pero devolverlo tal cual permite a
+ *  cualquiera enumerar qué emails están registrados probando uno por uno. El
+ *  caller trata ambos casos igual — ver app/login/page.tsx. */
+export async function sendPasswordReset(email: string): Promise<void> {
+  const { getAuth, sendPasswordResetEmail } = await import("firebase/auth");
+  await sendPasswordResetEmail(getAuth(app), email, {
+    // Sin esto Firebase manda al dominio por defecto de Auth
+    // (novudent-664f3.firebaseapp.com), que no es el que el usuario conoce.
+    url: `${window.location.origin}/login`,
+  });
+}
+
 /** Cambia la contraseña del usuario actualmente autenticado (cambio inicial obligatorio). */
 export async function updateCurrentPassword(newPassword: string): Promise<void> {
   const { getAuth, updatePassword } = await import("firebase/auth");
