@@ -110,7 +110,31 @@ async function loadFirestore(): Promise<DB> {
    * el webhook con el usuario de servicio). Si no existe, la clínica es
    * anterior al cobro → grandfathered (ver lib/subscription.ts). */
   const subSnap = await getDoc(doc(fsdb, "subscriptions", CLINIC_ID)).catch(() => null);
-  const col = (name: string) => getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
+  /* Una colección que el ROL no tiene permiso de leer devuelve vacío, no rompe.
+   *
+   * Esto no es defensa preventiva: sin el catch, Novudent queda INUTILIZABLE
+   * para dentistas y asistentes en cuanto se despliegan las reglas de RBAC.
+   * Las 31 colecciones se piden en un solo `Promise.all`, que rechaza al primer
+   * error; `expenses` y `settlements` son admin-only por regla, así que el
+   * permission-denied de un dentista tumbaba el arranque ENTERO y lo mandaba a
+   * "modo local". O sea: la clínica compra el sistema y solo el dueño puede
+   * entrar. Que no se haya notado todavía es porque las reglas del 30-jul
+   * pueden no estar desplegadas — el bug estaba armado esperando ese deploy.
+   *
+   * Devolver vacío es lo correcto, no un parche: que una asistente no vea los
+   * gastos ES la regla de negocio. La interfaz ya esconde esas pantallas por
+   * `can(role, …)`, así que una lista vacía es exactamente lo que corresponde. */
+  const col = async (name: string) => {
+    try {
+      return await getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
+    } catch (e: any) {
+      if (e?.code === "permission-denied") return null;
+      throw e; // red caída, cuota, config rota: eso sí tiene que explotar
+    }
+  };
+  /** `.docs` de un snapshot que puede no haberse podido leer. */
+  const filas = <T,>(snap: { docs: { data: () => unknown }[] } | null): T[] =>
+    snap ? snap.docs.map((d) => d.data() as T) : [];
   const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos, branches] = await Promise.all([
     col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
@@ -118,37 +142,37 @@ async function loadFirestore(): Promise<DB> {
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
-    users: users.docs.map((d) => d.data() as User),
-    patients: patients.docs.map((d) => d.data() as Patient),
-    appointments: appointments.docs.map((d) => d.data() as Appointment),
-    billing: billing.docs.map((d) => d.data() as BillingRecord),
-    procedures: procedures.docs.map((d) => d.data() as Procedure),
-    budgets: budgets.docs.map((d) => d.data() as Budget),
-    payments: payments.docs.map((d) => d.data() as Payment),
-    expenses: expenses.docs.map((d) => d.data() as Expense),
-    stock: stock.docs.map((d) => d.data() as StockItem),
-    stockMoves: stockMoves.docs.map((d) => d.data() as StockMove),
-    waitlist: waitlist.docs.map((d) => d.data() as WaitlistEntry),
-    outbox: outbox.docs.map((d) => d.data() as OutboxTask),
-    recoveryMonitors: recoveryMonitors.docs.map((d) => d.data() as RecoveryMonitor),
-    radiographs: radiographs.docs.map((d) => d.data() as RadiographRec),
-    signatures: signatures.docs.map((d) => d.data() as SignatureDoc),
-    crmCards: crmCards.docs.map((d) => d.data() as CrmCard),
-    campaigns: campaigns.docs.map((d) => d.data() as Campaign),
-    labOrders: labOrders.docs.map((d) => d.data() as LabOrder),
-    settlements: settlements.docs.map((d) => d.data() as Settlement),
-    boxes: boxes.docs.map((d) => d.data() as Box),
-    patientNotes: patientNotes.docs.map((d) => d.data() as PatientNote),
-    fiscalDocs: fiscalDocs.docs.map((d) => d.data() as FiscalDoc),
-    cashSessions: cashSessions.docs.map((d) => d.data() as CashSession),
-    sterilizationCycles: sterilizationCycles.docs.map((d) => d.data() as SterilizationCycle),
-    teamMessages: teamMessages.docs.map((d) => d.data() as TeamMessage),
-    surveys: surveys.docs.map((d) => d.data() as Survey),
-    surveyResponses: surveyResponses.docs.map((d) => d.data() as SurveyResponse),
-    mgmtTasks: mgmtTasks.docs.map((d) => d.data() as MgmtTask),
-    environmentalLogs: environmentalLogs.docs.map((d) => d.data() as EnvironmentalLog),
-    eduVideos: eduVideos.docs.map((d) => d.data() as EduVideo),
-    branches: branches.docs.map((d) => d.data() as Branch),
+    users: filas<User>(users),
+    patients: filas<Patient>(patients),
+    appointments: filas<Appointment>(appointments),
+    billing: filas<BillingRecord>(billing),
+    procedures: filas<Procedure>(procedures),
+    budgets: filas<Budget>(budgets),
+    payments: filas<Payment>(payments),
+    expenses: filas<Expense>(expenses),
+    stock: filas<StockItem>(stock),
+    stockMoves: filas<StockMove>(stockMoves),
+    waitlist: filas<WaitlistEntry>(waitlist),
+    outbox: filas<OutboxTask>(outbox),
+    recoveryMonitors: filas<RecoveryMonitor>(recoveryMonitors),
+    radiographs: filas<RadiographRec>(radiographs),
+    signatures: filas<SignatureDoc>(signatures),
+    crmCards: filas<CrmCard>(crmCards),
+    campaigns: filas<Campaign>(campaigns),
+    labOrders: filas<LabOrder>(labOrders),
+    settlements: filas<Settlement>(settlements),
+    boxes: filas<Box>(boxes),
+    patientNotes: filas<PatientNote>(patientNotes),
+    fiscalDocs: filas<FiscalDoc>(fiscalDocs),
+    cashSessions: filas<CashSession>(cashSessions),
+    sterilizationCycles: filas<SterilizationCycle>(sterilizationCycles),
+    teamMessages: filas<TeamMessage>(teamMessages),
+    surveys: filas<Survey>(surveys),
+    surveyResponses: filas<SurveyResponse>(surveyResponses),
+    mgmtTasks: filas<MgmtTask>(mgmtTasks),
+    environmentalLogs: filas<EnvironmentalLog>(environmentalLogs),
+    eduVideos: filas<EduVideo>(eduVideos),
+    branches: filas<Branch>(branches),
     onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
     subscription: subSnap?.exists() ? (subSnap.data() as Subscription) : null,
   };
