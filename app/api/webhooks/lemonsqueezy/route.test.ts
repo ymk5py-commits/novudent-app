@@ -15,9 +15,14 @@ const SECRET = "secreto_de_prueba";
 
 const setDocument = vi.fn(async () => {});
 const createIfAbsent = vi.fn(async () => true);
+/* Devuelve el doc pedido por ruta. Por defecto no hay nada: ni token de
+   checkout ni suscripción previa, que es el caso de una primera compra. */
+const docs: Record<string, Record<string, unknown> | null> = {};
+const getDocument = vi.fn(async (path: string) => docs[path] ?? null);
 
 vi.mock("@/lib/server/firestore-rest", () => ({
   setDocument: (...a: unknown[]) => setDocument(...(a as [])),
+  getDocument: (...a: unknown[]) => getDocument(...(a as [string])),
   createIfAbsent: (...a: unknown[]) => createIfAbsent(...(a as [])),
   isServerFirestoreConfigured: () => true,
 }));
@@ -52,6 +57,7 @@ const req = (body: unknown, signature?: string) => {
 };
 
 beforeEach(() => {
+  for (const k of Object.keys(docs)) delete docs[k];
   vi.clearAllMocks();
   createIfAbsent.mockResolvedValue(true);
   vi.stubEnv("LEMONSQUEEZY_WEBHOOK_SECRET", SECRET);
@@ -154,5 +160,63 @@ describe("POST /api/webhooks/lemonsqueezy", () => {
     setDocument.mockRejectedValueOnce(new Error("firestore caído"));
     const res = await POST(req(payload()));
     expect(res.status).toBe(500);
+  });
+});
+
+/* ── El pago apuntado a otra clínica ─────────────────────────────────────────
+ * El clinicId es público (es el link `/reservar/{clinicId}` que la clínica
+ * publica) y viajaba como parámetro editable de la URL de checkout. Sin defensa,
+ * pagar el plan más barato apuntando a un competidor le pisaba la suscripción. */
+describe("defensa del pago apuntado a otra clínica", () => {
+  const conToken = (token: string, clinicId = "cl_aura") =>
+    payload({ meta: { event_name: "subscription_created", custom_data: { clinic_id: clinicId, novudent_token: token } } });
+
+  it("el TOKEN manda sobre el clinic_id de la URL", async () => {
+    const t = "t".repeat(40);
+    docs[`checkoutTokens/${t}`] = { token: t, clinicId: "cl_real" };
+    // El atacante puso otro clinic_id en la URL, pero el token dice cuál es
+    const r = await POST(req(conToken(t, "cl_victima")));
+    expect(r.status).toBe(200);
+    expect(setDocument).toHaveBeenCalledWith("subscriptions/cl_real", expect.objectContaining({ clinicId: "cl_real" }));
+  });
+
+  it("token desconocido → no se aplica nada", async () => {
+    const r = await POST(req(conToken("x".repeat(40))));
+    expect(await r.json()).toMatchObject({ ignored: true });
+    expect(setDocument).not.toHaveBeenCalled();
+  });
+
+  it("BLOQUEA pisar una suscripción VIGENTE con un pago de otra suscripción", async () => {
+    docs["subscriptions/cl_aura"] = {
+      clinicId: "cl_aura", plan: "cadena", status: "active",
+      currentPeriodEndMs: Date.now() + 30 * 86_400_000,
+      lsSubscriptionId: "sub_de_la_victima", updatedAt: "2026-08-01T00:00:00.000Z",
+    };
+    const r = await POST(req(payload())); // llega sub_777, distinta de la vigente
+    expect(r.status).toBe(200); // 200: el pago existe, LS no debe reintentar
+    expect(await r.json()).toMatchObject({ rejected: true });
+    expect(setDocument).not.toHaveBeenCalled();
+  });
+
+  it("deja pasar la renovación de la MISMA suscripción", async () => {
+    docs["subscriptions/cl_aura"] = {
+      clinicId: "cl_aura", plan: "clinica", status: "active",
+      currentPeriodEndMs: Date.now() + 5 * 86_400_000,
+      lsSubscriptionId: "sub_777", updatedAt: "2026-08-01T00:00:00.000Z",
+    };
+    const r = await POST(req(payload()));
+    expect(r.status).toBe(200);
+    expect(setDocument).toHaveBeenCalled();
+  });
+
+  it("deja pasar la primera compra sobre el TRIAL del alta (sin id de LS)", async () => {
+    docs["subscriptions/cl_aura"] = {
+      clinicId: "cl_aura", plan: "clinica", status: "trialing",
+      currentPeriodEndMs: Date.now() + 10 * 86_400_000,
+      provider: "manual", updatedAt: "2026-08-01T00:00:00.000Z",
+    };
+    const r = await POST(req(payload()));
+    expect(r.status).toBe(200);
+    expect(setDocument).toHaveBeenCalled();
   });
 });

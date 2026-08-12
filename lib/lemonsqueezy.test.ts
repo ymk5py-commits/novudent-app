@@ -138,3 +138,87 @@ describe("buildCheckoutUrl", () => {
     expect(buildCheckoutUrl("http://inseguro.com/buy/x", { clinicId: "x" })).toBeNull();
   });
 });
+
+/* ── Defensa contra el pago apuntado a otra clínica ──────────────────────────
+ * El clinicId es PÚBLICO por diseño (es el link `/reservar/{clinicId}` que la
+ * clínica publica). Viajaba como parámetro editable de la URL de checkout, así
+ * que cualquiera podía pagar el plan más barato apuntando a un competidor y
+ * pisarle la suscripción: bajarlo de Cadena a Solo le apaga módulos, y cancelar
+ * ese pago después lo deja en solo-lectura. */
+
+import { puedeAplicarSuscripcion, tokenDePayload } from "./lemonsqueezy";
+import type { Subscription } from "./types";
+
+const susc = (o: Partial<Subscription> = {}): Subscription => ({
+  clinicId: "cl_victima", plan: "cadena", status: "active",
+  currentPeriodEndMs: Date.UTC(2027, 0, 1), provider: "lemonsqueezy",
+  lsSubscriptionId: "sub_legitima", updatedAt: "2026-08-01T00:00:00.000Z", ...o,
+});
+const siempreActiva = () => true;
+const nuncaActiva = () => false;
+
+describe("tokenDePayload", () => {
+  it("toma el token cuando viene y es largo", () => {
+    expect(tokenDePayload({ meta: { custom_data: { novudent_token: "a".repeat(32) } } })).toBe("a".repeat(32));
+  });
+
+  it("ignora un token corto: no se acepta algo adivinable", () => {
+    expect(tokenDePayload({ meta: { custom_data: { novudent_token: "corto" } } })).toBeNull();
+  });
+
+  it("sin token devuelve null (pago viejo, cae al respaldo)", () => {
+    expect(tokenDePayload({ meta: { custom_data: { clinic_id: "cl_x" } } })).toBeNull();
+    expect(tokenDePayload({})).toBeNull();
+  });
+});
+
+describe("puedeAplicarSuscripcion", () => {
+  it("BLOQUEA el ataque: pago de otra suscripción sobre una vigente", () => {
+    const r = puedeAplicarSuscripcion(
+      susc(),
+      susc({ plan: "solo", lsSubscriptionId: "sub_atacante" }),
+      siempreActiva,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.motivo).toContain("sub_atacante");
+  });
+
+  it("deja pasar la renovación: misma suscripción de LS", () => {
+    expect(puedeAplicarSuscripcion(susc(), susc({ lsSubscriptionId: "sub_legitima" }), siempreActiva).ok).toBe(true);
+  });
+
+  it("deja pasar el impago de la MISMA suscripción (no la deja colgada activa)", () => {
+    const r = puedeAplicarSuscripcion(susc(), susc({ status: "past_due", lsSubscriptionId: "sub_legitima" }), siempreActiva);
+    expect(r.ok).toBe(true);
+  });
+
+  it("primera compra: no había suscripción", () => {
+    expect(puedeAplicarSuscripcion(null, susc({ lsSubscriptionId: "sub_nueva" }), siempreActiva).ok).toBe(true);
+  });
+
+  it("primera compra sobre el TRIAL del alta: la actual no tiene id de LS", () => {
+    const trial = susc({ provider: "manual", status: "trialing", lsSubscriptionId: undefined });
+    expect(puedeAplicarSuscripcion(trial, susc({ lsSubscriptionId: "sub_nueva" }), siempreActiva).ok).toBe(true);
+  });
+
+  it("re-alta legítima: la vieja ya venció, entra una nueva", () => {
+    const r = puedeAplicarSuscripcion(susc({ status: "expired" }), susc({ lsSubscriptionId: "sub_nueva" }), nuncaActiva);
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("buildCheckoutUrl con token", () => {
+  const BASE = "https://novudent.lemonsqueezy.com/checkout/buy/abc";
+
+  it("manda el token además del clinic_id", () => {
+    const u = buildCheckoutUrl(BASE, { clinicId: "cl_x", token: "t".repeat(32) })!;
+    expect(u).toContain(encodeURIComponent("checkout[custom][novudent_token]"));
+    expect(new URL(u).searchParams.get("checkout[custom][novudent_token]")).toBe("t".repeat(32));
+  });
+
+  it("sin token sigue funcionando (compatibilidad)", () => {
+    const u = buildCheckoutUrl(BASE, { clinicId: "cl_x" })!;
+    expect(u).not.toContain("novudent_token");
+    expect(new URL(u).searchParams.get("checkout[custom][clinic_id]")).toBe("cl_x");
+  });
+});

@@ -14,8 +14,10 @@
  * Si no están configuradas, responde 503 sin romper (igual que /api/email).
  */
 import { NextResponse } from "next/server";
-import { verifyLsSignature, subscriptionFromLsPayload, type VariantPlanMap } from "@/lib/lemonsqueezy";
-import { setDocument, createIfAbsent, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
+import { verifyLsSignature, subscriptionFromLsPayload, tokenDePayload, puedeAplicarSuscripcion, type VariantPlanMap } from "@/lib/lemonsqueezy";
+import { isSubscriptionActive } from "@/lib/subscription";
+import type { Subscription } from "@/lib/types";
+import { setDocument, getDocument, createIfAbsent, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
@@ -58,7 +60,24 @@ export async function POST(req: Request) {
   try { payload = JSON.parse(raw); }
   catch { return NextResponse.json({ ok: false, error: "JSON inválido" }, { status: 400 }); }
 
-  const sub = subscriptionFromLsPayload(payload, variantPlanMap());
+  /* A QUÉ CLÍNICA se le acredita el pago. El token manda sobre el clinic_id:
+   * el clinic_id viaja en la URL del checkout, a la vista del comprador y
+   * editable antes de pagar, y además es público (es el link de reservas de la
+   * clínica). El token es aleatorio y solo el servidor sabe a qué clínica
+   * pertenece. Se cae al clinic_id solo para las suscripciones anteriores al
+   * token, que siguen renovando sin él — a esas las cubre el guard de abajo. */
+  let clinicIdResuelto: string | undefined;
+  const token = tokenDePayload(payload);
+  if (token) {
+    const doc = await getDocument(`checkoutTokens/${token}`).catch(() => null);
+    if (!doc || typeof doc.clinicId !== "string") {
+      console.error("[LS] token de checkout desconocido — no se aplica nada");
+      return NextResponse.json({ ok: true, ignored: true });
+    }
+    clinicIdResuelto = doc.clinicId;
+  }
+
+  const sub = subscriptionFromLsPayload(payload, variantPlanMap(), clinicIdResuelto);
   if (!sub) {
     // Evento que no nos toca (order_created, variante sin mapear, etc.).
     // 200 a propósito: si devolvemos error, LS reintenta para siempre.
@@ -66,6 +85,20 @@ export async function POST(req: Request) {
   }
 
   try {
+    /* GUARD DE PERTENENCIA — segunda línea de defensa, y la única que protege a
+     * las suscripciones anteriores al token. Un pago que llega a una clínica que
+     * YA tiene una suscripción vigente de OTRA suscripción de LS no se aplica:
+     * ese es exactamente el ataque de bajarle el plan o cancelárselo a otro. */
+    const actual = (await getDocument(`subscriptions/${sub.clinicId}`).catch(() => null)) as
+      | (Subscription & Record<string, unknown>) | null;
+    const permitido = puedeAplicarSuscripcion(actual, sub, (s) => isSubscriptionActive(s));
+    if (!permitido.ok) {
+      console.error(`[LS] RECHAZADO — ${permitido.motivo}`);
+      // 200: el pago existe y LS no tiene por qué reintentar. Queda en el log
+      // para que el dueño lo resuelva a mano (probablemente sea un reembolso).
+      return NextResponse.json({ ok: true, rejected: true });
+    }
+
     // Idempotencia: si el evento ya se procesó, createIfAbsent devuelve false.
     const nuevo = await createIfAbsent(`webhookEvents/${eventKey(payload)}`, {
       provider: "lemonsqueezy",

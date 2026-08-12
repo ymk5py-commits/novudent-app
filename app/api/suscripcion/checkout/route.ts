@@ -12,9 +12,10 @@
  * Env (Vercel): LS_CHECKOUT_SOLO, LS_CHECKOUT_CLINICA, LS_CHECKOUT_CADENA.
  */
 import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
-import { getDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
+import { getDocument, setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
 import { buildCheckoutUrl } from "@/lib/lemonsqueezy";
 import type { PlanId } from "@/lib/plan";
 
@@ -59,8 +60,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "No pudimos identificar tu clínica." }, { status: 400 });
   }
 
+  /* Token que ata este checkout a ESTA clínica.
+   *
+   * El clinic_id viaja como parámetro de la URL de LS, a la vista del comprador
+   * y editable antes de pagar. Y los clinicId son públicos: son el link de
+   * reservas que la clínica publica (`/reservar/{clinicId}`). Sin token,
+   * cualquiera abría su propio checkout, ponía el id de un competidor, pagaba el
+   * plan más barato y le pisaba la suscripción — o la cancelaba después y lo
+   * dejaba en solo-lectura. Cuarenta y cinco dólares para frenar a otra clínica.
+   *
+   * El token es aleatorio y solo el servidor sabe a qué clínica corresponde.
+   * NO es de un solo uso: LS reenvía el mismo custom_data en cada renovación,
+   * así que tiene que seguir resolviendo mientras la suscripción viva. */
+  const token = randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "").slice(0, 8);
+  try {
+    await setDocument(`checkoutTokens/${token}`, {
+      token, clinicId, plan, uid: user.uid,
+      creadoEn: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error("[checkout] no se pudo crear el token:", e);
+    return NextResponse.json(
+      { ok: false, error: "No pudimos abrir el pago ahora. Probá de nuevo en un momento." },
+      { status: 503 },
+    );
+  }
+
   const url = buildCheckoutUrl(process.env[CHECKOUT_ENV[plan]], {
     clinicId,
+    token,
     email: user.email,
   });
   if (!url) {

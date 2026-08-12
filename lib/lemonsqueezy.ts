@@ -64,17 +64,71 @@ export function statusFromLsEvent(evento: string): SubscriptionStatus | null {
  */
 export function buildCheckoutUrl(
   base: string | undefined | null,
-  opts: { clinicId: string; email?: string; name?: string }
+  opts: { clinicId: string; token?: string; email?: string; name?: string }
 ): string | null {
   if (!base) return null;
   let url: URL;
   try { url = new URL(base); } catch { return null; }
   if (url.protocol !== "https:") return null;
 
+  /* EL TOKEN ES LO QUE MANDA. El clinic_id viaja como parámetro de una URL que
+   * el comprador tiene delante y puede editar antes de pagar. Y los clinicId son
+   * PÚBLICOS por diseño: son el link de reservas que la clínica publica en su
+   * Instagram (`/reservar/{clinicId}`). O sea que cualquiera podía abrir su
+   * propio checkout, cambiar el clinic_id por el de otra clínica, pagar el plan
+   * más barato y pisarle la suscripción a un competidor por 45 dólares.
+   *
+   * El token es un valor aleatorio que solo existe en el servidor asociado a una
+   * clínica; adivinar el de otro es inviable. Se manda ADEMÁS del clinic_id para
+   * no romper nada mientras conviven, pero el webhook le cree al token. */
+  if (opts.token) url.searchParams.set("checkout[custom][novudent_token]", opts.token);
   url.searchParams.set("checkout[custom][clinic_id]", opts.clinicId);
   if (opts.email) url.searchParams.set("checkout[email]", opts.email);
   if (opts.name) url.searchParams.set("checkout[name]", opts.name);
   return url.toString();
+}
+
+/** Token de checkout que viene en el webhook, si el pago se originó en un
+ *  checkout nuestro. Sin él caemos al clinic_id, que exige verificación extra. */
+export function tokenDePayload(payload: any): string | null {
+  const t = payload?.meta?.custom_data?.novudent_token;
+  return typeof t === "string" && t.length >= 16 ? t : null;
+}
+
+/**
+ * ¿Se puede aplicar esta suscripción entrante sobre la que ya existe?
+ *
+ * Segunda línea de defensa, y la que protege a las suscripciones creadas ANTES
+ * del token (esas siguen renovando con el clinic_id pelado). Sin esto, un pago
+ * hecho apuntando a otra clínica le pisa la suscripción: bajarle el plan de
+ * Cadena a Solo le apaga módulos, y cancelar ese pago después la deja en
+ * solo-lectura. Cuesta 45 dólares dejar frenada a una clínica.
+ *
+ * Se permite el paso cuando hay una explicación legítima:
+ *  · no hay suscripción todavía → primera compra;
+ *  · la actual no tiene id de LS → es el trial manual del alta, y esta es la
+ *    primera compra de verdad;
+ *  · es LA MISMA suscripción de LS → renovación, cambio de plan o impago;
+ *  · la actual ya no está vigente → la clínica se dio de baja y vuelve.
+ *
+ * Se bloquea el único caso que no tiene explicación buena: una suscripción
+ * VIGENTE a la que le llega un pago de OTRA suscripción distinta.
+ */
+export function puedeAplicarSuscripcion(
+  actual: Subscription | null | undefined,
+  entrante: Subscription,
+  activa: (s: Subscription) => boolean,
+): { ok: true } | { ok: false; motivo: string } {
+  if (!actual) return { ok: true };
+  if (!actual.lsSubscriptionId) return { ok: true };
+  if (actual.lsSubscriptionId === entrante.lsSubscriptionId) return { ok: true };
+  if (!activa(actual)) return { ok: true };
+  return {
+    ok: false,
+    motivo:
+      `la clínica ${actual.clinicId} ya tiene la suscripción vigente ${actual.lsSubscriptionId} ` +
+      `y llegó un pago de ${entrante.lsSubscriptionId ?? "(sin id)"}`,
+  };
 }
 
 /** Mapa variant_id de LS → plan de Novudent. Se configura por env (ver la route). */
@@ -84,18 +138,23 @@ export type VariantPlanMap = Record<string, PlanId>;
  * Traduce el payload del webhook a nuestro doc de suscripción.
  * Devuelve `null` cuando NO hay que tocar nada:
  *  - evento desconocido,
- *  - sin `clinic_id` en custom_data (no sabemos a quién activarle el plan),
+ *  - sin clínica resuelta (no sabemos a quién activarle el plan),
  *  - variante no mapeada (preferimos no activar nada antes que regalar un plan).
  */
 export function subscriptionFromLsPayload(
   payload: any,
-  variantPlans: VariantPlanMap
+  variantPlans: VariantPlanMap,
+  /** Clínica ya resuelta por la ruta (desde el token, o del clinic_id como
+   *  respaldo). Se pasa desde afuera para que esta función no vuelva a confiar
+   *  en un valor que el comprador puede editar en la URL. Si se omite, cae al
+   *  clinic_id del payload — solo para no romper los tests viejos. */
+  clinicIdResuelto?: string,
 ): Subscription | null {
   const evento = payload?.meta?.event_name;
   const status = statusFromLsEvent(evento);
   if (!status) return null;
 
-  const clinicId = payload?.meta?.custom_data?.clinic_id;
+  const clinicId = clinicIdResuelto ?? payload?.meta?.custom_data?.clinic_id;
   if (!clinicId || typeof clinicId !== "string") return null;
 
   const attrs = payload?.data?.attributes ?? {};

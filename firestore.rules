@@ -175,6 +175,14 @@ service cloud.firestore {
       allow read, write: if isService();
     }
 
+    // Tokens que atan un checkout de Lemon Squeezy a UNA clínica. Cerrados por
+    // completo al cliente: si el navegador pudiera leerlos, podría descubrir el
+    // token de otra clínica y volver a apuntarle un pago — que es justo el
+    // ataque que estos tokens existen para impedir.
+    match /checkoutTokens/{token} {
+      allow read, write: if isService();
+    }
+
     // ---- Clínica + subcolecciones ----
     match /clinics/{cid} {
       // Doc raíz: config de la clínica. Lectura: miembros/servidor/demo.
