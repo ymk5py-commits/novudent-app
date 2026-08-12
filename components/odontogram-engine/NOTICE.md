@@ -40,7 +40,10 @@ environment jsdom + `plugins: [react()]`), ver el `README.md` del repo origen.
   mitad-claro/mitad-oscuro real de baja legibilidad porque `themeConfig` solo cubre las variables
   `--odon-*` compartidas, no las reglas `.dark` propias del motor). `components/Odontogram.tsx` pasa
   los 3 en `false`.
-- `index.css`: `.tooth-grid` suma `overflow-x:auto` (antes el `overflow:hidden` de `.chart` recortaba
-  en silencio, sin scroll posible, las piezas que no entraban en el ancho embebido — 16 columnas
-  ×36px mín. ⇒ ~650px — en viewports angostos sin puntero táctil; el toggle superior/inferior táctil
-  del motor sigue intacto para `pointer:coarse`).
+- `index.css`: **no** se pone `overflow` en `.tooth-grid`. El scroll horizontal de rescate (para
+  cuando las 16 columnas ×36px mín. ⇒ ~650px no entran en el ancho embebido) vive en `.chart`
+  (`overflow:auto hidden`). Ponerlo también en la grilla hace que `overflow-y` compute a `auto`
+  por spec, y eso recorta el anillo punteado + el `drop-shadow` del diente activo
+  (`.tooth-tile:after{inset:-2px}`) en las piezas del borde; además el overlay de puentes
+  (`position:absolute; inset:0`) pasaría a medir la caja visible en vez del contenido scrolleable.
+  Hay un comentario en la regla para que no se vuelva a agregar.

@@ -192,11 +192,12 @@ select:focus{
   gap:4px;
   padding:10px;
   position:relative;
-  /* Novudent: 16 columnas @ 36px min (~650px) no siempre entran en el ancho embebido
-     (ficha/plan de tratamiento, sin el toggle superior/inferior de touch). Antes se
-     recortaban en silencio por el overflow:hidden de .chart — acá scrollea en cambio. */
-  overflow-x:auto;
-  -webkit-overflow-scrolling:touch;
+  /* Sin overflow acá a propósito: el scroll horizontal de rescate vive en .chart
+     (ver "red de contención" arriba). Ponerlo en la grilla hace que overflow-y
+     compute a `auto` por spec, y eso recorta el anillo punteado + el drop-shadow
+     del diente activo (`.tooth-tile:after{inset:-2px}`) en las piezas del borde;
+     además el overlay de puentes (`position:absolute; inset:0`) pasaría a medir
+     la caja visible en vez del contenido scrolleable. */
 }
 /* Engine-owned multi-tooth bridge-span overlay. Absolutely positioned so it does
    not consume a grid cell; sits above the tiles but never intercepts pointer
