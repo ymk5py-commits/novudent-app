@@ -130,6 +130,20 @@ type AppProps = {
    * the panel to render.
    */
   showOrthoCard?: boolean;
+  /**
+   * Whether the apical-diagnosis controls (`#apicalDxRow` + its dependent
+   * `#periapicalTypeRow`) are shown inside the Root & Periodontium card.
+   * Default `true`. Hiding them only removes the controls — a stored apical
+   * diagnosis still round-trips through import/export untouched.
+   */
+  showApicalDiagnosis?: boolean;
+  /**
+   * Whether the peri-implantitis staging control (`#periImplantRow`) is shown
+   * inside the Root & Periodontium card. Default `true`. Composes with the
+   * row's own imperative gate (it only appears on implant-type teeth) — both
+   * must be satisfied. Hiding it does not drop a stored staging value.
+   */
+  showPeriImplantStaging?: boolean;
   /** Whether the topbar's interactive-tour trigger button is shown. Default `true`. */
   showTourButton?: boolean;
   /** Whether the topbar's language-selector dropdown is shown. Default `true`.
@@ -201,6 +215,8 @@ export default function App({
   surfaceNotation,
   showStatusCard: showStatusCardProp,
   showOrthoCard: showOrthoCardProp,
+  showApicalDiagnosis = true,
+  showPeriImplantStaging = true,
   showTourButton = true,
   showLanguageSelector = true,
   showDarkModeToggle = true,
@@ -772,13 +788,15 @@ export default function App({
                   <span>{t("pulpEndo.label")}</span>
                   <select id="pulpEndoSelect"></select>
                 </div>
-                <div id="apicalDxRow" className="row">
-                  <span>{t("apical.dxLabel")}</span>
-                  <select id="apicalDxSelect"></select>
-                </div>
-                <div id="periapicalTypeRow" className="row hidden">
-                  <span>{t("periapical.typeLabel")}</span>
-                  <select id="periapicalTypeSelect"></select>
+                <div className={showApicalDiagnosis ? "" : "hidden"}>
+                  <div id="apicalDxRow" className="row">
+                    <span>{t("apical.dxLabel")}</span>
+                    <select id="apicalDxSelect"></select>
+                  </div>
+                  <div id="periapicalTypeRow" className="row hidden">
+                    <span>{t("periapical.typeLabel")}</span>
+                    <select id="periapicalTypeSelect"></select>
+                  </div>
                 </div>
                 <div id="resorptionRow" className="row">
                   <span>{t("root.resorption")}</span>
@@ -805,9 +823,11 @@ export default function App({
                 <div id="calculusRow" className="row inline-checks hidden">
                   <label><input type="checkbox" id="calculusToggle" /><span>{t("calculus.label")}</span></label>
                 </div>
-                <div id="periImplantRow" className="row hidden">
-                  <span>{t("periImplant.label")}</span>
-                  <select id="periImplantSelect"></select>
+                <div className={showPeriImplantStaging ? "" : "hidden"}>
+                  <div id="periImplantRow" className="row hidden">
+                    <span>{t("periImplant.label")}</span>
+                    <select id="periImplantSelect"></select>
+                  </div>
                 </div>
               </div>
             </section>
