@@ -58,6 +58,9 @@ export default function Odontogram({
       numberingSystem="FDI"
       readOnly={!editable}
       enableNotes
+      showTourButton={false}
+      showLanguageSelector={false}
+      showDarkModeToggle={false}
     />
   );
 }
