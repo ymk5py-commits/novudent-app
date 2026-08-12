@@ -552,6 +552,34 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  /* ===== Tiempo real: suscripción (plan pagado) =====
+   * `subscriptions/{cid}` la escribe SOLO el webhook de Lemon Squeezy — nunca el
+   * cliente (firestore.rules). Antes se leía una vez con getDoc al cargar
+   * loadFirestore y quedaba congelada en memoria: alguien pagaba una mejora de
+   * plan con la pestaña abierta y el sistema seguía negándole los módulos y
+   * usuarios del plan nuevo hasta que recargaba a mano. Con onSnapshot el pago
+   * se refleja apenas el webhook escribe, sin F5 — mismo patrón que el outbox
+   * de Botika, más abajo. */
+  useEffect(() => {
+    if (backend !== "firebase") return;
+    const cid = activeClinicId;
+    const unsub = onSnapshot(
+      doc(fsdb, "subscriptions", cid),
+      (snap) => {
+        setDb((prev) => {
+          // La clínica activa ya cambió (login multi-clínica): ignorar snapshot tardío.
+          if ((prev.clinics[0]?.id ?? cid) !== cid) return prev;
+          const subscription = snap.exists() ? (snap.data() as Subscription) : null;
+          const next = { ...prev, subscription };
+          try { localStorage.setItem(DB_KEY, JSON.stringify(next)); } catch {}
+          return next;
+        });
+      },
+      (e) => console.warn("listener subscription:", e)
+    );
+    return unsub;
+  }, [backend, activeClinicId]);
+
   /* ===== Tiempo real: outbox de Botika =====
    * Cuando el worker escribe `result`, la UI refleja EN VIVO la confirmación
    * de la cita o el NPS, sin recargar. El reflejo es idempotente. */
