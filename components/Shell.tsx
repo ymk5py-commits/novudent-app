@@ -16,6 +16,7 @@ import { subscriptionPlanId } from "@/lib/subscription";
 import ChangePasswordGate from "@/components/ChangePasswordGate";
 import { PageTransition } from "@/components/motion";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
+import AvisoNoGuardado from "@/components/AvisoNoGuardado";
 
 type NavLeaf = { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature; section?: string };
 type NavTop = { label: string; href?: string; icon?: any; perm?: Permission; feature?: PlanFeature; children?: NavLeaf[] };
@@ -246,6 +247,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <SubscriptionBanner />
         <PageTransition>{children}</PageTransition>
       </main>
+
+      {/* Fuera del <main> a propósito: es una barra fija al viewport. Dentro de
+          PageTransition quedaría atrapada por su transform (contexto de
+          apilamiento) y dejaría de posicionarse contra la ventana. */}
+      <AvisoNoGuardado />
     </div>
   );
 }

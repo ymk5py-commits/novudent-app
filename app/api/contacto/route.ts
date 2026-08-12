@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
+import { setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
 
 /**
  * Pedido de acceso desde la landing — PÚBLICO, sin sesión.
@@ -10,7 +11,12 @@ import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
  * open-relay de manual. Esta manda a UNA sola dirección fija, la del dueño, que
  * el visitante no elige ni ve. Ese es el detalle que la hace segura.
  *
- * Env (Vercel): RESEND_API_KEY, EMAIL_FROM, LEADS_EMAIL (a dónde llegan).
+ * El lead se GUARDA en Firestore (colección raíz `leads`, solo el usuario de
+ * servicio) y ADEMÁS se avisa por correo. El correo es la notificación, no el
+ * registro: si Resend falla o falta una env, el pedido igual queda.
+ *
+ * Env (Vercel): RESEND_API_KEY, EMAIL_FROM, LEADS_EMAIL (a dónde llegan) +
+ * SERVICE_USER_EMAIL/PASSWORD y FIREBASE_WEB_API_KEY (para guardar el lead).
  */
 export const runtime = "nodejs";
 
@@ -55,49 +61,78 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Ese email no parece válido." }, { status: 400 });
   }
 
+  const recibidoEn = new Date().toISOString();
+
+  /* 1) GUARDAR PRIMERO, MANDAR DESPUÉS.
+   *
+   * Antes esto era solo un correo, y el correo era el único registro que
+   * existía: si Resend fallaba, si el mail caía en spam, o si faltaba una env,
+   * el pedido se evaporaba y nadie se enteraba nunca. Para un producto cuya
+   * única puerta de entrada es este formulario, eso es perder ventas a ciegas.
+   *
+   * El lead queda en Firestore aunque el correo falle. Y al revés también: si
+   * Firestore no está configurado pero el correo sí, el correo alcanza. Solo se
+   * responde error cuando fallan LAS DOS vías. */
+  let guardado = false;
+  if (isServerFirestoreConfigured()) {
+    try {
+      const id = `lead_${Date.parse(recibidoEn)}_${Math.random().toString(36).slice(2, 8)}`;
+      await setDocument(`leads/${id}`, {
+        id, nombre, clinica, email, telefono, mensaje,
+        recibidoEn,
+        origen: "landing:solicitar-acceso",
+        ip, // para poder rastrear abuso; no se muestra en ningún lado
+        atendido: false,
+      });
+      guardado = true;
+    } catch (e) {
+      console.error("[Contacto] no se pudo guardar el lead:", e);
+    }
+  }
+
+  /* 2) Avisar por correo. Es la notificación, ya no el registro. */
+  let enviado = false;
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   const to = process.env.LEADS_EMAIL;
   if (!apiKey || !from || !to) {
-    console.error("[Contacto] faltan envs: RESEND_API_KEY / EMAIL_FROM / LEADS_EMAIL");
-    /* 503 con mensaje humano: el visitante no tiene por qué enterarse de que
-       falta una variable de entorno, pero tampoco puede quedarse creyendo que
-       su pedido salió cuando no salió. */
-    return NextResponse.json(
-      { ok: false, error: "No pudimos registrar tu pedido ahora. Escribinos directamente y te respondemos." },
-      { status: 503 },
-    );
-  }
-
-  const filas: [string, string][] = [
-    ["Nombre", nombre], ["Clínica", clinica || "—"],
-    ["Email", email], ["Teléfono", telefono || "—"],
-  ];
-
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        from,
-        to: [to],
-        reply_to: email, // responder desde la bandeja le contesta a quien pidió
-        subject: `Pedido de acceso — ${nombre}${clinica ? ` (${clinica})` : ""}`,
-        html: `<h2 style="font:600 18px system-ui;margin:0 0 12px">Nuevo pedido de acceso</h2>
+    console.error("[Contacto] faltan envs de correo: RESEND_API_KEY / EMAIL_FROM / LEADS_EMAIL");
+  } else {
+    const filas: [string, string][] = [
+      ["Nombre", nombre], ["Clínica", clinica || "—"],
+      ["Email", email], ["Teléfono", telefono || "—"],
+    ];
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          from,
+          to: [to],
+          reply_to: email, // responder desde la bandeja le contesta a quien pidió
+          subject: `Pedido de acceso — ${nombre}${clinica ? ` (${clinica})` : ""}`,
+          html: `<h2 style="font:600 18px system-ui;margin:0 0 12px">Nuevo pedido de acceso</h2>
 <table style="font:14px system-ui;border-collapse:collapse">
 ${filas.map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#5B6B85">${k}</td><td style="padding:4px 0"><b>${esc(v)}</b></td></tr>`).join("")}
 </table>
 ${mensaje ? `<p style="font:14px system-ui;margin:16px 0 0;white-space:pre-wrap">${esc(mensaje)}</p>` : ""}`,
-      }),
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!res.ok) {
-      console.error("[Contacto] Resend:", res.status);
-      return NextResponse.json({ ok: false, error: "No pudimos enviar tu pedido. Probá de nuevo en un momento." }, { status: 502 });
+        }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      enviado = res.ok;
+      if (!res.ok) console.error("[Contacto] Resend:", res.status);
+    } catch (e) {
+      console.error("[Contacto] error al enviar:", e);
     }
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    console.error("[Contacto] error:", e);
-    return NextResponse.json({ ok: false, error: "No pudimos enviar tu pedido. Probá de nuevo en un momento." }, { status: 502 });
   }
+
+  /* 3) Al visitante le importa una sola cosa: si su pedido quedó registrado.
+     Con que UNA de las dos vías haya funcionado, quedó. */
+  if (guardado || enviado) return NextResponse.json({ ok: true });
+
+  console.error("[Contacto] PEDIDO PERDIDO — ni Firestore ni correo disponibles");
+  return NextResponse.json(
+    { ok: false, error: "No pudimos registrar tu pedido ahora. Escribinos por WhatsApp y te respondemos enseguida." },
+    { status: 503 },
+  );
 }

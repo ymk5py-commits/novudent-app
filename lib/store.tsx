@@ -33,6 +33,7 @@ import { submitToBilling, releaseFromHold } from "./billing";
 import { planUserLimitError } from "./plan";
 import { worstSeverity } from "./recovery";
 import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
+import { registrarFallo, resolverFallo, clasificarError } from "./write-errors";
 
 const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
@@ -589,17 +590,55 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   /* write-through a Firestore (no-op en modo local). Siempre escribe en la
    * clínica cargada en memoria (clinicIdRef), nunca en la global mutable. */
+  /* Un fallo de escritura ya no muere en un console.warn.
+   *
+   * El store es write-through: el estado local se actualiza primero y la interfaz
+   * dice "guardado" al instante. Si el setDoc de después fallaba —permisos,
+   * suscripción vencida, red cortada— el usuario veía su trabajo en pantalla,
+   * cerraba sesión y al volver no estaba. Sin un solo aviso. En una ficha clínica
+   * eso es perder una evolución o un pago cobrado.
+   *
+   * Se avisa por un canal lateral (lib/write-errors.ts) en vez de propagar el
+   * error: hay 83 llamadas a fsSave/fsDelete y cambiarles la firma a todas sería
+   * enorme y riesgoso. El banner del Shell escucha ese canal. */
   const fsSave = useCallback((colName: string, id: string, data: unknown) => {
     if (backendRef.current !== "firebase") return;
     // Un id vacío hace crashear a Firestore doc() (ResourcePath.fromString(undefined));
     // guardá acá para que un doc mal formado nunca tumbe una operación de escritura.
     if (!id) { console.warn("fsSave: id vacío, se omite", colName); return; }
-    setDoc(doc(fsdb, "clinics", clinicIdRef.current, colName, id), clean(data)).catch((e) => console.warn("fsSave", e));
+    const escribir = () =>
+      setDoc(doc(fsdb, "clinics", clinicIdRef.current, colName, id), clean(data));
+    escribir().then(
+      () => resolverFallo(`${colName}/${id}`), // se recuperó: sacá el aviso
+      (e) => {
+        console.warn("fsSave", e);
+        registrarFallo({
+          coleccion: colName, docId: id,
+          causa: clasificarError(e),
+          detalle: (e as { code?: string })?.code ?? String(e),
+          // El payload queda capturado en el closure, así que reintentar
+          // reescribe exactamente lo que el usuario había cargado.
+          reintentar: async () => { await escribir(); },
+        });
+      },
+    );
   }, []);
   const fsDelete = useCallback((colName: string, id: string) => {
     if (backendRef.current !== "firebase") return;
     if (!id) { console.warn("fsDelete: id vacío, se omite", colName); return; }
-    deleteDoc(doc(fsdb, "clinics", clinicIdRef.current, colName, id)).catch((e) => console.warn("fsDelete", e));
+    const borrar = () => deleteDoc(doc(fsdb, "clinics", clinicIdRef.current, colName, id));
+    borrar().then(
+      () => resolverFallo(`${colName}/${id}`),
+      (e) => {
+        console.warn("fsDelete", e);
+        registrarFallo({
+          coleccion: colName, docId: id,
+          causa: clasificarError(e),
+          detalle: (e as { code?: string })?.code ?? String(e),
+          reintentar: async () => { await borrar(); },
+        });
+      },
+    );
   }, []);
   const fsMeta = useCallback((dbNow: DB) => {
     if (backendRef.current !== "firebase") return;

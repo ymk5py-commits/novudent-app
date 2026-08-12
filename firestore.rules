@@ -165,6 +165,16 @@ service cloud.firestore {
       allow read, write: if isService();
     }
 
+    // Pedidos de acceso desde la landing (/api/contacto). Los escribe SOLO el
+    // usuario de servicio, nunca el navegador — el formulario es público y
+    // anónimo, así que dejarlo escribir acá sería un buzón abierto a cualquiera.
+    // Cerrado también a la LECTURA de clientes: son datos personales de gente
+    // que todavía no es cliente (nombre, email, teléfono). El dueño los ve desde
+    // la consola de Firebase o desde una ruta de servidor.
+    match /leads/{leadId} {
+      allow read, write: if isService();
+    }
+
     // ---- Clínica + subcolecciones ----
     match /clinics/{cid} {
       // Doc raíz: config de la clínica. Lectura: miembros/servidor/demo.
