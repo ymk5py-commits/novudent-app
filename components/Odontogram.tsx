@@ -13,6 +13,35 @@ import "./odontogram-engine/index.css";
 
 const SAVE_DEBOUNCE_MS = 800;
 
+/** Curación de campos clínicos — "Fase 1" del spec de diseño
+ *  (docs/superpowers/specs/2026-07-19-odontograma-react-modul-design.md).
+ *
+ *  El motor vendorizado expone ~30 campos por pieza; acá se prende el subconjunto
+ *  que un dentista general necesita para la ficha (presente/ausente, caries por
+ *  superficie, obturaciones, coronas, endodoncia, implante, notas) y se apaga el
+ *  resto. Apagar es SOLO de UI: los campos siguen existiendo en el motor y un
+ *  valor ya guardado hace round-trip por importStatus/collectExportPayload sin
+ *  perderse, así que prender cualquiera de estos en una fase siguiente es cambiar
+ *  una línea acá — no hay migración de datos de por medio. */
+const FASE_1 = {
+  /** Pulpa: vital vs. tratado. Apaga los 4 diagnósticos AAE y los 9 subtipos latinos. */
+  pulpDetailLevel: "simple",
+  /** Sin profundidad de caries por superficie (ICDAS): apaga la fila, el popup
+   *  de profundidad y el tramado visual por profundidad en el SVG. */
+  cariesDepthEnabled: false,
+  /** Caries secundaria (CARS) en su escala mínima. */
+  secondaryCariesMode: "simple",
+  /** Desgaste y decoloración como sí/no, sin tipar la causa clínica. */
+  wearDetailLevel: "simple",
+  discolorationDetailLevel: "simple",
+  /** Diagnóstico apical y estadificación de periimplantitis 2018: fuera de alcance. */
+  showApicalDiagnosis: false,
+  showPeriImplantStaging: false,
+  /** Ortodoncia por pieza: Novudent ya tiene módulo de Ortodoncia dedicado
+   *  (tab "Ortodoncia" del plan de tratamiento) — no se duplica acá. */
+  showOrthoCard: false,
+} as const;
+
 export default function Odontogram({
   value, editable, onChange, authorName,
 }: {
@@ -61,6 +90,7 @@ export default function Odontogram({
       showTourButton={false}
       showLanguageSelector={false}
       showDarkModeToggle={false}
+      {...FASE_1}
     />
   );
 }

@@ -40,6 +40,17 @@ environment jsdom + `plugins: [react()]`), ver el `README.md` del repo origen.
   mitad-claro/mitad-oscuro real de baja legibilidad porque `themeConfig` solo cubre las variables
   `--odon-*` compartidas, no las reglas `.dark` propias del motor). `components/Odontogram.tsx` pasa
   los 3 en `false`.
+- `App.tsx`: se agregan 2 props opcionales más (`showApicalDiagnosis`, `showPeriImplantStaging`,
+  ambas default `true`) para la curación "Fase 1" del spec de diseño. El motor ya traía props para
+  casi todo lo que la Fase 1 apaga (`cariesDepthEnabled`, `pulpDetailLevel`, `wearDetailLevel`,
+  `discolorationDetailLevel`, `secondaryCariesMode`, `showOrthoCard`), pero el **diagnóstico apical**
+  (`#apicalDxRow` + su dependiente `#periapicalTypeRow`) y la **estadificación de periimplantitis
+  2018** (`#periImplantRow`) no tenían ninguna — se renderizaban siempre. Se implementan igual que
+  `showOrthoCard`: un `<div>` contenedor con clase `hidden`, en vez de tocar el código imperativo
+  del motor, que sigue togglendo `hidden` sobre las filas mismas (`syncPeriImplantVisibility`,
+  `periapicalRowVisible`). Las dos capas componen: la fila se ve solo si el motor Y el host lo
+  permiten. Verificado en el navegador con el control negativo (diente puesto en "Implante": la
+  fila mide 71px sin la prop y 0px con la prop en `false`).
 - `index.css`: **no** se pone `overflow` en `.tooth-grid`. El scroll horizontal de rescate (para
   cuando las 16 columnas ×36px mín. ⇒ ~650px no entran en el ancho embebido) vive en `.chart`
   (`overflow:auto hidden`). Ponerlo también en la grilla hace que `overflow-y` compute a `auto`

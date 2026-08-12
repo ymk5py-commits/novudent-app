@@ -54,6 +54,50 @@ describe("puente de datos odontograma (collectExportPayload — path de guardado
 });
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   Curación de campos "Fase 1" (components/Odontogram.tsx → FASE_1).
+   Apagamos controles de UI del motor (diagnóstico apical, estadificación de
+   periimplantitis, ortodoncia por pieza, profundidad ICDAS…). Esto blinda que
+   apagar la UI es SOLO UI: un valor ya guardado en esos campos sigue viajando
+   en el payload. Si alguna vez el motor empezara a descartar los campos que no
+   tienen control visible, este test se cae y nos enteramos ANTES de perderle
+   datos clínicos a un paciente — que es lo que hace que prender un campo en la
+   fase siguiente no necesite migración.
+   ───────────────────────────────────────────────────────────────────────── */
+describe("curación Fase 1 — ocultar el control no borra el dato guardado", () => {
+  afterEach(() => {
+    __setToothStateForTest(16, {});
+    __setToothStateForTest(46, {});
+  });
+
+  it("el diagnóstico apical sobrevive al payload aunque su fila esté oculta", () => {
+    __setToothStateForTest(16, {
+      toothSelection: "tooth-base",
+      apicalDx: "chronic-apical-abscess",
+    });
+    expect(payloadOf().teeth["16"].apicalDx).toBe("chronic-apical-abscess");
+  });
+
+  it("la estadificación de periimplantitis sobrevive al payload aunque su fila esté oculta", () => {
+    __setToothStateForTest(46, {
+      toothSelection: "implant",
+      periImplant: "peri-implantitis-moderate",
+    });
+    expect(payloadOf().teeth["46"].periImplant).toBe("peri-implantitis-moderate");
+  });
+
+  it("los campos apagados conviven con los prendidos en la misma pieza", () => {
+    __setToothStateForTest(16, {
+      toothSelection: "tooth-base",
+      caries: ["caries-occlusal"],   // prendido en Fase 1
+      apicalDx: "condensing-osteitis", // apagado en Fase 1
+    });
+    const t = payloadOf().teeth["16"];
+    expect(t.caries).toEqual(["caries-occlusal"]);
+    expect(t.apicalDx).toBe("condensing-osteitis");
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
    Numeración visible — Dentalink escribe la pieza con punto (1.8, 2.1, 4.6).
    `toDisplayLabel` es la capa de presentación; `toLabel` sigue siendo el
    contrato interno del motor (export/import) y NO debe cambiar de forma.
