@@ -103,3 +103,47 @@ describe("subscriptionNotice", () => {
     expect(subscriptionNotice(sub({ status: "trialing", currentPeriodEndMs: NOW + 20 * DIA }), NOW)).toBeNull();
   });
 });
+
+/* La suscripción de prueba que `POST /api/clinicas` le escribe a cada clínica
+ * nueva. Antes NO se escribía nada, y sin documento `isSubscriptionActive`
+ * devuelve true por grandfathering: la clínica quedaba gratis PARA SIEMPRE.
+ * Estos casos fijan que el trial efectivamente arranca un reloj y que ese reloj
+ * llega a cero — o sea, que el cobro es exigible. */
+describe("suscripción de prueba del alta de clínica", () => {
+  const TRIAL_DIAS = 30;
+  /** Réplica del doc que arma app/api/clinicas/route.ts (paso 7). */
+  const pruebaNueva = (altaMs: number): Subscription => ({
+    clinicId: "cl_nueva",
+    plan: "clinica",
+    status: "trialing",
+    currentPeriodEndMs: altaMs + TRIAL_DIAS * DIA,
+    provider: "manual",
+    updatedAt: new Date(altaMs).toISOString(),
+    updatedBy: "alta:panel-dueño",
+  });
+
+  it("recién dada de alta, la clínica puede trabajar", () => {
+    expect(isSubscriptionActive(pruebaNueva(NOW), NOW)).toBe(true);
+  });
+
+  it("conserva el plan contratado durante la prueba", () => {
+    expect(subscriptionPlanId(pruebaNueva(NOW), { plan: "solo" })).toBe("clinica");
+  });
+
+  it("avisa antes de que se termine la prueba", () => {
+    const n = subscriptionNotice(pruebaNueva(NOW), NOW + (TRIAL_DIAS - 2) * DIA);
+    expect(n).not.toBeNull();
+  });
+
+  it("VENCE: pasados los 30 días deja de estar activa — esto es lo que no pasaba", () => {
+    expect(isSubscriptionActive(pruebaNueva(NOW), NOW + (TRIAL_DIAS + 1) * DIA)).toBe(false);
+  });
+
+  it("al vencer pasa a solo-lectura, no borra el acceso a los datos", () => {
+    expect(accessMode(pruebaNueva(NOW), NOW + (TRIAL_DIAS + 1) * DIA)).toBe("readonly");
+  });
+
+  it("sin documento seguiría siendo gratis para siempre — el bug que esto corrige", () => {
+    expect(isSubscriptionActive(null, NOW + 3650 * DIA)).toBe(true);
+  });
+});

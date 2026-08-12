@@ -30,6 +30,14 @@ function safeEqual(a: string, b: string): boolean {
 
 const norm = (s: unknown) => String(s ?? "").trim();
 
+/** Días de prueba con los que nace una clínica nueva. Configurable por env para
+ *  poder estirarle la prueba a un cliente puntual sin tocar código ni redeployar
+ *  (se lee en cada alta, no al arrancar el proceso). */
+const TRIAL_DIAS = (() => {
+  const n = Number(process.env.TRIAL_DIAS);
+  return Number.isFinite(n) && n > 0 && n <= 365 ? Math.floor(n) : 30;
+})();
+
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -169,6 +177,33 @@ export async function POST(req: NextRequest) {
       await setDocument(`clinics/${clinicId}/procedures/${pr.cpt}`, pr as unknown as Record<string, unknown>);
     }
 
+    /* 7) SUSCRIPCIÓN EN PRUEBA — el paso que arranca el reloj del cobro.
+     *
+     * Sin este documento la clínica queda gratis PARA SIEMPRE: `isSubscriptionActive`
+     * devuelve true cuando no hay suscripción (lib/subscription.ts) y firestore.rules
+     * hace lo mismo con `!exists(subPath(cid))`. Ese grandfathering se escribió para
+     * no dejar en solo-lectura a las clínicas que ya existían cuando se agregó el
+     * cobro — pero se aplicaba igual a las nuevas, que son justamente las que hay
+     * que cobrar. Una clínica se daba de alta, trabajaba meses y nada la cortaba.
+     *
+     * Creándolo acá, el grandfathering vuelve a significar lo que decía: solo las
+     * anteriores al cobro. Y el resto de la maquinaria empieza a funcionar sola —
+     * el aviso de vencimiento y el corte a solo-lectura ya estaban escritos y
+     * esperaban un documento que nunca llegaba.
+     *
+     * Va al final a propósito: si algo de arriba falla, no queda una suscripción
+     * apuntando a una clínica a medio crear. */
+    const finPrueba = Date.now() + TRIAL_DIAS * 24 * 60 * 60 * 1000;
+    await setDocument(`subscriptions/${clinicId}`, {
+      clinicId,
+      plan,
+      status: "trialing",
+      currentPeriodEndMs: finPrueba,
+      provider: "manual",
+      updatedAt: new Date().toISOString(),
+      updatedBy: "alta:panel-dueño",
+    });
+
     return NextResponse.json({
       ok: true,
       clinicId,
@@ -176,6 +211,7 @@ export async function POST(req: NextRequest) {
       plan,
       admin: { name: adminName, email: adminEmail },
       bookingUrl: `/reservar/${clinicId}`,
+      prueba: { dias: TRIAL_DIAS, venceEl: new Date(finPrueba).toISOString() },
     });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error inesperado." }, { status: 500 });

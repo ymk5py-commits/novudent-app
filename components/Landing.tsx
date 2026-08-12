@@ -131,7 +131,7 @@ export default function Landing() {
                 <span className="flex-1 truncate rounded-lg bg-white px-3 py-1 font-mono text-[11px] text-clinic-muted ring-1 ring-clinic-border">
                   novudent.app / pacientes / maría-gonzález / odontograma
                 </span>
-                <span className="hidden rounded-full bg-state-okbg px-2 py-0.5 font-mono text-[11px] font-bold uppercase text-state-ok sm:block">demo en vivo</span>
+                <span className="hidden rounded-full bg-state-okbg px-2 py-0.5 font-mono text-[11px] font-bold uppercase text-state-ok sm:block">interactivo</span>
               </div>
               <div className="p-4 sm:p-6">
                 <ShowcaseBoard
@@ -195,11 +195,11 @@ export default function Landing() {
                 <br />de relleno.
               </h2>
               <p className="mt-5 max-w-xs text-sm leading-relaxed text-clinic-muted">
-                Las seis herramientas que mueven una clínica dental, pulidas hasta el detalle.
+                Las ocho herramientas que mueven una clínica dental, pulidas hasta el detalle.
                 Nada más — y nada menos.
               </p>
               <div className="mt-8 flex items-baseline gap-3">
-                <span className="font-logo text-6xl text-navy-800">06</span>
+                <span className="font-logo text-6xl text-navy-800">08</span>
                 <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-clinic-muted">herramientas<br />de trabajo</span>
               </div>
             </div>
@@ -373,7 +373,7 @@ export default function Landing() {
                 ))}
               </ul>
               <a href={appHref} className="btn-shine mt-8 inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-extrabold text-navy-800 transition hover:-translate-y-0.5">
-                Probar gratis <ArrowRight className="h-4 w-4" />
+                Solicitar acceso <ArrowRight className="h-4 w-4" />
               </a>
             </div>
           </div>
@@ -394,7 +394,7 @@ export default function Landing() {
                     <p className="mt-3 text-sm leading-relaxed text-clinic-muted">{p.blurb}</p>
                   </div>
                   <a href={appHref} className="group mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-azure-600 hover:text-azure-700">
-                    {p.price === "A medida" ? "Hablar con ventas" : "Probar gratis"}
+                    {p.price === "A medida" ? "Hablar con ventas" : "Solicitar acceso"}
                     <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                   </a>
                 </div>
@@ -422,7 +422,7 @@ export default function Landing() {
               { q: "¿El odontograma marca superficies?", a: "Sí: cada pieza tiene su vista oclusal de 5 superficies (M·D·V·L·O). Marcás caries en mesial o una restauración en vestibular y queda pintado en el tablero, con autor y fecha." },
               { q: "¿Cómo evita errores de facturación?", a: "Con una máquina de estados estricta y validación de emparejamientos CPT-DX, POS-CPT y modificadores antes de cada envío. Las retenciones (HOLD/MGRHOLD) se asignan solas." },
               { q: "¿Quién crea los usuarios?", a: "Solo el administrador de la clínica, desde Configuración. Cada usuario entra con su email y contraseña, con los permisos de su rol." },
-              { q: "¿Puedo probarlo gratis?", a: "Sí: la demo está abierta con datos de ejemplo y sin tarjeta. Elegí un rol y usala como si fuera tu clínica." },
+              { q: "¿Cómo empiezo?", a: "Pedís tu acceso desde el formulario de acá abajo. Te contactamos dentro de las 24 horas hábiles, te mostramos el sistema funcionando y te abrimos la cuenta con 30 días de prueba. Migramos tus datos sin costo." },
             ].map((f, i) => (
               <div key={f.q}>
                 <details className="group rounded-2xl border border-clinic-border bg-white shadow-card">
