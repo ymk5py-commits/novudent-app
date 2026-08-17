@@ -44,10 +44,18 @@ service cloud.firestore {
       return cid == 'cl_demo';
     }
 
-    // Miembro de la clínica: tiene doc en clinics/{cid}/users/{uid}.
+    // Miembro de la clínica: tiene doc en clinics/{cid}/users/{uid} Y no está
+    // dado de baja. El chequeo de `active` va ACÁ, en las reglas, no solo en el
+    // login del cliente: sin esto, a un empleado despedido se le marcaba
+    // `active:false` pero su credencial seguía válida, y desde la consola del
+    // navegador leía, editaba y borraba toda la historia clínica. `.get(campo,
+    // default)` trata como activo a los docs viejos que no tengan el campo.
+    // Pasa de exists() a get() (una lectura), pero isAdmin/isStaff/isClinical
+    // ya hacían ese get al mismo path, y dentro de una evaluación se cachea.
     function isMember(cid) {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid));
+        && exists(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.get('active', true) != false;
     }
 
     // Admin de la clínica: miembro con role == 'admin'.

@@ -101,6 +101,19 @@ test("miembro A NO escribe en la clínica B", async () => {
   await assertFails(setDoc(doc(authed("adminA"), "clinics/clB/patients/pb"), { hacked: true }));
 });
 
+/* Empleado dado de baja (active:false): la credencial de Firebase le sigue
+ * sirviendo, pero las reglas ya no lo tratan como miembro. Sin esto leía,
+ * editaba y borraba toda la historia clínica desde la consola del navegador. */
+test("empleado con active:false NO lee ni escribe pacientes de su ex-clínica", async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), "clinics/clA/users/bajaA"),
+      { id: "bajaA", role: "assistant", active: false, clinicId: "clA", email: "baja@a.com" });
+  });
+  await assertFails(getDoc(doc(authed("bajaA"), "clinics/clA/patients/p1")));
+  await assertFails(setDoc(doc(authed("bajaA"), "clinics/clA/patients/p1"), { firstName: "Editado" }, { merge: true }));
+  await assertFails(deleteDoc(doc(authed("bajaA"), "clinics/clA/patients/p1")));
+});
+
 test("dentista NO puede ascenderse a admin (escalada de privilegios)", async () => {
   await assertFails(
     setDoc(doc(authed("dentA"), "clinics/clA/users/dentA"), { id: "dentA", role: "admin", active: true, clinicId: "clA", email: "dent@a.com" })

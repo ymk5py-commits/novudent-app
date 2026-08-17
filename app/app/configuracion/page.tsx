@@ -2,7 +2,7 @@
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon, MapPin, CalendarClock, ListChecks, Clock } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon, MapPin, CalendarClock, ListChecks, Clock, Ban, Power } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
 import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
 import { can, ROLE_LABEL } from "@/lib/rbac";
@@ -153,13 +153,27 @@ export default function ConfigPage() {
           {["Odontología general", "Ortodoncia", "Endodoncia", "Periodoncia", "Cirugía oral y maxilofacial", "Odontopediatría", "Prótesis / Rehabilitación oral", "Implantología", "Estética dental", "Patología oral"].map((s) => <option key={s} value={s} />)}
         </datalist>
         <div className="divide-y divide-clinic-border">
-          {db.users.map((u) => (
-            <div key={u.id} className="flex items-center gap-3 py-3">
+          {db.users.map((u) => {
+            const esYo = u.id === session.userId;
+            const activo = u.active !== false;
+            // No se puede dar de baja al último admin activo (la clínica quedaría
+            // sin quién administre) ni a uno mismo (te cerrarías la puerta: la
+            // regla de Firestore ya niega el acceso a un active:false).
+            const ultimoAdmin = u.role === "admin" && db.users.filter((x) => x.role === "admin" && x.active !== false).length <= 1;
+            const toggleBaja = () => {
+              if (activo && (esYo || ultimoAdmin)) return;
+              const msg = activo
+                ? `Dar de baja a ${u.name}? Pierde el acceso al sistema de inmediato (sus datos y su historial quedan intactos). Podés reactivarlo cuando quieras.`
+                : `Reactivar a ${u.name}? Vuelve a tener acceso con su cuenta de siempre.`;
+              if (confirm(msg)) upsertUser({ ...u, active: !activo });
+            };
+            return (
+            <div key={u.id} className={`flex items-center gap-3 py-3 ${activo ? "" : "opacity-55"}`}>
               <span className="grid h-9 w-9 place-items-center rounded-xl text-sm font-bold text-white" style={{ background: u.color }}>
                 {u.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
               </span>
               <span className="flex-1">
-                <span className="block text-sm font-bold text-clinic-text">{u.name}</span>
+                <span className="flex items-center gap-2 text-sm font-bold text-clinic-text">{u.name}{!activo && <Badge tone="warn">Inactivo</Badge>}</span>
                 <span className="block text-xs text-clinic-muted">{u.email}{u.phone ? ` · ${u.phone}` : ""}{u.specialty ? ` · ${u.specialty}` : ""}</span>
               </span>
               {u.role === "dentist" && (
@@ -189,8 +203,19 @@ export default function ConfigPage() {
                 </select>
               )}
               <Badge tone={u.role === "admin" ? "info" : u.role === "dentist" ? "ok" : "warn"}>{ROLE_LABEL[u.role]}</Badge>
+              {!esYo && (
+                <button
+                  onClick={toggleBaja}
+                  disabled={activo && ultimoAdmin}
+                  title={activo ? (ultimoAdmin ? "No podés dar de baja al último administrador" : "Dar de baja (revoca el acceso)") : "Reactivar acceso"}
+                  className={`grid h-8 w-8 place-items-center rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${activo ? "border-clinic-border text-clinic-muted hover:border-state-err hover:text-state-err" : "border-state-ok/40 text-state-ok hover:bg-state-okbg"}`}
+                >
+                  {activo ? <Ban className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                </button>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
         <p className="mt-2 text-[11px] text-clinic-muted">El % de comisión de cada dentista alimenta el cálculo de pago en <a href="/app/reportes" className="font-bold text-azure-700">Reportes</a>.</p>
       </Card>
