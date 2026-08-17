@@ -6,6 +6,13 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "-p", "3100"],
       "port": 3100
+    },
+    {
+      "_comment": "El sitio del studio (novum-web) vive en un repo hermano. Se arranca con --prefix porque el preview resuelve este launch.json desde novudent-app.",
+      "name": "novum-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "../novum-web", "--", "-p", "3200"],
+      "port": 3200
     }
   ]
 }
