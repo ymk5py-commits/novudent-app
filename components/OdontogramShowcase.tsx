@@ -355,12 +355,17 @@ export function ShowcaseBoard({
         </div>
       </div>
 
+      {/* Leyenda. Los colores NO se tocan: rojo = patología y azul = tratado son
+          semántica clínica, no decoración — un dentista los lee así. Lo que sí se
+          bajó es el peso (bold→medium) y se subió de 11 a 12px: a 11 bold la
+          leyenda pesaba más que el propio odontograma. La familia se hereda del
+          contenedor, así que toma Jost en la landing y Open Sans en el panel. */}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-clinic-border bg-white px-4 py-3">
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-red-600"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Rojo = patología / pendiente</span>
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-azure-700"><span className="h-2.5 w-2.5 rounded-full bg-azure-600" /> Azul = tratamiento realizado</span>
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Rojo = patología / pendiente</span>
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-azure-700"><span className="h-2.5 w-2.5 rounded-full bg-azure-600" /> Azul = tratamiento realizado</span>
         <span className="hidden h-4 w-px bg-clinic-border sm:block" />
         {(Object.keys(CONDITIONS) as ShowcaseToothCondition[]).map((k) => (
-          <span key={k} className="inline-flex items-center gap-1.5 text-[11px] text-clinic-muted">
+          <span key={k} className="inline-flex items-center gap-1.5 text-xs text-clinic-muted">
             <span className={`h-2 w-2 rounded-sm ${CONDITIONS[k].dot}`} /> {CONDITIONS[k].label}
           </span>
         ))}

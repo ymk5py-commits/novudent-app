@@ -116,6 +116,33 @@ html.motion-fallback [style*="opacity:0"] {
   .lp-marquee, .border-beam-light { animation: none; }
 }
 
+/* ===== Identidad de la landing (referencia: propuesta de several.) =====
+   Las portadas oscuras de la referencia son un navy profundo con blooms de
+   color difusos encima y grano de película. Se reconstruye con radial-gradients
+   + una textura SVG: nada de imágenes, así el hero no agrega peso ni espera. */
+.sv-mesh {
+  background-color: #0A1240;
+  background-image:
+    radial-gradient(58% 46% at 12% 14%, rgba(47, 227, 174, 0.16) 0%, transparent 62%),
+    radial-gradient(52% 44% at 88% 8%, rgba(64, 92, 240, 0.34) 0%, transparent 66%),
+    radial-gradient(70% 58% at 78% 92%, rgba(96, 60, 200, 0.30) 0%, transparent 64%),
+    radial-gradient(46% 40% at 42% 68%, rgba(23, 118, 178, 0.24) 0%, transparent 68%);
+}
+/* Grano: sin esto los degradés se ven "digitales" y aparece banding en pantallas
+   de 8 bits. Es el detalle que más acerca el resultado a la referencia. */
+.sv-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Regla fina bajo los numerales grandes — la firma de la referencia. */
+.sv-rule { height: 3px; background: #2FE3AE; border-radius: 2px; }
+
 /* ===== Profundidad 3D + glass (dashboard moderno) ===== */
 /* Tarjeta con elevación al hover — la sombra azure le da el matiz 3D */
 .card-3d {

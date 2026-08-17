@@ -19,7 +19,11 @@ import { SITE_URL } from "@/lib/site";
  *  La landing y las páginas públicas usan **Jost** para display (`font-logo`) y
  *  **JetBrains Mono** para datos y etiquetas. */
 const openSans = Open_Sans({ subsets: ["latin"], weight: ["300", "400", "600", "700"], variable: "--font-open-sans", display: "swap" });
-const jost = Jost({ subsets: ["latin"], weight: ["300", "400", "500"], variable: "--font-jost", display: "swap" });
+/* Jost cubre TODA la landing (display + cuerpo), no solo el logotipo: la
+   identidad que copiamos usa una sola geométrica en varios pesos, y mezclarla
+   con la humanista del panel rompía el aire. El 200 es el que hace el display
+   ultra-fino de los titulares grandes. */
+const jost = Jost({ subsets: ["latin"], weight: ["200", "300", "400", "500", "600"], variable: "--font-jost", display: "swap" });
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-jbmono", display: "swap" });
 
 export const metadata: Metadata = {

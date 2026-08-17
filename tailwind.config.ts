@@ -30,6 +30,21 @@ const config: Config = {
           text: "#13233F",
           muted: "#5B6B85",
         },
+        /* Identidad de la LANDING (referencia: la propuesta de several.).
+         * Va aparte a propósito: el panel `/app/*` es el clon 1:1 de Dentalink y
+         * usa navy/azure/clinic — si se reescribieran esos tokens, el panel
+         * cambiaría de color con él. Estos solo los usa la web pública. */
+        sv: {
+          ink: "#0A1240",     // navy profundo: hero, píldoras, titulares
+          ink2: "#131C55",    // navy un punto más claro, para degradés
+          mint: "#2FE3AE",    // acento. SOLO sobre navy o en trazos/áreas grandes:
+                              // sobre blanco no llega a 4.5:1, no sirve para texto chico
+          mintInk: "#0B7A5B", // el menta legible: texto y links sobre claro (~5:1)
+          paper: "#E9E9E9",   // fondo de página: gris cálido, NO blanco (clave del look)
+          paper2: "#F1F1F1",  // bandas alternas
+          line: "#D5D5D8",    // reglas finas y bordes de tarjeta
+          muted: "#545B6B",   // texto secundario que sí pasa AA sobre paper
+        },
         state: {
           ok: "#0B7E57",
           okbg: "#DEF7EC",
