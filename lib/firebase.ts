@@ -72,6 +72,36 @@ export async function sendPasswordReset(email: string): Promise<void> {
   });
 }
 
+/** Cierra la sesión REAL de Firebase Auth.
+ *
+ *  Durante mucho tiempo el "cerrar sesión" de la app solo borraba localStorage,
+ *  y la credencial de Firebase seguía viva en IndexedDB (persistencia local por
+ *  defecto, sin vencimiento). En una PC de recepción compartida —que es el caso
+ *  normal en una clínica— la siguiente persona volvía a entrar sin contraseña:
+ *  bastaba con reescribir la clave de sesión en localStorage, porque las reglas
+ *  evalúan `isMember` contra la uid que seguía autenticada. Sin esto, cerrar
+ *  sesión era puramente cosmético. */
+export async function signOutUser(): Promise<void> {
+  const { getAuth, signOut } = await import("firebase/auth");
+  await signOut(getAuth(app));
+}
+
+/** uid actualmente autenticado en Firebase, o null. Se usa para descartar una
+ *  sesión de localStorage que no corresponda a la credencial real (forjarla era
+ *  la otra mitad del agujero de arriba). */
+export async function currentAuthUid(): Promise<string | null> {
+  try {
+    const { getAuth } = await import("firebase/auth");
+    const auth = getAuth(app);
+    // La persistencia se restaura de forma asíncrona: sin esperarla, un load
+    // frío ve currentUser=null y descartaría una sesión legítima.
+    await auth.authStateReady();
+    return auth.currentUser?.uid ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Cambia la contraseña del usuario actualmente autenticado (cambio inicial obligatorio). */
 export async function updateCurrentPassword(newPassword: string): Promise<void> {
   const { getAuth, updatePassword } = await import("firebase/auth");

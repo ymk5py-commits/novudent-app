@@ -10,7 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, onSnapshot,
 } from "firebase/firestore";
-import { app, fsdb, createAuthUser, signInEmail, currentIdToken } from "./firebase";
+import { app, fsdb, createAuthUser, signInEmail, currentIdToken, signOutUser, currentAuthUid } from "./firebase";
 
 /** Autenticación anónima: requisito de las reglas de producción
  *  (`request.auth != null`). Si el proveedor no está habilitado, seguimos
@@ -511,10 +511,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const activeClinicId = db.clinics[0]?.id ?? CLINIC_ID;
 
   useEffect(() => {
+    let guardada: Session | null = null;
     try {
       const s = localStorage.getItem(SES_KEY);
-      if (s) setSession(JSON.parse(s));
+      if (s) guardada = JSON.parse(s) as Session;
     } catch {}
+    /* La sesión de localStorage NO alcanza para entrar a una clínica real: hay
+     * que tener además la credencial de Firebase Auth, y que sea la de ESE
+     * usuario. Antes se restauraba tal cual, así que cualquiera con acceso a la
+     * PC escribía a mano `{"userId":…,"role":"admin"}` en esa clave y entraba —
+     * o se autoascendía a admin para ver la recaudación y los sueldos, que se
+     * calculan en el cliente. La demo (`cl_demo`) se restaura sin auth a
+     * propósito: no tiene cuentas, se entra clickeando un rol. */
+    if (guardada && guardada.clinicId !== DEMO_CLINIC_ID) {
+      void currentAuthUid().then((uid) => {
+        if (uid && uid === guardada!.userId) setSession(guardada);
+        else {
+          localStorage.removeItem(SES_KEY);
+          try { localStorage.removeItem(DB_KEY); } catch {}
+          setSession(null);
+        }
+      });
+    } else if (guardada) {
+      setSession(guardada);
+    }
     CLINIC_ID = resolveClinicId();
     (async () => {
       try {
@@ -774,10 +794,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           persist({ ...db, users: db.users.map((u) => (u.id === up.id ? up : u)) });
         }
       },
-      // Borramos TAMBIÉN el cache del padrón: tiene PII de pacientes (nombre, CI,
-      // historia, radiografías base64). No debe sobrevivir al logout en una PC
-      // compartida de recepción (LGPD / Ley 1581).
-      logout: () => { setSession(null); localStorage.removeItem(SES_KEY); try { localStorage.removeItem(DB_KEY); } catch { /* ignore */ } },
+      /* Cerrar sesión de verdad, en este orden:
+       *   1. `signOutUser()` mata la credencial de Firebase Auth. Sin esto el
+       *      logout era cosmético: la uid seguía autenticada en IndexedDB y
+       *      cualquiera en esa PC volvía a entrar reescribiendo la clave de
+       *      sesión en localStorage, o leía el padrón entero desde la consola.
+       *   2. Se limpia el cache del padrón: tiene PII de pacientes (nombre, CI,
+       *      historia, radiografías en base64) y no debe sobrevivir en una PC
+       *      compartida de recepción (LGPD / Ley 1581).
+       * `setSession(null)` va al final y es lo que además corta los listeners
+       * en vivo, que si no seguían reescribiendo el padrón a localStorage
+       * después de haberlo borrado. */
+      logout: () => {
+        void signOutUser().catch((e) => console.warn("signOut:", e));
+        localStorage.removeItem(SES_KEY);
+        try { localStorage.removeItem(DB_KEY); } catch { /* ignore */ }
+        setSession(null);
+      },
       seedDemo: async () => {
         if (clinicIdRef.current !== DEMO_CLINIC_ID) return; // jamás sobre una clínica real
         CLINIC_ID = DEMO_CLINIC_ID; // seedFirestore escribe en CLINIC_ID — lo forzamos a demo

@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { getDocument, setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
+import { isValidId } from "@/lib/server/ids";
 
 export const runtime = "nodejs";
 
@@ -11,7 +12,11 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const cid = searchParams.get("cid");
   const surveyId = searchParams.get("surveyId");
-  if (!cid || !surveyId) return NextResponse.json({ error: "Faltan parámetros." }, { status: 400 });
+  // Se validan ANTES de tocar Firestore: sin esto, un `cid` con `#` o `..` sacaba
+  // la consulta del path pretendido y leía cualquier documento del proyecto.
+  if (!isValidId(cid) || !isValidId(surveyId)) {
+    return NextResponse.json({ error: "Parámetros inválidos." }, { status: 400 });
+  }
   const rl = rateLimit(`encuestas-get:${clientIp(req)}`, { limit: 30, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
   if (!isServerFirestoreConfigured()) return NextResponse.json({ error: "Servidor no configurado." }, { status: 503 });
@@ -32,7 +37,9 @@ export async function POST(req: Request) {
   let body: any;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "JSON inválido." }, { status: 400 }); }
   const { cid, surveyId, patientName, answers, npsScore, comment } = body ?? {};
-  if (!cid || !surveyId) return NextResponse.json({ error: "Faltan parámetros." }, { status: 400 });
+  if (!isValidId(cid) || !isValidId(surveyId)) {
+    return NextResponse.json({ error: "Parámetros inválidos." }, { status: 400 });
+  }
   try {
     const survey = await getDocument(`clinics/${cid}/surveys/${surveyId}`);
     if (!survey || survey.active === false) return NextResponse.json({ error: "Encuesta no disponible." }, { status: 404 });

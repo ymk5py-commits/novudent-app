@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
 import { getDocument, patchFields, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
+import { isValidId } from "@/lib/server/ids";
 
 /**
  * Cambio de contraseña inicial — del lado SERVIDOR.
@@ -51,7 +52,10 @@ export async function POST(req: NextRequest) {
   if (newPassword.length < 6) {
     return NextResponse.json({ ok: false, error: "La contraseña debe tener al menos 6 caracteres." }, { status: 400 });
   }
-  const hintClinicId = typeof body.clinicId === "string" ? body.clinicId : null;
+  // El clinicId lo manda el cliente: se valida la gramática antes de que llegue
+  // a un path de Firestore (un `#` acá hacía que el PATCH perdiera su updateMask
+  // y reemplazara el documento entero de la clínica).
+  const hintClinicId = isValidId(body.clinicId) ? body.clinicId : null;
 
   // Reusar el Bearer token para el cambio (identifica al usuario en Auth).
   const idToken = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();

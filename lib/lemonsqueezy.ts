@@ -104,21 +104,48 @@ export function tokenDePayload(payload: any): string | null {
  * Cadena a Solo le apaga módulos, y cancelar ese pago después la deja en
  * solo-lectura. Cuesta 45 dólares dejar frenada a una clínica.
  *
- * Se permite el paso cuando hay una explicación legítima:
+ * `porToken` dice si la clínica se resolvió con el token del checkout (que el
+ * comprador no puede elegir) o con el `clinic_id` pelado (que sí edita en la
+ * URL antes de pagar). SIN token solo se admite la RENOVACIÓN de una
+ * suscripción ya conocida — nunca estrenar una.
+ *
+ * Esa distinción es el arreglo del agujero: antes el token era opcional, así
+ * que se desactivaba la defensa entera borrando un parámetro del checkout. El
+ * atacante ponía el `clinic_id` de la víctima, pagaba el plan más barato y le
+ * pisaba la suscripción; después la cancelaba desde el portal de LS y la
+ * dejaba en solo-lectura. Y como toda clínica recién dada de alta pasa 30 días
+ * en trial SIN `lsSubscriptionId`, la rama de "primera compra" la autorizaba:
+ * cada cliente nuevo era blanco durante su primer mes por 45 dólares.
+ *
+ * Con token, se permite el paso cuando hay una explicación legítima:
  *  · no hay suscripción todavía → primera compra;
  *  · la actual no tiene id de LS → es el trial manual del alta, y esta es la
  *    primera compra de verdad;
  *  · es LA MISMA suscripción de LS → renovación, cambio de plan o impago;
  *  · la actual ya no está vigente → la clínica se dio de baja y vuelve.
  *
- * Se bloquea el único caso que no tiene explicación buena: una suscripción
- * VIGENTE a la que le llega un pago de OTRA suscripción distinta.
+ * Se bloquea el caso que no tiene explicación buena: una suscripción VIGENTE a
+ * la que le llega un pago de OTRA suscripción distinta.
  */
 export function puedeAplicarSuscripcion(
   actual: Subscription | null | undefined,
   entrante: Subscription,
   activa: (s: Subscription) => boolean,
+  porToken: boolean,
 ): { ok: true } | { ok: false; motivo: string } {
+  if (!porToken) {
+    // Sin token, el clinicId lo eligió el comprador: solo vale para seguir
+    // manteniendo una suscripción que YA estaba atada a esta clínica.
+    if (actual?.lsSubscriptionId && actual.lsSubscriptionId === entrante.lsSubscriptionId) {
+      return { ok: true };
+    }
+    return {
+      ok: false,
+      motivo:
+        `pago sin token de checkout apuntado a ${entrante.clinicId}: solo se acepta la ` +
+        `renovación de una suscripción ya vinculada (llegó ${entrante.lsSubscriptionId ?? "(sin id)"})`,
+    };
+  }
   if (!actual) return { ok: true };
   if (!actual.lsSubscriptionId) return { ok: true };
   if (actual.lsSubscriptionId === entrante.lsSubscriptionId) return { ok: true };

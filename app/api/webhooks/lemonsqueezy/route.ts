@@ -15,6 +15,7 @@
  */
 import { NextResponse } from "next/server";
 import { verifyLsSignature, subscriptionFromLsPayload, tokenDePayload, puedeAplicarSuscripcion, type VariantPlanMap } from "@/lib/lemonsqueezy";
+import { isValidToken, isValidId } from "@/lib/server/ids";
 import { isSubscriptionActive } from "@/lib/subscription";
 import type { Subscription } from "@/lib/types";
 import { setDocument, getDocument, createIfAbsent, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
@@ -64,11 +65,28 @@ export async function POST(req: Request) {
    * el clinic_id viaja en la URL del checkout, a la vista del comprador y
    * editable antes de pagar, y además es público (es el link de reservas de la
    * clínica). El token es aleatorio y solo el servidor sabe a qué clínica
-   * pertenece. Se cae al clinic_id solo para las suscripciones anteriores al
-   * token, que siguen renovando sin él — a esas las cubre el guard de abajo. */
+   * pertenece.
+   *
+   * El token es OBLIGATORIO para estrenar una suscripción. Cuando era opcional,
+   * la defensa entera se desactivaba borrando un parámetro del checkout: el
+   * atacante ponía `clinic_id=<víctima>`, pagaba el plan más barato y le pisaba
+   * la suscripción (bajándole el plan, y después cancelándola desde el portal
+   * de LS). El guard de pertenencia no lo frenaba porque toda clínica recién
+   * dada de alta pasa 30 días en trial SIN `lsSubscriptionId`, y esa es
+   * justamente la rama que autoriza la primera compra. O sea: cada cliente
+   * nuevo era blanco durante su primer mes.
+   *
+   * Sin token solo se admite la RENOVACIÓN de una suscripción ya conocida: más
+   * abajo, `puedeAplicarSuscripcion` exige que el `lsSubscriptionId` guardado
+   * coincida con el del evento. Eso cubre a las suscripciones anteriores al
+   * token sin volver a abrir la puerta. */
   let clinicIdResuelto: string | undefined;
   const token = tokenDePayload(payload);
   if (token) {
+    if (!isValidToken(token)) {
+      console.error("[LS] token de checkout con formato inválido — no se aplica nada");
+      return NextResponse.json({ ok: true, ignored: true });
+    }
     const doc = await getDocument(`checkoutTokens/${token}`).catch(() => null);
     if (!doc || typeof doc.clinicId !== "string") {
       console.error("[LS] token de checkout desconocido — no se aplica nada");
@@ -84,6 +102,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ignored: true });
   }
 
+  // El clinicId puede venir del payload (editable por el comprador): se valida
+  // la gramática antes de que llegue a un path de Firestore.
+  if (!isValidId(sub.clinicId)) {
+    console.error("[LS] clinic_id con formato inválido — no se aplica nada");
+    return NextResponse.json({ ok: true, ignored: true });
+  }
+
   try {
     /* GUARD DE PERTENENCIA — segunda línea de defensa, y la única que protege a
      * las suscripciones anteriores al token. Un pago que llega a una clínica que
@@ -91,7 +116,7 @@ export async function POST(req: Request) {
      * ese es exactamente el ataque de bajarle el plan o cancelárselo a otro. */
     const actual = (await getDocument(`subscriptions/${sub.clinicId}`).catch(() => null)) as
       | (Subscription & Record<string, unknown>) | null;
-    const permitido = puedeAplicarSuscripcion(actual, sub, (s) => isSubscriptionActive(s));
+    const permitido = puedeAplicarSuscripcion(actual, sub, (s) => isSubscriptionActive(s), !!clinicIdResuelto);
     if (!permitido.ok) {
       console.error(`[LS] RECHAZADO — ${permitido.motivo}`);
       // 200: el pago existe y LS no tiene por qué reintentar. Queda en el log

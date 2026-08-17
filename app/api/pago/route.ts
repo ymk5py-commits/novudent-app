@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
+import { isValidId } from "@/lib/server/ids";
 
 /** Datos públicos de pago de una clínica (para la página /pagar/[cid]).
  *  Lectura por usuario de servicio. NO expone credenciales secretas: solo el
@@ -11,7 +12,7 @@ export const runtime = "nodejs";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const cid = searchParams.get("cid");
-  if (!cid) return NextResponse.json({ error: "Faltan parámetros." }, { status: 400 });
+  if (!isValidId(cid)) return NextResponse.json({ error: "Parámetros inválidos." }, { status: 400 });
   const rl = rateLimit(`pago:${clientIp(req)}`, { limit: 20, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
   if (!isServerFirestoreConfigured()) return NextResponse.json({ error: "Servidor no configurado." }, { status: 503 });

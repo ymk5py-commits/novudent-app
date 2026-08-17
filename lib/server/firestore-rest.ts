@@ -110,6 +110,43 @@ function encodeFields(obj: Record<string, unknown>): Record<string, FsValue> {
   return fields;
 }
 
+/* ---------- rutas ---------- */
+
+/**
+ * Codifica un path de Firestore SEGMENTO POR SEGMENTO antes de meterlo en la URL.
+ *
+ * Sin esto, un id que viene de la URL o del body de una request entraba crudo:
+ * `getDocument(\`clinics/${cid}/surveys/${sid}\`)`. Dos caracteres alcanzaban
+ * para salirse del path pretendido, y el que consulta es el usuario de
+ * servicio, que puede leer y escribir TODO el proyecto:
+ *
+ *   - `#` corta la URL ahí mismo (lo que sigue viaja como fragmento y nunca
+ *     llega al servidor). Con `cid = "otra_clinica/patients/p_1#"`, leer una
+ *     encuesta se convertía en leer la ficha clínica de un paciente ajeno.
+ *     En `patchFields` era peor: el `?updateMask=…` caía dentro del fragmento,
+ *     así que el PATCH perdía la máscara y REEMPLAZABA el documento entero.
+ *   - `..` lo normaliza el parser de URL antes de mandar el request, saliendo
+ *     de `clinics/` hacia colecciones raíz (`subscriptions`, `directory`,
+ *     `checkoutTokens`).
+ *
+ * Encodear por segmento neutraliza `#`, `?` y `%`; los `.`/`..` se rechazan
+ * explícitamente porque encodeURIComponent los deja pasar tal cual. Las barras
+ * que separan segmentos se conservan: son estructura, no dato.
+ *
+ * Es a propósito la ÚNICA puerta a la API REST — validar en cada route handler
+ * es defensa en profundidad, pero olvidarse en una sola ruta nueva volvía a
+ * abrir todo. Acá no hay forma de olvidarse.
+ */
+function encodePath(path: string): string {
+  const segs = path.split("/");
+  for (const s of segs) {
+    if (s === "" || s === "." || s === "..") {
+      throw new Error(`Path de Firestore inválido (segmento "${s}"): ${path}`);
+    }
+  }
+  return segs.map(encodeURIComponent).join("/");
+}
+
 /* ---------- operaciones ---------- */
 
 async function authedFetch(url: string, init?: RequestInit) {
@@ -126,7 +163,7 @@ async function authedFetch(url: string, init?: RequestInit) {
 
 /** GET de un documento. Devuelve null si no existe. */
 export async function getDocument(path: string): Promise<Record<string, unknown> | null> {
-  const res = await authedFetch(`${FS_BASE}/${path}`);
+  const res = await authedFetch(`${FS_BASE}/${encodePath(path)}`);
   if (res.status === 404) return null;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`get ${path} falló (${res.status})`);
@@ -139,7 +176,7 @@ export async function listCollection(
   collectionId: string,
   limit = 300
 ): Promise<Array<{ id: string; data: Record<string, unknown> }>> {
-  const res = await authedFetch(`${FS_BASE}/${parentPath}:runQuery`, {
+  const res = await authedFetch(`${FS_BASE}/${encodePath(parentPath)}:runQuery`, {
     method: "POST",
     body: JSON.stringify({
       structuredQuery: { from: [{ collectionId }], limit },
@@ -159,7 +196,7 @@ export async function listCollection(
 
 /** Crea (o reemplaza) un documento con id explícito. */
 export async function setDocument(path: string, value: Record<string, unknown>): Promise<void> {
-  const res = await authedFetch(`${FS_BASE}/${path}`, {
+  const res = await authedFetch(`${FS_BASE}/${encodePath(path)}`, {
     method: "PATCH",
     body: JSON.stringify({ fields: encodeFields(value) }),
   });
@@ -178,7 +215,7 @@ export async function patchFields(path: string, fields: Record<string, unknown>)
   const mask = Object.keys(fields)
     .map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`)
     .join("&");
-  const res = await authedFetch(`${FS_BASE}/${path}?${mask}`, {
+  const res = await authedFetch(`${FS_BASE}/${encodePath(path)}?${mask}`, {
     method: "PATCH",
     body: JSON.stringify({ fields: encodeFields(fields) }),
   });
@@ -194,7 +231,7 @@ export async function patchFields(path: string, fields: Record<string, unknown>)
  * evitar carreras (p. ej. doble reserva del mismo slot). Lanza en otros errores.
  */
 export async function createIfAbsent(path: string, value: Record<string, unknown>): Promise<boolean> {
-  const res = await authedFetch(`${FS_BASE}/${path}?currentDocument.exists=false`, {
+  const res = await authedFetch(`${FS_BASE}/${encodePath(path)}?currentDocument.exists=false`, {
     method: "PATCH",
     body: JSON.stringify({ fields: encodeFields(value) }),
   });

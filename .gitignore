@@ -13,3 +13,8 @@ next-env.d.ts
 # Capturas de referencia (Dentalink) — no son parte de la app
 WhatsApp Image*
 WhatsApp Video*
+
+# logs de los emuladores de Firebase
+*-debug.log
+firebase-debug.log
+firestore-debug.log

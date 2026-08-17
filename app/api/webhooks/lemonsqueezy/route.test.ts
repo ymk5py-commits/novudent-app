@@ -31,8 +31,18 @@ import { POST } from "./route";
 
 const sign = (raw: string, secret = SECRET) => createHmac("sha256", secret).update(raw).digest("hex");
 
+/** Token de checkout válido: el flujo normal SIEMPRE lo lleva (lo pone el
+ *  servidor al armar el link). Se registra en `docs` en cada beforeEach. */
+const TOKEN_OK = "t".repeat(40);
+
+/** Saca el token del payload — simula el ataque de borrarlo del checkout. */
+const sinToken = (p: any) => {
+  const { novudent_token, ...resto } = p.meta.custom_data;
+  return { ...p, meta: { ...p.meta, custom_data: resto } };
+};
+
 const payload = (over: Record<string, unknown> = {}) => ({
-  meta: { event_name: "subscription_created", custom_data: { clinic_id: "cl_aura" }, ...(over.meta as object ?? {}) },
+  meta: { event_name: "subscription_created", custom_data: { clinic_id: "cl_aura", novudent_token: TOKEN_OK }, ...(over.meta as object ?? {}) },
   data: {
     id: "sub_777",
     attributes: {
@@ -58,6 +68,7 @@ const req = (body: unknown, signature?: string) => {
 
 beforeEach(() => {
   for (const k of Object.keys(docs)) delete docs[k];
+  docs[`checkoutTokens/${TOKEN_OK}`] = { token: TOKEN_OK, clinicId: "cl_aura" };
   vi.clearAllMocks();
   createIfAbsent.mockResolvedValue(true);
   vi.stubEnv("LEMONSQUEEZY_WEBHOOK_SECRET", SECRET);
@@ -133,7 +144,7 @@ describe("POST /api/webhooks/lemonsqueezy", () => {
   });
 
   it("impago → deja el plan pero marca past_due (pasa a solo lectura)", async () => {
-    const res = await POST(req(payload({ meta: { event_name: "subscription_payment_failed", custom_data: { clinic_id: "cl_aura" } } })));
+    const res = await POST(req(payload({ meta: { event_name: "subscription_payment_failed", custom_data: { clinic_id: "cl_aura", novudent_token: TOKEN_OK } } })));
     expect(res.status).toBe(200);
     const [, doc] = setDocument.mock.calls[0] as unknown as [string, Record<string, unknown>];
     expect(doc).toMatchObject({ plan: "clinica", status: "past_due" });
@@ -143,7 +154,7 @@ describe("POST /api/webhooks/lemonsqueezy", () => {
     for (const [evento, esperado] of [["subscription_cancelled", "canceled"], ["subscription_expired", "expired"]] as const) {
       vi.clearAllMocks();
       createIfAbsent.mockResolvedValue(true);
-      await POST(req(payload({ meta: { event_name: evento, custom_data: { clinic_id: "cl_aura" } } })));
+      await POST(req(payload({ meta: { event_name: evento, custom_data: { clinic_id: "cl_aura", novudent_token: TOKEN_OK } } })));
       const [, doc] = setDocument.mock.calls[0] as unknown as [string, Record<string, unknown>];
       expect(doc.status).toBe(esperado);
     }
@@ -186,6 +197,48 @@ describe("defensa del pago apuntado a otra clínica", () => {
     expect(setDocument).not.toHaveBeenCalled();
   });
 
+  /* El token es OBLIGATORIO para estrenar una suscripción. Cuando era opcional,
+   * la defensa se desactivaba borrando un parámetro del checkout: el atacante
+   * ponía el clinic_id de la víctima y le pisaba la suscripción. */
+  it("SIN token no se puede estrenar una suscripción (aunque no haya ninguna)", async () => {
+    const r = await POST(req(sinToken(payload())));
+    expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({ rejected: true });
+    expect(setDocument).not.toHaveBeenCalled();
+  });
+
+  it("SIN token NO se puede pisar el trial de una clínica ajena (era EL ataque)", async () => {
+    // Toda clínica recién dada de alta pasa 30 días así: sin lsSubscriptionId.
+    // Esa era justo la rama que autorizaba la "primera compra".
+    docs["subscriptions/cl_aura"] = {
+      clinicId: "cl_aura", plan: "clinica", status: "trialing",
+      currentPeriodEndMs: Date.now() + 10 * 86_400_000,
+      provider: "manual", updatedAt: "2026-08-01T00:00:00.000Z",
+    };
+    const r = await POST(req(sinToken(payload())));
+    expect(await r.json()).toMatchObject({ rejected: true });
+    expect(setDocument).not.toHaveBeenCalled();
+  });
+
+  it("SIN token sí pasa la RENOVACIÓN de la misma suscripción (las previas al token)", async () => {
+    docs["subscriptions/cl_aura"] = {
+      clinicId: "cl_aura", plan: "clinica", status: "active",
+      currentPeriodEndMs: Date.now() + 5 * 86_400_000,
+      lsSubscriptionId: "sub_777", updatedAt: "2026-08-01T00:00:00.000Z",
+    };
+    const r = await POST(req(sinToken(payload())));
+    expect(r.status).toBe(200);
+    expect(setDocument).toHaveBeenCalled();
+  });
+
+  it("clinic_id con path traversal → se descarta antes de tocar Firestore", async () => {
+    const t = "t".repeat(40);
+    docs[`checkoutTokens/${t}`] = { token: t, clinicId: "../clinics/cl_victima#" };
+    const r = await POST(req(conToken(t)));
+    expect(await r.json()).toMatchObject({ ignored: true });
+    expect(setDocument).not.toHaveBeenCalled();
+  });
+
   it("BLOQUEA pisar una suscripción VIGENTE con un pago de otra suscripción", async () => {
     docs["subscriptions/cl_aura"] = {
       clinicId: "cl_aura", plan: "cadena", status: "active",
@@ -209,7 +262,7 @@ describe("defensa del pago apuntado a otra clínica", () => {
     expect(setDocument).toHaveBeenCalled();
   });
 
-  it("deja pasar la primera compra sobre el TRIAL del alta (sin id de LS)", async () => {
+  it("CON token deja pasar la primera compra sobre el TRIAL del alta (sin id de LS)", async () => {
     docs["subscriptions/cl_aura"] = {
       clinicId: "cl_aura", plan: "clinica", status: "trialing",
       currentPeriodEndMs: Date.now() + 10 * 86_400_000,

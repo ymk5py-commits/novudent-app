@@ -172,37 +172,65 @@ describe("tokenDePayload", () => {
   });
 });
 
-describe("puedeAplicarSuscripcion", () => {
+/* El 4º parámetro dice si la clínica se resolvió con el TOKEN del checkout (que
+ * el comprador no elige) o con el `clinic_id` pelado de la URL (que sí edita
+ * antes de pagar). Sin token solo vale renovar algo ya vinculado. */
+describe("puedeAplicarSuscripcion — CON token de checkout", () => {
   it("BLOQUEA el ataque: pago de otra suscripción sobre una vigente", () => {
     const r = puedeAplicarSuscripcion(
       susc(),
       susc({ plan: "solo", lsSubscriptionId: "sub_atacante" }),
       siempreActiva,
+      true,
     );
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.motivo).toContain("sub_atacante");
   });
 
   it("deja pasar la renovación: misma suscripción de LS", () => {
-    expect(puedeAplicarSuscripcion(susc(), susc({ lsSubscriptionId: "sub_legitima" }), siempreActiva).ok).toBe(true);
+    expect(puedeAplicarSuscripcion(susc(), susc({ lsSubscriptionId: "sub_legitima" }), siempreActiva, true).ok).toBe(true);
   });
 
   it("deja pasar el impago de la MISMA suscripción (no la deja colgada activa)", () => {
-    const r = puedeAplicarSuscripcion(susc(), susc({ status: "past_due", lsSubscriptionId: "sub_legitima" }), siempreActiva);
+    const r = puedeAplicarSuscripcion(susc(), susc({ status: "past_due", lsSubscriptionId: "sub_legitima" }), siempreActiva, true);
     expect(r.ok).toBe(true);
   });
 
   it("primera compra: no había suscripción", () => {
-    expect(puedeAplicarSuscripcion(null, susc({ lsSubscriptionId: "sub_nueva" }), siempreActiva).ok).toBe(true);
+    expect(puedeAplicarSuscripcion(null, susc({ lsSubscriptionId: "sub_nueva" }), siempreActiva, true).ok).toBe(true);
   });
 
   it("primera compra sobre el TRIAL del alta: la actual no tiene id de LS", () => {
     const trial = susc({ provider: "manual", status: "trialing", lsSubscriptionId: undefined });
-    expect(puedeAplicarSuscripcion(trial, susc({ lsSubscriptionId: "sub_nueva" }), siempreActiva).ok).toBe(true);
+    expect(puedeAplicarSuscripcion(trial, susc({ lsSubscriptionId: "sub_nueva" }), siempreActiva, true).ok).toBe(true);
   });
 
   it("re-alta legítima: la vieja ya venció, entra una nueva", () => {
-    const r = puedeAplicarSuscripcion(susc({ status: "expired" }), susc({ lsSubscriptionId: "sub_nueva" }), nuncaActiva);
+    const r = puedeAplicarSuscripcion(susc({ status: "expired" }), susc({ lsSubscriptionId: "sub_nueva" }), nuncaActiva, true);
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("puedeAplicarSuscripcion — SIN token (clinic_id elegido por el comprador)", () => {
+  it("NO deja estrenar una suscripción cuando no había ninguna", () => {
+    const r = puedeAplicarSuscripcion(null, susc({ lsSubscriptionId: "sub_nueva" }), siempreActiva, false);
+    expect(r.ok).toBe(false);
+  });
+
+  it("NO deja pisar el TRIAL de una clínica ajena — era el ataque de los 45 dólares", () => {
+    const trial = susc({ provider: "manual", status: "trialing", lsSubscriptionId: undefined });
+    const r = puedeAplicarSuscripcion(trial, susc({ lsSubscriptionId: "sub_atacante" }), siempreActiva, false);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.motivo).toContain("sin token");
+  });
+
+  it("NO deja entrar sobre una suscripción vencida (eso ya es estrenar)", () => {
+    const r = puedeAplicarSuscripcion(susc({ status: "expired" }), susc({ lsSubscriptionId: "sub_nueva" }), nuncaActiva, false);
+    expect(r.ok).toBe(false);
+  });
+
+  it("SÍ deja renovar la misma suscripción (las creadas antes del token)", () => {
+    const r = puedeAplicarSuscripcion(susc(), susc({ lsSubscriptionId: "sub_legitima" }), siempreActiva, false);
     expect(r.ok).toBe(true);
   });
 });
