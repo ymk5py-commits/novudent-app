@@ -188,8 +188,13 @@ test("admin SÍ gestiona usuarios de su clínica", async () => {
   );
 });
 
-test("la demo es abierta para cualquier sesión (incluida anónima)", async () => {
-  await assertSucceeds(setDoc(doc(anon(), "clinics/cl_demo/patients/x"), { id: "x" }));
+test("la demo: se LEE sin sesión, se ESCRIBE solo con sesión", async () => {
+  /* Ojo con la semántica del harness: `anon()` es unauthenticatedContext(), o
+     sea SIN NINGUNA sesión. Una sesión anónima de Firebase Auth sí trae uid y
+     hace verdadero a isSignedIn() — para las reglas se ve como `visitante`. */
+  await assertSucceeds(getDoc(doc(anon(), "clinics/cl_demo/patients/x")));       // mirar: sí
+  await assertFails(setDoc(doc(anon(), "clinics/cl_demo/patients/x"), { id: "x" })); // escribir sin sesión: no
+  await assertSucceeds(setDoc(doc(authed("visitante"), "clinics/cl_demo/patients/x"), { id: "x" }));
 });
 
 test("anónimo NO escribe en una clínica real", async () => {
@@ -342,8 +347,11 @@ test("PLAN: el plan Solo SÍ escribe lo básico (agenda, pacientes)", async () =
   await assertSucceeds(setDoc(doc(authed("adminS"), "clinics/clS/patients/p1"), { id: "p1" }));
 });
 
-test("COBRO: la demo nunca se bloquea por suscripción", async () => {
-  await assertSucceeds(setDoc(doc(anon(), "clinics/cl_demo/radiographs/r1"), { id: "r1" }));
+test("COBRO: la demo nunca se bloquea por suscripción ni por plan", async () => {
+  // Con sesión (la anónima que abre el cliente al entrar), la demo escribe todo
+  // — incluidas las colecciones premium — sin doc de suscripción.
+  await assertSucceeds(setDoc(doc(authed("visitante"), "clinics/cl_demo/radiographs/r1"), { id: "r1" }));
+  await assertSucceeds(setDoc(doc(authed("visitante"), "clinics/cl_demo/outbox/o1"), { id: "o1" }));
 });
 
 // ---- Números del negocio: solo el dueño (no alcanza el gating de la UI) ----
@@ -770,22 +778,24 @@ test("I8: un admin puede mentir el clinicId de SU PROPIO doc de usuario (sale en
 
 // ---- 6. La demo (cl_demo) como superficie sin autenticación ----
 
-test("DEMO: SIN SESIÓN se planta un usuario en cl_demo con el email de un admin real", async () => {
-  // `isDemo(cid)` no llama a isSignedIn(): clinics/cl_demo/** es escribible por
-  // cualquiera en internet con la apiKey web (que está en el bundle).
-  // Combinado con lib/store.tsx:766-767 (el login busca al usuario por EMAIL
-  // dentro de la clínica CARGADA, que en la pantalla de ingreso es la demo),
-  // este doc secuestra el login del admin real.
-  await assertSucceeds(setDoc(doc(anon(), "clinics/cl_demo/users/plantado"),
+test("CERRADO · SIN SESIÓN ya no se planta un usuario en cl_demo", async () => {
+  /* `isDemo(cid)` no llamaba a isSignedIn(), así que `clinics/cl_demo/**` era
+     escribible por cualquiera en internet con la apiKey web (que va en el
+     bundle). Combinado con el login —que buscaba al usuario por EMAIL dentro de
+     la clínica cargada, y en la pantalla de ingreso esa es la demo— este doc
+     secuestraba el login de un admin real. Las dos puntas están cerradas: el
+     login resuelve por uid/directorio, y escribir la demo exige sesión. */
+  await assertFails(setDoc(doc(anon(), "clinics/cl_demo/users/plantado"),
     { id: "plantado", authUid: "plantado", role: "admin", active: true, clinicId: "cl_demo", email: "admin@a.com", name: "Impostor" }));
 });
 
-test("DEMO: SIN SESIÓN se borra/reescribe el doc raíz de la clínica demo", async () => {
-  await assertSucceeds(setDoc(doc(anon(), "clinics/cl_demo"), { id: "cl_demo", name: "defaceada", plan: "cadena" }));
-  await assertSucceeds(deleteDoc(doc(anon(), "clinics/cl_demo")));
-  await testEnv.withSecurityRulesDisabled(async (ctx) => {
-    await setDoc(doc(ctx.firestore(), "clinics/cl_demo"), { id: "cl_demo", name: "Demo" });
-  });
+test("CERRADO · SIN SESIÓN ya no se borra ni se defacea el doc raíz de la demo", async () => {
+  /* Borrar el doc raíz reabría la colisión de id: el único anti-colisión del
+     alta era mirar si el doc existía, así que la próxima clínica llamada "Demo"
+     nacía como `cl_demo` y quedaba pública para siempre. Ahora hay dos frenos:
+     esto exige sesión, y `cl_demo` es un id reservado en /api/clinicas. */
+  await assertFails(setDoc(doc(anon(), "clinics/cl_demo"), { id: "cl_demo", name: "defaceada", plan: "cadena" }));
+  await assertFails(deleteDoc(doc(anon(), "clinics/cl_demo")));
 });
 
 test("DEMO: desde la demo NO se alcanza ninguna clínica real", async () => {
@@ -808,17 +818,29 @@ test("RAÍZ: leads / checkoutTokens / webhookEvents son opacos para cualquier cl
   }
 });
 
-test("DEMO: SIN SESIÓN se escribe en TODAS las colecciones de cl_demo (superficie de abuso abierta)", async () => {
-  // `isDemo(cid)` no llama a isSignedIn(): la clínica demo entera es una
-  // superficie de escritura sin autenticar. Como el proyecto (y su cuota) es
-  // uno solo, el abuso de acá pega en las clínicas reales.
-  const cerradas = [];
+test("CERRADO · SIN SESIÓN no se escribe NINGUNA colección de cl_demo", async () => {
+  /* La demo entera era una superficie de escritura sin autenticar. Como el
+     proyecto Firebase —y su cuota— es UNO SOLO, el abuso de acá pegaba en las
+     clínicas reales; y con el proyecto en Blaze eso es factura. */
+  const abiertas = [];
   for (const c of COLECCIONES_DE_CLINICA) {
     if (c === "surveyResponses") continue; // server-only por diseño
-    try { await assertSucceeds(setDoc(doc(anon(), `clinics/cl_demo/${c}/anon_${c}`), { basura: "x".repeat(100) })); }
-    catch { cerradas.push(c); }
+    try { await assertFails(setDoc(doc(anon(), `clinics/cl_demo/${c}/anon_${c}`), { basura: "x".repeat(100) })); }
+    catch { abiertas.push(c); }
   }
-  assert.deepEqual(cerradas, [], `colecciones de la demo cerradas al anónimo: ${cerradas.join(", ")}`);
+  assert.deepEqual(abiertas, [], `colecciones de la demo escribibles sin sesión: ${abiertas.join(", ")}`);
+});
+
+test("CON sesión (la anónima del cliente) la demo sigue escribiéndose entera", async () => {
+  // El contrapeso del test de arriba: cerrar el anónimo-sin-sesión no puede
+  // romper la demo de ventas, que es para lo que existe.
+  const rotas = [];
+  for (const c of COLECCIONES_DE_CLINICA) {
+    if (c === "surveyResponses") continue;
+    try { await assertSucceeds(setDoc(doc(authed("visitante"), `clinics/cl_demo/${c}/v_${c}`), { id: `v_${c}` })); }
+    catch { rotas.push(c); }
+  }
+  assert.deepEqual(rotas, [], `colecciones de la demo rotas para un visitante: ${rotas.join(", ")}`);
 });
 
 test("DEMO: `cl_clinica-demo` es una clínica REAL — isDemo debe ser igualdad exacta, nunca prefijo/contains", async () => {

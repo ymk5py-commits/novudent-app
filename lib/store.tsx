@@ -10,7 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, onSnapshot,
 } from "firebase/firestore";
-import { app, fsdb, createAuthUser, signInEmail, currentIdToken, signOutUser, currentAuthUid } from "./firebase";
+import { app, fsdb, createAuthUser, signInEmail, currentIdToken, signOutUser, currentAuthUid, signInAnonymousIfNeeded } from "./firebase";
 
 /** Espera a que Firebase Auth termine de restaurar la sesión guardada.
  *
@@ -378,7 +378,7 @@ interface Ctx {
   session: Session | null;
   ready: boolean;
   backend: Backend;
-  login: (userId: string) => void;
+  login: (userId: string) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   createTeamUser: (data: { name: string; email: string; role: import("./types").Role; password: string; color: string; phone?: string }) => Promise<void>;
   /** Cambia la contraseña del usuario actual y limpia mustChangePassword (cambio inicial obligatorio) */
@@ -769,9 +769,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     return {
       db, session, ready, backend,
-      login: (userId) => {
+      login: async (userId) => {
         const u = db.users.find((x) => x.id === userId);
         if (!u) return;
+        /* Entrar a la demo abre una sesión ANÓNIMA. Las reglas dejan LEER
+         * `cl_demo` sin credenciales (son datos de ejemplo, publicados a
+         * propósito) pero para ESCRIBIR piden sesión: si no, cualquiera desde
+         * internet podía cargar y borrar en la demo sin autenticarse, y quemar
+         * la cuota del mismo proyecto Firebase que usan las clínicas reales.
+         *
+         * Se hace acá y no en el arranque: solo cuando alguien entra de verdad a
+         * la demo. Ver el comentario de `signInAnonymousIfNeeded`. */
+        if (u.clinicId === DEMO_CLINIC_ID) await signInAnonymousIfNeeded();
         const s: Session = { userId: u.id, clinicId: u.clinicId, role: u.role, name: u.name };
         setSession(s);
         localStorage.setItem(SES_KEY, JSON.stringify(s));

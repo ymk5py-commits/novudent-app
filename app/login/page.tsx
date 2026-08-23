@@ -297,7 +297,7 @@ export default function Login() {
                     return (
                       <button
                         key={u.id}
-                        onClick={() => { login(u.id); router.replace("/app"); }}
+                        onClick={async () => { await login(u.id); router.replace("/app"); }}
                         className="flex w-full items-center gap-3 rounded-2xl border border-clinic-border p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-azure-300 hover:bg-azure-50 hover:shadow-card"
                       >
                         <span className="grid h-10 w-10 place-items-center rounded-xl text-white" style={{ background: u.color }}>

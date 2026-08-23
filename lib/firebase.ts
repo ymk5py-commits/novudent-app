@@ -88,6 +88,40 @@ export async function sendPasswordReset(email: string): Promise<void> {
   });
 }
 
+/** Abre una sesión anónima SOLO si no hay ninguna. Devuelve true si hay sesión.
+ *
+ *  Es lo que habilita escribir en la demo (`cl_demo`) sin tener cuenta: las
+ *  reglas dejan LEERLA sin credenciales —son datos de ejemplo publicados a
+ *  propósito— pero para escribir exigen sesión. Sin eso, cualquiera desde
+ *  internet podía escribir y borrar en la demo sin autenticarse, y de paso
+ *  quemar la cuota del MISMO proyecto Firebase que usan las clínicas reales
+ *  (que factura, porque el proyecto está en Blaze).
+ *
+ *  ⚠️ ESTO NO VA EN EL ARRANQUE. Antes existía un `signInAnonymously` en el boot
+ *  y hacía daño: la restauración de Firebase es asíncrona, así que en una carga
+ *  fría `currentUser` es null aunque el usuario tenga sesión válida, y la
+ *  anónima le PISABA la sesión real — quedaba sin ser miembro de ninguna
+ *  clínica, Firestore denegaba y el store caía a "modo local" descartando las
+ *  escrituras en silencio. Era el "entro y no guarda nada". Además dejaba una
+ *  cuenta anónima por visita (213 de 216 usuarios del proyecto).
+ *
+ *  Acá se llama TARDE y solo cuando alguien entra explícitamente a la demo:
+ *  `authStateReady()` garantiza que ya sabemos si hay sesión real, y si la hay
+ *  no se toca nada. */
+export async function signInAnonymousIfNeeded(): Promise<boolean> {
+  try {
+    const { getAuth, signInAnonymously } = await import("firebase/auth");
+    const auth = getAuth(app);
+    await auth.authStateReady(); // sin esto pisaríamos una sesión real a medio restaurar
+    if (auth.currentUser) return true;
+    await signInAnonymously(auth);
+    return true;
+  } catch (e) {
+    console.warn("No se pudo abrir la sesión de la demo:", e);
+    return false;
+  }
+}
+
 /** Cierra la sesión REAL de Firebase Auth.
  *
  *  Durante mucho tiempo el "cerrar sesión" de la app solo borraba localStorage,
