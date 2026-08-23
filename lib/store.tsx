@@ -594,6 +594,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  /* ===== El ROL sale de Firestore, no de localStorage =====
+   *
+   * Al restaurar la sesión se verifica que el uid de Firebase coincida con el
+   * guardado, pero `role`, `clinicId` y `name` seguían saliendo del JSON de
+   * localStorage — que lo edita cualquiera desde la consola del navegador. Un
+   * asistente con credenciales legítimas se ponía `"role":"admin"` y le abría
+   * toda la interfaz de administración: reportes de recaudación, sueldos y
+   * comisiones (que se calculan en el cliente, no en el servidor).
+   *
+   * Las reglas de Firestore igual le frenaban las ESCRITURAS de admin, así que
+   * no era una vía para corromper datos; era una vía para VER lo que no le toca.
+   * Acá el rol se re-deriva del doc de usuario apenas la base carga, que es la
+   * misma fuente de verdad que usan las reglas. Y si el usuario ya no está o lo
+   * dieron de baja, la sesión se cierra sola en vez de quedar colgada. */
+  useEffect(() => {
+    if (!ready || !session || session.clinicId === DEMO_CLINIC_ID) return;
+    if (backend !== "firebase") return; // en modo local no hay padrón que consultar
+
+    const real = db.users.find((u) => u.id === session.userId || u.authUid === session.userId);
+    if (!real || real.active === false) {
+      localStorage.removeItem(SES_KEY);
+      try { localStorage.removeItem(DB_KEY); } catch {}
+      setSession(null);
+      return;
+    }
+    if (real.role !== session.role || real.clinicId !== session.clinicId || real.name !== session.name) {
+      const s: Session = { userId: session.userId, clinicId: real.clinicId, role: real.role, name: real.name };
+      setSession(s);
+      try { localStorage.setItem(SES_KEY, JSON.stringify(s)); } catch {}
+    }
+  }, [ready, backend, db.users, session]);
+
   /* ===== Tiempo real: suscripción (plan pagado) =====
    * `subscriptions/{cid}` la escribe SOLO el webhook de Lemon Squeezy — nunca el
    * cliente (firestore.rules). Antes se leía una vez con getDoc al cargar

@@ -126,10 +126,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3) id único y legible para la clínica
+    /* 3) id único y legible para la clínica.
+     *
+     * `cl_demo` está RESERVADO. `isDemo(cid)` en las reglas es `cid == 'cl_demo'`
+     * y no pide sesión: esa clínica se lee y se escribe desde internet sin
+     * credenciales, a propósito, porque es el sandbox de ventas. El único
+     * anti-colisión es el bucle de abajo, que mira si el doc existe — así que si
+     * alguna vez el doc de la demo no estuviera, la próxima clínica llamada
+     * "Demo" nacería como `cl_demo` y su historia clínica entera quedaría
+     * pública para siempre, sin que nada lo avisara. */
+    const RESERVADOS = new Set(["cl_demo"]);
     const base = `cl_${slugify(clinicName)}`;
-    let clinicId = base;
-    for (let i = 0; await getDocument(`clinics/${clinicId}`); i++) {
+    let clinicId = RESERVADOS.has(base) ? `${base}-${Math.random().toString(36).slice(2, 6)}` : base;
+    for (let i = 0; RESERVADOS.has(clinicId) || (await getDocument(`clinics/${clinicId}`)); i++) {
       if (i > 20) throw new Error("No se pudo generar un id de clínica único.");
       clinicId = `${base}-${Math.random().toString(36).slice(2, 6)}`;
     }
