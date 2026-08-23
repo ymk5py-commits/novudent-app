@@ -12,16 +12,38 @@ import {
 } from "firebase/firestore";
 import { app, fsdb, createAuthUser, signInEmail, currentIdToken, signOutUser, currentAuthUid } from "./firebase";
 
-/** Autenticación anónima: requisito de las reglas de producción
- *  (`request.auth != null`). Si el proveedor no está habilitado, seguimos
- *  igual — las reglas decidirán. */
+/** Espera a que Firebase Auth termine de restaurar la sesión guardada.
+ *
+ *  ⚠️ ACÁ VIVÍA UN `signInAnonymously` Y NO HAY QUE REPONERLO.
+ *
+ *  Existía porque las reglas desplegadas en producción eran las de por defecto
+ *  de Firebase (`allow read, write: if request.auth != null`), o sea que hacía
+ *  falta CUALQUIER sesión para leer algo. Con las reglas reales ya desplegadas
+ *  eso no aplica: `isDemo(cid)` es `cid == 'cl_demo'` y no pide sesión, y los
+ *  usuarios reales entran con email y contraseña.
+ *
+ *  Y hacía daño de dos formas:
+ *
+ *  1. ROMPÍA LA SESIÓN REAL. La restauración de Firebase es asíncrona: en una
+ *     carga fría `auth.currentUser` es `null` aunque el usuario tenga sesión
+ *     válida. El `if (!auth.currentUser) signInAnonymously(...)` se disparaba
+ *     entonces y le PISABA la sesión real con una anónima. Con la regla abierta
+ *     no se notaba (cualquier sesión servía); con las reglas reales, anónimo no
+ *     es miembro de ninguna clínica → Firestore deniega → el store cae a "modo
+ *     local" y descarta las escrituras en silencio. Ese era el "entro y no
+ *     guarda nada".
+ *  2. Dejaba basura: una cuenta anónima nueva por visita. Se habían acumulado
+ *     213 de 216 usuarios del proyecto.
+ *
+ *  Lo que sí hace falta es ESPERAR a que la restauración termine antes de
+ *  consultar Firestore, para que `loadFirestore` corra con el usuario de verdad
+ *  y no con `null`. */
 async function ensureAuth() {
   try {
-    const { getAuth, signInAnonymously } = await import("firebase/auth");
-    const auth = getAuth(app);
-    if (!auth.currentUser) await signInAnonymously(auth);
+    const { getAuth } = await import("firebase/auth");
+    await getAuth(app).authStateReady();
   } catch (e) {
-    console.warn("Auth anónima no disponible:", e);
+    console.warn("No se pudo esperar el estado de sesión:", e);
   }
 }
 import type {
