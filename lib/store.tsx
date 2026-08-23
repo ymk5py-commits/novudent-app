@@ -746,16 +746,50 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
       loginWithEmail: async (email, password) => {
         const uid = await signInEmail(email, password); // lanza error de Firebase si falla
+
+        /* ESPERAR A QUE EL TOKEN LLEGUE A FIRESTORE.
+         *
+         * `signInWithEmailAndPassword` resuelve apenas Firebase Auth valida la
+         * contraseña, pero el SDK de Firestore se entera del token nuevo por un
+         * canal aparte y asíncrono. Sin esta espera, la primera lectura de abajo
+         * salía SIN credencial: las reglas la rechazaban, el `catch` se la comía
+         * y el login terminaba diciendo "tu cuenta no está asignada a ninguna
+         * clínica" — con la clínica perfectamente creada y el usuario adentro.
+         *
+         * Antes no se notaba porque la app abría una sesión anónima al arrancar
+         * y las reglas desplegadas aceptaban cualquier sesión: siempre había un
+         * token. Al sacar la anónima y desplegar las reglas de verdad, quedó al
+         * descubierto. */
+        await currentAuthUid();
+
         let u =
           db.users.find((x) => x.authUid === uid) ??
           db.users.find((x) => x.email.toLowerCase() === email.toLowerCase());
+
         if (!u && backendRef.current === "firebase") {
-          /* Multi-clínica: la cuenta puede pertenecer a OTRA clínica.
-           * El directorio global uid → clinicId nos dice cuál; cargamos esa
-           * clínica completa y seguimos ahí. */
-          const dir = await getDoc(doc(fsdb, "directory", uid)).catch(() => null);
+          /* Multi-clínica: la cuenta pertenece a la clínica que diga el
+           * directorio global (uid → clinicId). */
+          let dirErr: unknown = null;
+          const dir = await getDoc(doc(fsdb, "directory", uid)).catch((e) => { dirErr = e; return null; });
           const clinicId = dir?.exists() ? (dir.data() as any).clinicId : null;
-          if (clinicId && clinicId !== CLINIC_ID) {
+
+          if (dirErr) {
+            /* Antes esto se descartaba en silencio y el usuario recibía el
+             * mensaje genérico de "no asignada", que manda a buscar el problema
+             * al lugar equivocado. Si no se pudo leer el directorio es un fallo
+             * de permisos o de red, y hay que decirlo. */
+            console.error("login: no se pudo leer directory/", uid, dirErr);
+            throw new Error("No pudimos verificar a qué clínica pertenece tu cuenta. Reintentá en unos segundos; si sigue igual, avisale al administrador.");
+          }
+
+          /* Se recarga SIEMPRE que el directorio indique una clínica, aunque
+           * coincida con la que ya está en memoria. Antes se salteaba cuando
+           * era la misma (`clinicId !== CLINIC_ID`) y ahí quedaba trabado: si un
+           * intento anterior había dejado ese clinicId guardado, el `db` en
+           * memoria seguía siendo el de la demo, no se recargaba nunca y el
+           * login fallaba siempre con el mismo mensaje. */
+          if (clinicId) {
+            const anterior = CLINIC_ID;
             CLINIC_ID = clinicId;
             const remote = await loadFirestore();
             u =
@@ -765,7 +799,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               setDb(remote);
               try { localStorage.setItem(DB_KEY, JSON.stringify(remote)); } catch {}
             } else {
-              CLINIC_ID = resolveClinicId(); // revertimos: el doc de usuario no está
+              CLINIC_ID = anterior; // revertimos: el doc de usuario no está
             }
           }
         }
