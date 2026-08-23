@@ -116,3 +116,50 @@ caps de payload siguen, el invariante clinicIdRef en el store se respeta.
 - Migrar el rate-limiter a Upstash/Vercel KV para límite global (hoy es por
   instancia de lambda).
 - Correr `npm run test:rules` (Java) en CI antes de cada deploy de reglas.
+
+## 4ª pasada — auditoría de seguridad externa + hardening aplicado
+
+### Resuelto en código
+- **[ALTO] Next.js desactualizado** (14.2.35, 4 CVEs high) → migrado a
+  **Next 16.3.x + React 19** (`params` async con `React.use()`, framer-motion v12,
+  script `lint` reemplazado por `typecheck`). `npm audit` = **0 vulnerabilidades**.
+- **Rate limiting DISTRIBUIDO**: si se configuran `UPSTASH_REDIS_REST_URL` +
+  `UPSTASH_REDIS_REST_TOKEN` en Vercel, el contador vive en Redis (ventana
+  deslizante vía pipeline REST) y la cuota es GLOBAL entre lambdas. Sin esas envs,
+  sigue el modo in-memory de siempre. Fail-open ante caída de Redis (disponibilidad
+  > rigidez; loguea 1 warn/min como máximo).
+- **`/api/firmar` ya no descarga hasta 500 firmas** para buscar el token en memoria:
+  nueva función `queryWhere()` en `lib/server/firestore-rest.ts` filtra EN Firestore
+  (`token == X`). Funciona con cualquier tamaño de colección y viajan menos datos.
+- **CSP endurecida** (next.config.mjs): además de `frame-ancestors 'self'`, ahora
+  `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+  `upgrade-insecure-requests`. El script-src con nonces queda como hardening futuro.
+- **App Check listo para activar** (opcional): con `NEXT_PUBLIC_APPCHECK_SITE_KEY`
+  definida, `lib/firebase.ts` registra App Check (reCAPTCHA v3). Ver pasos más abajo.
+
+### Pendiente en consolas / operación (no requiere código)
+
+1. **Restringir la web API key** (#8): Google Cloud Console → APIs y servicios →
+   Credenciales → clave `AIzaSy…` del proyecto → Restricciones de sitios web:
+   dominios de prod + preview de Vercel + localhost. La seguridad de DATOS vive en
+   las reglas, pero esto frena abuso de cuota/facturación de Identity Toolkit.
+
+2. **Rotación periódica del service user** (#3): `SERVICE_USER_PASSWORD` es una
+   llave maestra (el usuario está en `serviceAccounts/`). Rotarla cada 90 días:
+   Firebase Console → Authentication → usuario de servicio → restablecer contraseña
+   → actualizar env en Vercel (novudent-app Y Botika) → redeploy. Ojo con el orden:
+   cambiar primero la env que NO está en uso no sirve — coordinar el corte.
+
+3. **Higiene de la demo** (#6): `cl_demo` es público a propósito. NUNCA cargar
+   datos reales de pacientes ahí. Si un prospecto carga algo propio, borrarlo desde
+   la consola. Revisar de tanto en tanto que siga siendo datos de ejemplo.
+
+4. **Activar App Check** (#7):
+   - Firebase Console → App Check → registrar la app web con reCAPTCHA v3
+     (dominio prod + localhost).
+   - Vercel: `NEXT_PUBLIC_APPCHECK_SITE_KEY=<key>` → redeploy.
+   - Dejar unos días en MODO MONITOREO y recién después poner Firestore en
+     ENFORCED (proyecto Blaze = cada llamada abusiva es plata).
+
+5. **script-src con nonces** (futuro): cerraría el XSS del todo. Requiere revisar
+   Firebase, Recharts, framer-motion y el iframe de Jitsi antes de activarlo.

@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   if (!isValidId(cid) || !isValidId(surveyId)) {
     return NextResponse.json({ error: "Parámetros inválidos." }, { status: 400 });
   }
-  const rl = rateLimit(`encuestas-get:${clientIp(req)}`, { limit: 30, windowMs: 60_000 });
+  const rl = await rateLimit(`encuestas-get:${clientIp(req)}`, { limit: 30, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
   if (!isServerFirestoreConfigured()) return NextResponse.json({ error: "Servidor no configurado." }, { status: 503 });
   try {
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const rl = rateLimit(`encuestas-post:${clientIp(req)}`, { limit: 6, windowMs: 60_000 });
+  const rl = await rateLimit(`encuestas-post:${clientIp(req)}`, { limit: 6, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
   if (!isServerFirestoreConfigured()) return NextResponse.json({ error: "Servidor no configurado." }, { status: 503 });
   let body: any;

@@ -28,11 +28,11 @@ export async function POST(req: NextRequest) {
   try { user = await verifyIdToken(req); }
   catch (e) { return NextResponse.json({ ok: false, error: "No autorizado" }, { status: e instanceof AuthError ? e.status : 401 }); }
 
-  const rl = rateLimit(`ia:${user.uid}`, { limit: 10, windowMs: 60_000 });
+  const rl = await rateLimit(`ia:${user.uid}`, { limit: 10, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
   // Tope adicional por IP: el límite por-uid se evade creando múltiples sesiones
   // anónimas (demo). Por-IP frena la rotación que multiplicaría la cuota de Gemini.
-  const _rlIp = rateLimit(`ia-ip:${clientIp(req)}`, { limit: 40, windowMs: 60_000 });
+  const _rlIp = await rateLimit(`ia-ip:${clientIp(req)}`, { limit: 40, windowMs: 60_000 });
   if (!_rlIp.ok) return tooManyRequests(_rlIp.retryAfterSec);
 
   /* MEMBRESÍA + SUSCRIPCIÓN + PLAN. `verifyIdToken` solo prueba que el token es

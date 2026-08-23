@@ -194,6 +194,51 @@ export async function listCollection(
     }));
 }
 
+/**
+ * Consulta con filtro de igualdad sobre UN campo (`field == value`).
+ *
+ * A diferencia de listCollection (que baja docs y filtra en memoria), el
+ * filtrado corre EN Firestore: no se rompe cuando la colección supera el
+ * límite del fetch, y se transfieren solo los docs que coinciden.
+ *
+ * OJO: `value` viaja como dato (encodeValue), nunca interpolado en el path —
+ * un valor atacante no puede salirse de la colección.
+ */
+export async function queryWhere(
+  parentPath: string,
+  collectionId: string,
+  field: string,
+  value: unknown,
+  limit = 10
+): Promise<Array<{ id: string; data: Record<string, unknown> }>> {
+  const res = await authedFetch(`${FS_BASE}/${encodePath(parentPath)}:runQuery`, {
+    method: "POST",
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: field },
+            op: "EQUAL",
+            value: encodeValue(value),
+          },
+        },
+        limit,
+      },
+    }),
+  });
+  const data = await res.json().catch(() => []);
+  if (!res.ok) {
+    throw new Error(`query ${collectionId}.${field} falló (${res.status})`);
+  }
+  return (Array.isArray(data) ? data : [])
+    .filter((row) => row.document)
+    .map((row) => ({
+      id: String(row.document.name).split("/").pop()!,
+      data: decodeFields(row.document.fields),
+    }));
+}
+
 /** Crea (o reemplaza) un documento con id explícito. */
 export async function setDocument(path: string, value: Record<string, unknown>): Promise<void> {
   const res = await authedFetch(`${FS_BASE}/${encodePath(path)}`, {

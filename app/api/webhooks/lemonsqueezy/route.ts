@@ -41,7 +41,7 @@ function eventKey(payload: any): string {
 }
 
 export async function POST(req: Request) {
-  const rl = rateLimit(`ls-webhook:${clientIp(req)}`, { limit: 60, windowMs: 60_000 });
+  const rl = await rateLimit(`ls-webhook:${clientIp(req)}`, { limit: 60, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
   const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;

@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "El envío de email no está disponible en el modo demo." }, { status: 403 });
   }
 
-  const rl = rateLimit(`email:${user.uid}`, { limit: 30, windowMs: 60_000 });
+  const rl = await rateLimit(`email:${user.uid}`, { limit: 30, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
   const apiKey = process.env.RESEND_API_KEY;

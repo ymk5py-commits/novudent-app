@@ -2,15 +2,17 @@
 /** Página pública de videoconsulta (el paciente abre el link de la clínica).
  *  La sala se deriva del token `?t=` del link (no adivinable). Sin él, cae a la
  *  sala legacy por compatibilidad con links viejos. Sin sesión. */
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { VideoConsulta } from "@/components/VideoConsulta";
 
-export default function VideoConsultaPublic({ params }: { params: { cid: string; apptId: string } }) {
+/* En Next 15+ `params` es una Promise: se desenvuelve con React.use(). */
+export default function VideoConsultaPublic({ params }: { params: Promise<{ cid: string; apptId: string }> }) {
+  const { cid, apptId } = use(params);
   const [room, setRoom] = useState<string | null>(null);
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("t");
-    setRoom(t ? `nvd-${t}` : `nvd-${params.cid}-${params.apptId}`);
-  }, [params.cid, params.apptId]);
+    setRoom(t ? `nvd-${t}` : `nvd-${cid}-${apptId}`);
+  }, [cid, apptId]);
 
   return (
     <div className="flex min-h-screen flex-col bg-clinic-bg">

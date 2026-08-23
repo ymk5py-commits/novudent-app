@@ -76,7 +76,7 @@ async function createOrRecoverAuthUser(email: string, password: string): Promise
 
 export async function POST(req: NextRequest) {
   // Antibruteforce sobre OWNER_PANEL_KEY: pocas creaciones por minuto por IP.
-  const rl = rateLimit(`clinicas:${clientIp(req)}`, { limit: 5, windowMs: 60_000 });
+  const rl = await rateLimit(`clinicas:${clientIp(req)}`, { limit: 5, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
   const ownerKey = process.env.OWNER_PANEL_KEY;

@@ -17,6 +17,32 @@ const firebaseConfig = {
 export const app = getApps()[0] ?? initializeApp(firebaseConfig);
 export const fsdb = getFirestore(app);
 
+/* App Check (opcional, activación por env).
+ *
+ * Sin App Check, CUALQUIERA puede llamar Firestore/Auth del proyecto desde un
+ * script propio (la web API key es pública por diseño): las reglas siguen
+ * cuidando los DATOS, pero la cuota es del proyecto en Blaze = plata real.
+ *
+ * Para activarlo:
+ *   1. Firebase Console → App Check → apps web → registrar con reCAPTCHA v3
+ *      (crea la site key en Google Cloud → reCAPTCHA Enterprise/v3 con el
+ *      dominio de producción + localhost para dev).
+ *   2. Vercel: env NEXT_PUBLIC_APPCHECK_SITE_KEY=<site key> y redeploy.
+ *   3. Dejar unos días en modo MONITOREO (métricas de App Check) y recién ahí
+ *      pasar Firestore a ENFORCED — si algo queda afuera, es antes de que duela.
+ *
+ * Mientras no haya env, no se registra nada y todo sigue como hoy. */
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_APPCHECK_SITE_KEY) {
+  import("firebase/app-check")
+    .then(({ initializeAppCheck, ReCaptchaV3Provider }) => {
+      initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_APPCHECK_SITE_KEY as string),
+        isTokenAutoRefreshEnabled: true,
+      });
+    })
+    .catch(() => {});
+}
+
 /** Crea una cuenta en Firebase Auth SIN tocar la sesión actual del admin
  *  (usa una app secundaria temporal). Devuelve el uid. */
 export async function createAuthUser(email: string, password: string): Promise<string> {

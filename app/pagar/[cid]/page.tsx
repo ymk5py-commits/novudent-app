@@ -2,12 +2,15 @@
 /** Página pública de pago (el paciente abre el link que le envía la clínica).
  *  Muestra el monto y las opciones que la clínica configuró: pagar con tarjeta
  *  (link de SU pasarela), transferencia, o avisar por WhatsApp. Sin sesión. */
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { formatMoney, type CurrencyCode } from "@/lib/currency";
 
 type Info = { clinicName: string; checkoutUrl?: string; bankInfo?: string; phone?: string; currency: CurrencyCode };
 
-export default function PagarPublic({ params }: { params: { cid: string } }) {
+/* En Next 15+ `params` es una Promise: se desenvuelve con React.use() (el
+ * componente es "use client", así que no hay await disponible a este nivel). */
+export default function PagarPublic({ params }: { params: Promise<{ cid: string }> }) {
+  const { cid } = use(params);
   const [info, setInfo] = useState<Info | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,10 +20,10 @@ export default function PagarPublic({ params }: { params: { cid: string } }) {
     const sp = new URLSearchParams(window.location.search);
     const amt = Number(sp.get("amount"));
     setQ({ amount: Number.isFinite(amt) && amt > 0 ? amt : undefined, concept: sp.get("concept") ?? undefined, patient: sp.get("patient") ?? undefined });
-    fetch(`/api/pago?cid=${encodeURIComponent(params.cid)}`)
+    fetch(`/api/pago?cid=${encodeURIComponent(cid)}`)
       .then(async (r) => { const d = await r.json(); if (!r.ok) throw new Error(d.error || "No se pudo cargar."); return d; })
       .then(setInfo).catch((e) => setError(e.message)).finally(() => setLoading(false));
-  }, [params.cid]);
+  }, [cid]);
 
   const waLink = info?.phone ? `https://wa.me/${info.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola, ${q.patient ?? ""} aboné ${q.amount ? formatMoney(q.amount, info.currency) : "el saldo"} (${q.concept ?? "pago"}).`)}` : null;
 

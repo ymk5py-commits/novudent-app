@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   /* Limita por IP: no hay sesión con la cual limitar. Cinco por hora alcanza de
      sobra para alguien que pide acceso de verdad y corta el envío masivo. */
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "desconocida";
-  const rl = rateLimit(`contacto:${ip}`, { limit: 5, windowMs: 3_600_000 });
+  const rl = await rateLimit(`contacto:${ip}`, { limit: 5, windowMs: 3_600_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
   let body: Record<string, unknown>;

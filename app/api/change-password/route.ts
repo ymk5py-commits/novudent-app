@@ -25,7 +25,7 @@ import { isValidId } from "@/lib/server/ids";
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const rl = rateLimit(`change-pass:${clientIp(req)}`, { limit: 10, windowMs: 60_000 });
+  const rl = await rateLimit(`change-pass:${clientIp(req)}`, { limit: 10, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
   const key = process.env.FIREBASE_WEB_API_KEY;

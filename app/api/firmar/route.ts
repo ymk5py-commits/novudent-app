@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   isServerFirestoreConfigured,
   getDocument,
-  listCollection,
+  queryWhere,
   setDocument,
 } from "@/lib/server/firestore-rest";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
@@ -53,11 +53,15 @@ function patientDisplayName(p: Record<string, unknown> | null): string {
 /**
  * Ubica en `clinics/{cid}/signatures` el doc cuyo `token` coincide.
  * Devuelve null si no hay match. No revela la existencia de otros docs.
+ *
+ * El filtro corre EN Firestore (queryWhere): no depende de un tope de
+ * descarga — con 5000 firmas igual encuentra el doc, y no viajan los demás.
+ * El token ya está validado con isValidToken, y viaja como VALOR del filtro,
+ * nunca interpolado en el path.
  */
 async function findByToken(cid: string, token: string) {
-  const docs = await listCollection(`clinics/${cid}`, "signatures", 500);
-  const row = docs.find((d) => String(d.data.token || "") === token);
-  return row || null;
+  const rows = await queryWhere(`clinics/${cid}`, "signatures", "token", token, 2);
+  return rows[0] || null;
 }
 
 export async function GET(req: NextRequest) {
@@ -66,7 +70,7 @@ export async function GET(req: NextRequest) {
   const token = String(searchParams.get("token") || "");
 
   // Rate-limit por IP + token: frena el martilleo / fuerza bruta de tokens.
-  const rl = rateLimit(`firmar-get:${clientIp(req)}:${token.slice(0, 24)}`, {
+  const rl = await rateLimit(`firmar-get:${clientIp(req)}:${token.slice(0, 24)}`, {
     limit: 30,
     windowMs: 60_000,
   });
@@ -123,7 +127,7 @@ export async function POST(req: NextRequest) {
   const token = String(body.token || "");
 
   // Rate-limit más estricto en el POST (escribe): evita spam de firmas.
-  const rl = rateLimit(`firmar-post:${clientIp(req)}:${token.slice(0, 24)}`, {
+  const rl = await rateLimit(`firmar-post:${clientIp(req)}:${token.slice(0, 24)}`, {
     limit: 10,
     windowMs: 60_000,
   });

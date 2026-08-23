@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const cid = searchParams.get("cid");
   if (!isValidId(cid)) return NextResponse.json({ error: "Parámetros inválidos." }, { status: 400 });
-  const rl = rateLimit(`pago:${clientIp(req)}`, { limit: 20, windowMs: 60_000 });
+  const rl = await rateLimit(`pago:${clientIp(req)}`, { limit: 20, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
   if (!isServerFirestoreConfigured()) return NextResponse.json({ error: "Servidor no configurado." }, { status: 503 });
   try {

@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "El modo demo no puede contratar planes." }, { status: 403 });
   }
 
-  const rl = rateLimit(`checkout:${user.uid}`, { limit: 10, windowMs: 60_000 });
+  const rl = await rateLimit(`checkout:${user.uid}`, { limit: 10, windowMs: 60_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
   if (!isServerFirestoreConfigured()) {
