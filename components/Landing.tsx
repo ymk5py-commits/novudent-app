@@ -39,6 +39,7 @@ import { ArrowUpRight, Check, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ShowcaseBoard, ToothGlyph, type ShowcaseToothRecord } from "./OdontogramShowcase";
 import SolicitarAcceso from "./SolicitarAcceso";
+import EscenaClinica from "./EscenaClinica";
 import { FlagBadge } from "./ui";
 
 /* three.js pesa ~150 kB gz: chunk aparte, solo cliente. Mientras carga no se
@@ -244,7 +245,7 @@ export default function Landing() {
             <span className="hidden text-[11px] uppercase tracking-[0.3em] text-white/35 sm:block">by NOVUM</span>
           </a>
           <nav className="hidden items-center gap-1 text-[15px] font-light text-white/60 md:flex">
-            {[["#odontograma", "Odontograma"], ["#capacidades", "Capacidades"], ["#flujo", "Cómo se trabaja"], ["#precios", "Precios"]].map(([h, l]) => (
+            {[["#odontograma", "Odontograma"], ["#capacidades", "Capacidades"], ["#flujo", "Cómo se trabaja"], ["#accion", "En acción"], ["#precios", "Precios"]].map(([h, l]) => (
               <a key={h} href={h} className="rounded-full px-3.5 py-2 transition-colors hover:bg-white/10 hover:text-white">{l}</a>
             ))}
           </nav>
@@ -505,6 +506,23 @@ export default function Landing() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* ===== EL PRODUCTO EN ACCIÓN: escena + app con un solo reloj ===== */}
+      <section id="accion" className="mx-auto max-w-6xl scroll-mt-20 px-5 pb-20 sm:pb-28">
+        <BarraSeccion label="El producto en acción" />
+        <div className="mb-12 grid gap-6 lg:grid-cols-12 lg:items-end">
+          <h2 className="font-logo text-[2.75rem] font-extralight leading-[1.05] tracking-tight text-sv-ink sm:text-[3.5rem] lg:col-span-7">
+            De la silla dental
+            <br />a la app, <span className="text-sv-mintInk">solo</span>.
+          </h2>
+          <p className="text-[15px] font-light leading-relaxed text-sv-muted lg:col-span-5">
+            El día completo de una consulta, en un loop de catorce segundos: la
+            cita se agenda, el hallazgo se marca en la pieza, el cobro se
+            factura. Miralo las veces que quieras — es el producto real.
+          </p>
+        </div>
+        <EscenaClinica />
       </section>
 
       {/* ===== PRECIOS ===== */}

@@ -288,6 +288,139 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
   .sv-fade, .sv-mask-line > span { animation: none !important; opacity: 1 !important; transform: none !important; }
 }
 
+/* ===================================================================
+   ESCENA CLÍNICA — "De la silla dental a la app" (loop 14s)
+   Un solo reloj: todas las animaciones maestras duran 14s y usan
+   porcentajes, así la escena SVG y el mockup de la app quedan SIEMPRE
+   sincronizados (el brillo del tratamiento coincide con la marca en el
+   odontograma, etc.). Los estados BASE (sin animación / reduced-motion)
+   son el estado final de la historia: cita confirmada, pieza restaurada,
+   cobro facturado. Si el CSS no corre, se ve la foto del "después".
+   =================================================================== */
+.esc-master { animation: none; } /* ancla documental del bloque */
+
+/* --- Cursor simulado ---
+   Se mueve con left/top en % del CONTENEDOR (no translate: los % de transform
+   son relativos al tamaño del propio elemento, y un cursor de 20px viaja 60px,
+   no 300px). Los puntos fueron calibrados contra screenshot: fila 11:00,
+   pieza 16 y badge de cobro. */
+@keyframes esc-cursor {
+  0%, 5%   { opacity: 0; left: 105%; top: 95%; transform: scale(0.6); }
+  8%       { opacity: 1; left: 105%; top: 95%; transform: scale(0.6); }
+  11%      { left: 50%; top: 46%; transform: scale(1); }
+  12.5%    { left: 50%; top: 46%; transform: scale(0.72); } /* tap agenda */
+  14%      { left: 50%; top: 46%; transform: scale(1); }
+  31%      { left: 50.5%; top: 69%; transform: scale(1); }
+  33%      { left: 50.5%; top: 69%; transform: scale(0.72); } /* tap: caries */
+  34.5%    { left: 50.5%; top: 69%; transform: scale(1); }
+  45%      { left: 50.5%; top: 69%; transform: scale(1); }
+  46.5%    { left: 50.5%; top: 69%; transform: scale(0.72); } /* tap: restaurado */
+  48%      { left: 50.5%; top: 69%; transform: scale(1); }
+  57%      { left: 84%; top: 88%; transform: scale(1); }
+  58.5%    { left: 84%; top: 88%; transform: scale(0.72); } /* tap: cobro */
+  60%      { left: 84%; top: 88%; transform: scale(1); }
+  86%      { opacity: 1; }
+  92%, 100%{ opacity: 0; left: 105%; top: 95%; transform: scale(0.6); }
+}
+.esc-cursor {
+  opacity: 0;
+  margin: -10px 0 0 -10px; /* centra el punto de 20px sobre la coordenada */
+  animation: esc-cursor 14s linear infinite;
+  will-change: left, top, opacity;
+}
+
+/* --- Agenda: el hueco se convierte en cita confirmada --- */
+@keyframes esc-cita {
+  0%, 11%   { opacity: 0; }
+  13.5%, 96%{ opacity: 1; }
+  100%      { opacity: 0; }
+}
+@keyframes esc-cita-hueco {
+  0%, 11%   { opacity: 1; }
+  13.5%, 96%{ opacity: 0; }
+  100%      { opacity: 1; }
+}
+.esc-cita       { opacity: 1; animation: esc-cita 14s linear infinite; }
+.esc-cita-hueco { opacity: 0; animation: esc-cita-hueco 14s linear infinite; }
+
+/* --- Odontograma mini: limpia → caries → restaurado --- */
+@keyframes esc-t-clean  { 0%, 32% { opacity: 1; } 35%, 96% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes esc-t-caries { 0%, 34% { opacity: 0; } 36%, 45% { opacity: 1; } 48%, 100% { opacity: 0; } }
+@keyframes esc-t-rest   { 0%, 47% { opacity: 0; } 50%, 96% { opacity: 1; } 100% { opacity: 0; } }
+/* base sin animación: se ve el restaurado */
+.esc-t-clean  { opacity: 0; animation: esc-t-clean 14s linear infinite; }
+.esc-t-caries { opacity: 0; animation: esc-t-caries 14s linear infinite; }
+.esc-t-rest   { opacity: 1; animation: esc-t-rest 14s linear infinite; }
+
+/* --- Badge de cobro: HOLD → FACTURADO --- */
+@keyframes esc-badge-hold { 0%, 58% { opacity: 1; } 61%, 96% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes esc-badge-ok   { 0%, 58% { opacity: 0; } 61%, 96% { opacity: 1; } 100% { opacity: 0; } }
+.esc-badge-hold { opacity: 0; animation: esc-badge-hold 14s linear infinite; }
+.esc-badge-ok   { opacity: 1; animation: esc-badge-ok 14s linear infinite; }
+
+/* --- Velo de corte: tapa el salto del loop (96–100% → 0–4%) --- */
+@keyframes esc-veil { 0% { opacity: 1; } 4.5%, 96% { opacity: 0; } 99%, 100% { opacity: 1; } }
+.esc-veil { opacity: 0; animation: esc-veil 14s linear infinite; pointer-events: none; }
+
+/* --- Escena SVG: brazo del dentista trabajando --- */
+@keyframes esc-brazo {
+  0%, 15%   { transform: rotate(0deg); }
+  17%       { transform: rotate(-3.4deg); }
+  19%       { transform: rotate(2.6deg); }
+  21%       { transform: rotate(-3.4deg); }
+  23%       { transform: rotate(2.6deg); }
+  25%       { transform: rotate(-2.6deg); }
+  27%       { transform: rotate(1.4deg); }
+  29%, 100% { transform: rotate(0deg); }
+}
+.esc-brazo { transform-origin: 74px 172px; animation: esc-brazo 14s linear infinite; }
+
+/* --- Cono de luz del faro: pulsa mientras se trabaja --- */
+@keyframes esc-luz {
+  0%, 15%   { opacity: 0.10; }
+  17%       { opacity: 0.24; }
+  19%       { opacity: 0.13; }
+  21%       { opacity: 0.24; }
+  23%       { opacity: 0.13; }
+  25%       { opacity: 0.22; }
+  29%, 90%  { opacity: 0.10; }
+  100%      { opacity: 0.10; }
+}
+.esc-luz { animation: esc-luz 14s linear infinite; }
+
+/* --- Destello en la boca: el tratamiento listo (30%) --- */
+@keyframes esc-sparkle {
+  0%, 28%  { opacity: 0; transform: scale(0.2); }
+  31%      { opacity: 1; transform: scale(1.15); }
+  34%      { opacity: 0.9; transform: scale(1); }
+  44%, 100%{ opacity: 0; transform: scale(0.2); }
+}
+.esc-sparkle { opacity: 0.9; transform-origin: 158px 212px; animation: esc-sparkle 14s linear infinite; }
+
+/* --- Signos + flotando en el fondo de la escena (ritmo propio) --- */
+@keyframes esc-plus {
+  0%   { transform: translateY(0); opacity: 0.14; }
+  50%  { opacity: 0.4; }
+  100% { transform: translateY(-22px); opacity: 0.14; }
+}
+.esc-plus { animation: esc-plus var(--plus-t, 7s) ease-in-out var(--plus-d, 0s) infinite alternate; }
+
+/* --- Conector escena → app: chevrons en secuencia --- */
+@keyframes esc-chev {
+  0%, 100% { opacity: 0.25; transform: translateX(0); }
+  50%      { opacity: 1; transform: translateX(3px); }
+}
+.esc-chev { animation: esc-chev 1.6s ease-in-out infinite; }
+.esc-chev:nth-child(2) { animation-delay: 0.22s; }
+.esc-chev:nth-child(3) { animation-delay: 0.44s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .esc-cursor, .esc-veil { animation: none !important; opacity: 0 !important; }
+  .esc-cita, .esc-cita-hueco, .esc-t-clean, .esc-t-caries, .esc-t-rest,
+  .esc-badge-hold, .esc-badge-ok, .esc-brazo, .esc-luz, .esc-sparkle,
+  .esc-plus, .esc-chev { animation: none !important; }
+}
+
 /* ===== Profundidad 3D + glass (dashboard moderno) ===== */
 /* Tarjeta con elevación al hover — la sombra azure le da el matiz 3D */
 .card-3d {
