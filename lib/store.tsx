@@ -762,9 +762,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
          * descubierto. */
         await currentAuthUid();
 
-        let u =
-          db.users.find((x) => x.authUid === uid) ??
-          db.users.find((x) => x.email.toLowerCase() === email.toLowerCase());
+        /* IDENTIDAD POR uid, NUNCA POR EMAIL CONTRA LO QUE ESTÉ CARGADO.
+         *
+         * Acá había un segundo intento: `db.users.find(x => x.email === email)`.
+         * El `db` en la pantalla de ingreso es SIEMPRE el de la demo (el logout
+         * borra DB_KEY y `resolveClinicId` cae a `cl_demo`), y la demo se escribe
+         * sin autenticar. O sea que cualquiera podía plantar un usuario en
+         * `clinics/cl_demo/users/*` con el email de un admin real: ese admin
+         * ponía su contraseña de verdad, Firebase la validaba, y el match por
+         * email lo metía en la demo con el rol que el atacante hubiera escrito —
+         * salteándose el bloque del directorio, que es el que resuelve la clínica
+         * de verdad. Quedaba pegado ahí (la sesión persiste) y todo lo que
+         * cargara —pacientes, historia clínica— iba a una clínica que se lee
+         * desde internet sin credenciales.
+         *
+         * El match por `authUid` sí es seguro: lo compara contra el uid que
+         * Firebase acaba de autenticar. El de email vive ahora dentro del bloque
+         * del directorio, acotado a la clínica que el directorio indica. */
+        let u = db.users.find((x) => x.authUid === uid);
 
         if (!u && backendRef.current === "firebase") {
           /* Multi-clínica: la cuenta pertenece a la clínica que diga el

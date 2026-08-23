@@ -97,9 +97,58 @@ describe("subscriptionFromLsPayload", () => {
   });
 
   it("el impago deja el plan pero marca past_due", () => {
-    const impago = { ...payload, meta: { ...payload.meta, event_name: "subscription_payment_failed" } };
+    /* El estado sale de `attributes.status`, no del nombre del evento: LS manda
+     * en cada webhook el estado ACTUAL de la suscripción, y `subscription_updated`
+     * llega también en las cancelaciones. Por eso el impago se declara acá. */
+    const impago = {
+      ...payload,
+      meta: { ...payload.meta, event_name: "subscription_payment_failed" },
+      data: { ...payload.data, attributes: { ...payload.data.attributes, status: "past_due" } },
+    };
     const sub = subscriptionFromLsPayload(impago, { "555": "clinica" });
     expect(sub).toMatchObject({ plan: "clinica", status: "past_due" });
+  });
+
+  it("el estado sale de attributes.status, no del nombre del evento", () => {
+    /* La regresión que más plata costaba: LS dispara `subscription_updated` en
+     * TODOS los cambios del ciclo de vida, incluida la cancelación, y sin orden
+     * garantizado. Mapear el nombre a "active" hacía que el evento de una
+     * cancelación reactivara la suscripción que se acababa de cortar. */
+    const cancelada = {
+      ...payload,
+      meta: { ...payload.meta, event_name: "subscription_updated" },
+      data: { ...payload.data, attributes: { ...payload.data.attributes, status: "cancelled" } },
+    };
+    expect(subscriptionFromLsPayload(cancelada, { "555": "clinica" })).toMatchObject({ status: "canceled" });
+
+    for (const [ls, nuestro] of [["unpaid", "expired"], ["past_due", "past_due"], ["paused", "expired"]]) {
+      const p = {
+        ...payload,
+        meta: { ...payload.meta, event_name: "subscription_updated" },
+        data: { ...payload.data, attributes: { ...payload.data.attributes, status: ls } },
+      };
+      expect(subscriptionFromLsPayload(p, { "555": "clinica" })).toMatchObject({ status: nuestro });
+    }
+  });
+
+  it("un reembolso no deja el plan activo", () => {
+    const refund = {
+      ...payload,
+      meta: { ...payload.meta, event_name: "subscription_payment_refunded" },
+      data: { ...payload.data, attributes: { ...payload.data.attributes, status: undefined } },
+    };
+    expect(subscriptionFromLsPayload(refund, { "555": "clinica" })?.status).not.toBe("active");
+  });
+
+  it("`subscription_updated` sin status utilizable no aplica nada", () => {
+    /* Ambiguo por definición: sin `attributes.status` no sabemos a qué cambió.
+     * Antes caía a "active", que es el peor default posible. */
+    const ambiguo = {
+      ...payload,
+      meta: { ...payload.meta, event_name: "subscription_updated" },
+      data: { ...payload.data, attributes: { ...payload.data.attributes, status: undefined } },
+    };
+    expect(subscriptionFromLsPayload(ambiguo, { "555": "clinica" })).toBeNull();
   });
 });
 

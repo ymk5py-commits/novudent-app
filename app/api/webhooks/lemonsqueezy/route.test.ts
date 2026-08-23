@@ -15,6 +15,9 @@ const SECRET = "secreto_de_prueba";
 
 const setDocument = vi.fn(async () => {});
 const createIfAbsent = vi.fn(async () => true);
+/* La marca del evento se cierra con un patch después de aplicar la suscripción
+   (idempotencia en dos tiempos: reservar → aplicar → confirmar). */
+const patchFields = vi.fn(async () => {});
 /* Devuelve el doc pedido por ruta. Por defecto no hay nada: ni token de
    checkout ni suscripción previa, que es el caso de una primera compra. */
 const docs: Record<string, Record<string, unknown> | null> = {};
@@ -24,6 +27,7 @@ vi.mock("@/lib/server/firestore-rest", () => ({
   setDocument: (...a: unknown[]) => setDocument(...(a as [])),
   getDocument: (...a: unknown[]) => getDocument(...(a as [string])),
   createIfAbsent: (...a: unknown[]) => createIfAbsent(...(a as [])),
+  patchFields: (...a: unknown[]) => patchFields(...(a as [])),
   isServerFirestoreConfigured: () => true,
 }));
 
@@ -55,6 +59,10 @@ const payload = (over: Record<string, unknown> = {}) => ({
     },
   },
 });
+
+/** Misma clave que arma `eventKey()` en la ruta para el payload por defecto:
+ *  `ls_<subId>_<evento>_<updated_at>` con los no-alfanuméricos en guión bajo. */
+const EVENT_KEY = "ls_sub_777_subscription_created_2026-08-01T10_00_00_000000Z".replace(/[^a-zA-Z0-9_-]/g, "_");
 
 /** Request como el que manda LS: cuerpo crudo + header X-Signature. */
 const req = (body: unknown, signature?: string) => {
@@ -122,11 +130,26 @@ describe("POST /api/webhooks/lemonsqueezy", () => {
   });
 
   it("evento repetido (reintento de LS) → no lo re-aplica", async () => {
-    createIfAbsent.mockResolvedValue(false); // ya estaba registrado
+    createIfAbsent.mockResolvedValue(false);      // ya estaba registrado…
+    docs[`webhookEvents/${EVENT_KEY}`] = { estado: "aplicado" }; // …y CERRADO
     const res = await POST(req(payload()));
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ duplicate: true });
     expect(setDocument).not.toHaveBeenCalled();
+  });
+
+  it("reintento de un evento que quedó a MEDIAS → sí lo re-aplica", async () => {
+    /* La marca nace `pendiente` y solo pasa a `aplicado` DESPUÉS de escribir la
+     * suscripción. Antes se marcaba primero: si la escritura fallaba, el
+     * reintento de LS entraba por `duplicate` y la suscripción no se escribía
+     * nunca — el cliente pagaba y se quedaba sin plan, sin alerta ni pendiente.
+     * Una marca `pendiente` es justamente la prueba de que el intento anterior
+     * murió a mitad de camino. */
+    createIfAbsent.mockResolvedValue(false);
+    docs[`webhookEvents/${EVENT_KEY}`] = { estado: "pendiente" };
+    const res = await POST(req(payload()));
+    expect(res.status).toBe(200);
+    expect(setDocument).toHaveBeenCalled();
   });
 
   it("variante NO mapeada → ignora sin activar (no regala un plan)", async () => {
@@ -144,17 +167,26 @@ describe("POST /api/webhooks/lemonsqueezy", () => {
   });
 
   it("impago → deja el plan pero marca past_due (pasa a solo lectura)", async () => {
-    const res = await POST(req(payload({ meta: { event_name: "subscription_payment_failed", custom_data: { clinic_id: "cl_aura", novudent_token: TOKEN_OK } } })));
+    const p = payload({ meta: { event_name: "subscription_payment_failed", custom_data: { clinic_id: "cl_aura", novudent_token: TOKEN_OK } } });
+    p.data.attributes.status = "past_due"; // el estado real viaja acá, no en el nombre del evento
+    const res = await POST(req(p));
     expect(res.status).toBe(200);
     const [, doc] = setDocument.mock.calls[0] as unknown as [string, Record<string, unknown>];
     expect(doc).toMatchObject({ plan: "clinica", status: "past_due" });
   });
 
   it("cancelación y vencimiento se registran", async () => {
-    for (const [evento, esperado] of [["subscription_cancelled", "canceled"], ["subscription_expired", "expired"]] as const) {
+    for (const [evento, lsStatus, esperado] of [
+      ["subscription_cancelled", "cancelled", "canceled"],
+      ["subscription_expired", "expired", "expired"],
+      // El que costaba plata: LS manda `updated` también al cancelar.
+      ["subscription_updated", "cancelled", "canceled"],
+    ] as const) {
       vi.clearAllMocks();
       createIfAbsent.mockResolvedValue(true);
-      await POST(req(payload({ meta: { event_name: evento, custom_data: { clinic_id: "cl_aura", novudent_token: TOKEN_OK } } })));
+      const p = payload({ meta: { event_name: evento, custom_data: { clinic_id: "cl_aura", novudent_token: TOKEN_OK } } });
+      p.data.attributes.status = lsStatus;
+      await POST(req(p));
       const [, doc] = setDocument.mock.calls[0] as unknown as [string, Record<string, unknown>];
       expect(doc.status).toBe(esperado);
     }

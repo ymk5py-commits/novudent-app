@@ -32,23 +32,79 @@ export function verifyLsSignature(rawBody: string, signature: string, secret: st
   return timingSafeEqual(a, b);
 }
 
-/** Evento de LS → estado de nuestra suscripción. `null` = evento que ignoramos. */
-export function statusFromLsEvent(evento: string): SubscriptionStatus | null {
+/** Eventos de LS que aplicamos. El resto se ignora (order_created, etc.). */
+const EVENTOS_APLICABLES: readonly string[] = [
+  "subscription_created",
+  "subscription_updated",
+  "subscription_resumed",
+  "subscription_unpaused",
+  "subscription_paused",
+  "subscription_cancelled",
+  "subscription_expired",
+  "subscription_payment_success",
+  "subscription_payment_failed",
+  "subscription_payment_recovered",
+  "subscription_payment_refunded",
+];
+
+/** `data.attributes.status` de LS → nuestro estado. Esta es la fuente de verdad. */
+const STATUS_LS: Record<string, SubscriptionStatus> = {
+  on_trial: "trialing",
+  active: "active",
+  past_due: "past_due",
+  cancelled: "canceled",
+  canceled: "canceled",
+  unpaid: "expired",
+  expired: "expired",
+  paused: "expired", // pausar el cobro no puede seguir habilitando escritura
+};
+
+/**
+ * Evento de LS → estado de nuestra suscripción. `null` = evento que ignoramos.
+ *
+ * ⚠️ EL NOMBRE DEL EVENTO NO ES EL ESTADO. Lemon Squeezy dispara
+ * `subscription_updated` en TODOS los cambios del ciclo de vida —incluidos la
+ * cancelación y el impago— y no garantiza el orden de entrega respecto de
+ * `subscription_cancelled`/`subscription_expired`. Mapear el nombre a "active",
+ * como se hacía antes, convertía el corte a solo-lectura en una carrera: la
+ * clínica cancelaba, llegaba `subscription_cancelled` (cortaba bien) y el
+ * `subscription_updated` del MISMO cambio la volvía a activar. Y una clínica en
+ * `past_due` seguía escribiendo durante las ~2 semanas de reintentos de cobro,
+ * porque su `renews_at` todavía apuntaba al futuro.
+ *
+ * Por eso el estado sale de `attributes.status` y el evento solo decide SI
+ * procesamos. `attrStatus` es opcional para no romper llamadas viejas, pero el
+ * webhook siempre lo pasa; sin él caemos a un mapeo conservador por evento.
+ */
+export function statusFromLsEvent(
+  evento: string,
+  attrStatus?: string | null
+): SubscriptionStatus | null {
+  if (!EVENTOS_APLICABLES.includes(evento)) return null;
+
+  const porAtributo = attrStatus ? STATUS_LS[String(attrStatus).toLowerCase()] : undefined;
+  if (porAtributo) return porAtributo;
+
+  /* Sin `attributes.status` utilizable. Conservador: los eventos ambiguos
+   * (`updated`, refund) NO activan; solo confirmamos lo que el nombre del
+   * evento afirma sin ambigüedad. */
   switch (evento) {
     case "subscription_created":
     case "subscription_resumed":
     case "subscription_unpaused":
     case "subscription_payment_success":
-    case "subscription_updated":
+    case "subscription_payment_recovered":
       return "active";
     case "subscription_payment_failed":
       return "past_due";
+    case "subscription_payment_refunded":
+    case "subscription_paused":
     case "subscription_cancelled":
       return "canceled";
     case "subscription_expired":
       return "expired";
     default:
-      return null;
+      return null; // `subscription_updated` sin status: no se aplica nada
   }
 }
 
@@ -178,24 +234,40 @@ export function subscriptionFromLsPayload(
   clinicIdResuelto?: string,
 ): Subscription | null {
   const evento = payload?.meta?.event_name;
-  const status = statusFromLsEvent(evento);
+  const attrs = payload?.data?.attributes ?? {};
+  const status = statusFromLsEvent(evento, attrs.status);
   if (!status) return null;
 
   const clinicId = clinicIdResuelto ?? payload?.meta?.custom_data?.clinic_id;
   if (!clinicId || typeof clinicId !== "string") return null;
 
-  const attrs = payload?.data?.attributes ?? {};
   const variantId = attrs.variant_id != null ? String(attrs.variant_id) : "";
   const plan = variantPlans[variantId];
   if (!plan) return null;
 
-  const renewsAt = attrs.renews_at ? Date.parse(attrs.renews_at) : NaN;
+  /* FIN DEL PERÍODO. `ends_at` es lo que manda cuando la suscripción está por
+   * terminar (cancelada con período pago corriendo); si no, vale `renews_at`.
+   *
+   * Que esto quede `undefined` es grave, no cosmético: `setDocument` es un PATCH
+   * sin updateMask, así que un `undefined` BORRA el `currentPeriodEndMs` que ya
+   * estaba guardado, y una suscripción `active` sin fecha no puede vencer nunca
+   * — ni para `isSubscriptionActive()` ni para `subActive()` en las reglas. Era
+   * el producto gratis para siempre. Por eso el webhook conserva el valor previo
+   * cuando el payload no trae ninguna fecha utilizable. */
+  const fin = [attrs.ends_at, attrs.renews_at]
+    .map((s: unknown) => (typeof s === "string" ? Date.parse(s) : NaN))
+    .find((n: number) => Number.isFinite(n));
+
+  /* Marca de tiempo del CAMBIO en LS (no la nuestra): con esto el webhook
+   * descarta payloads rancios que lleguen fuera de orden. */
+  const lsUpdatedAtMs = typeof attrs.updated_at === "string" ? Date.parse(attrs.updated_at) : NaN;
 
   return {
     clinicId,
     plan,
     status,
-    currentPeriodEndMs: Number.isFinite(renewsAt) ? renewsAt : undefined,
+    currentPeriodEndMs: fin,
+    lsUpdatedAtMs: Number.isFinite(lsUpdatedAtMs) ? lsUpdatedAtMs : undefined,
     provider: "lemonsqueezy",
     lsSubscriptionId: payload?.data?.id != null ? String(payload.data.id) : undefined,
     lsCustomerId: attrs.customer_id != null ? String(attrs.customer_id) : undefined,

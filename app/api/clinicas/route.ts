@@ -156,7 +156,41 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     });
 
-    // 5) usuario admin + directorio global PRIMERO: si el alta falla a mitad,
+    /* 5) SUSCRIPCIÓN EN PRUEBA — el paso que arranca el reloj del cobro.
+     *
+     * Sin este documento la clínica queda gratis PARA SIEMPRE: `isSubscriptionActive`
+     * devuelve true cuando no hay suscripción (lib/subscription.ts) y firestore.rules
+     * hace lo mismo con `!exists(subPath(cid))`. Ese grandfathering se escribió para
+     * no dejar en solo-lectura a las clínicas que ya existían cuando se agregó el
+     * cobro — pero se aplicaba igual a las nuevas, que son justamente las que hay
+     * que cobrar. Una clínica se daba de alta, trabajaba meses y nada la cortaba.
+     *
+     * Creándolo acá, el grandfathering vuelve a significar lo que decía: solo las
+     * anteriores al cobro. Y el resto de la maquinaria empieza a funcionar sola —
+     * el aviso de vencimiento y el corte a solo-lectura ya estaban escritos y
+     * esperaban un documento que nunca llegaba.
+     *
+     * VA ACÁ, PEGADO A LA CLÍNICA, no al final. Estaba último "para no dejar una
+     * suscripción apuntando a una clínica a medio crear", pero ese razonamiento
+     * está al revés del riesgo: son ~6 escrituras sin transacción, y si fallaba
+     * cualquiera de las de abajo quedaba una clínica operativa SIN suscripción —
+     * o sea, en el estado del grandfathering: gratis para siempre, sin trial que
+     * venza, sin banner y sin corte. Encima el reintento del dueño chocaba
+     * contra `existingDir` y devolvía 409, así que el agujero no se cerraba
+     * nunca y nada avisaba. Una suscripción huérfana, en cambio, no habilita
+     * nada: sin doc de clínica no hay a qué entrar. */
+    const finPrueba = Date.now() + TRIAL_DIAS * 24 * 60 * 60 * 1000;
+    await setDocument(`subscriptions/${clinicId}`, {
+      clinicId,
+      plan,
+      status: "trialing",
+      currentPeriodEndMs: finPrueba,
+      provider: "manual",
+      updatedAt: new Date().toISOString(),
+      updatedBy: "alta:panel-dueño",
+    });
+
+    // 6) usuario admin + directorio global PRIMERO: si el alta falla a mitad,
     // un reintento con el mismo email detecta la clínica a medias vía
     // `existingDir` (paso 2) y no crea una clínica huérfana duplicada.
     await setDocument(`clinics/${clinicId}/users/${uid}`, {
@@ -172,37 +206,11 @@ export async function POST(req: NextRequest) {
     });
     await setDocument(`directory/${uid}`, { clinicId, email: adminEmail });
 
-    // 6) aranceles de arranque (el admin los ajusta en Configuración)
+    // 7) aranceles de arranque (el admin los ajusta en Configuración)
     for (const pr of buildSeed().procedures) {
       await setDocument(`clinics/${clinicId}/procedures/${pr.cpt}`, pr as unknown as Record<string, unknown>);
     }
 
-    /* 7) SUSCRIPCIÓN EN PRUEBA — el paso que arranca el reloj del cobro.
-     *
-     * Sin este documento la clínica queda gratis PARA SIEMPRE: `isSubscriptionActive`
-     * devuelve true cuando no hay suscripción (lib/subscription.ts) y firestore.rules
-     * hace lo mismo con `!exists(subPath(cid))`. Ese grandfathering se escribió para
-     * no dejar en solo-lectura a las clínicas que ya existían cuando se agregó el
-     * cobro — pero se aplicaba igual a las nuevas, que son justamente las que hay
-     * que cobrar. Una clínica se daba de alta, trabajaba meses y nada la cortaba.
-     *
-     * Creándolo acá, el grandfathering vuelve a significar lo que decía: solo las
-     * anteriores al cobro. Y el resto de la maquinaria empieza a funcionar sola —
-     * el aviso de vencimiento y el corte a solo-lectura ya estaban escritos y
-     * esperaban un documento que nunca llegaba.
-     *
-     * Va al final a propósito: si algo de arriba falla, no queda una suscripción
-     * apuntando a una clínica a medio crear. */
-    const finPrueba = Date.now() + TRIAL_DIAS * 24 * 60 * 60 * 1000;
-    await setDocument(`subscriptions/${clinicId}`, {
-      clinicId,
-      plan,
-      status: "trialing",
-      currentPeriodEndMs: finPrueba,
-      provider: "manual",
-      updatedAt: new Date().toISOString(),
-      updatedBy: "alta:panel-dueño",
-    });
 
     return NextResponse.json({
       ok: true,

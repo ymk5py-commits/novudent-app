@@ -74,6 +74,10 @@ export interface Subscription {
    *  directo en firestore.rules con `request.time.toMillis()`. */
   currentPeriodEndMs?: number;
   provider?: "lemonsqueezy" | "manual";
+  /** `attributes.updated_at` del payload, en epoch ms. Lemon Squeezy no
+   *  garantiza el orden de entrega: con esto descartamos un webhook rancio que
+   *  llegue después de uno más nuevo y reviva un estado ya superado. */
+  lsUpdatedAtMs?: number;
   /** Ids de Lemon Squeezy para conciliar y para el portal del cliente */
   lsSubscriptionId?: string;
   lsCustomerId?: string;

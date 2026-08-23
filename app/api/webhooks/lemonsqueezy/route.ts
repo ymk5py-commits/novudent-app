@@ -18,7 +18,7 @@ import { verifyLsSignature, subscriptionFromLsPayload, tokenDePayload, puedeApli
 import { isValidToken, isValidId } from "@/lib/server/ids";
 import { isSubscriptionActive } from "@/lib/subscription";
 import type { Subscription } from "@/lib/types";
-import { setDocument, getDocument, createIfAbsent, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
+import { setDocument, getDocument, createIfAbsent, patchFields, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
@@ -124,16 +124,57 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, rejected: true });
     }
 
-    // Idempotencia: si el evento ya se procesó, createIfAbsent devuelve false.
-    const nuevo = await createIfAbsent(`webhookEvents/${eventKey(payload)}`, {
+    /* ORDEN DE ENTREGA. LS no garantiza que los webhooks lleguen ordenados: un
+     * `subscription_updated` viejo puede aterrizar después de la cancelación y
+     * revivirla. Si el que tenemos guardado es MÁS NUEVO, este no se aplica. */
+    if (
+      typeof sub.lsUpdatedAtMs === "number" &&
+      typeof actual?.lsUpdatedAtMs === "number" &&
+      sub.lsUpdatedAtMs < actual.lsUpdatedAtMs
+    ) {
+      console.warn(`[LS] payload rancio para ${sub.clinicId} — ignorado`);
+      return NextResponse.json({ ok: true, stale: true });
+    }
+
+    /* IDEMPOTENCIA EN DOS TIEMPOS: se reserva el evento, se aplica, se confirma.
+     *
+     * Antes se marcaba el evento como procesado ANTES de escribir la
+     * suscripción. Si esa escritura fallaba (Firestore transitorio, token del
+     * usuario de servicio, red), devolvíamos 500 para que LS reintentara — pero
+     * el reintento entraba por `duplicate` y la suscripción no se escribía
+     * nunca. El cliente pagaba y se quedaba sin plan, y en una renovación era
+     * peor: el `currentPeriodEndMs` no avanzaba y la clínica al día caía a
+     * solo-lectura. Sin alerta ni reintento pendiente.
+     *
+     * Ahora la marca nace `pendiente`. Un reintento sobre una marca `pendiente`
+     * NO es un duplicado: es la prueba de que el intento anterior murió a mitad
+     * de camino, y se vuelve a aplicar. Solo `aplicado` corta. */
+    const evKey = `webhookEvents/${eventKey(payload)}`;
+    const nuevo = await createIfAbsent(evKey, {
       provider: "lemonsqueezy",
       clinicId: sub.clinicId,
       event: payload?.meta?.event_name ?? "",
       receivedAt: new Date().toISOString(),
+      estado: "pendiente",
     });
-    if (!nuevo) return NextResponse.json({ ok: true, duplicate: true });
+    if (!nuevo) {
+      const previo = (await getDocument(evKey).catch(() => null)) as Record<string, unknown> | null;
+      if (previo?.estado === "aplicado") return NextResponse.json({ ok: true, duplicate: true });
+      console.warn(`[LS] reintento de un evento que quedó a medias — se reaplica: ${evKey}`);
+    }
 
-    await setDocument(`subscriptions/${sub.clinicId}`, sub as unknown as Record<string, unknown>);
+    /* NUNCA dejar la suscripción sin fecha de fin. Si el payload no trae una
+     * utilizable, se conserva la que ya estaba: una `active` sin
+     * `currentPeriodEndMs` no puede vencer y equivale a producto gratis. */
+    const aGuardar: Subscription =
+      sub.currentPeriodEndMs == null && typeof actual?.currentPeriodEndMs === "number"
+        ? { ...sub, currentPeriodEndMs: actual.currentPeriodEndMs }
+        : sub;
+
+    await setDocument(`subscriptions/${sub.clinicId}`, aGuardar as unknown as Record<string, unknown>);
+    // Recién ahora el evento queda cerrado. Si esto falla, el reintento de LS
+    // reaplica la MISMA suscripción: idéntica, así que es inofensivo.
+    await patchFields(evKey, { estado: "aplicado", appliedAt: new Date().toISOString() });
     console.log(`[LS] ${payload?.meta?.event_name} → ${sub.clinicId} = ${sub.plan}/${sub.status}`);
     return NextResponse.json({ ok: true });
   } catch (e) {

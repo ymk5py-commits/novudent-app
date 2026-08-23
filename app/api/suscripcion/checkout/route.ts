@@ -60,6 +60,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "No pudimos identificar tu clínica." }, { status: 400 });
   }
 
+  /* MISMO RBAC QUE LA PANTALLA. La página de suscripción exige
+   * `can(role,"practice.config")` (solo admin), pero la ruta resolvía la clínica
+   * únicamente por `directory/{uid}` y emitía el token — sin mirar el rol ni si
+   * el usuario sigue activo. Y `directory/{uid}` NO se borra al dar de baja a un
+   * empleado, así que la cuenta de un despedido seguía sirviendo.
+   *
+   * Con ese token, un asistente o un ex-empleado podía pagar el plan más barato:
+   * si la clínica todavía está en el trial del alta, cuenta como primera compra,
+   * la degrada a Solo y ata la suscripción a la cuenta de Lemon Squeezy del
+   * atacante — que después la cancela desde el portal y la deja en solo-lectura.
+   * Es el ataque de los $45 que el token cerró para desconocidos, reabierto para
+   * cualquiera que alguna vez tuvo login en la clínica. */
+  const miembro = (await getDocument(`clinics/${clinicId}/users/${user.uid}`).catch(() => null)) as
+    | { role?: string; active?: boolean } | null;
+  if (!miembro || miembro.active === false || miembro.role !== "admin") {
+    return NextResponse.json(
+      { ok: false, error: "Solo un administrador de la clínica puede contratar o cambiar el plan." },
+      { status: 403 },
+    );
+  }
+
   /* Token que ata este checkout a ESTA clínica.
    *
    * El clinic_id viaja como parámetro de la URL de LS, a la vista del comprador

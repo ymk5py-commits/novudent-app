@@ -12,7 +12,16 @@ import { Card, Btn, Field, inputCls, Empty } from "@/components/ui";
 
 export function RecibirPagoTab({ patient }: { patient: Patient }) {
   const { db, session, addPayment } = useStore();
-  const canPay = session ? can(session.role, "billing.reports") || can(session.role, "emr.write") : false;
+  /* El permiso correcto es `payments.manage` (admin | asistente), el mismo que
+   * usan las reglas de Firestore (`isStaff`) para dejar escribir en `payments`.
+   *
+   * Antes acá decía `billing.reports || emr.write`, que da admin | DENTISTA —
+   * justo al revés de quien cobra. Mientras las reglas desplegadas eran las
+   * abiertas nadie lo notó; desde que rigen las de verdad, el dentista ve el
+   * formulario, cobra, y le salta el aviso de que no se pudo guardar, mientras
+   * la recepción —que es quien cobra en el mostrador— lee "tu rol no registra
+   * pagos". Con esto la UI y el servidor vuelven a decir lo mismo. */
+  const canPay = session ? can(session.role, "payments.manage") : false;
   const pagables = db.budgets.filter((b) => b.patientId === patient.id && budgetBalance(b, db.payments) > 0);
   const conCuotas = db.budgets.filter((b) => b.patientId === patient.id && (b.schedule?.length ?? 0) > 0);
 

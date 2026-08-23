@@ -148,8 +148,13 @@ service cloud.firestore {
       // Un admin solo puede crear la entrada de un uid que YA es usuario de su
       // clínica (el users/{uid} se escribe antes), y solo si no existe — no
       // puede sembrar/envenenar el routing de un uid ajeno o aún no provisto.
+      // La demo queda EXCLUIDA como destino: `cl_demo` se escribe sin sesión, así
+      // que ser "admin de la demo" es gratis — cualquiera se planta su propio
+      // users/{uid} con rol admin ahí y desde esa silla sembraba el ruteo de un
+      // uid ajeno hacia la demo. Ninguna cuenta real se rutea a la demo jamás.
       allow create: if isService()
-        || (isAdmin(request.resource.data.clinicId)
+        || (request.resource.data.clinicId != 'cl_demo'
+            && isAdmin(request.resource.data.clinicId)
             && !exists(/databases/$(database)/documents/directory/$(uid))
             && exists(/databases/$(database)/documents/clinics/$(request.resource.data.clinicId)/users/$(uid)));
       allow update, delete: if isService();
@@ -236,7 +241,19 @@ service cloud.firestore {
         // Lectura SIEMPRE, aunque la suscripción esté vencida: son historias
         // clínicas y la clínica tiene que poder consultarlas y exportarlas.
         allow read: if isMember(cid) || isService() || isDemo(cid);
-        allow create, delete: if canWrite(cid);
+        /* El blindaje de campos clínicos vive en `update` (más abajo), y por eso
+         * `create`/`delete` no podían quedar en "cualquier miembro": el asistente
+         * leía la ficha, la BORRABA y la volvía a crear con el `emr` y el
+         * odontograma que quisiera. El resultado es indistinguible de un guardado
+         * legítimo porque los datos personales se conservan. Además el `delete`
+         * suelto es destrucción de historia clínica, que tiene retención legal —
+         * y en la interfaz ni siquiera existe salvo en Fusión de fichas, que es
+         * solo para el admin. */
+        allow create: if isService() || isDemo(cid)
+          || (isMember(cid) && subActive(cid)
+              && (isClinical(cid)
+                  || !request.resource.data.keys().hasAny(patientClinicalFields())));
+        allow delete: if isService() || isDemo(cid) || (isAdmin(cid) && subActive(cid));
         // Escritura: suscripción vigente + el RBAC de EMR (el asistente no toca
         // los campos clínicos; ver patientClinicalFields()).
         allow update: if isService() || isDemo(cid)
@@ -256,7 +273,10 @@ service cloud.firestore {
       }
       match /procedures/{docId}  {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
-        allow write: if canWrite(cid);
+                /* practice.config = solo admin. El precio del catálogo define lo que se
+           le cobra al paciente y lo que entra en cada presupuesto: no puede
+           cambiarlo cualquier miembro. */
+        allow write: if (isAdmin(cid) && subActive(cid)) || isService() || isDemo(cid);
       }
       match /budgets/{docId}     {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
@@ -284,9 +304,14 @@ service cloud.firestore {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
         allow write: if canWrite(cid);
       }
+      /* Cola de salida hacia Botika. CADA doc que entra acá lo materializa y lo
+         ENVÍA el cron de Botika: son mensajes de WhatsApp que paga el dueño del
+         SaaS. `integraciones` es feature de Clínica+, la UI lo bloquea, pero la
+         regla decía `canWrite` (solo suscripción) — así que un cliente de $45
+         disparaba envíos por SDK sin pasar por la UI. */
       match /outbox/{docId}      {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
-        allow write: if canWrite(cid);
+        allow write: if canWritePremium(cid, ['clinica', 'cadena']);
       }
       // Lock atómico de slots de reserva online (lo crea el service user).
       match /slotLocks/{docId}   {
@@ -301,13 +326,20 @@ service cloud.firestore {
       // Análisis IA de radiografías (lo escriben miembros y el service user)
       match /radiographs/{docId} {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
-        allow write: if canWritePremium(cid, ['clinica','cadena']);
+                /* + isClinical: una radiografía y sus hallazgos son ficha clínica. Sin
+           esto el asistente podía fabricar hallazgos y BORRAR imágenes, que la
+           interfaz le prohíbe con emr.write. */
+        allow write: if canWritePremium(cid, ['clinica','cadena']) && (isClinical(cid) || isService() || isDemo(cid));
       }
       // Firma electrónica de consentimientos. La firma remota (página pública
       // /firmar) la escribe el service user vía /api/firmar → cubierta por isService().
       match /signatures/{sid} {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
-        allow write: if canWritePremium(cid, ['clinica','cadena']);
+                /* Consentimientos: los maneja el staff (admin|asistente), no el dentista.
+           Y el BORRADO se cierra: una firma electrónica emitida es prueba legal;
+           por SDK cualquiera podía eliminarla y en la interfaz eso no existe. */
+        allow create, update: if canWritePremium(cid, ['clinica','cadena']) && (isStaff(cid) || isService() || isDemo(cid));
+        allow delete: if isService() || isDemo(cid);
       }
       // Módulos de paridad Dentalink (CRM, Laboratorios, Liquidaciones, Box/Sillones)
       match /crmCards/{docId}    {
@@ -341,12 +373,21 @@ service cloud.firestore {
       // Documentos fiscales: boletas emitidas / devoluciones
       match /fiscalDocs/{docId} {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
-        allow write: if canWrite(cid);
+                /* Boletas y devoluciones: las emite el staff. El dentista podía emitir
+           devoluciones y borrar boletas. Un documento fiscal se anula, no se
+           borra: el delete queda para el admin. */
+        allow create, update: if (isStaff(cid) && subActive(cid)) || isService() || isDemo(cid);
+        allow delete: if isAdmin(cid) || isService() || isDemo(cid);
       }
       // Sesiones de caja: apertura/cierre con arqueo
       match /cashSessions/{docId} {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
-        allow write: if canWrite(cid);
+                /* isStaff, igual que payments: el dentista no maneja dinero. Podía cerrar
+           el arqueo de la recepción declarando 0 contado, que es justo el control
+           que detecta faltantes. */
+        // `caja` es feature de Clínica+ (la UI ya lo bloquea): además de rol, plan.
+        allow write: if (isStaff(cid) && subActive(cid) && effectivePlan(cid) in ['clinica', 'cadena'])
+                        || isService() || isDemo(cid);
       }
       // Ciclos de esterilización de instrumental (cumplimiento)
       match /sterilizationCycles/{docId} {

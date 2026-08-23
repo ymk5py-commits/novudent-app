@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
+import { requireFeature } from "@/lib/server/require-feature";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 
 /**
@@ -30,6 +31,17 @@ export async function POST(req: NextRequest) {
   // anónimas (demo). Por-IP frena la rotación que multiplicaría la cuota de Gemini.
   const _rlIp = rateLimit(`ia-ip:${clientIp(req)}`, { limit: 40, windowMs: 60_000 });
   if (!_rlIp.ok) return tooManyRequests(_rlIp.retryAfterSec);
+
+  /* MEMBRESÍA + SUSCRIPCIÓN + PLAN. `verifyIdToken` solo prueba que el token es
+   * de una cuenta real del proyecto; como el registro por email está abierto,
+   * eso lo cumple cualquier desconocido. Esto exige además ser miembro activo de
+   * una clínica al día cuyo plan incluya la función, ANTES de gastar Gemini. */
+  try {
+    await requireFeature(_user.uid, "ia");
+  } catch (e) {
+    const status = e instanceof AuthError ? e.status : 403;
+    return NextResponse.json({ ok: false, error: e instanceof AuthError ? e.message : "No autorizado" }, { status });
+  }
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
