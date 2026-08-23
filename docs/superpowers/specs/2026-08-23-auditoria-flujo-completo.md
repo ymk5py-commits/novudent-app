@@ -6,8 +6,8 @@ no por dónde vive el código.
 
 - **Frentes:** sesión/identidad · escalada de privilegios · superficie pública ·
   aislamiento multi-clínica · cobro y suscripciones.
-- **Suites al terminar:** 401 vitest + 88 reglas, todo en verde.
-- **Reglas publicadas** en el proyecto real (versión de las 12:00 del 23-ago).
+- **Suites al terminar:** 401 vitest + 89 reglas, todo en verde.
+- **Reglas publicadas** en el proyecto real (23-ago; última versión con la demo cerrada a escritura sin sesión).
 - **Dato que cambia el cálculo:** el proyecto ya está en **Blaze**. Todo lo que
   quema Gemini es factura, no cuota gratis.
 
@@ -201,7 +201,8 @@ baja la sesión se cierra sola.
 | `serviceAccounts`, `checkoutTokens`, `directory` | **403** |
 | Suscripción de una clínica real | **403** |
 | Escritura en una clínica real sin autenticar | **403** |
-| Demo (`cl_demo`) lectura y escritura | **200** — sigue funcionando |
+| Demo (`cl_demo`) lectura sin sesión | **200** — sigue funcionando |
+| Demo (`cl_demo`) escritura sin sesión | **403** — cerrado (ver 3.1) |
 | Rutas `/api/ia/*` sin token | **401** |
 | App y `/login` | **200** |
 
@@ -215,28 +216,46 @@ registrada sin clínica no lee nada y **no puede auto-inscribirse**.
 
 ## 3. Lo que queda abierto
 
-### 3.1 · La demo se escribe sin autenticar — decisión pendiente
-`firestore.rules` — `isDemo(cid)` no llama a `isSignedIn()`.
+### 3.1 · ~~La demo se escribe sin autenticar~~ — CERRADO
 
-`clinics/cl_demo/**` es legible y escribible desde internet sin credenciales. Es
-**a propósito**: es lo que hace que la demo de ventas funcione sin cuenta, y hoy
-la autenticación anónima está desactivada, así que exigir sesión la rompería.
+`clinics/cl_demo/**` era escribible por cualquiera en internet con la apiKey web
+(que va en el bundle). Servía para vandalizar lo que se le muestra a un cliente
+y, sobre todo, para quemar la cuota del **mismo** proyecto Firebase que usan las
+clínicas reales — que factura, porque el proyecto está en Blaze.
 
-Ya no se puede usar para secuestrar un login (1.5) ni para rutear cuentas ajenas
-(1.10). Lo que queda: alguien puede vandalizarla, y puede **quemar cuota del
-mismo proyecto** que usan las clínicas reales. En Blaze eso es factura.
+Exigir sesión a secas no servía: la demo existe justamente para que un prospecto
+entre **sin cuenta**. La división quedó por operación:
 
-Tres salidas, de mejor a peor:
+- **Leer** `cl_demo` sigue sin pedir credenciales. Son datos de ejemplo
+  publicados a propósito, y así la pantalla de ingreso lista los perfiles de la
+  demo sin abrir ninguna sesión.
+- **Escribir** exige sesión (`isDemoRW`). Al entrar a la demo el cliente abre una
+  sesión **anónima** (`signInAnonymousIfNeeded`), con el proveedor Anónimo
+  habilitado en el proyecto y la **limpieza automática a 30 días** activada.
 
-1. **Una cuenta de demo dedicada** (`demo@novudent.app`) con contraseña en el
-   bundle, y `isDemo` exigiendo `isSignedIn()`. Una cuenta en vez de 213
-   anónimas, y la contraseña se puede rotar si abusan. Requiere que vos o Carlos
-   creen esa cuenta — yo no creo cuentas.
-2. Reactivar la autenticación anónima y llamarla **solo** en el camino de la
-   demo (ya no se dispara sola: eso era el bug de `ensureAuth`).
-3. Dejarlo como está y monitorear el gasto.
+Sobre el `signInAnonymously` que se había sacado del arranque: no se repuso ahí.
+El daño de aquel era que corría en **cada** carga fría, antes de que Firebase
+terminara de restaurar la sesión, y le pisaba la sesión real al usuario — quedaba
+sin ser miembro de ninguna clínica y el store descartaba las escrituras en
+silencio ("entro y no guarda"). Este corre tarde y solo cuando alguien entra
+explícitamente a la demo: espera `authStateReady()` y, si ya hay sesión, no toca
+nada.
 
-**Recomiendo la 1.** Es un paso manual de un minuto y cierra el tema.
+Verificado en producción:
+
+| Prueba | Resultado |
+|---|---|
+| Leer la demo **sin sesión** | 200 |
+| Escribir la demo **sin sesión** | **403** |
+| Borrar el doc raíz de la demo sin sesión | **403** |
+| Escribir la demo **con sesión anónima** | 200 |
+| Escribir una clínica real con sesión anónima | **403** |
+| Demo de punta a punta (entrar, cobrar, borrar el cobro) | funciona |
+
+La suite de reglas quedó con un par de tests que se cuidan mutuamente: sin sesión
+no se escribe **ninguna** colección de la demo, y con sesión se escriben
+**todas** — que cerrar el agujero no rompa la demo de ventas, que es para lo que
+existe.
 
 ### 3.2 · Pendientes de Carlos (no son código)
 
