@@ -25,8 +25,12 @@
  * 2. El contador que subía de 0. Mismo origen: si no disparaba, la franja se
  *    quedaba mostrando "0 piezas FDI con morfología real" — un dato FALSO en la
  *    cara de quien está evaluando comprar. El número importa, no su llegada.
+ *
+ * La capa de motion actual (sv-rise/sv-drift/sv-view/sv-draw, ver globals.css)
+ * respeta ese contrato: TODO es CSS puro o progressive enhancement con fallback
+ * estático — si una animación no corre, el contenido se ve igual.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 /* Trazo unificado en 1.75 en toda la landing: el 2 por defecto de lucide pesaba
    demasiado al lado de un display en Jost 200 — los iconos gritaban más que los
@@ -83,14 +87,16 @@ function Marca({ className = "", dot = "text-sv-mint" }: { className?: string; d
   );
 }
 
-/** Cabecera de sección: etiqueta · claim · marca, con la línea fina abajo. */
+/** Cabecera de sección: etiqueta · claim · marca, con la línea fina abajo.
+ *  La línea es un elemento propio (no border-b) para poder dibujarse al
+ *  entrar en viewport (sv-draw); sin soporte se ve entera, igual que antes. */
 function BarraSeccion({ label }: { label: string }) {
   return (
     /* Los tres textos van en `sv-muted`, no en `sv-ink/30-45`. La referencia los
        tiene grises y discretos, pero bajarles la opacidad los dejaba en ~2.6:1
        sobre el papel: ilegibles con reflejo o en una pantalla mala. `sv-muted`
        existe justo para esto — se ve igual de discreto y pasa AA. */
-    <div className="mb-12 border-b border-sv-line pb-3">
+    <div className="mb-12 pb-3">
       <div className="flex items-baseline justify-between gap-4">
         <span className="font-logo text-sm font-medium uppercase tracking-[0.2em] text-sv-muted">{label}</span>
         <span className="hidden font-logo text-sm font-light tracking-wide text-sv-muted md:block">
@@ -98,23 +104,25 @@ function BarraSeccion({ label }: { label: string }) {
         </span>
         <Marca className="text-sm text-sv-muted" dot="text-sv-mintInk" />
       </div>
+      <div className="sv-draw mt-3 h-px w-full bg-sv-line" />
     </div>
   );
 }
 
-/** Píldora navy con círculo menta a la derecha. El CTA de la referencia. */
+/** Píldora navy con círculo menta a la derecha. El CTA de la referencia.
+ *  `btn-shine` agrega el barrido de brillo al hover (CSS puro, ver globals). */
 function PildoraCTA({ href, children, tone = "dark" }: { href: string; children: React.ReactNode; tone?: "dark" | "light" }) {
   const oscuro = tone === "dark";
   return (
     <a
       href={href}
-      className={`group inline-flex items-center gap-3 rounded-full py-2 pl-6 pr-2 text-[15px] font-medium transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sv-mintInk ${
+      className={`btn-shine group inline-flex items-center gap-3 rounded-full py-2 pl-6 pr-2 text-[15px] font-medium transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-12px_rgba(47,227,174,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sv-mintInk ${
         oscuro ? "bg-sv-ink text-white" : "bg-white text-sv-ink"
       }`}
     >
       {children}
       <span className="grid h-9 w-9 place-items-center rounded-full bg-sv-mint text-sv-ink">
-        <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" strokeWidth={1.75} />
+        <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" strokeWidth={1.75} />
       </span>
     </a>
   );
@@ -129,52 +137,92 @@ function PildoraCTA({ href, children, tone = "dark" }: { href: string; children:
  *  `aria-hidden` porque es puramente decorativo. */
 function DiscosFlotantes() {
   /* posición X/Y en %, tamaño en rem y giro: la curva se define acá y no en el
-     JSX, así se puede afinar sin tocar el markup. */
+      JSX, así se puede afinar sin tocar el markup. `t`/`d` = duración y delay
+      de la deriva propia de cada disco (sv-drift en globals.css). */
   const discos = [
-    { x: 3, y: 14, s: 15, r: -20, o: 0.55 },
-    { x: 15, y: 44, s: 9, r: -13, o: 0.4 },
-    { x: 28, y: 68, s: 6.5, r: -5, o: 0.34 },
-    { x: 45, y: 78, s: 7.5, r: 5, o: 0.36 },
-    { x: 63, y: 66, s: 11, r: 13, o: 0.42 },
-    { x: 80, y: 42, s: 17, r: 20, o: 0.5 },
-    { x: 95, y: 15, s: 21, r: 26, o: 0.55 },
+    { x: 3, y: 14, s: 15, r: -20, o: 0.55, t: 13, d: 0 },
+    { x: 15, y: 44, s: 9, r: -13, o: 0.4, t: 10, d: 1.2 },
+    { x: 28, y: 68, s: 6.5, r: -5, o: 0.34, t: 8.5, d: 0.6 },
+    { x: 45, y: 78, s: 7.5, r: 5, o: 0.36, t: 11, d: 2 },
+    { x: 63, y: 66, s: 11, r: 13, o: 0.42, t: 9.5, d: 0.3 },
+    { x: 80, y: 42, s: 17, r: 20, o: 0.5, t: 12.5, d: 1.6 },
+    { x: 95, y: 15, s: 21, r: 26, o: 0.55, t: 14, d: 0.9 },
   ];
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      {discos.map((d, i) => (
-        <span
-          key={i}
-          className="absolute rounded-[50%]"
-          style={{
-            left: `${d.x}%`,
-            top: `${d.y}%`,
-            /* clamp y no rem fijo: en 375px un disco de 21rem medía 336px y se
-               comía la pantalla entera. Así escalan con el viewport y en móvil
-               quedan de fondo, que es su lugar. */
-            width: `clamp(${(d.s * 0.38).toFixed(2)}rem, ${(d.s * 1.9).toFixed(1)}vw, ${d.s}rem)`,
-            height: `clamp(${(d.s * 0.59).toFixed(2)}rem, ${(d.s * 2.95).toFixed(1)}vw, ${d.s * 1.55}rem)`,
-            opacity: d.o,
-            transform: `translate(-50%,-50%) rotate(${d.r}deg)`,
-            /* Aro nítido + relleno casi vacío = lente, no mancha. El relleno con
-               dos paradas apenas visibles evita el "globo" plano; el brillo vive
-               en el borde, como en la referencia. */
-            border: "1px solid rgba(160,220,255,0.38)",
-            background:
-              "linear-gradient(145deg, rgba(47,227,174,0.07) 0%, rgba(64,92,240,0.05) 55%, rgba(255,255,255,0) 100%)",
-            boxShadow: "inset 0 0 28px rgba(120,190,255,0.10)",
-          }}
-        />
-      ))}
+      <DiscosParallax>
+        {discos.map((d, i) => (
+          <span
+            key={i}
+            className="sv-drift absolute rounded-[50%]"
+            style={{
+              left: `${d.x}%`,
+              top: `${d.y}%`,
+              /* clamp y no rem fijo: en 375px un disco de 21rem medía 336px y se
+                 comía la pantalla entera. Así escalan con el viewport y en móvil
+                 quedan de fondo, que es su lugar. */
+              width: `clamp(${(d.s * 0.38).toFixed(2)}rem, ${(d.s * 1.9).toFixed(1)}vw, ${d.s}rem)`,
+              height: `clamp(${(d.s * 0.59).toFixed(2)}rem, ${(d.s * 2.95).toFixed(1)}vw, ${d.s * 1.55}rem)`,
+              opacity: d.o,
+              transform: `translate(-50%,-50%) rotate(${d.r}deg)`,
+              ["--drift-t" as string]: `${d.t}s`,
+              ["--drift-d" as string]: `${d.d}s`,
+              /* Aro nítido + relleno casi vacío = lente, no mancha. El relleno con
+                 dos paradas apenas visibles evita el "globo" plano; el brillo vive
+                 en el borde, como en la referencia. */
+              border: "1px solid rgba(160,220,255,0.38)",
+              background:
+                "linear-gradient(145deg, rgba(47,227,174,0.07) 0%, rgba(64,92,240,0.05) 55%, rgba(255,255,255,0) 100%)",
+              boxShadow: "inset 0 0 28px rgba(120,190,255,0.10)",
+            }}
+          />
+        ))}
+      </DiscosParallax>
     </div>
   );
 }
 
-/** Numeral gigante ultra-fino con la regla menta debajo. */
+/** Parallax de puntero sobre los discos — capa aparte para no pelear con la
+ *  transform propia de cada aro (el contenedor es el que se mueve).
+ *  Mejora progresiva pura: solo punteros finos (mouse), sin reduced-motion,
+ *  desplazamiento mínimo (±9px) y rAF-throttle. Si algo falla, no se nota. */
+function DiscosParallax({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof window.matchMedia !== "function") return;
+    if (!window.matchMedia("(pointer: fine)").matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    const onMove = (e: MouseEvent) => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const nx = e.clientX / window.innerWidth - 0.5; // -0.5..0.5
+        const ny = e.clientY / window.innerHeight - 0.5;
+        el.style.transform = `translate(${(-nx * 18).toFixed(1)}px, ${(-ny * 12).toFixed(1)}px)`;
+      });
+    };
+    window.addEventListener("mousemove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+  return (
+    <div ref={ref} className="absolute inset-0 transition-transform duration-300 ease-out will-change-transform">
+      {children}
+    </div>
+  );
+}
+
+/** Numeral gigante ultra-fino con la regla menta debajo (se dibuja al entrar). */
 function Numeral({ n, className = "" }: { n: string; className?: string }) {
   return (
     <div className={className}>
       <div className="font-logo text-[4.5rem] font-extralight leading-none tracking-tight text-sv-ink sm:text-[5.5rem]">{n}</div>
-      <div className="sv-rule mt-3 w-14" />
+      <div className="sv-draw sv-rule mt-3 w-14" />
     </div>
   );
 }
@@ -215,28 +263,37 @@ export default function Landing() {
       <section className="sv-mesh sv-grain relative overflow-hidden pt-28 sm:pt-36">
         <DiscosFlotantes />
         <div className="relative z-10 mx-auto max-w-6xl px-5 pb-40 sm:pb-52">
-          {/* píldoras de contexto, arriba a la derecha como en la referencia */}
+          {/* píldoras de contexto, arriba a la derecha como en la referencia.
+              Coreografía de carga: cada pieza entra con su delay (sv-fade +
+              animationDelay inline). CSS puro: si la animación no corre, todo
+              queda visible en su lugar. */}
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <span className="rounded-full border border-white/25 px-4 py-1.5 text-[13px] font-light text-white/75">
+            <span className="sv-fade rounded-full border border-white/25 px-4 py-1.5 text-[13px] font-light text-white/75" style={{ animationDelay: "0.15s" }}>
               Software odontológico · Paraguay
             </span>
-            <span className="rounded-full border border-white/25 px-4 py-1.5 text-[13px] font-light text-white/75">
+            <span className="sv-fade rounded-full border border-white/25 px-4 py-1.5 text-[13px] font-light text-white/75" style={{ animationDelay: "0.3s" }}>
               Respondemos en menos de 24 h
             </span>
           </div>
 
+          {/* Titular por líneas con máscara: cada línea sube desde abajo de su
+              propio overflow-hidden, escalonado — el gesto de entrada de la
+              referencia, hecho sin JS. */}
           <h1 className="mt-16 max-w-5xl font-logo text-[3rem] font-extralight leading-[0.98] tracking-[-0.02em] text-white sm:mt-24 sm:text-[5rem] lg:text-[6.5rem]">
-            La clínica entera,
-            <br />
-            en <span className="text-sv-mint">una sola pantalla</span>.
+            <span className="sv-mask-line" style={{ animationDelay: "0.1s" }}><span>La clínica entera,</span></span>
+            <span className="sv-mask-line" style={{ animationDelay: "0.28s" }}><span>
+              en <span className="text-sv-mint">una sola pantalla</span>.
+            </span></span>
           </h1>
 
           <div className="mt-10 flex flex-wrap items-end justify-between gap-8">
-            <p className="max-w-lg text-lg font-light leading-relaxed text-white/65">
+            <p className="sv-fade max-w-lg text-lg font-light leading-relaxed text-white/65" style={{ animationDelay: "0.55s" }}>
               Agenda, odontograma por superficies, ficha clínica y facturación con
               estados. Esto que ves abajo <b className="font-medium text-white">es el producto real</b> — tocalo.
             </p>
-            <PildoraCTA href={appHref}>{session ? "Ir al panel" : "Solicitar acceso"}</PildoraCTA>
+            <div className="sv-fade" style={{ animationDelay: "0.7s" }}>
+              <PildoraCTA href={appHref}>{session ? "Ir al panel" : "Solicitar acceso"}</PildoraCTA>
+            </div>
           </div>
         </div>
       </section>
@@ -247,9 +304,14 @@ export default function Landing() {
           {/* Sin barra de navegador falsa (puntitos semáforo + píldora de URL):
               es de los tells más reconocibles de página generada, y la referencia
               no la usa en ninguna página. El odontograma es real y se sostiene
-              solo; el epígrafe dice de qué se trata mejor que una URL de mentira. */}
-          <figure className="m-0">
-            <div className="overflow-hidden rounded-[1.75rem] bg-white p-4 shadow-[0_32px_80px_-32px_rgba(10,18,64,0.55)] sm:p-7">
+              solo; el epígrafe dice de qué se trata mejor que una URL de mentira.
+              El beam menta orbitando el marco señala EL punto de la página: acá
+              se toca el producto (se apaga con reduced-motion). */}
+          <figure className="relative m-0">
+            <div className="relative overflow-hidden rounded-[1.75rem] bg-white p-4 shadow-[0_32px_80px_-32px_rgba(10,18,64,0.55)] sm:p-7">
+              {/* beam menta orbitando el marco de la tarjeta (no del figure: el
+                  epígrafe va fuera). overflow-hidden lo recorta al radio. */}
+              <div className="border-beam-mint absolute inset-0 z-10 rounded-[1.75rem]" aria-hidden />
               <ShowcaseBoard
                 value={demoTeeth}
                 editable
@@ -279,7 +341,7 @@ export default function Landing() {
             { v: "06", l: "estados de facturación auditados" },
             { v: "03", l: "roles con permisos estrictos" },
           ].map((x) => (
-            <div key={x.l}>
+            <div key={x.l} className="sv-view">
               <Numeral n={x.v} />
               <p className="mt-4 max-w-[170px] text-[15px] font-light leading-snug text-sv-muted">{x.l}</p>
             </div>
@@ -325,19 +387,20 @@ export default function Landing() {
               {CAPACIDADES.map((c, i) => (
                 <div
                   key={c.n}
-                  className={`group grid grid-cols-12 items-baseline gap-x-5 gap-y-2 px-6 py-7 transition-colors hover:bg-sv-paper2 sm:px-8 ${
+                  className={`lp-row group grid grid-cols-12 items-baseline gap-x-5 gap-y-2 px-6 py-7 transition-colors duration-300 hover:bg-sv-paper2 sm:px-8 ${
                     i > 0 ? "border-t border-sv-line/70" : ""
                   }`}
                 >
                   <div className="col-span-2 sm:col-span-1">
                     <span className="font-logo text-lg font-extralight text-sv-mintInk">{c.n}</span>
+                    <span className="lp-num-rule mt-1 hidden sm:block" />
                   </div>
                   <div className="col-span-10 sm:col-span-5">
-                    <h3 className="font-logo text-[1.4rem] font-light leading-snug text-sv-ink">
+                    <h3 className="font-logo text-[1.4rem] font-light leading-snug text-sv-ink transition-transform duration-300 ease-out group-hover:translate-x-1.5">
                       {c.t}
                     </h3>
                   </div>
-                  <div className="col-span-12 text-[15px] font-light leading-relaxed text-sv-muted sm:col-span-6">
+                  <div className="col-span-12 text-[15px] font-light leading-relaxed text-sv-muted transition-colors duration-300 group-hover:text-sv-ink/80 sm:col-span-6">
                     {c.d}
                   </div>
                 </div>
@@ -426,7 +489,7 @@ export default function Landing() {
               ),
             },
           ].map((paso) => (
-            <div key={paso.n} className="grid items-start gap-10 lg:grid-cols-12">
+            <div key={paso.n} className="sv-view grid items-start gap-10 lg:grid-cols-12">
               <div className="lg:col-span-5">
                 {/* pestaña navy de la referencia */}
                 <div className="inline-flex items-center gap-3 rounded-xl bg-sv-ink py-2.5 pl-2.5 pr-5">
@@ -437,7 +500,7 @@ export default function Landing() {
                 <p className="mt-5 max-w-md text-[15px] font-light leading-relaxed text-sv-muted">{paso.d}</p>
               </div>
               <div className="lg:col-span-7">
-                <div className="rounded-[1.5rem] bg-white p-6 sm:p-7">{paso.card}</div>
+                <div className="card-3d rounded-[1.5rem] bg-white p-6 sm:p-7">{paso.card}</div>
               </div>
             </div>
           ))}
@@ -535,7 +598,7 @@ export default function Landing() {
                   { q: "¿Quién crea los usuarios?", a: "Solo el administrador de la clínica, desde Configuración. Cada usuario entra con su email y contraseña, con los permisos de su rol." },
                   { q: "¿Cómo empiezo?", a: "Pedís tu acceso desde el formulario de acá abajo. Te contactamos dentro de las 24 horas hábiles, te mostramos el sistema funcionando y te abrimos la cuenta con 30 días de prueba. Migramos tus datos sin costo." },
                 ].map((f, i) => (
-                  <details key={f.q} className={`group ${i > 0 ? "border-t border-sv-line/70" : ""}`}>
+                  <details key={f.q} className={`lp-faq group ${i > 0 ? "border-t border-sv-line/70" : ""}`}>
                     <summary className="flex cursor-pointer list-none items-center gap-5 px-6 py-5 transition-colors hover:bg-sv-paper2 sm:px-8 [&::-webkit-details-marker]:hidden">
                       <span className="font-logo text-[15px] font-extralight text-sv-mintInk">{String(i + 1).padStart(2, "0")}</span>
                       <h3 className="flex-1 font-logo text-[1.15rem] font-light text-sv-ink">{f.q}</h3>
@@ -543,7 +606,7 @@ export default function Landing() {
                         <Plus className="h-4 w-4 text-sv-ink transition-transform duration-300 group-open:rotate-45" strokeWidth={1.75} />
                       </span>
                     </summary>
-                    <p className="px-6 pb-6 pl-[3.6rem] text-[15px] font-light leading-relaxed text-sv-muted sm:px-8 sm:pl-[4.4rem]">{f.a}</p>
+                    <p className="lp-faq-a px-6 pb-6 pl-[3.6rem] text-[15px] font-light leading-relaxed text-sv-muted sm:px-8 sm:pl-[4.4rem]">{f.a}</p>
                   </details>
                 ))}
               </div>
@@ -554,8 +617,10 @@ export default function Landing() {
 
       {/* ===== CIERRE: navy con la marca gigante detrás, como la contratapa ===== */}
       <section id="acceso" className="sv-mesh sv-grain relative scroll-mt-20 overflow-hidden">
-        {/* marca fantasma de fondo — el recurso de la contratapa de la referencia */}
-        <span aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-logo text-[26vw] font-extralight leading-none tracking-tight text-white/[0.045]">
+        {/* marca fantasma de fondo — el recurso de la contratapa de la referencia.
+            sv-ghost le da una contra-parallax sutil al scrollear (solo con
+            soporte nativo; sin él queda centrada, como siempre). */}
+        <span aria-hidden className="sv-ghost pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-logo text-[26vw] font-extralight leading-none tracking-tight text-white/[0.045]">
           NOVUdent
         </span>
         <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-12 px-5 py-20 sm:py-28 lg:grid-cols-12">

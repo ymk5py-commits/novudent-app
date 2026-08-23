@@ -143,6 +143,151 @@ html.motion-fallback [style*="opacity:0"] {
 /* Regla fina bajo los numerales grandes — la firma de la referencia. */
 .sv-rule { height: 3px; background: #2FE3AE; border-radius: 2px; }
 
+/* ===================================================================
+   LANDING — capa de motion (4ª pasada de diseño)
+   Reglas de oro, aprendidas a costo de producción:
+   · NADA depende de IntersectionObserver ni de framer-motion para VERSE:
+     si una animación no corre, el contenido queda en su estado natural
+     (visible). Las animaciones son cosméticas o de carga pura (CSS).
+   · Lo que depende de scroll usa `animation-timeline: view()` dentro de
+     @supports: donde no existe soporte, el elemento se ve estático y listo.
+   · Todo respeta prefers-reduced-motion.
+   =================================================================== */
+
+/* --- Coreografía de entrada del hero (solo carga, sin observers) --- */
+@keyframes sv-rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: none; }
+}
+/* Líneas del titular suben desde detrás de su propia máscara */
+@keyframes sv-line-up {
+  from { transform: translateY(110%); }
+  to   { transform: none; }
+}
+.sv-mask-line { display: block; overflow: hidden; }
+.sv-mask-line > span {
+  display: block;
+  will-change: transform;
+  animation: sv-line-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.sv-fade {
+  opacity: 0;
+  animation: sv-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* --- Discos del hero: deriva lenta, cada uno con su propio ritmo --- */
+@keyframes sv-drift {
+  from { translate: 0 0;    rotate: 0deg; }
+  to   { translate: 0 -26px; rotate: 6deg; }
+}
+.sv-drift {
+  animation: sv-drift var(--drift-t, 11s) ease-in-out var(--drift-d, 0s) infinite alternate;
+  will-change: transform;
+}
+
+/* --- Trazos que se dibujan al entrar en viewport ---
+   Solo con soporte nativo de scroll-driven animations; sin soporte, la regla
+   se ve entera desde siempre (fallback = estado final). */
+@keyframes sv-draw-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.sv-draw { transform-origin: left center; }
+@supports (animation-timeline: view()) {
+  .sv-draw {
+    animation: sv-draw-x 1 linear both;
+    animation-timeline: view();
+    animation-range: entry 5% cover 30%;
+  }
+}
+
+/* --- Aparición suave ligada a scroll (mismo contrato: fallback visible) --- */
+@keyframes sv-view-in {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: none; }
+}
+@supports (animation-timeline: view()) {
+  .sv-view {
+    animation: sv-view-in 1 linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 32%;
+  }
+}
+
+/* Marca fantasma del cierre: contra-parallax sutil */
+@keyframes sv-ghost-drift { from { transform: translate(-50%, -34%); } to { transform: translate(-50%, -66%); } }
+@supports (animation-timeline: view()) {
+  .sv-ghost {
+    animation: sv-ghost-drift 1 linear both;
+    animation-timeline: view();
+    animation-range: cover 0% cover 100%;
+  }
+}
+
+/* --- Beam menta alrededor de la ventana de producto --- */
+@property --beam-mint-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.border-beam-mint {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--beam-mint-angle),
+    transparent 0 72%,
+    rgba(47, 227, 174, 0.55) 84%,
+    #2FE3AE 90%,
+    rgba(47, 227, 174, 0.45) 96%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  animation: beam-mint-spin 9s linear infinite;
+  pointer-events: none;
+}
+@keyframes beam-mint-spin { to { --beam-mint-angle: 360deg; } }
+
+/* --- Micro-interacciones de secciones claras --- */
+/* Filas de capacidades: la línea inferior crece y el número gana su regla menta */
+.lp-row { position: relative; }
+.lp-row::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 1px;
+  width: 100%;
+  background: #2FE3AE;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lp-row:hover::after { transform: scaleX(1); }
+.lp-row .lp-num-rule {
+  display: block;
+  height: 2px;
+  width: 0;
+  background: #2FE3AE;
+  border-radius: 2px;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lp-row:hover .lp-num-rule { width: 100%; }
+
+/* FAQ: el cuerpo entra con un deslizar corto cuando el details abre */
+details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* El marquee se detiene al pasar el puntero: invita a mirar el diente */
+.lp-marquee:hover { animation-play-state: paused; }
+
+/* Scroll suave solo para anclas, y solo si no hay preferencia de menos motion */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+/* Reduced-motion: apagar TODA la capa de motion de la landing */
+@media (prefers-reduced-motion: reduce) {
+  .sv-drift, .border-beam-mint, .lp-marquee { animation: none !important; }
+  .sv-fade, .sv-mask-line > span { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+
 /* ===== Profundidad 3D + glass (dashboard moderno) ===== */
 /* Tarjeta con elevación al hover — la sombra azure le da el matiz 3D */
 .card-3d {
