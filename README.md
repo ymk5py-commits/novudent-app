@@ -32,8 +32,10 @@ en el código (`lib/firebase.ts`) porque es pública por diseño, así que el lo
 funcionan de entrada. Lo que necesita envs son las funciones de servidor (IA, email,
 cobro), que **degradan con un mensaje claro** en vez de romper.
 
-Para probar sin cuenta: **`/login` → "Ver demo" → elegí un usuario**. La clínica demo
-(`cl_demo`) se auto-siembra con datos de ejemplo.
+Para probar sin cuenta: **`/login?demo=1` → "Ver demo" → elegí un usuario**. Desde el 11/8 la
+pestaña de demo no aparece en `/login` a secas (el acceso público es el pedido de acceso); sigue
+viva con `?demo=1` para mostrarla en ventas. La clínica demo (`cl_demo`) se auto-siembra con
+datos de ejemplo.
 
 ---
 
@@ -77,7 +79,37 @@ falta, esa función responde 503 con un mensaje entendible.
 npx tsc --noEmit     # tipos
 npx vitest run       # unitarios (helpers puros + motor del odontograma)
 npm run test:rules   # Security Rules contra el emulador de Firestore
+npm run build && npm run test:e2e   # E2E con Playwright (escritorio + celular)
 ```
+
+### E2E (`e2e/`, Playwright)
+
+Corren contra la app **compilada** (`next start`, como en producción) y **cortan la red hacia
+Firebase** en cada prueba: la app trabaja con su fallback de `localStorage` y la demo sembrada. Son
+deterministas, no necesitan credenciales y **nunca tocan la base de producción ni su cuota**. Cada
+prueba falla si el navegador registra una excepción o un `console.error` real.
+
+| Archivo | Qué cubre |
+|---|---|
+| `landing.spec.ts` | hero, SEO, odontograma interactivo, precios, preguntas, formulario (con `/api/contacto` interceptado: no se manda nada real) |
+| `paginas-publicas.spec.ts` | páginas de venta, 404, `robots.txt`, `sitemap.xml` |
+| `acceso.spec.ts` | login, demo por `?demo=1`, redirección sin sesión, logout que borra el caché de pacientes |
+| `app-paginas.spec.ts` | las 23 pantallas de la app cargan sin errores |
+| `flujos.spec.ts` | dar una cita, alta de paciente, presentar/aceptar presupuesto, registrar pago, cierre de caja, pestañas de la ficha |
+| `roles.spec.ts` | matriz RBAC: qué ve y qué no el dentista y la asistente |
+| `planes.spec.ts` | gating del plan Solo y el cambio de contraseña obligatorio |
+| `publicas-con-token.spec.ts` | reservar, firmar, pagar, encuestas, videoconsulta con tokens inválidos |
+| `api.spec.ts` | rutas del servidor sin credenciales: validaciones, trampa para bots, límite de 5/h, mensajes sin trazas |
+| `visual.spec.ts` | `@visual`: capturas de referencia de la landing y el login (no corren en la CI) |
+
+```bash
+npx playwright test --project=celular      # un solo proyecto
+npx playwright test --grep @visual         # solo las capturas
+npx playwright test --grep @visual --update-snapshots   # aceptar un cambio visual buscado
+npx playwright show-report                 # reporte con trazas y capturas de lo que falló
+```
+
+Las pruebas marcadas `test.fixme` documentan bugs conocidos: pasan a correr cuando se arreglan.
 
 **`test:rules` necesita Java** (lo usa el emulador). En macOS con Homebrew:
 
@@ -89,9 +121,9 @@ Estos tests son la red de seguridad más importante del proyecto: **las reglas s
 única frontera de autorización real** (ver `ARCHITECTURE.md` §4). Cubren aislamiento
 entre clínicas, RBAC por rol, cobro y planes.
 
-**Antes de mergear a `main`:**
+**Antes de mergear a `main`** (la CI de GitHub corre lo mismo en cada PR):
 ```bash
-npx tsc --noEmit && npx vitest run && npm run build
+npx tsc --noEmit && npx vitest run && npm run build && npm run test:e2e
 ```
 
 ---
@@ -109,6 +141,7 @@ lib/               store.tsx (estado global) · types.ts (modelo) · helpers pur
   server/          auth · firestore-rest (usuario de servicio) · rate-limit
 firestore.rules    ⚠️ la frontera de seguridad real
 test/              tests de reglas (node:test + emulador)
+e2e/               E2E con Playwright (ver «Tests»)
 ```
 
 ---

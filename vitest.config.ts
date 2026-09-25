@@ -10,7 +10,7 @@ export default defineConfig({
   test: {
     // Solo los unit tests de vitest (.test.ts). El test de reglas
     // (test/firestore-rules.test.mjs) usa node:test + el emulador de Firestore
-    // y se corre aparte con `npm run test:rules`. Los qa-*.mjs son Playwright.
+    // y se corre aparte con `npm run test:rules`. Los qa-*.mjs y e2e/ son Playwright.
     //
     // components/odontogram-engine/ (motor vendorizado, React-Odontogram-Modul)
     // trae su propio suite de ~800 tests que asume un harness jsdom + testing-library
