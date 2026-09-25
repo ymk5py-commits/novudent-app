@@ -5,7 +5,7 @@ import { test, expect } from "./soporte";
    diferencia. Si el cambio es buscado:  npx playwright test --grep @visual --update-snapshots
    No corren en la CI todavía: las fuentes del sistema cambian entre máquinas y darían falsas alarmas. */
 test.describe("@visual", () => {
-  test.use({ reducedMotion: "reduce" });
+  test.use({ contextOptions: { reducedMotion: "reduce" } });
 
   const listo = async (page: import("@playwright/test").Page) => {
     await page.evaluate(() => document.fonts.ready);
