@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Open_Sans, Jost, JetBrains_Mono } from "next/font/google";
+import { Open_Sans, Jost, JetBrains_Mono, Inter } from "next/font/google";
 import { StoreProvider } from "@/lib/store";
 import HydrationGuard from "@/components/HydrationGuard";
 import Consentimiento from "@/components/landing/Consentimiento";
@@ -25,6 +25,7 @@ const openSans = Open_Sans({ subsets: ["latin"], weight: ["300", "400", "600", "
    con la humanista del panel rompía el aire. El 200 es el que hace el display
    ultra-fino de los titulares grandes. */
 const jost = Jost({ subsets: ["latin"], weight: ["200", "300", "400", "500", "600", "700"], variable: "--font-jost", display: "swap" });
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-inter", display: "swap" });
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-jbmono", display: "swap" });
 
 export const metadata: Metadata = {
@@ -72,7 +73,7 @@ const MOTION_FALLBACK_BOOT = `window.__novudentMotionTimer=setTimeout(function()
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${openSans.variable} ${jost.variable} ${mono.variable}`}>
+    <html lang="es" className={`${openSans.variable} ${jost.variable} ${mono.variable} ${inter.variable}`}>
       <body className="font-sans">
         <script dangerouslySetInnerHTML={{ __html: MOTION_FALLBACK_BOOT }} />
         <HydrationGuard />

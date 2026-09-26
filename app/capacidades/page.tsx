@@ -20,8 +20,8 @@ export default function CapacidadesPage() {
       <ol className="divide-y divide-lp-rule border-y border-lp-rule">
         {CAPACIDADES.map((c) => (
           <li key={c.n} className="grid gap-x-6 gap-y-1 py-6 sm:grid-cols-12">
-            <span className="font-mono text-[13px] font-medium text-lp-accentink sm:col-span-1">{c.n}</span>
-            <h2 className="font-logo text-[20px] font-bold leading-snug text-lp-ink sm:col-span-4">{c.t}</h2>
+            <span className="text-[14px] font-semibold text-lp-primary sm:col-span-1">{c.n}</span>
+            <h2 className="text-[20px] font-semibold leading-snug text-lp-ink sm:col-span-4">{c.t}</h2>
             <p className="text-[15px] leading-relaxed text-lp-muted sm:col-span-7">{c.d}</p>
           </li>
         ))}

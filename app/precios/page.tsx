@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PaginaSeccion } from "@/components/landing/Chrome";
-import { SeccionPrecios } from "@/components/Landing";
+import { SeccionFaq, SeccionPrecios, TablaPlanes } from "@/components/Landing";
 import { SITE_URL } from "@/lib/site";
 import { PLANES, gs } from "@/lib/landing/precios";
 
@@ -31,11 +31,28 @@ export default function PreciosPage() {
     <PaginaSeccion
       activa="/precios"
       etiqueta="Precios"
-      titulo="Un precio claro por clínica, en guaraníes."
+      titulo="Planes y precios en guaraníes, según el tamaño de tu clínica"
       intro="Todos los planes incluyen agenda, ficha clínica, odontograma por superficies y presupuestos. El precio depende de cuántos profesionales atienden; la puesta en marcha incluye la migración de tus datos."
     >
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <SeccionPrecios />
+
+      <section className="mt-20 sm:mt-28" aria-labelledby="titulo-tabla">
+        <div className="mx-auto mb-8 max-w-2xl text-center">
+          <p className="mb-3 text-[13px] font-semibold uppercase tracking-[0.08em] text-lp-primary">Comparar planes</p>
+          <h2 id="titulo-tabla" className="text-[clamp(1.8rem,3.6vw,2.4rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-lp-ink">
+            Todo lo que incluye cada plan
+          </h2>
+        </div>
+        <TablaPlanes />
+      </section>
+
+      <section className="mx-auto mt-20 max-w-3xl sm:mt-28" aria-labelledby="titulo-faq-precios">
+        <h2 id="titulo-faq-precios" className="mb-8 text-center text-[clamp(1.8rem,3.6vw,2.4rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-lp-ink">
+          Preguntas frecuentes
+        </h2>
+        <SeccionFaq />
+      </section>
     </PaginaSeccion>
   );
 }

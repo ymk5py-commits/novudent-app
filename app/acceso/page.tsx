@@ -15,17 +15,17 @@ export const metadata: Metadata = {
  *  distracciones — nav, formulario, garantías, footer. */
 export default function AccesoPage() {
   return (
-    <div className="lp-root min-h-dvh font-sans text-[16px] leading-relaxed">
+    <div className="lp-root min-h-dvh font-lp text-[16px] leading-relaxed">
       <NavLanding />
 
       <main className="mx-auto grid max-w-6xl gap-10 px-4 pb-20 pt-32 sm:px-6 sm:pt-40 lg:grid-cols-12 lg:gap-12">
         <div className="lg:col-span-5">
-          <nav aria-label="Ruta" className="mb-6 flex items-center gap-2 font-mono text-[12px] font-medium uppercase tracking-[0.14em] text-lp-muted">
+          <nav aria-label="Ruta" className="mb-6 flex items-center gap-2 text-[13px] font-medium text-lp-muted">
             <Link href="/" className="transition-colors hover:text-lp-ink">Inicio</Link>
             <span aria-hidden>/</span>
             <span className="text-lp-ink">Demo</span>
           </nav>
-          <h1 className="font-logo text-[clamp(2.25rem,5.2vw,3.75rem)] font-bold leading-[1.05] tracking-[-0.02em] text-lp-ink">
+          <h1 className="text-[clamp(2.25rem,5.2vw,3.75rem)] font-bold leading-[1.05] tracking-[-0.02em] text-lp-ink">
             Empecemos con tu clínica.
           </h1>
           <p className="mt-6 max-w-md text-[18px] leading-relaxed text-lp-muted">
@@ -38,7 +38,7 @@ export default function AccesoPage() {
               "Capacitación para todo el equipo",
             ].map((t) => (
               <li key={t} className="flex items-start gap-2.5 text-[15px] text-lp-ink">
-                <Check className="mt-1 h-4 w-4 shrink-0 text-lp-accentink" strokeWidth={2} aria-hidden /> {t}
+                <Check className="mt-1 h-4 w-4 shrink-0 text-lp-primary" strokeWidth={2} aria-hidden /> {t}
               </li>
             ))}
           </ul>

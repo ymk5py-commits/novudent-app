@@ -17,7 +17,7 @@ import { X } from "lucide-react";
 import { abrirPreferencias, alAbrirPreferencias, guardarConsentimiento, leerConsentimiento } from "@/lib/consentimiento";
 
 const boton =
-  "inline-flex min-h-[44px] flex-1 basis-[7.5rem] items-center justify-center whitespace-nowrap rounded-full border border-lp-ink px-5 text-[15px] font-semibold text-lp-ink transition-colors duration-150 hover:bg-lp-ink hover:text-lp-onink";
+  "inline-flex min-h-[44px] flex-1 basis-[7.5rem] items-center justify-center whitespace-nowrap rounded-[var(--lp-radius-btn)] border border-lp-primary px-5 text-[15px] font-semibold text-lp-primary transition-colors duration-150 hover:bg-lp-primarywash";
 
 export default function Consentimiento() {
   const [aviso, setAviso] = useState(false);
@@ -50,9 +50,9 @@ export default function Consentimiento() {
       {aviso && (
         <section
           aria-label="Aviso de cookies"
-          className="lp-capa fixed inset-x-3 bottom-3 z-[500] rounded-[var(--lp-radius-card)] border border-lp-rule bg-lp-paper p-5 font-sans text-lp-ink [box-shadow:var(--lp-shadow-float)] sm:left-auto sm:right-4 sm:max-w-md"
+          className="lp-capa fixed inset-x-3 bottom-3 z-[500] rounded-[var(--lp-radius-card)] border border-lp-rule bg-lp-paper p-5 font-lp text-lp-ink [box-shadow:var(--lp-shadow-float)] sm:left-auto sm:right-4 sm:max-w-md"
         >
-          <h2 className="font-logo text-[17px] font-bold">Cookies</h2>
+          <h2 className="text-[17px] font-bold">Cookies</h2>
           <p className="mt-1.5 text-[14px] leading-relaxed text-lp-muted">
             Usamos las necesarias para que el sitio funcione. Si aceptás, también analítica para saber qué páginas sirven.
             Más detalle en <Link href="/cookies" className="underline underline-offset-2 hover:text-lp-ink">cookies</Link>.
@@ -74,7 +74,7 @@ export default function Consentimiento() {
       <dialog
         ref={dialogo}
         aria-labelledby="cookies-titulo"
-        className="lp-capa w-[min(32rem,calc(100vw-2rem))] rounded-[var(--lp-radius-card)] border border-lp-rule bg-lp-paper p-0 font-sans text-lp-ink [box-shadow:var(--lp-shadow-float)] backdrop:bg-[var(--lp-scrim)]"
+        className="lp-capa w-[min(32rem,calc(100vw-2rem))] rounded-[var(--lp-radius-card)] border border-lp-rule bg-lp-paper p-0 font-lp text-lp-ink [box-shadow:var(--lp-shadow-float)] backdrop:bg-[var(--lp-scrim)]"
       >
         <form
           method="dialog"
@@ -85,7 +85,7 @@ export default function Consentimiento() {
           }}
         >
           <div className="flex items-start justify-between gap-4">
-            <h2 id="cookies-titulo" className="font-logo text-[20px] font-bold">Preferencias de cookies</h2>
+            <h2 id="cookies-titulo" className="text-[20px] font-bold">Preferencias de cookies</h2>
             <button
               type="button"
               aria-label="Cerrar"
@@ -137,7 +137,7 @@ export function BotonConfigurarCookies({ className = "" }: { className?: string 
     <button
       type="button"
       onClick={abrirPreferencias}
-      className={`inline-flex min-h-[44px] items-center whitespace-nowrap rounded-full border border-lp-ink px-5 text-[15px] font-semibold text-lp-ink transition-colors duration-150 hover:bg-lp-ink hover:text-lp-onink ${className}`}
+      className={`inline-flex min-h-[44px] items-center whitespace-nowrap rounded-[var(--lp-radius-btn)] border border-lp-primary px-5 text-[15px] font-semibold text-lp-primary transition-colors duration-150 hover:bg-lp-primarywash ${className}`}
     >
       Configurar cookies
     </button>

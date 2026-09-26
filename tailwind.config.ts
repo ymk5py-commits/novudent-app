@@ -52,6 +52,7 @@ const config: Config = {
           ink: "var(--lp-ink)", ink2: "var(--lp-ink-2)", onink: "var(--lp-on-ink)", oninkmuted: "var(--lp-on-ink-muted)",
           accent: "var(--lp-accent)", accentink: "var(--lp-accent-ink)", accentwash: "var(--lp-accent-wash)",
           focus: "var(--lp-focus)", alert: "var(--lp-alert)", alertwash: "var(--lp-alert-wash)",
+          primary: "var(--lp-primary)", primaryhover: "var(--lp-primary-hover)", primarywash: "var(--lp-primary-wash)", primarysoft: "var(--lp-primary-soft)",
         },
         state: {
           ok: "#0B7E57",
@@ -72,6 +73,8 @@ const config: Config = {
         // `logo` = Jost, para display de la landing y el logotipo del producto.
         logo: ["var(--font-jost)", "ui-sans-serif"],
         mono: ["var(--font-jbmono)", "ui-monospace"],
+        // `lp` = Inter, texto y títulos de la web pública.
+        lp: ["var(--font-inter)", "ui-sans-serif", "system-ui"],
       },
       boxShadow: {
         card: "0 1px 2px rgba(16,24,40,0.05), 0 1px 3px rgba(16,24,40,0.06)",

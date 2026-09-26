@@ -10,8 +10,8 @@ test.describe("Landing", () => {
     await expect(cta).toHaveAttribute("href", /\/acceso/);
   });
 
-  test("¿Cómo es tu clínica? lleva al formulario con el plan elegido", async ({ page }) => {
-    await page.getByRole("link", { name: /Somos un equipo/ }).click();
+  test("el botón de un plan lleva al formulario con ese plan elegido", async ({ page }) => {
+    await page.locator("#precios").getByRole("link", { name: /Pedir una demo del Plan Clínica/ }).click();
     await page.waitForURL("**/acceso?plan=clinica");
     await expect(page.locator('select[name="plan"]')).toHaveValue("clinica");
   });
@@ -20,11 +20,11 @@ test.describe("Landing", () => {
     const etapas = page.locator('article[id^="etapa-"]');
     await expect(etapas).toHaveCount(5);
     await expect(etapas.locator("h3")).toHaveText([
-      "Turnos que no se pierden",
-      "El hallazgo, en la pieza y en la superficie",
-      "Del presupuesto al cobro, sin planillas",
+      "Agendá, confirmá y llená los huecos de tu semana",
+      "Registrá todo el proceso clínico, pieza por pieza",
+      "Presupuestos claros y cobros en cuotas, sin planillas",
       "Pacientes que vuelven a la silla",
-      "Cada rol ve lo que le toca",
+      "Sabé qué pasa en cada área de tu clínica",
     ]);
   });
 
@@ -159,17 +159,11 @@ test.describe("Anchos de celular y tablet", () => {
   }
 });
 
-test("las tarjetas de vidrio del escenario no tapan ninguna pieza del odontograma", async ({ page }) => {
-  for (const ancho of [1024, 1280, 1366, 1440, 1920]) {
-    await page.setViewportSize({ width: ancho, height: 900 });
-    await page.goto("/");
-    const choques = await page.evaluate(() => {
-      const tarjetas = [...document.querySelectorAll("aside[aria-label^='Ejemplo']")].map((a) => a.getBoundingClientRect()).filter((r) => r.width > 0);
-      const piezas = [...document.querySelectorAll("button[aria-label^='Pieza']")].map((b) => ({ n: b.getAttribute("aria-label")!, r: b.getBoundingClientRect() }));
-      const cruza = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-      return { tarjetas: tarjetas.length, tapadas: piezas.filter((p) => tarjetas.some((t) => cruza(t, p.r))).map((p) => p.n) };
-    });
-    expect(choques.tarjetas, `${ancho}px: tarjetas visibles`).toBe(ancho >= 1280 ? 2 : 0);
-    expect(choques.tapadas, `${ancho}px`).toEqual([]);
-  }
+test("/precios compara los tres planes función por función", async ({ page }) => {
+  await page.goto("/precios");
+  const tabla = page.getByRole("table", { name: "Qué incluye cada plan" });
+  await expect(tabla).toBeVisible();
+  const fila = tabla.getByRole("row", { name: /CRM de pacientes/ });
+  await expect(fila.getByLabel("Incluido", { exact: true })).toHaveCount(1); // solo Multi
+  await expect(tabla.getByRole("row", { name: /Reservas online/ }).getByLabel("Incluido", { exact: true })).toHaveCount(3);
 });

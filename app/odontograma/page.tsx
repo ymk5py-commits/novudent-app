@@ -29,7 +29,7 @@ export default function OdontogramaPage() {
           { t: "Estados clínicos reales", d: "Caries, restaurado, corona, endodoncia, implante, extracción indicada y ausente — con el código de color del consultorio." },
         ].map((x) => (
           <div key={x.t} className="border-t border-lp-ink pt-4">
-            <h2 className="font-logo text-[20px] font-bold text-lp-ink">{x.t}</h2>
+            <h2 className="text-[20px] font-bold text-lp-ink">{x.t}</h2>
             <p className="mt-2 text-[15px] leading-relaxed text-lp-muted">{x.d}</p>
           </div>
         ))}

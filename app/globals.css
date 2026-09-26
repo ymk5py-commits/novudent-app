@@ -520,34 +520,47 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
   .print-area .print\:hidden { display: none !important; }
 }
 
-/* Hallmark · pre-emit critique: P4 H5 E4 S5 R5 V4
- * Hallmark · genre: modern-minimal · macrostructure: Narrative Workflow · tone: clínico y preciso
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V3
+ * Hallmark · genre: modern-minimal (blanco clínico, estructura de la referencia pedida por el dueño) · macrostructure: Narrative Workflow · tone: clínico y preciso
  * theme: studied-DNA (estructura de una landing pública del rubro, 2026-09-25) + marca Novudent (navy + menta)
  * paper oklch(98.4% 0.004 270) · ink oklch(21.2% 0.088 270) · accent oklch(51.6% 0.103 167) sobre claro, oklch(81.7% 0.158 167) sobre navy
- * display: Jost 700 · body: Open Sans 400 · label: JetBrains Mono 500 · nav: N5 floating pill · footer: Ft1 mast-headed
+ * display + body: Inter 600/400 · wordmark: Jost 300 · nav: barra fija clásica · footer: columnas
  * enrichment: none (el producto real) · audience: dueños de clínicas · action: pedir una demo · studied: yes
  *
  * Landing y páginas públicas. Todo color y medida de la landing sale de estos tokens (Tailwind los expone
  * como `lp-*`, ver tailwind.config.ts): nada de hex sueltos en los componentes. El panel (`/app`) no los usa. */
 :root {
-  --lp-surface: oklch(99.7% 0.002 270);    /* tarjetas de producto e inputs: un punto más claras que el papel */
-  --lp-paper: oklch(98.4% 0.004 270);
-  --lp-paper-2: oklch(96.2% 0.007 270);
-  --lp-paper-3: oklch(93.4% 0.01 270);
-  --lp-rule: oklch(89.5% 0.012 270);
-  --lp-rule-strong: oklch(80% 0.018 270);
-  --lp-neutral: oklch(56% 0.025 270);
-  --lp-muted: oklch(44% 0.035 270);
-  --lp-ink: oklch(21.2% 0.088 270);
-  --lp-ink-2: oklch(26.1% 0.103 271);
-  --lp-on-ink: oklch(97.5% 0.006 270);
-  --lp-on-ink-muted: oklch(80% 0.03 270);
-  --lp-accent: oklch(81.7% 0.158 167);      /* menta: solo sobre navy o en marcas chicas */
-  --lp-accent-ink: oklch(51.6% 0.103 167);  /* menta legible sobre claro (≈5:1) */
-  --lp-accent-wash: oklch(95.5% 0.03 167);
-  --lp-focus: oklch(51.6% 0.103 167);
-  --lp-alert: oklch(52% 0.19 27);           /* rojo clínico: patología pendiente, errores */
-  --lp-alert-wash: oklch(96.5% 0.022 27);
+  /* Marca Novudent en la web pública: blanco clínico, tinta navy y el turquesa de la app
+     como color de acción (el mismo `azure` del panel, para que la vidriera y el producto
+     se sientan una sola cosa). */
+  --lp-surface: #FFFFFF;
+  --lp-paper: #FFFFFF;
+  --lp-paper-2: #F5F8FB;
+  --lp-paper-3: #EAF1F6;
+  --lp-rule: #DCE4EC;
+  --lp-rule-strong: #B9C6D3;
+  --lp-neutral: #6B7A8F;
+  --lp-muted: #4B5870;
+  --lp-ink: #0F1F3D;
+  --lp-ink-2: #15294A;
+  --lp-on-ink: #FFFFFF;
+  --lp-on-ink-muted: #D6E6F2;
+
+  --lp-primary: #0D8199;       /* botones y enlaces principales (4.6:1 sobre blanco) */
+  --lp-primary-hover: #0B6B80;
+  --lp-primary-wash: #E7F6F9;
+  --lp-primary-soft: #C3E9F0;
+  --lp-band-from: #0B6B80;     /* franjas de color */
+  --lp-band-to: #14A6C0;
+
+  --lp-accent: #2FE3AE;        /* menta: detalle chico sobre tinta o sobre las franjas */
+  --lp-accent-ink: #0B7A5B;
+  --lp-accent-wash: #E3F8F0;
+  --lp-focus: #0D8199;
+  --lp-alert: #C81E1E;
+  --lp-alert-wash: #FDE8E8;
+  --lp-blob-a: #93D6E2;
+  --lp-blob-b: #B9F3DF;
 
   --lp-space-3xs: 0.125rem; --lp-space-2xs: 0.25rem; --lp-space-xs: 0.5rem; --lp-space-sm: 0.75rem;
   --lp-space-md: 1rem; --lp-space-lg: 1.5rem; --lp-space-xl: 2.5rem; --lp-space-2xl: 4rem;
@@ -558,21 +571,19 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
   --lp-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --lp-dur-micro: 120ms; --lp-dur-short: 220ms; --lp-dur-long: 420ms;
 
-  --lp-radius-input: 8px; --lp-radius-card: 12px; --lp-radius-pill: 999px;
+  --lp-radius-input: 8px; --lp-radius-btn: 8px; --lp-radius-card: 16px; --lp-radius-pill: 999px;
   --lp-z-raised: 10; --lp-z-sticky: 200; --lp-z-modal: 400; --lp-z-toast: 500;
 
-  --lp-shadow-whisper: 0 1px 2px oklch(21.2% 0.088 270 / 0.06);
-  --lp-shadow-float: 0 10px 28px -14px oklch(21.2% 0.088 270 / 0.28);
-  --lp-paper-glass: color-mix(in oklch, var(--lp-paper) 82%, transparent);
-  --lp-scrim: oklch(21.2% 0.088 270 / 0.42);
-
-  /* Escenario del producto (portada) y cifras: la tinta como superficie. */
-  --lp-stage-glow: oklch(46% 0.14 268 / 0.55);
-  --lp-glass-ink: color-mix(in oklch, var(--lp-ink-2) 72%, transparent);
-  --lp-glass-ink-edge: oklch(97.5% 0.006 270 / 0.14);
-  --lp-shadow-stage: 0 40px 80px -36px oklch(8% 0.05 270 / 0.75), 0 2px 6px oklch(8% 0.05 270 / 0.3);
-  --lp-shadow-lift: 0 24px 48px -24px oklch(21.2% 0.088 270 / 0.35);
-  --lp-spring: cubic-bezier(0.22, 1, 0.36, 1); /* críticamente amortiguado: llega sin rebotar */
+  --lp-shadow-whisper: 0 1px 2px rgb(15 31 61 / 0.06);
+  --lp-shadow-float: 0 12px 32px -12px rgb(15 31 61 / 0.22);
+  --lp-shadow-lift: 0 18px 40px -18px rgb(15 31 61 / 0.28);
+  --lp-shadow-stage: 0 30px 60px -24px rgb(15 31 61 / 0.35);
+  --lp-paper-glass: rgb(255 255 255 / 0.86);
+  --lp-scrim: rgb(15 31 61 / 0.42);
+  --lp-stage-glow: rgb(20 166 192 / 0.35);
+  --lp-glass-ink: rgb(21 41 74 / 0.72);
+  --lp-glass-ink-edge: rgb(255 255 255 / 0.14);
+  --lp-spring: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* La landing nunca scrollea de costado (clip, no hidden: hidden rompe position:sticky). */
@@ -597,7 +608,7 @@ html[data-cookies="pendiente"] .lp-barra-movil { display: none; }
 }
 
 /* Texto corrido de las páginas legales. */
-.lp-legal h2 { margin-top: var(--lp-space-2xl); font-family: var(--font-jost), ui-sans-serif; font-weight: 700; font-size: 1.375rem; line-height: 1.25; color: var(--lp-ink); }
+.lp-legal h2 { margin-top: var(--lp-space-2xl); font-family: var(--font-inter), ui-sans-serif; font-weight: 600; font-size: 1.375rem; line-height: 1.25; color: var(--lp-ink); }
 .lp-legal p, .lp-legal li { margin-top: var(--lp-space-sm); color: var(--lp-muted); max-width: 68ch; }
 .lp-legal ul { margin-top: var(--lp-space-sm); padding-left: 1.25rem; list-style: disc; }
 .lp-legal li { margin-top: var(--lp-space-2xs); }
@@ -650,3 +661,15 @@ html[data-cookies="pendiente"] .lp-barra-movil { display: none; }
 @media (prefers-contrast: more) {
   .lp-vidrio-ink { background: var(--lp-ink); border-color: var(--lp-on-ink); }
 }
+
+/* Halos del visual de portada y de las filas: anillos concéntricos que no se animan. */
+.lp-halo { background:
+  radial-gradient(circle at center, var(--lp-primary-wash) 0 52%, transparent 52.2%),
+  radial-gradient(circle at center, transparent 0 62%, var(--lp-primary-soft) 62.2% 62.6%, transparent 62.8%),
+  radial-gradient(circle at center, transparent 0 74%, var(--lp-rule) 74.2% 74.5%, transparent 74.7%); }
+/* Manchas de color del panel de problemas: fijas, detrás del texto. */
+.lp-manchas { background:
+  radial-gradient(40% 60% at 8% 100%, var(--lp-blob-b), transparent 70%),
+  radial-gradient(35% 55% at 100% 0%, var(--lp-blob-a), transparent 70%),
+  linear-gradient(180deg, var(--lp-primary-wash), var(--lp-paper-2)); }
+.lp-franja { background: linear-gradient(120deg, var(--lp-band-from), var(--lp-band-to)); }

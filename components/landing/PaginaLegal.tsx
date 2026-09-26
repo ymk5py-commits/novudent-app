@@ -22,7 +22,7 @@ export function Contacto() {
 
 export default function PaginaLegal({ ruta, titulo, children }: { ruta: string; titulo: string; children: React.ReactNode }) {
   return (
-    <div className="lp-root min-h-dvh font-sans text-[16px] leading-relaxed">
+    <div className="lp-root min-h-dvh font-lp text-[16px] leading-relaxed">
       <NavLanding />
       <main className="mx-auto max-w-6xl px-4 pb-20 pt-32 sm:px-6 sm:pt-40">
         <div className="grid gap-10 lg:grid-cols-12">
@@ -42,8 +42,8 @@ export default function PaginaLegal({ ruta, titulo, children }: { ruta: string; 
             </ul>
           </nav>
           <article className="lp-legal max-w-3xl lg:col-span-9">
-            <h1 className="font-logo text-[clamp(2.25rem,5vw,3.25rem)] font-bold leading-[1.05] tracking-[-0.02em] text-lp-ink">{titulo}</h1>
-            <p className="mt-3 font-mono text-[12px] font-medium uppercase tracking-[0.14em] text-lp-muted">Última actualización: {ACTUALIZADO}</p>
+            <h1 className="text-[clamp(2.25rem,5vw,3.25rem)] font-bold leading-[1.05] tracking-[-0.02em] text-lp-ink">{titulo}</h1>
+            <p className="mt-3 text-[13px] font-medium text-lp-muted">Última actualización: {ACTUALIZADO}</p>
             {children}
           </article>
         </div>

@@ -54,7 +54,7 @@ export default function SolicitarAcceso({ id = "acceso" }: { id?: string }) {
         <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-lp-accentwash text-lp-accentink">
           <Check className="h-5 w-5" strokeWidth={2.5} aria-hidden />
         </span>
-        <h3 className="mt-4 font-logo text-[24px] font-bold text-lp-ink">Recibimos tu pedido</h3>
+        <h3 className="mt-4 text-[24px] font-bold text-lp-ink">Recibimos tu pedido</h3>
         <p className="mx-auto mt-2 max-w-sm text-[15px] leading-relaxed text-lp-muted">
           Te escribimos dentro de las próximas 24 horas hábiles para coordinar la demo.
         </p>
@@ -98,7 +98,7 @@ export default function SolicitarAcceso({ id = "acceso" }: { id?: string }) {
         }
       }}
     >
-      <h3 id={`${id}-titulo`} className="font-logo text-[24px] font-bold text-lp-ink sm:text-[28px]">Pedí tu demo</h3>
+      <h3 id={`${id}-titulo`} className="text-[24px] font-bold text-lp-ink sm:text-[28px]">Pedí tu demo</h3>
       <p className="mt-1.5 text-[15px] leading-relaxed text-lp-muted">
         Dejanos tus datos y te mostramos Novudent funcionando. Los campos con * son obligatorios.
       </p>
@@ -161,7 +161,7 @@ export default function SolicitarAcceso({ id = "acceso" }: { id?: string }) {
         type="submit"
         disabled={enviando}
         aria-busy={enviando}
-        className="lp-pulsable group mt-6 inline-flex min-h-[48px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-lp-ink px-6 text-[16px] font-semibold text-lp-onink hover:bg-lp-ink2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        className="lp-pulsable group mt-6 inline-flex min-h-[48px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-[var(--lp-radius-btn)] bg-lp-primary px-6 text-[16px] font-semibold text-white hover:bg-lp-primaryhover disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
         {enviando ? "Enviando…" : "Pedir la demo"}
         {!enviando && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />}
