@@ -10,11 +10,19 @@ const BLOQUEADOS = [
 /** Ruido esperable por cortar Firebase a propósito: no son errores de la app. */
 const RUIDO = /Failed to load resource|net::ERR_FAILED|installations|analytics|auth\/network-request-failed|Auth anónima|Failed to fetch|Could not reach Cloud Firestore|code=unavailable|firestore/i;
 
-type Soporte = { erroresConsola: string[] };
+type Soporte = { erroresConsola: string[]; consentimiento: "rechazado" | "aceptado" | "sin-decidir" };
 
 export const test = base.extend<Soporte>({
-  page: async ({ page }, use) => {
+  /* Por defecto la persona ya eligió (rechazó la analítica): el aviso de cookies no tapa nada.
+     Las pruebas del aviso usan `test.use({ consentimiento: "sin-decidir" })`. */
+  consentimiento: ["rechazado", { option: true }],
+  page: async ({ page, consentimiento }, use) => {
     for (const d of BLOQUEADOS) await page.route(`**${d}**`, (r) => r.abort());
+    if (consentimiento !== "sin-decidir") {
+      await page.addInitScript((analitica) => {
+        localStorage.setItem("novudent.consentimiento.v1", JSON.stringify({ version: 1, analitica, fecha: new Date().toISOString() }));
+      }, consentimiento === "aceptado");
+    }
     await use(page);
   },
   /* Automático: toda prueba falla si la página tiró una excepción o un console.error real. */

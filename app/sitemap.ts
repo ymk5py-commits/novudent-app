@@ -19,5 +19,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/en-accion`, lastModified: ahora, changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE_URL}/precios`, lastModified: ahora, changeFrequency: "monthly", priority: 0.9 },
     { url: `${SITE_URL}/acceso`, lastModified: ahora, changeFrequency: "yearly", priority: 0.5 },
+    { url: `${SITE_URL}/privacidad`, lastModified: ahora, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${SITE_URL}/terminos`, lastModified: ahora, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${SITE_URL}/cookies`, lastModified: ahora, changeFrequency: "yearly", priority: 0.2 },
   ];
 }
