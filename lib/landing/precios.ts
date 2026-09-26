@@ -58,10 +58,28 @@ export const PLANES: PlanPublico[] = [
 ];
 
 export const CONDICIONES = {
-  setupGs: 1_500_000,        // pago único: setup + migración de datos + capacitación
+  setupGs: 1_500_000,        // pago único: configuración (con su documento) + migración de datos + capacitación
+  diasPuestaEnMarcha: 5,     // una semana hábil
   profesionalExtraGs: 90_000, // por mes
   mesesGratisAnual: 2,
 };
 
 /** "Gs. 620.000" — separador de miles paraguayo, sin decimales. */
 export const gs = (n: number) => `Gs. ${n.toLocaleString("es-PY", { maximumFractionDigits: 0 })}`;
+
+/** La semana de puesta en marcha, día por día (definida por el dueño el 2026-09-26).
+ *  Es la misma que muestra la presentación en PDF: si cambia acá, hay que cambiarla allá. */
+export const PUESTA_EN_MARCHA = [
+  {
+    dias: "Días 1–2",
+    desde: 1,
+    hasta: 2,
+    titulo: "Relevamiento y configuración",
+    texto: "Relevamos cómo trabaja tu equipo —cómo agendan, cómo cobran, qué aranceles y convenios manejan— y configuramos la clínica, las sucursales, los usuarios con su rol, los aranceles y los consentimientos.",
+  },
+  { dias: "Días 3–4", desde: 3, hasta: 4, titulo: "Migración de datos", texto: "Pasamos tus pacientes desde otro sistema, planillas de Excel o papel." },
+  { dias: "Día 5", desde: 5, hasta: 5, titulo: "Capacitación", texto: "Enseñamos a cada rol lo suyo: recepción, profesionales y administración." },
+] as const;
+
+/** Lo que queda por escrito en el documento de configuración (se entrega al terminar el día 2). */
+export const DOCUMENTO_CONFIGURACION = ["Clínica y sucursales", "Usuarios y roles", "Aranceles", "Convenios", "Consentimientos y documentos"] as const;

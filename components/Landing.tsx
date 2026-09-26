@@ -27,7 +27,7 @@ import {
 import { useStore } from "@/lib/store";
 import { CAPACIDADES } from "@/lib/capacidades";
 import { FAQS } from "@/lib/faqs";
-import { CONDICIONES, PLANES, gs, type PlanPublicoId } from "@/lib/landing/precios";
+import { CONDICIONES, DOCUMENTO_CONFIGURACION, PLANES, PUESTA_EN_MARCHA, gs, type PlanPublicoId } from "@/lib/landing/precios";
 import { linkWhatsApp } from "@/lib/site";
 import { ShowcaseBoard, ToothGlyph, type ShowcaseToothRecord } from "./OdontogramShowcase";
 import SolicitarAcceso from "./SolicitarAcceso";
@@ -373,7 +373,7 @@ export function SeccionPrecios({ ctaHref = "/acceso" }: { ctaHref?: string }) {
       <dl className="mt-10 grid gap-4 rounded-[var(--lp-radius-card)] bg-lp-paper2 p-6 text-[14px] sm:grid-cols-3 sm:p-7">
         <div>
           <dt className="font-semibold text-lp-ink">Puesta en marcha</dt>
-          <dd className="lp-num mt-1 text-lp-muted">{gs(CONDICIONES.setupGs)}, pago único: configuración, migración de tus datos y capacitación del equipo.</dd>
+          <dd className="lp-num mt-1 text-lp-muted">{gs(CONDICIONES.setupGs)}, pago único: configuración con su documento, migración de tus datos y capacitación del equipo, en una semana.</dd>
         </div>
         <div>
           <dt className="font-semibold text-lp-ink">Profesional adicional</dt>
@@ -434,6 +434,93 @@ export function TablaPlanes() {
   );
 }
 
+/** La semana de puesta en marcha: el cronograma día por día, los pasos y el documento de
+ *  configuración que se entrega al terminar el día 2. Los datos viven en lib/landing/precios.ts
+ *  (los mismos de la presentación en PDF). */
+export function SeccionPuestaEnMarcha() {
+  const colores = ["bg-lp-primary text-white", "bg-lp-primarywash text-lp-primaryhover", "bg-lp-ink text-white"];
+  return (
+    <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
+      <div className="lg:col-span-5">
+        <BarraSeccion label="Puesta en marcha" />
+        <h2 id="titulo-puesta" className="text-[clamp(1.9rem,3.8vw,2.6rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-lp-ink">
+          Tu clínica funcionando en una semana
+        </h2>
+        <p className="mt-4 max-w-md text-[16px] leading-relaxed text-lp-muted">
+          No arrancamos a cargar datos a ciegas: primero relevamos cómo trabaja tu equipo, para que el sistema quede armado a tu medida desde el primer día.
+        </p>
+        <div className="mt-7 inline-flex items-center gap-4 rounded-[var(--lp-radius-card)] bg-lp-primarywash px-5 py-4">
+          <span className="whitespace-nowrap text-[2.25rem] font-semibold leading-none tracking-[-0.02em] text-lp-primary">1 semana</span>
+          <span className="text-[14px] leading-snug text-lp-ink">
+            {CONDICIONES.diasPuestaEnMarcha} días hábiles:<br />del relevamiento a la capacitación
+          </span>
+        </div>
+      </div>
+
+      <div className="min-w-0 lg:col-span-7">
+        {/* Cronograma de la semana: desde 640 px. En el celular alcanza con la lista de pasos. */}
+        <div className="mb-8 hidden sm:block" aria-hidden>
+          <div className="grid grid-cols-5 gap-1.5 border-b border-lp-rule pb-2 text-center text-[12px] font-semibold text-lp-muted">
+            {Array.from({ length: CONDICIONES.diasPuestaEnMarcha }, (_, i) => <span key={i}>Día {i + 1}</span>)}
+          </div>
+          <div className="mt-2.5 grid grid-cols-5 gap-1.5">
+            {PUESTA_EN_MARCHA.map((paso, i) => (
+              <div
+                key={paso.titulo}
+                style={{ gridColumn: `${paso.desde} / ${paso.hasta + 1}` }}
+                className={`rounded-[8px] px-2 py-2.5 text-center text-[12px] font-semibold leading-tight ${colores[i]}`}
+              >
+                {paso.titulo}
+              </div>
+            ))}
+          </div>
+        </div>
+        <ol className="space-y-5">
+          {PUESTA_EN_MARCHA.map((paso) => (
+            <li key={paso.titulo} className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-start gap-4">
+              <span className="whitespace-nowrap rounded-full bg-lp-primary py-1.5 text-center text-[13px] font-semibold text-white">{paso.dias}</span>
+              <div>
+                <h3 className="text-[17px] font-semibold text-lp-ink">{paso.titulo}</h3>
+                <p className="mt-1 text-[15px] leading-relaxed text-lp-muted">
+                  {paso.texto}
+                  {paso.desde === 1 && (
+                    <> Al terminar te entregamos el <b className="font-semibold text-lp-ink">documento de configuración</b>.</>
+                  )}
+                </p>
+              </div>
+            </li>
+          ))}
+          <li className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-start gap-4">
+            <span className="whitespace-nowrap rounded-full bg-lp-primarywash py-1.5 text-center text-[13px] font-semibold text-lp-primaryhover">Después</span>
+            <div>
+              <h3 className="text-[17px] font-semibold text-lp-ink">Salida en vivo y soporte</h3>
+              <p className="mt-1 text-[15px] leading-relaxed text-lp-muted">Empezás a usarlo con tu equipo, con soporte para las dudas del arranque y las mejoras que vayan surgiendo.</p>
+            </div>
+          </li>
+        </ol>
+
+        <div className="mt-7 grid grid-cols-[auto_minmax(0,1fr)] gap-4 rounded-[var(--lp-radius-card)] border-2 border-lp-primary bg-white p-5 sm:p-6">
+          <span className="grid h-12 w-12 place-items-center rounded-[10px] bg-lp-primarywash text-lp-primary">
+            <FileText className="h-6 w-6" strokeWidth={1.75} aria-hidden />
+          </span>
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-lp-primary">Entregable · fin del día 2</p>
+            <h3 className="mt-1 text-[18px] font-semibold text-lp-ink">Documento de configuración de tu clínica</h3>
+            <p className="mt-1 text-[15px] leading-relaxed text-lp-muted">Queda por escrito cómo quedó armado el sistema, para consultarlo cuando quieras.</p>
+            <ul className="mt-3 grid gap-x-6 gap-y-1.5 min-[420px]:grid-cols-2">
+              {DOCUMENTO_CONFIGURACION.map((d) => (
+                <li key={d} className="flex items-start gap-2 text-[14px] text-lp-ink">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-lp-primary" strokeWidth={2.25} aria-hidden /> {d}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Preguntas frecuentes — el contenido vive en lib/faqs.ts (lo comparte el JSON-LD de la home). */
 export function SeccionFaq() {
   return (
@@ -468,7 +555,7 @@ export function SeccionCierre() {
             <div className="mt-8"><PildoraCTA href="/app" tone="light">Ir al panel</PildoraCTA></div>
           ) : (
             <ul className="mt-8 space-y-3">
-              {["Te respondemos en menos de 24 h hábiles", "Migramos tus datos en la puesta en marcha", "Capacitamos a todo tu equipo"].map((t) => (
+              {["Te respondemos en menos de 24 h hábiles", "Tu clínica funcionando en una semana", "Migramos tus datos y capacitamos a tu equipo", "Te entregamos el documento de configuración"].map((t) => (
                 <li key={t} className="flex items-start gap-2.5 text-[16px] text-white">
                   <Check className="mt-1 h-4 w-4 shrink-0 text-lp-accent" strokeWidth={2.5} aria-hidden /> {t}
                 </li>
@@ -690,8 +777,15 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* ===== PUESTA EN MARCHA ===== */}
+        <section id="puesta-en-marcha" className="scroll-mt-20 py-20 sm:py-28" aria-labelledby="titulo-puesta">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <SeccionPuestaEnMarcha />
+          </div>
+        </section>
+
         {/* ===== PRECIOS ===== */}
-        <section id="precios" className="scroll-mt-20 py-20 sm:py-28" aria-labelledby="titulo-precios">
+        <section id="precios" className="scroll-mt-20 border-t border-lp-rule bg-lp-paper2 py-20 sm:py-28" aria-labelledby="titulo-precios">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="mx-auto mb-10 max-w-2xl text-center">
               <BarraSeccion label="Planes" />
@@ -707,7 +801,7 @@ export default function Landing() {
         </section>
 
         {/* ===== PREGUNTAS ===== */}
-        <section className="bg-lp-paper2 py-20 sm:py-24" aria-labelledby="titulo-faq">
+        <section className="py-20 sm:py-24" aria-labelledby="titulo-faq">
           <div className="mx-auto max-w-3xl px-4 sm:px-6">
             <h2 id="titulo-faq" className="mb-8 text-center text-[clamp(1.9rem,3.8vw,2.6rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-lp-ink">
               Preguntas frecuentes
