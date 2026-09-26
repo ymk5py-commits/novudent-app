@@ -17,7 +17,7 @@ import { X } from "lucide-react";
 import { abrirPreferencias, alAbrirPreferencias, guardarConsentimiento, leerConsentimiento } from "@/lib/consentimiento";
 
 const boton =
-  "inline-flex min-h-[44px] flex-1 items-center justify-center whitespace-nowrap rounded-full border border-lp-ink px-5 text-[15px] font-semibold text-lp-ink transition-colors duration-150 hover:bg-lp-ink hover:text-lp-onink";
+  "inline-flex min-h-[44px] flex-1 basis-[7.5rem] items-center justify-center whitespace-nowrap rounded-full border border-lp-ink px-5 text-[15px] font-semibold text-lp-ink transition-colors duration-150 hover:bg-lp-ink hover:text-lp-onink";
 
 export default function Consentimiento() {
   const [aviso, setAviso] = useState(false);
@@ -57,7 +57,7 @@ export default function Consentimiento() {
             Usamos las necesarias para que el sitio funcione. Si aceptás, también analítica para saber qué páginas sirven.
             Más detalle en <Link href="/cookies" className="underline underline-offset-2 hover:text-lp-ink">cookies</Link>.
           </p>
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" className={boton} onClick={() => decidir(false)}>Rechazar</button>
             <button type="button" className={boton} onClick={() => decidir(true)}>Aceptar</button>
           </div>
@@ -121,7 +121,7 @@ export default function Consentimiento() {
             </label>
           </div>
 
-          <div className="mt-5 flex gap-2">
+          <div className="mt-5 flex flex-wrap gap-2">
             <button type="button" className={boton} onClick={() => decidir(false)}>Rechazar todas</button>
             <button type="submit" className={boton}>Guardar</button>
           </div>
