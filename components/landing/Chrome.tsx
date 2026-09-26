@@ -50,7 +50,7 @@ export function PildoraCTA({ href, children, tone = "dark" }: { href: string; ch
   return (
     <Link
       href={href}
-      className={`group inline-flex min-h-[44px] items-center gap-2 whitespace-nowrap rounded-full px-5 text-[15px] font-semibold transition-colors duration-200 ${
+      className={`lp-pulsable group inline-flex min-h-[44px] items-center gap-2 whitespace-nowrap rounded-full px-5 text-[15px] font-semibold ${
         oscuro ? "bg-lp-ink text-lp-onink hover:bg-lp-ink2" : "bg-lp-paper text-lp-ink hover:bg-lp-paper3"
       }`}
     >
@@ -61,11 +61,12 @@ export function PildoraCTA({ href, children, tone = "dark" }: { href: string; ch
 }
 
 /** Cifra grande con su regla debajo. */
-export function Numeral({ n, className = "" }: { n: string; className?: string }) {
+export function Numeral({ n, className = "", tono = "papel" }: { n: string; className?: string; tono?: "papel" | "ink" }) {
+  const ink = tono === "ink";
   return (
     <div className={className}>
-      <div className="lp-num font-logo text-[3rem] font-bold leading-none tracking-[-0.02em] text-lp-ink sm:text-[3.5rem]">{n}</div>
-      <div className="mt-3 h-px w-12 bg-lp-ink" aria-hidden />
+      <div className={`lp-num font-logo text-[3.25rem] font-bold leading-none tracking-[-0.03em] sm:text-[4.5rem] ${ink ? "text-lp-onink" : "text-lp-ink"}`}>{n}</div>
+      <div className={`mt-4 h-px w-12 ${ink ? "bg-lp-accent" : "bg-lp-ink"}`} aria-hidden />
     </div>
   );
 }
@@ -121,7 +122,7 @@ export function NavLanding() {
 
         <Link
           href={cta.href}
-          className="hidden min-h-[44px] items-center whitespace-nowrap rounded-full bg-lp-ink px-4 text-[15px] font-semibold text-lp-onink transition-colors duration-150 hover:bg-lp-ink2 min-[400px]:inline-flex"
+          className="lp-pulsable hidden min-h-[44px] items-center whitespace-nowrap rounded-full bg-lp-ink px-4 text-[15px] font-semibold text-lp-onink hover:bg-lp-ink2 min-[400px]:inline-flex"
         >
           {cta.label}
         </Link>

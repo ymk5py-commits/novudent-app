@@ -161,7 +161,7 @@ export default function SolicitarAcceso({ id = "acceso" }: { id?: string }) {
         type="submit"
         disabled={enviando}
         aria-busy={enviando}
-        className="group mt-6 inline-flex min-h-[48px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-lp-ink px-6 text-[16px] font-semibold text-lp-onink transition-colors duration-150 hover:bg-lp-ink2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        className="lp-pulsable group mt-6 inline-flex min-h-[48px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-lp-ink px-6 text-[16px] font-semibold text-lp-onink hover:bg-lp-ink2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
         {enviando ? "Enviando…" : "Pedir la demo"}
         {!enviando && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />}

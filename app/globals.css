@@ -565,6 +565,14 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
   --lp-shadow-float: 0 10px 28px -14px oklch(21.2% 0.088 270 / 0.28);
   --lp-paper-glass: color-mix(in oklch, var(--lp-paper) 82%, transparent);
   --lp-scrim: oklch(21.2% 0.088 270 / 0.42);
+
+  /* Escenario del producto (portada) y cifras: la tinta como superficie. */
+  --lp-stage-glow: oklch(46% 0.14 268 / 0.55);
+  --lp-glass-ink: color-mix(in oklch, var(--lp-ink-2) 72%, transparent);
+  --lp-glass-ink-edge: oklch(97.5% 0.006 270 / 0.14);
+  --lp-shadow-stage: 0 40px 80px -36px oklch(8% 0.05 270 / 0.75), 0 2px 6px oklch(8% 0.05 270 / 0.3);
+  --lp-shadow-lift: 0 24px 48px -24px oklch(21.2% 0.088 270 / 0.35);
+  --lp-spring: cubic-bezier(0.22, 1, 0.36, 1); /* críticamente amortiguado: llega sin rebotar */
 }
 
 /* La landing nunca scrollea de costado (clip, no hidden: hidden rompe position:sticky). */
@@ -600,3 +608,45 @@ html[data-cookies="pendiente"] .lp-barra-movil { display: none; }
 .lp-legal th { color: var(--lp-ink); font-weight: 600; }
 .lp-legal td { color: var(--lp-muted); }
 .lp-legal code { font-family: var(--font-jbmono), ui-monospace; font-size: 0.85em; overflow-wrap: anywhere; }
+
+/* ---------- Capa de movimiento (landing) ----------
+   Todo es mejora progresiva: sin soporte o con movimiento reducido, el contenido queda
+   quieto en su lugar final. Nada depende de una animación para verse. */
+
+/* Respuesta al toque: se hunde al presionar, al instante. */
+.lp-pulsable { transition: transform 100ms ease-out, background-color var(--lp-dur-short) var(--lp-ease-out), color var(--lp-dur-short) var(--lp-ease-out); }
+.lp-pulsable:active { transform: scale(0.97); }
+
+/* Tarjetas flotantes del escenario: suben un poco mientras el escenario entra en pantalla. */
+@keyframes lp-deriva { from { transform: translateY(var(--lp-deriva, 28px)); } to { transform: none; } }
+@keyframes lp-llenado { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .lp-flota { animation: lp-deriva linear both; animation-timeline: view(); animation-range: entry 0% cover 45%; }
+    .lp-flota-lenta { --lp-deriva: 56px; }
+    /* La línea del recorrido se llena a medida que bajás. */
+    .lp-riel-lleno { transform-origin: top; animation: lp-llenado linear both; animation-timeline: view(); animation-range: entry 40% exit 60%; }
+  }
+}
+@supports not (animation-timeline: view()) { .lp-riel-lleno { transform: none; } }
+
+/* El precio cambia con un fundido corto, sin desplazar nada. */
+@keyframes lp-cambio { from { opacity: 0.25; } to { opacity: 1; } }
+.lp-cambio { animation: lp-cambio 220ms var(--lp-ease-out); }
+
+/* Preguntas: se abren con altura animada donde el navegador lo sabe hacer. */
+:root { interpolate-size: allow-keywords; }
+@media (prefers-reduced-motion: no-preference) {
+  .lp-faq::details-content { block-size: 0; overflow: hidden; transition: block-size 320ms var(--lp-spring), content-visibility 320ms allow-discrete; }
+  .lp-faq[open]::details-content { block-size: auto; }
+}
+
+/* Vidrio oscuro de las tarjetas del escenario. */
+.lp-vidrio-ink { background: var(--lp-glass-ink); backdrop-filter: blur(18px) saturate(160%); border: 1px solid var(--lp-glass-ink-edge); }
+@media (prefers-reduced-transparency: reduce) {
+  .lp-vidrio-ink { background: var(--lp-ink-2); backdrop-filter: none; }
+  .lp-root header > div, .lp-barra-movil { background: var(--lp-paper) !important; backdrop-filter: none !important; }
+}
+@media (prefers-contrast: more) {
+  .lp-vidrio-ink { background: var(--lp-ink); border-color: var(--lp-on-ink); }
+}

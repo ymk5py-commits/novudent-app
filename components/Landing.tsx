@@ -28,6 +28,7 @@
  * (/odontograma, /como-se-trabaja, /en-accion, /precios) con metadata propia.
  */
 import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { ArrowUpRight, Check, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -37,7 +38,7 @@ import { CAPACIDADES } from "@/lib/capacidades";
 import { FAQS } from "@/lib/faqs";
 import { CONDICIONES, PLANES, gs, type PlanPublicoId } from "@/lib/landing/precios";
 import { linkWhatsApp } from "@/lib/site";
-import { ShowcaseBoard, type ShowcaseToothRecord } from "./OdontogramShowcase";
+import { ShowcaseBoard, ToothGlyph, type ShowcaseToothRecord } from "./OdontogramShowcase";
 import SolicitarAcceso from "./SolicitarAcceso";
 import EscenaClinica from "./EscenaClinica";
 import { BarraSeccion, FooterLanding, Marca, NavLanding, Numeral, PildoraCTA } from "./landing/Chrome";
@@ -240,6 +241,95 @@ function TablaRoles() {
   );
 }
 
+function TarjetaFicha() {
+  const hallazgos: { n: string; rec: ShowcaseToothRecord; t: string; quien: string; pendiente: boolean; arriba: boolean }[] = [
+    { n: "16", rec: { condition: "caries", surfaces: ["O"] }, t: "Caries oclusal (O)", quien: "Dra. Benítez · hoy 09:14", pendiente: true, arriba: true },
+    { n: "26", rec: { condition: "corona" }, t: "Corona", quien: "Dra. Benítez · 03/07", pendiente: false, arriba: true },
+    { n: "36", rec: { condition: "endodoncia" }, t: "Endodoncia", quien: "Dr. Martínez · 12/08", pendiente: false, arriba: false },
+  ];
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <span className="font-logo text-[18px] font-bold text-lp-ink">Ficha · María González</span>
+        <Ejemplo />
+      </div>
+      <p className="mb-4 inline-flex rounded-full bg-lp-alertwash px-3 py-1 text-[13px] font-semibold text-lp-alert">Alerta médica: alergia a la penicilina</p>
+      <ul className="divide-y divide-lp-rule border-y border-lp-rule">
+        {hallazgos.map((h) => (
+          <li key={h.n} className="flex items-center gap-4 py-3">
+            <span className="shrink-0 scale-90" aria-hidden><ToothGlyph n={h.n} rec={h.rec} upper={h.arriba} /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[14px] font-semibold text-lp-ink">
+                <span className="lp-num font-mono text-[13px]">{h.n}</span> · {h.t}
+              </span>
+              <span className="block text-[13px] text-lp-muted">{h.quien}</span>
+            </span>
+            <span className={`whitespace-nowrap text-[12px] font-semibold ${h.pendiente ? "text-lp-alert" : "text-lp-accentink"}`}>
+              {h.pendiente ? "Pendiente" : "Realizado"}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Escenario de la portada: el odontograma real sobre la tinta, con dos tarjetas de
+ *  vidrio que muestran el antes y el después (agenda y cobro). Las tarjetas son de
+ *  ejemplo y lo dicen; el tablero es el producto. Sin marco de navegador falso. */
+export function EscenarioProducto() {
+  const [demoTeeth, setDemoTeeth] = useState<Record<string, ShowcaseToothRecord>>(DEMO_TEETH);
+  return (
+    <div className="relative isolate overflow-hidden rounded-[20px] bg-lp-ink px-2 pb-2 pt-8 sm:rounded-[28px] sm:px-8 sm:pb-8 sm:pt-12 lg:px-10 lg:pb-12">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-48 -z-10 h-96 bg-[radial-gradient(ellipse_at_center,var(--lp-stage-glow),transparent_70%)]" />
+      <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 text-center text-[14px] text-lp-oninkmuted">
+        <span className="rounded-full border border-[var(--lp-glass-ink-edge)] px-2.5 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-lp-accent">Interactivo</span>
+        Es el odontograma real: tocá una pieza y marcá una superficie.
+      </p>
+
+      <div className="relative mt-6 sm:mt-8">
+        <div className="lp-flota relative z-10 rounded-[14px] bg-lp-surface p-2 [box-shadow:var(--lp-shadow-stage)] sm:p-5 xl:mx-32">
+          <ShowcaseBoard
+            value={demoTeeth}
+            editable
+            onChange={(tooth, rec) =>
+              setDemoTeeth((prev) => {
+                const next = { ...prev };
+                if (rec) next[tooth] = rec; else delete next[tooth];
+                return next;
+              })
+            }
+          />
+        </div>
+
+        {/* Tarjetas de vidrio: desde 1280 px, donde el margen alcanza para no tapar ninguna pieza (lo prueba la E2E). */}
+        <aside aria-label="Ejemplo: agenda de hoy" className="lp-flota lp-flota-lenta lp-vidrio-ink absolute -left-12 top-[52%] z-20 hidden w-48 rounded-[14px] p-4 text-lp-onink [box-shadow:var(--lp-shadow-stage)] xl:block">
+          <p className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.12em] text-lp-oninkmuted">Hoy <span>Ejemplo</span></p>
+          <ul className="mt-3 space-y-2 text-[13px]">
+            {[["09:00", "María González", true], ["10:30", "Juan Ríos", false], ["11:45", "Camila Ortega", true]].map(([h, n, ok]) => (
+              <li key={String(h)} className="flex items-center gap-2.5">
+                <span className="lp-num font-mono text-[12px] text-lp-oninkmuted">{h}</span>
+                <span className="min-w-0 flex-1 truncate">{n}</span>
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${ok ? "bg-lp-accent" : "bg-lp-oninkmuted"}`} aria-label={ok ? "Confirmada" : "Sin confirmar"} />
+              </li>
+            ))}
+          </ul>
+        </aside>
+        <aside aria-label="Ejemplo: cobro en cuotas" className="lp-flota lp-vidrio-ink absolute -right-4 -top-20 z-20 hidden w-52 rounded-[14px] p-4 text-lp-onink [box-shadow:var(--lp-shadow-stage)] xl:block">
+          <p className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.12em] text-lp-oninkmuted">Presupuesto aceptado <span>Ejemplo</span></p>
+          <p className="lp-num mt-2 font-logo text-[22px] font-bold leading-none">{gs(2_550_000)}</p>
+          <div className="mt-3 flex gap-1" aria-hidden>
+            <span className="h-1.5 flex-1 rounded-full bg-lp-accent" />
+            <span className="h-1.5 flex-1 rounded-full bg-[var(--lp-glass-ink-edge)]" />
+            <span className="h-1.5 flex-1 rounded-full bg-[var(--lp-glass-ink-edge)]" />
+          </div>
+          <p className="mt-2 text-[12px] text-lp-oninkmuted">Cuota 1 de 3 pagada</p>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 /* ==================================================================
    SECCIONES EXPORTADAS — la home las compone y cada página de sección
    reutiliza la suya con una intro única (SEO: sin duplicar H1 ni copy).
@@ -294,7 +384,7 @@ export const ETAPAS: {
   titulo: string;
   texto: string;
   incluye: { t: string; plan: Alcance }[];
-  tarjeta?: () => React.ReactNode;
+  tarjeta: () => React.ReactNode;
 }[] = [
   {
     id: "agendar", n: "01", nombre: "Agendar",
@@ -310,12 +400,13 @@ export const ETAPAS: {
   {
     id: "atender", n: "02", nombre: "Atender",
     titulo: "El hallazgo, en la pieza y en la superficie",
-    texto: "Ficha clínica y odontograma FDI de 32 piezas con cinco superficies cada una. Cada marca guarda quién la hizo y cuándo. El tablero de abajo es el real: probalo.",
+    texto: "Ficha clínica con alertas médicas a la vista y odontograma FDI de 32 piezas con cinco superficies cada una. Cada marca guarda quién la hizo y cuándo.",
     incluye: [
       { t: "Ficha clínica y odontograma por superficies", plan: "todos" },
       { t: "Consentimientos con firma electrónica", plan: "clinica" },
       { t: "IA clínica: radiografías y notas por voz", plan: "clinica" },
     ],
+    tarjeta: TarjetaFicha,
   },
   {
     id: "cobrar", n: "03", nombre: "Cobrar",
@@ -352,39 +443,42 @@ export const ETAPAS: {
   },
 ];
 
-/** El recorrido completo: agendar → atender → cobrar → volver → controlar. */
+/** El recorrido completo: agendar → atender → cobrar → volver → controlar.
+ *  En pantallas anchas corre sobre un riel que se llena al bajar (CSS con scroll;
+ *  sin soporte, el riel queda lleno y quieto). */
 export function SeccionFlujo() {
   return (
-    <div className="space-y-20 sm:space-y-28">
-      {ETAPAS.map((e) => (
-        <article key={e.id} id={`etapa-${e.id}`} className="scroll-mt-28" aria-labelledby={`titulo-${e.id}`}>
-          <div className="grid gap-8 lg:grid-cols-12 lg:gap-12">
-            <div className="lg:col-span-5">
-              <div className="flex items-baseline gap-3">
-                <span className="font-mono text-[13px] font-medium text-lp-accentink">{e.n}</span>
-                <Etiqueta>{e.nombre}</Etiqueta>
+    <div className="relative lg:pl-16">
+      <div aria-hidden className="absolute bottom-0 left-[11px] top-2 hidden w-px bg-lp-rule lg:block">
+        <div className="lp-riel-lleno h-full w-full bg-lp-ink" />
+      </div>
+      <div className="space-y-20 sm:space-y-28">
+        {ETAPAS.map((e, i) => (
+          <article key={e.id} id={`etapa-${e.id}`} className="relative scroll-mt-28" aria-labelledby={`titulo-${e.id}`}>
+            <span aria-hidden className="absolute -left-16 top-1 hidden h-6 w-6 place-items-center rounded-full border border-lp-ink bg-lp-paper font-mono text-[10px] font-medium text-lp-ink lg:grid">
+              {i + 1}
+            </span>
+            <div className="grid gap-8 lg:grid-cols-12 lg:gap-12">
+              <div className={`lg:col-span-5 ${i % 2 ? "lg:order-2" : ""}`}>
+                <div className="flex items-baseline gap-3">
+                  <span className="font-mono text-[13px] font-medium text-lp-accentink">{e.n}</span>
+                  <Etiqueta>{e.nombre}</Etiqueta>
+                </div>
+                <h3 id={`titulo-${e.id}`} className="mt-4 font-logo text-[clamp(1.75rem,3.6vw,2.5rem)] font-bold leading-[1.1] tracking-[-0.02em] text-lp-ink">
+                  {e.titulo}
+                </h3>
+                <p className="mt-4 max-w-md text-[16px] leading-relaxed text-lp-muted">{e.texto}</p>
+                <Incluye items={e.incluye} />
               </div>
-              <h3 id={`titulo-${e.id}`} className="mt-4 font-logo text-[clamp(1.75rem,3.6vw,2.5rem)] font-bold leading-[1.1] tracking-[-0.02em] text-lp-ink">
-                {e.titulo}
-              </h3>
-              <p className="mt-4 max-w-md text-[16px] leading-relaxed text-lp-muted">{e.texto}</p>
-              <Incluye items={e.incluye} />
-            </div>
-            {e.tarjeta && (
-              <div className="min-w-0 lg:col-span-7">
-                <div className="rounded-[var(--lp-radius-card)] border border-lp-rule bg-lp-paper p-5 [box-shadow:var(--lp-shadow-whisper)] sm:p-7">
+              <div className={`min-w-0 lg:col-span-7 ${i % 2 ? "lg:order-1" : ""}`}>
+                <div className="rounded-[var(--lp-radius-card)] border border-lp-rule bg-lp-surface p-5 [box-shadow:var(--lp-shadow-lift)] sm:p-7">
                   <e.tarjeta />
                 </div>
               </div>
-            )}
-          </div>
-          {!e.tarjeta && (
-            <div className="mt-10">
-              <SeccionOdontograma />
             </div>
-          )}
-        </article>
-      ))}
+          </article>
+        ))}
+      </div>
     </div>
   );
 }
@@ -397,6 +491,7 @@ export function SeccionAccion() {
 /** Planes y precios en guaraníes. `ctaHref` lo inyecta quien compone (home vs página). */
 export function SeccionPrecios({ ctaHref = "/acceso" }: { ctaHref?: string }) {
   const [anual, setAnual] = useState(false);
+  const quieto = useReducedMotion();
   return (
     <div>
       <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
@@ -414,11 +509,20 @@ export function SeccionPrecios({ ctaHref = "/acceso" }: { ctaHref?: string }) {
                 <input
                   type="radio"
                   name="periodo"
-                  className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  className="peer absolute inset-0 z-20 h-full w-full cursor-pointer opacity-0"
                   checked={anual === o.v}
                   onChange={() => setAnual(o.v)}
                 />
-                <span className="block min-h-[40px] whitespace-nowrap rounded-full px-4 py-2 text-[14px] font-semibold text-lp-muted transition-colors duration-150 peer-checked:bg-lp-ink peer-checked:text-lp-onink peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--lp-focus)]">
+                {/* La píldora se desliza de una opción a la otra (resorte sin rebote). */}
+                {anual === o.v && (
+                  <motion.span
+                    layoutId="periodo-pildora"
+                    aria-hidden
+                    className="absolute inset-0 rounded-full bg-lp-ink"
+                    transition={quieto ? { duration: 0 } : { type: "spring", bounce: 0, duration: 0.35 }}
+                  />
+                )}
+                <span className="relative z-10 block min-h-[40px] whitespace-nowrap rounded-full px-5 py-2 text-[14px] font-semibold text-lp-muted transition-colors duration-200 peer-checked:text-lp-onink peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--lp-focus)]">
                   {o.t}
                 </span>
               </label>
@@ -432,42 +536,42 @@ export function SeccionPrecios({ ctaHref = "/acceso" }: { ctaHref?: string }) {
           <article
             key={p.id}
             aria-labelledby={`plan-${p.id}`}
-            className={`flex flex-col rounded-[var(--lp-radius-card)] border bg-lp-paper p-6 sm:p-7 ${
-              p.recomendado ? "border-lp-ink [box-shadow:var(--lp-shadow-float)]" : "border-lp-rule"
+            className={`flex flex-col rounded-[var(--lp-radius-card)] border p-6 sm:p-7 ${
+              p.recomendado ? "border-lp-ink bg-lp-ink text-lp-onink [box-shadow:var(--lp-shadow-stage)] md:-my-3 md:py-9" : "border-lp-rule bg-lp-surface text-lp-ink"
             }`}
           >
             <div className="flex items-center justify-between gap-3">
-              <h3 id={`plan-${p.id}`} className="font-logo text-[22px] font-bold text-lp-ink">Plan {p.nombre}</h3>
+              <h3 id={`plan-${p.id}`} className="font-logo text-[22px] font-bold">Plan {p.nombre}</h3>
               {p.recomendado && (
-                <span className="whitespace-nowrap rounded-full bg-lp-ink px-2.5 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-lp-accent">
+                <span className="whitespace-nowrap rounded-full bg-lp-accent px-2.5 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-lp-ink">
                   Recomendado
                 </span>
               )}
             </div>
-            <p className="mt-1 text-[14px] text-lp-muted">{p.para} · {p.profesionales}</p>
+            <p className={`mt-1 text-[14px] ${p.recomendado ? "text-lp-oninkmuted" : "text-lp-muted"}`}>{p.para} · {p.profesionales}</p>
 
             <div className="mt-6">
-              <span className="lp-num font-logo text-[clamp(1.9rem,3vw,2.3rem)] font-bold leading-none tracking-[-0.02em] text-lp-ink">
+              <span key={`${p.id}-${anual}`} className="lp-num lp-cambio font-logo text-[clamp(1.9rem,3vw,2.3rem)] font-bold leading-none tracking-[-0.02em]">
                 {gs(anual ? p.anualGs : p.mensualGs)}
               </span>
-              <span className="ml-1.5 text-[14px] text-lp-muted">{anual ? "/ año" : "/ mes"}</span>
+              <span className={`ml-1.5 text-[14px] ${p.recomendado ? "text-lp-oninkmuted" : "text-lp-muted"}`}>{anual ? "/ año" : "/ mes"}</span>
             </div>
-            <p className="lp-num mt-2 text-[13px] text-lp-muted">
+            <p className={`lp-num mt-2 text-[13px] ${p.recomendado ? "text-lp-oninkmuted" : "text-lp-muted"}`}>
               {anual ? `Equivale a ${gs(Math.round(p.anualGs / 12))} por mes` : `Pagando el año: ${gs(p.anualGs)}`}
             </p>
 
             <ul className="mt-6 flex-1 space-y-2.5">
               {p.incluye.map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-[15px] text-lp-ink">
-                  <Check className="mt-1 h-4 w-4 shrink-0 text-lp-accentink" strokeWidth={2} aria-hidden /> {f}
+                <li key={f} className="flex items-start gap-2.5 text-[15px]">
+                  <Check className={`mt-1 h-4 w-4 shrink-0 ${p.recomendado ? "text-lp-accent" : "text-lp-accentink"}`} strokeWidth={2} aria-hidden /> {f}
                 </li>
               ))}
             </ul>
 
             <Link
               href={hrefDemo(ctaHref, p.id)}
-              className={`mt-7 inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-5 text-[15px] font-semibold transition-colors duration-150 ${
-                p.recomendado ? "bg-lp-ink text-lp-onink hover:bg-lp-ink2" : "border border-lp-rule2 text-lp-ink hover:bg-lp-paper2"
+              className={`lp-pulsable mt-7 inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-5 text-[15px] font-semibold ${
+                p.recomendado ? "bg-lp-paper text-lp-ink hover:bg-lp-paper3" : "border border-lp-rule2 text-lp-ink hover:bg-lp-paper2"
               }`}
             >
               Pedir una demo
@@ -594,7 +698,7 @@ export default function Landing() {
 
       <main>
       {/* ===== HERO partido: titular a la izquierda, bajada y acción a la derecha ===== */}
-      <section className="pb-12 pt-32 sm:pb-16 sm:pt-44">
+      <section className="pb-16 pt-32 sm:pb-24 sm:pt-44">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-12 lg:items-end lg:gap-12">
           <h1 className="lp-entrada font-logo text-[clamp(2.6rem,6.6vw,5.25rem)] font-bold leading-[1] tracking-[-0.035em] text-lp-ink lg:col-span-7">
             La clínica entera, en una sola pantalla.
@@ -613,8 +717,13 @@ export default function Landing() {
           </div>
         </div>
 
+        {/* el producto, en escena */}
+        <div className="lp-entrada mx-auto mt-12 max-w-6xl px-2 sm:mt-16 sm:px-6" style={{ ["--i" as string]: 4 }}>
+          <EscenarioProducto />
+        </div>
+
         {/* índice del recorrido */}
-        <nav aria-label="El recorrido" className="lp-entrada mx-auto mt-14 hidden max-w-6xl px-4 sm:block sm:px-6" style={{ ["--i" as string]: 4 }}>
+        <nav aria-label="El recorrido" className="mx-auto mt-14 hidden max-w-6xl px-4 sm:block sm:px-6">
           <ol className="grid grid-cols-5 border-t border-lp-ink">
             {ETAPAS.map((e) => (
               <li key={e.id}>
@@ -645,7 +754,7 @@ export default function Landing() {
                 <Link
                   key={s.id}
                   href={hrefDemo(ctaHref, s.id)}
-                  className="group flex flex-col rounded-[var(--lp-radius-card)] border border-lp-rule bg-lp-paper p-6 transition-colors duration-150 hover:border-lp-rule2"
+                  className="lp-pulsable group flex flex-col rounded-[var(--lp-radius-card)] border border-lp-rule bg-lp-surface p-6 hover:border-lp-rule2 hover:[box-shadow:var(--lp-shadow-lift)] [transition-property:transform,box-shadow,border-color]"
                 >
                   <Etiqueta>Plan {p.nombre}</Etiqueta>
                   <span className="mt-3 font-logo text-[20px] font-bold text-lp-ink">{s.t}</span>
@@ -675,8 +784,9 @@ export default function Landing() {
       </section>
 
       {/* ===== CIFRAS DEL PRODUCTO ===== */}
-      <section className="border-y border-lp-rule py-14 sm:py-16" aria-label="Novudent en números">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-4 sm:grid-cols-4 sm:px-6">
+      <section className="relative isolate overflow-hidden bg-lp-ink py-16 sm:py-24" aria-label="Novudent en números">
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 -bottom-56 -z-10 h-96 bg-[radial-gradient(ellipse_at_center,var(--lp-stage-glow),transparent_70%)]" />
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-12 px-4 sm:grid-cols-4 sm:px-6">
           {[
             { v: "32", l: "piezas FDI con morfología real" },
             { v: "5", l: "superficies marcables por pieza" },
@@ -684,8 +794,8 @@ export default function Landing() {
             { v: "0", l: "programas para instalar: es web" },
           ].map((x) => (
             <div key={x.l}>
-              <Numeral n={x.v} />
-              <p className="mt-3 max-w-[12rem] text-[15px] leading-snug text-lp-muted">{x.l}</p>
+              <Numeral n={x.v} tono="ink" />
+              <p className="mt-3 max-w-[12rem] text-[15px] leading-snug text-lp-oninkmuted">{x.l}</p>
             </div>
           ))}
         </div>

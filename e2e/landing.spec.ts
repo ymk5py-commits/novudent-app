@@ -158,3 +158,18 @@ test.describe("Anchos de celular y tablet", () => {
     });
   }
 });
+
+test("las tarjetas de vidrio del escenario no tapan ninguna pieza del odontograma", async ({ page }) => {
+  for (const ancho of [1024, 1280, 1366, 1440, 1920]) {
+    await page.setViewportSize({ width: ancho, height: 900 });
+    await page.goto("/");
+    const choques = await page.evaluate(() => {
+      const tarjetas = [...document.querySelectorAll("aside[aria-label^='Ejemplo']")].map((a) => a.getBoundingClientRect()).filter((r) => r.width > 0);
+      const piezas = [...document.querySelectorAll("button[aria-label^='Pieza']")].map((b) => ({ n: b.getAttribute("aria-label")!, r: b.getBoundingClientRect() }));
+      const cruza = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      return { tarjetas: tarjetas.length, tapadas: piezas.filter((p) => tarjetas.some((t) => cruza(t, p.r))).map((p) => p.n) };
+    });
+    expect(choques.tarjetas, `${ancho}px: tarjetas visibles`).toBe(ancho >= 1280 ? 2 : 0);
+    expect(choques.tapadas, `${ancho}px`).toEqual([]);
+  }
+});
