@@ -61,7 +61,7 @@ test.describe("Landing", () => {
 
   test("preguntas frecuentes: se abren y muestran la respuesta", async ({ page }) => {
     const preguntas = page.locator("details.lp-faq");
-    await expect(preguntas).toHaveCount(6);
+    await expect(preguntas).toHaveCount(7);
     const primera = preguntas.first();
     await primera.locator("summary").click();
     await expect(primera).toHaveAttribute("open", "");
@@ -157,6 +157,30 @@ test.describe("Anchos de celular y tablet", () => {
       }
     });
   }
+});
+
+test("puesta en marcha: una semana día por día, con el documento de configuración", async ({ page }) => {
+  for (const ruta of ["/", "/precios"]) {
+    await page.goto(ruta);
+    const s = page.locator("#puesta-en-marcha");
+    await expect(s.getByRole("heading", { name: "Tu clínica funcionando en una semana" }), ruta).toBeVisible();
+    const pasos = s.getByRole("listitem").filter({ has: page.getByRole("heading", { level: 3 }) });
+    await expect(pasos.getByRole("heading", { level: 3 })).toHaveText(["Relevamiento y configuración", "Migración de datos", "Capacitación", "Salida en vivo y soporte"]);
+    await expect(pasos.first()).toContainText("Días 1–2");
+    await expect(s.getByRole("heading", { name: "Documento de configuración de tu clínica" })).toBeVisible();
+    await expect(s.getByText("Entregable · fin del día 2")).toBeVisible();
+  }
+  // el cronograma (desde 640 px): ninguna barra corta su texto
+  for (const ancho of [640, 1024, 1440]) {
+    await page.setViewportSize({ width: ancho, height: 900 });
+    await page.goto("/");
+    const cortadas = await page.locator("#puesta-en-marcha [aria-hidden] .grid.grid-cols-5 > div").evaluateAll((els) =>
+      els.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent?.trim()));
+    expect(cortadas, `${ancho}px`).toEqual([]);
+  }
+  await page.goto("/acceso");
+  await expect(page.getByText("Tu clínica funcionando en una semana")).toBeVisible();
+  await expect(page.getByText("Documento de configuración de tu clínica, por escrito")).toBeVisible();
 });
 
 test("/precios compara los tres planes función por función", async ({ page }) => {

@@ -7,7 +7,7 @@ import SolicitarAcceso from "@/components/SolicitarAcceso";
 export const metadata: Metadata = {
   title: "Pedí una demo de Novudent",
   description:
-    "Dejanos tus datos y te mostramos Novudent funcionando. Respuesta en menos de 24 horas hábiles; la puesta en marcha incluye la migración de tus datos desde otro sistema, planillas o papel.",
+    "Dejanos tus datos y te mostramos Novudent funcionando. Respuesta en menos de 24 horas hábiles; la puesta en marcha lleva una semana e incluye la migración de tus datos desde otro sistema, planillas o papel.",
   alternates: { canonical: "/acceso" },
 };
 
@@ -34,8 +34,9 @@ export default function AccesoPage() {
           <ul className="mt-8 space-y-3">
             {[
               "Respuesta en menos de 24 h hábiles",
-              "Migración de tus datos en la puesta en marcha",
-              "Capacitación para todo el equipo",
+              "Tu clínica funcionando en una semana",
+              "Migración de tus datos y capacitación del equipo",
+              "Documento de configuración de tu clínica, por escrito",
             ].map((t) => (
               <li key={t} className="flex items-start gap-2.5 text-[15px] text-lp-ink">
                 <Check className="mt-1 h-4 w-4 shrink-0 text-lp-primary" strokeWidth={2} aria-hidden /> {t}

@@ -22,8 +22,12 @@ export const FAQS = [
     a: "Solo tu equipo, y cada persona según su rol: la recepción cobra pero no ve los números del negocio, y el profesional escribe la ficha sin manejar la caja. Los usuarios los crea el administrador de la clínica.",
   },
   {
+    q: "¿Cuánto tarda la puesta en marcha?",
+    a: "Una semana hábil. Los días 1 y 2 relevamos cómo trabaja tu clínica y configuramos el sistema, y te entregamos el documento de configuración; los días 3 y 4 migramos tus datos, y el día 5 capacitamos a tu equipo.",
+  },
+  {
     q: "¿Puedo traer mis datos de otro sistema?",
-    a: "Sí. En la puesta en marcha migramos tus pacientes desde otro sistema, planillas o papel, y capacitamos a tu equipo.",
+    a: "Sí. Durante la puesta en marcha migramos tus pacientes desde otro sistema, planillas o papel, y capacitamos a tu equipo.",
   },
   {
     q: "¿Cómo empiezo?",

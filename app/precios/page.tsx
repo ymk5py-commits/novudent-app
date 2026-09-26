@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PaginaSeccion } from "@/components/landing/Chrome";
-import { SeccionFaq, SeccionPrecios, TablaPlanes } from "@/components/Landing";
+import { SeccionFaq, SeccionPrecios, SeccionPuestaEnMarcha, TablaPlanes } from "@/components/Landing";
 import { SITE_URL } from "@/lib/site";
 import { PLANES, gs } from "@/lib/landing/precios";
 
@@ -32,10 +32,14 @@ export default function PreciosPage() {
       activa="/precios"
       etiqueta="Precios"
       titulo="Planes y precios en guaraníes, según el tamaño de tu clínica"
-      intro="Todos los planes incluyen agenda, ficha clínica, odontograma por superficies y presupuestos. El precio depende de cuántos profesionales atienden; la puesta en marcha incluye la migración de tus datos."
+      intro="Todos los planes incluyen agenda, ficha clínica, odontograma por superficies y presupuestos. El precio depende de cuántos profesionales atienden; la puesta en marcha lleva una semana e incluye la migración de tus datos."
     >
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <SeccionPrecios />
+
+      <section id="puesta-en-marcha" className="mt-20 scroll-mt-24 sm:mt-28" aria-labelledby="titulo-puesta">
+        <SeccionPuestaEnMarcha />
+      </section>
 
       <section className="mt-20 sm:mt-28" aria-labelledby="titulo-tabla">
         <div className="mx-auto mb-8 max-w-2xl text-center">
