@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Open_Sans, Jost, JetBrains_Mono } from "next/font/google";
+import { Open_Sans, Jost, JetBrains_Mono, Inter } from "next/font/google";
 import { StoreProvider } from "@/lib/store";
 import HydrationGuard from "@/components/HydrationGuard";
+import Consentimiento from "@/components/landing/Consentimiento";
 /** OJO: estas constantes se importan del módulo PLANO, no de HydrationGuard.
  *  Este archivo es un Server Component; importarlas de un módulo `"use client"`
  *  las convierte en proxies y el script inline sale con `[object Object]`. */
@@ -23,7 +24,8 @@ const openSans = Open_Sans({ subsets: ["latin"], weight: ["300", "400", "600", "
    identidad que copiamos usa una sola geométrica en varios pesos, y mezclarla
    con la humanista del panel rompía el aire. El 200 es el que hace el display
    ultra-fino de los titulares grandes. */
-const jost = Jost({ subsets: ["latin"], weight: ["200", "300", "400", "500", "600"], variable: "--font-jost", display: "swap" });
+const jost = Jost({ subsets: ["latin"], weight: ["200", "300", "400", "500", "600", "700"], variable: "--font-jost", display: "swap" });
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-inter", display: "swap" });
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-jbmono", display: "swap" });
 
 export const metadata: Metadata = {
@@ -34,7 +36,7 @@ export const metadata: Metadata = {
   description:
     "Agenda inteligente, odontograma interactivo FDI, ficha clínica, formularios y facturación con estados — todo en la nube. Software dental hecho para Paraguay, por NOVUM.",
   applicationName: "Novudent",
-  keywords: ["software dental", "gestión de clínica dental", "odontograma", "agenda odontológica", "ficha clínica dental", "software odontológico Paraguay", "Dentalink alternativa"],
+  keywords: ["software dental", "gestión de clínica dental", "odontograma", "agenda odontológica", "ficha clínica dental", "software odontológico Paraguay"],
   authors: [{ name: "NOVUM Holding" }],
   // Canonical al dominio propio en TODAS las páginas — también en las que
   // responden por la .vercel.app — para que Google consolide todo en un lugar.
@@ -71,11 +73,12 @@ const MOTION_FALLBACK_BOOT = `window.__novudentMotionTimer=setTimeout(function()
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${openSans.variable} ${jost.variable} ${mono.variable}`}>
+    <html lang="es" className={`${openSans.variable} ${jost.variable} ${mono.variable} ${inter.variable}`}>
       <body className="font-sans">
         <script dangerouslySetInnerHTML={{ __html: MOTION_FALLBACK_BOOT }} />
         <HydrationGuard />
         <StoreProvider>{children}</StoreProvider>
+        <Consentimiento />
       </body>
     </html>
   );

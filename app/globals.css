@@ -519,3 +519,157 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
   }
   .print-area .print\:hidden { display: none !important; }
 }
+
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V3
+ * Hallmark · genre: modern-minimal (blanco clínico, estructura de la referencia pedida por el dueño) · macrostructure: Narrative Workflow · tone: clínico y preciso
+ * theme: studied-DNA (estructura de una landing pública del rubro, 2026-09-25) + marca Novudent (navy + menta)
+ * paper oklch(98.4% 0.004 270) · ink oklch(21.2% 0.088 270) · accent oklch(51.6% 0.103 167) sobre claro, oklch(81.7% 0.158 167) sobre navy
+ * display + body: Inter 600/400 · wordmark: Jost 300 · nav: barra fija clásica · footer: columnas
+ * enrichment: none (el producto real) · audience: dueños de clínicas · action: pedir una demo · studied: yes
+ *
+ * Landing y páginas públicas. Todo color y medida de la landing sale de estos tokens (Tailwind los expone
+ * como `lp-*`, ver tailwind.config.ts): nada de hex sueltos en los componentes. El panel (`/app`) no los usa. */
+:root {
+  /* Marca Novudent en la web pública: blanco clínico, tinta navy y el turquesa de la app
+     como color de acción (el mismo `azure` del panel, para que la vidriera y el producto
+     se sientan una sola cosa). */
+  --lp-surface: #FFFFFF;
+  --lp-paper: #FFFFFF;
+  --lp-paper-2: #F5F8FB;
+  --lp-paper-3: #EAF1F6;
+  --lp-rule: #DCE4EC;
+  --lp-rule-strong: #B9C6D3;
+  --lp-neutral: #6B7A8F;
+  --lp-muted: #4B5870;
+  --lp-ink: #0F1F3D;
+  --lp-ink-2: #15294A;
+  --lp-on-ink: #FFFFFF;
+  --lp-on-ink-muted: #D6E6F2;
+
+  --lp-primary: #0D8199;       /* botones y enlaces principales (4.6:1 sobre blanco) */
+  --lp-primary-hover: #0B6B80;
+  --lp-primary-wash: #E7F6F9;
+  --lp-primary-soft: #C3E9F0;
+  --lp-band-from: #0B6B80;     /* franjas de color */
+  --lp-band-to: #14A6C0;
+
+  --lp-accent: #2FE3AE;        /* menta: detalle chico sobre tinta o sobre las franjas */
+  --lp-accent-ink: #0B7A5B;
+  --lp-accent-wash: #E3F8F0;
+  --lp-focus: #0D8199;
+  --lp-alert: #C81E1E;
+  --lp-alert-wash: #FDE8E8;
+  --lp-blob-a: #93D6E2;
+  --lp-blob-b: #B9F3DF;
+
+  --lp-space-3xs: 0.125rem; --lp-space-2xs: 0.25rem; --lp-space-xs: 0.5rem; --lp-space-sm: 0.75rem;
+  --lp-space-md: 1rem; --lp-space-lg: 1.5rem; --lp-space-xl: 2.5rem; --lp-space-2xl: 4rem;
+  --lp-space-3xl: 6rem; --lp-space-4xl: 9rem;
+
+  --lp-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --lp-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --lp-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --lp-dur-micro: 120ms; --lp-dur-short: 220ms; --lp-dur-long: 420ms;
+
+  --lp-radius-input: 8px; --lp-radius-btn: 8px; --lp-radius-card: 16px; --lp-radius-pill: 999px;
+  --lp-z-raised: 10; --lp-z-sticky: 200; --lp-z-modal: 400; --lp-z-toast: 500;
+
+  --lp-shadow-whisper: 0 1px 2px rgb(15 31 61 / 0.06);
+  --lp-shadow-float: 0 12px 32px -12px rgb(15 31 61 / 0.22);
+  --lp-shadow-lift: 0 18px 40px -18px rgb(15 31 61 / 0.28);
+  --lp-shadow-stage: 0 30px 60px -24px rgb(15 31 61 / 0.35);
+  --lp-paper-glass: rgb(255 255 255 / 0.86);
+  --lp-scrim: rgb(15 31 61 / 0.42);
+  --lp-stage-glow: rgb(20 166 192 / 0.35);
+  --lp-glass-ink: rgb(21 41 74 / 0.72);
+  --lp-glass-ink-edge: rgb(255 255 255 / 0.14);
+  --lp-spring: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* La landing nunca scrollea de costado (clip, no hidden: hidden rompe position:sticky). */
+.lp-root { overflow-x: clip; background: var(--lp-paper); color: var(--lp-ink); }
+.lp-root :where(h1, h2, h3) { overflow-wrap: anywhere; min-width: 0; font-style: normal; }
+.lp-num { font-variant-numeric: tabular-nums; }
+:where(.lp-root, .lp-capa) :where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--lp-focus); outline-offset: 2px; /* aparece al instante: nunca se anima */
+}
+.lp-nowrap { white-space: nowrap; }
+/* El aviso de cookies y la barra fija del celular ocupan el mismo lugar: primero se decide lo de las cookies. */
+html[data-cookies="pendiente"] .lp-barra-movil { display: none; }
+
+/* Una sola entrada coreografiada al cargar; después el contenido simplemente está. */
+@keyframes lp-entrada { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.lp-entrada { animation: lp-entrada var(--lp-dur-long) var(--lp-ease-out) both; animation-delay: calc(var(--i, 0) * 60ms); }
+@media (prefers-reduced-motion: reduce) {
+  /* sin desplazamientos: los cambios de color quedan, las flechas y menús dejan de moverse */
+  :where(.lp-root, .lp-capa) * { transition-property: color, background-color, border-color, opacity !important; }
+  .lp-entrada { animation: lp-entrada-suave 150ms linear both; }
+  @keyframes lp-entrada-suave { from { opacity: 0; } to { opacity: 1; } }
+}
+
+/* Texto corrido de las páginas legales. */
+.lp-legal h2 { margin-top: var(--lp-space-2xl); font-family: var(--font-inter), ui-sans-serif; font-weight: 600; font-size: 1.375rem; line-height: 1.25; color: var(--lp-ink); }
+.lp-legal p, .lp-legal li { margin-top: var(--lp-space-sm); color: var(--lp-muted); max-width: 68ch; }
+.lp-legal ul { margin-top: var(--lp-space-sm); padding-left: 1.25rem; list-style: disc; }
+.lp-legal li { margin-top: var(--lp-space-2xs); }
+.lp-legal strong { color: var(--lp-ink); font-weight: 600; }
+.lp-legal a { color: var(--lp-ink); text-decoration: underline; text-underline-offset: 2px; }
+.lp-legal table { margin-top: var(--lp-space-md); width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.lp-legal th, .lp-legal td { border-bottom: 1px solid var(--lp-rule); padding: var(--lp-space-xs) var(--lp-space-sm) var(--lp-space-xs) 0; text-align: left; vertical-align: top; }
+.lp-legal th { color: var(--lp-ink); font-weight: 600; }
+.lp-legal td { color: var(--lp-muted); }
+.lp-legal code { font-family: var(--font-jbmono), ui-monospace; font-size: 0.85em; overflow-wrap: anywhere; }
+
+/* ---------- Capa de movimiento (landing) ----------
+   Todo es mejora progresiva: sin soporte o con movimiento reducido, el contenido queda
+   quieto en su lugar final. Nada depende de una animación para verse. */
+
+/* Respuesta al toque: se hunde al presionar, al instante. */
+.lp-pulsable { transition: transform 100ms ease-out, background-color var(--lp-dur-short) var(--lp-ease-out), color var(--lp-dur-short) var(--lp-ease-out); }
+.lp-pulsable:active { transform: scale(0.97); }
+
+/* Tarjetas flotantes del escenario: suben un poco mientras el escenario entra en pantalla. */
+@keyframes lp-deriva { from { transform: translateY(var(--lp-deriva, 28px)); } to { transform: none; } }
+@keyframes lp-llenado { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .lp-flota { animation: lp-deriva linear both; animation-timeline: view(); animation-range: entry 0% cover 45%; }
+    .lp-flota-lenta { --lp-deriva: 56px; }
+    /* La línea del recorrido se llena a medida que bajás. */
+    .lp-riel-lleno { transform-origin: top; animation: lp-llenado linear both; animation-timeline: view(); animation-range: entry 40% exit 60%; }
+  }
+}
+@supports not (animation-timeline: view()) { .lp-riel-lleno { transform: none; } }
+
+/* El precio cambia con un fundido corto, sin desplazar nada. */
+@keyframes lp-cambio { from { opacity: 0.25; } to { opacity: 1; } }
+.lp-cambio { animation: lp-cambio 220ms var(--lp-ease-out); }
+
+/* Preguntas: se abren con altura animada donde el navegador lo sabe hacer. */
+:root { interpolate-size: allow-keywords; }
+@media (prefers-reduced-motion: no-preference) {
+  .lp-faq::details-content { block-size: 0; overflow: hidden; transition: block-size 320ms var(--lp-spring), content-visibility 320ms allow-discrete; }
+  .lp-faq[open]::details-content { block-size: auto; }
+}
+
+/* Vidrio oscuro de las tarjetas del escenario. */
+.lp-vidrio-ink { background: var(--lp-glass-ink); backdrop-filter: blur(18px) saturate(160%); border: 1px solid var(--lp-glass-ink-edge); }
+@media (prefers-reduced-transparency: reduce) {
+  .lp-vidrio-ink { background: var(--lp-ink-2); backdrop-filter: none; }
+  .lp-root header > div, .lp-barra-movil { background: var(--lp-paper) !important; backdrop-filter: none !important; }
+}
+@media (prefers-contrast: more) {
+  .lp-vidrio-ink { background: var(--lp-ink); border-color: var(--lp-on-ink); }
+}
+
+/* Halos del visual de portada y de las filas: anillos concéntricos que no se animan. */
+.lp-halo { background:
+  radial-gradient(circle at center, var(--lp-primary-wash) 0 52%, transparent 52.2%),
+  radial-gradient(circle at center, transparent 0 62%, var(--lp-primary-soft) 62.2% 62.6%, transparent 62.8%),
+  radial-gradient(circle at center, transparent 0 74%, var(--lp-rule) 74.2% 74.5%, transparent 74.7%); }
+/* Manchas de color del panel de problemas: fijas, detrás del texto. */
+.lp-manchas { background:
+  radial-gradient(40% 60% at 8% 100%, var(--lp-blob-b), transparent 70%),
+  radial-gradient(35% 55% at 100% 0%, var(--lp-blob-a), transparent 70%),
+  linear-gradient(180deg, var(--lp-primary-wash), var(--lp-paper-2)); }
+.lp-franja { background: linear-gradient(120deg, var(--lp-band-from), var(--lp-band-to)); }

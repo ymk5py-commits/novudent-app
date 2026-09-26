@@ -14,3 +14,14 @@
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://novudent.novumholding.lat").replace(/\/$/, "");
 
 export const SITE_NAME = "Novudent";
+
+/** WhatsApp de ventas, solo dígitos con código de país (ej. 595981123456). Sin número cargado en
+ *  NEXT_PUBLIC_WHATSAPP_VENTAS, el botón no aparece: nunca un número inventado. */
+export const WHATSAPP_VENTAS = (process.env.NEXT_PUBLIC_WHATSAPP_VENTAS || "").replace(/\D/g, "");
+
+/** Correo para consultas de privacidad y datos personales (NEXT_PUBLIC_CONTACTO_LEGAL). Sin él, las
+ *  páginas legales mandan al formulario de /acceso. */
+export const CONTACTO_LEGAL = process.env.NEXT_PUBLIC_CONTACTO_LEGAL || "";
+
+export const linkWhatsApp = (texto = "Hola, quiero ver Novudent funcionando en mi clínica.") =>
+  WHATSAPP_VENTAS ? `https://wa.me/${WHATSAPP_VENTAS}?text=${encodeURIComponent(texto)}` : "";

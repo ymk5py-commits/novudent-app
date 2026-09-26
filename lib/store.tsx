@@ -756,14 +756,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const cur = db.patients.find((x) => x.id === patientId);
       if (!cur) return;
       const next = fn(cur);
-      persist({ ...db, patients: db.patients.map((x) => (x.id === patientId ? next : x)) });
+      persist((prev) => ({ ...prev, patients: prev.patients.map((x) => (x.id === patientId ? next : x)) }));
       fsSave("patients", patientId, next);
     };
     const patchBilling = (id: string, fn: (b: BillingRecord) => BillingRecord) => {
       const cur = db.billing.find((x) => x.id === id);
       if (!cur) return;
       const next = fn(cur);
-      persist({ ...db, billing: db.billing.map((x) => (x.id === id ? next : x)) });
+      persist((prev) => ({ ...prev, billing: prev.billing.map((x) => (x.id === id ? next : x)) }));
       fsSave("billing", id, next);
     };
 
@@ -882,7 +882,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           await setDoc(doc(fsdb, "clinics", cid, "users", u.id), clean(u));
           await setDoc(doc(fsdb, "directory", uid), { clinicId: cid, email });
         }
-        persist({ ...db, users: [...db.users, u] });
+        persist((prev) => ({ ...prev, users: [...prev.users, u] }));
       },
       changeMyPassword: async (newPassword) => {
         // El cambio ocurre EN EL SERVIDOR: rota la contraseña en Firebase Auth y
@@ -903,7 +903,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const me = db.users.find((u) => u.id === session?.userId);
         if (me) {
           const up = { ...me, mustChangePassword: false };
-          persist({ ...db, users: db.users.map((u) => (u.id === up.id ? up : u)) });
+          persist((prev) => ({ ...prev, users: prev.users.map((u) => (u.id === up.id ? up : u)) }));
         }
       },
       /* Cerrar sesión de verdad, en este orden:
@@ -961,15 +961,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         persist(seed);
       },
       upsertAppointment: (a) => {
-        persist({ ...db, appointments: db.appointments.some((x) => x.id === a.id) ? db.appointments.map((x) => (x.id === a.id ? a : x)) : [...db.appointments, a] });
+        persist((prev) => ({ ...prev, appointments: prev.appointments.some((x) => x.id === a.id) ? prev.appointments.map((x) => (x.id === a.id ? a : x)) : [...prev.appointments, a] }));
         fsSave("appointments", a.id, a);
       },
       deleteAppointment: (id) => {
-        persist({ ...db, appointments: db.appointments.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, appointments: prev.appointments.filter((x) => x.id !== id) }));
         fsDelete("appointments", id);
       },
       upsertPatient: (p) => {
-        persist({ ...db, patients: db.patients.some((x) => x.id === p.id) ? db.patients.map((x) => (x.id === p.id ? p : x)) : [...db.patients, p] });
+        persist((prev) => ({ ...prev, patients: prev.patients.some((x) => x.id === p.id) ? prev.patients.map((x) => (x.id === p.id ? p : x)) : [...prev.patients, p] }));
         fsSave("patients", p.id, p);
       },
       mergePatients: (keepId, removeId) => {
@@ -1011,7 +1011,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           } : undefined,
         };
         const patients = db.patients.filter((p) => p.id !== removeId).map((p) => (p.id === keepId ? merged : p));
-        persist({ ...db, patients, appointments, billing, budgets, payments, signatures, radiographs, recoveryMonitors, crmCards, labOrders, patientNotes, fiscalDocs });
+        persist((prev) => ({ ...prev, patients, appointments, billing, budgets, payments, signatures, radiographs, recoveryMonitors, crmCards, labOrders, patientNotes, fiscalDocs }));
         fsSave("patients", keepId, merged);
         fsDelete("patients", removeId);
       },
@@ -1045,7 +1045,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           };
         }),
       upsertBilling: (b) => {
-        persist({ ...db, billing: db.billing.some((x) => x.id === b.id) ? db.billing.map((x) => (x.id === b.id ? b : x)) : [...db.billing, b] });
+        persist((prev) => ({ ...prev, billing: prev.billing.some((x) => x.id === b.id) ? prev.billing.map((x) => (x.id === b.id ? b : x)) : [...prev.billing, b] }));
         fsSave("billing", b.id, b);
       },
       submitBilling: (id) => patchBilling(id, (b) => submitToBilling(b, by)),
@@ -1069,29 +1069,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           };
         }),
       upsertUser: (u) => {
-        persist({ ...db, users: db.users.some((x) => x.id === u.id) ? db.users.map((x) => (x.id === u.id ? u : x)) : [...db.users, u] });
+        persist((prev) => ({ ...prev, users: prev.users.some((x) => x.id === u.id) ? prev.users.map((x) => (x.id === u.id ? u : x)) : [...prev.users, u] }));
         fsSave("users", u.id, u);
       },
       upsertProcedure: (p) => {
-        persist({ ...db, procedures: db.procedures.some((x) => x.cpt === p.cpt) ? db.procedures.map((x) => (x.cpt === p.cpt ? p : x)) : [...db.procedures, p] });
+        persist((prev) => ({ ...prev, procedures: prev.procedures.some((x) => x.cpt === p.cpt) ? prev.procedures.map((x) => (x.cpt === p.cpt ? p : x)) : [...prev.procedures, p] }));
         fsSave("procedures", p.cpt, p);
       },
       deleteProcedure: (cpt) => {
-        persist({ ...db, procedures: db.procedures.filter((x) => x.cpt !== cpt) });
+        persist((prev) => ({ ...prev, procedures: prev.procedures.filter((x) => x.cpt !== cpt) }));
         fsDelete("procedures", cpt);
       },
       setOnboarding: (k, v) => {
         const next = { ...db, onboarding: { ...db.onboarding, [k]: v } };
-        persist(next);
+        // Estado local desde `prev` (el último): con `next` armado sobre `db`, una acción encadenada pisaba a la anterior.
+        persist((prev) => ({ ...prev, onboarding: { ...prev.onboarding, [k]: v } }));
         fsMeta(next);
       },
       /* — Presupuestos — */
       upsertBudget: (b) => {
-        persist({ ...db, budgets: db.budgets.some((x) => x.id === b.id) ? db.budgets.map((x) => (x.id === b.id ? b : x)) : [...db.budgets, b] });
+        persist((prev) => ({ ...prev, budgets: prev.budgets.some((x) => x.id === b.id) ? prev.budgets.map((x) => (x.id === b.id ? b : x)) : [...prev.budgets, b] }));
         fsSave("budgets", b.id, b);
       },
       deleteBudget: (id) => {
-        persist({ ...db, budgets: db.budgets.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, budgets: prev.budgets.filter((x) => x.id !== id) }));
         fsDelete("budgets", id);
       },
       /* — Caja — */
@@ -1102,28 +1103,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         fsSave("payments", p.id, p);
       },
       deletePayment: (id) => {
-        persist({ ...db, payments: db.payments.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, payments: prev.payments.filter((x) => x.id !== id) }));
         fsDelete("payments", id);
       },
       addExpense: (e) => {
-        persist({ ...db, expenses: [...db.expenses, e] });
+        persist((prev) => ({ ...prev, expenses: [...prev.expenses, e] }));
         fsSave("expenses", e.id, e);
       },
       updateExpense: (e) => {
-        persist({ ...db, expenses: db.expenses.map((x) => (x.id === e.id ? e : x)) });
+        persist((prev) => ({ ...prev, expenses: prev.expenses.map((x) => (x.id === e.id ? e : x)) }));
         fsSave("expenses", e.id, e);
       },
       deleteExpense: (id) => {
-        persist({ ...db, expenses: db.expenses.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, expenses: prev.expenses.filter((x) => x.id !== id) }));
         fsDelete("expenses", id);
       },
       /* — Inventario — */
       upsertStockItem: (s) => {
-        persist({ ...db, stock: db.stock.some((x) => x.id === s.id) ? db.stock.map((x) => (x.id === s.id ? s : x)) : [...db.stock, s] });
+        persist((prev) => ({ ...prev, stock: prev.stock.some((x) => x.id === s.id) ? prev.stock.map((x) => (x.id === s.id ? s : x)) : [...prev.stock, s] }));
         fsSave("stock", s.id, s);
       },
       deleteStockItem: (id) => {
-        persist({ ...db, stock: db.stock.filter((x) => x.id !== id), stockMoves: db.stockMoves.filter((m) => m.itemId !== id) });
+        persist((prev) => ({ ...prev, stock: prev.stock.filter((x) => x.id !== id), stockMoves: prev.stockMoves.filter((m) => m.itemId !== id) }));
         fsDelete("stock", id);
       },
       addStockMove: (m) => {
@@ -1134,17 +1135,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (m.type === "salida" && m.qty > item.stock) return;
         const delta = m.type === "entrada" ? m.qty : -m.qty;
         const updated = { ...item, stock: Math.max(0, item.stock + delta) };
-        persist({ ...db, stock: db.stock.map((s) => (s.id === m.itemId ? updated : s)), stockMoves: [m, ...db.stockMoves] });
+        persist((prev) => ({ ...prev, stock: prev.stock.map((s) => (s.id === m.itemId ? updated : s)), stockMoves: [m, ...prev.stockMoves] }));
         fsSave("stock", updated.id, updated);
         fsSave("stockMoves", m.id, m);
       },
       /* — Lista de espera — */
       addWaitlist: (w) => {
-        persist({ ...db, waitlist: [...db.waitlist, w] });
+        persist((prev) => ({ ...prev, waitlist: [...prev.waitlist, w] }));
         fsSave("waitlist", w.id, w);
       },
       removeWaitlist: (id) => {
-        persist({ ...db, waitlist: db.waitlist.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, waitlist: prev.waitlist.filter((x) => x.id !== id) }));
         fsDelete("waitlist", id);
       },
       /* — Ficha del paciente — */
@@ -1166,20 +1167,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const nextClinic = { ...c, config: { ...c.config, ...patch } };
         ACTIVE_CURRENCY = (nextClinic.config.currency as CurrencyCode) ?? DEFAULT_CURRENCY;
         const next = { ...db, clinics: [nextClinic] };
-        persist(next);
+        // Estado local desde `prev` (el último): con `next` armado sobre `db`, una acción encadenada pisaba a la anterior.
+        persist((prev) => ({ ...prev, clinics: [{ ...prev.clinics[0], config: { ...prev.clinics[0].config, ...patch } }] }));
         fsMeta(next);
       },
       importPatients: (list) => {
-        persist({ ...db, patients: [...db.patients, ...list] });
+        persist((prev) => ({ ...prev, patients: [...prev.patients, ...list] }));
         list.forEach((p) => fsSave("patients", p.id, p));
       },
       /* — Integración Botika (outbox) — */
       addOutboxTask: (t) => {
-        persist({ ...db, outbox: [t, ...db.outbox] });
+        persist((prev) => ({ ...prev, outbox: [t, ...prev.outbox] }));
         fsSave("outbox", t.id, t);
       },
       deleteOutboxTask: (id) => {
-        persist({ ...db, outbox: db.outbox.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, outbox: prev.outbox.filter((x) => x.id !== id) }));
         fsDelete("outbox", id);
       },
       applyOutboxResult: (taskId, result) => {
@@ -1187,79 +1189,85 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (!task) return;
         const updated: OutboxTask = { ...task, status: result.error ? "error" : "respondido", result };
         const base: DB = { ...db, outbox: db.outbox.map((t) => (t.id === taskId ? updated : t)) };
-        const { next, saves } = reflectOutbox(base, updated);
-        persist(next);
+        const { saves } = reflectOutbox(base, updated);
+        // Estado local desde `prev` (el último): con `next` armado sobre `db`, una acción encadenada pisaba a la anterior.
+        persist((prev) => {
+          const t = prev.outbox.find((x) => x.id === taskId);
+          if (!t) return prev;
+          const up: OutboxTask = { ...t, status: result.error ? "error" : "respondido", result };
+          return reflectOutbox({ ...prev, outbox: prev.outbox.map((x) => (x.id === taskId ? up : x)) }, up).next;
+        });
         saves.forEach(([c, i, d]) => fsSave(c, i, d));
         fsSave("outbox", updated.id, updated);
       },
       /* — Monitor de recuperación post-operatoria — */
       addRecoveryMonitor: (m) => {
-        persist({ ...db, recoveryMonitors: [m, ...db.recoveryMonitors] });
+        persist((prev) => ({ ...prev, recoveryMonitors: [m, ...prev.recoveryMonitors] }));
         fsSave("recoveryMonitors", m.id, m);
       },
       resolveRecoveryMonitor: (id, by) => {
         const mon = db.recoveryMonitors.find((m) => m.id === id);
         if (!mon) return;
         const up = { ...mon, status: "completado" as const, resolvedAt: new Date().toISOString(), resolvedBy: by };
-        persist({ ...db, recoveryMonitors: db.recoveryMonitors.map((m) => (m.id === id ? up : m)) });
+        persist((prev) => ({ ...prev, recoveryMonitors: prev.recoveryMonitors.map((m) => (m.id === id ? up : m)) }));
         fsSave("recoveryMonitors", id, up);
       },
       /* — Análisis IA de radiografías — */
       addPatientNote: (n: PatientNote) => {
-        persist({ ...db, patientNotes: [n, ...db.patientNotes] });
+        persist((prev) => ({ ...prev, patientNotes: [n, ...prev.patientNotes] }));
         fsSave("patientNotes", n.id, n);
       },
       updatePatientNote: (n: PatientNote) => {
-        persist({ ...db, patientNotes: db.patientNotes.map((x) => (x.id === n.id ? n : x)) });
+        persist((prev) => ({ ...prev, patientNotes: prev.patientNotes.map((x) => (x.id === n.id ? n : x)) }));
         fsSave("patientNotes", n.id, n);
       },
       deletePatientNote: (id: string) => {
-        persist({ ...db, patientNotes: db.patientNotes.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, patientNotes: prev.patientNotes.filter((x) => x.id !== id) }));
         fsDelete("patientNotes", id);
       },
       addFiscalDoc: (d: FiscalDoc) => {
-        persist({ ...db, fiscalDocs: [d, ...db.fiscalDocs] });
+        persist((prev) => ({ ...prev, fiscalDocs: [d, ...prev.fiscalDocs] }));
         fsSave("fiscalDocs", d.id, d);
       },
       deleteFiscalDoc: (id: string) => {
-        persist({ ...db, fiscalDocs: db.fiscalDocs.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, fiscalDocs: prev.fiscalDocs.filter((x) => x.id !== id) }));
         fsDelete("fiscalDocs", id);
       },
       voidPayment: (id, by, reason) => {
         const p = db.payments.find((x) => x.id === id);
         if (!p) return;
         const up = { ...p, voidedAt: new Date().toISOString(), voidedBy: by, ...(reason ? { voidReason: reason } : {}) };
-        persist({ ...db, payments: db.payments.map((x) => (x.id === id ? up : x)) });
+        persist((prev) => ({ ...prev, payments: prev.payments.map((x) => (x.id === id ? up : x)) }));
         fsSave("payments", id, up);
       },
       markCheckCobrado: (id, by) => {
         const p = db.payments.find((x) => x.id === id);
         if (!p || !p.check) return;
         const up = { ...p, check: { ...p.check, cobradoAt: new Date().toISOString(), cobradoBy: by } };
-        persist({ ...db, payments: db.payments.map((x) => (x.id === id ? up : x)) });
+        persist((prev) => ({ ...prev, payments: prev.payments.map((x) => (x.id === id ? up : x)) }));
         fsSave("payments", id, up);
       },
       openCashSession: (s) => {
-        persist({ ...db, cashSessions: [s, ...db.cashSessions] });
+        persist((prev) => ({ ...prev, cashSessions: [s, ...prev.cashSessions] }));
         fsSave("cashSessions", s.id, s);
       },
       closeCashSession: (id, countedCash, note) => {
         const s = db.cashSessions.find((x) => x.id === id);
         if (!s) return;
         const up: CashSession = { ...s, status: "cerrada", closedAt: new Date().toISOString(), countedCash, note: note || undefined };
-        persist({ ...db, cashSessions: db.cashSessions.map((x) => (x.id === id ? up : x)) });
+        persist((prev) => ({ ...prev, cashSessions: prev.cashSessions.map((x) => (x.id === id ? up : x)) }));
         fsSave("cashSessions", id, up);
       },
       addSterilizationCycle: (c) => {
-        persist({ ...db, sterilizationCycles: [c, ...db.sterilizationCycles] });
+        persist((prev) => ({ ...prev, sterilizationCycles: [c, ...prev.sterilizationCycles] }));
         fsSave("sterilizationCycles", c.id, c);
       },
       updateSterilizationCycle: (c) => {
-        persist({ ...db, sterilizationCycles: db.sterilizationCycles.map((x) => (x.id === c.id ? c : x)) });
+        persist((prev) => ({ ...prev, sterilizationCycles: prev.sterilizationCycles.map((x) => (x.id === c.id ? c : x)) }));
         fsSave("sterilizationCycles", c.id, c);
       },
       deleteSterilizationCycle: (id) => {
-        persist({ ...db, sterilizationCycles: db.sterilizationCycles.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, sterilizationCycles: prev.sterilizationCycles.filter((x) => x.id !== id) }));
         fsDelete("sterilizationCycles", id);
       },
       addTeamMessage: (m) => {
@@ -1267,15 +1275,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         fsSave("teamMessages", m.id, m);
       },
       addSurvey: (s) => {
-        persist({ ...db, surveys: [s, ...db.surveys] });
+        persist((prev) => ({ ...prev, surveys: [s, ...prev.surveys] }));
         fsSave("surveys", s.id, s);
       },
       updateSurvey: (s) => {
-        persist({ ...db, surveys: db.surveys.map((x) => (x.id === s.id ? s : x)) });
+        persist((prev) => ({ ...prev, surveys: prev.surveys.map((x) => (x.id === s.id ? s : x)) }));
         fsSave("surveys", s.id, s);
       },
       deleteSurvey: (id) => {
-        persist({ ...db, surveys: db.surveys.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, surveys: prev.surveys.filter((x) => x.id !== id) }));
         fsDelete("surveys", id);
       },
       addMgmtTask: (t) => {
@@ -1291,64 +1299,64 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         fsDelete("mgmtTasks", id);
       },
       addEnvironmentalLog: (e) => {
-        persist({ ...db, environmentalLogs: [e, ...db.environmentalLogs] });
+        persist((prev) => ({ ...prev, environmentalLogs: [e, ...prev.environmentalLogs] }));
         fsSave("environmentalLogs", e.id, e);
       },
       updateEnvironmentalLog: (e) => {
-        persist({ ...db, environmentalLogs: db.environmentalLogs.map((x) => (x.id === e.id ? e : x)) });
+        persist((prev) => ({ ...prev, environmentalLogs: prev.environmentalLogs.map((x) => (x.id === e.id ? e : x)) }));
         fsSave("environmentalLogs", e.id, e);
       },
       deleteEnvironmentalLog: (id) => {
-        persist({ ...db, environmentalLogs: db.environmentalLogs.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, environmentalLogs: prev.environmentalLogs.filter((x) => x.id !== id) }));
         fsDelete("environmentalLogs", id);
       },
       addEduVideo: (v) => {
-        persist({ ...db, eduVideos: [v, ...db.eduVideos] });
+        persist((prev) => ({ ...prev, eduVideos: [v, ...prev.eduVideos] }));
         fsSave("eduVideos", v.id, v);
       },
       updateEduVideo: (v) => {
-        persist({ ...db, eduVideos: db.eduVideos.map((x) => (x.id === v.id ? v : x)) });
+        persist((prev) => ({ ...prev, eduVideos: prev.eduVideos.map((x) => (x.id === v.id ? v : x)) }));
         fsSave("eduVideos", v.id, v);
       },
       deleteEduVideo: (id) => {
-        persist({ ...db, eduVideos: db.eduVideos.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, eduVideos: prev.eduVideos.filter((x) => x.id !== id) }));
         fsDelete("eduVideos", id);
       },
       addBranch: (b) => {
-        persist({ ...db, branches: [...db.branches, b] });
+        persist((prev) => ({ ...prev, branches: [...prev.branches, b] }));
         fsSave("branches", b.id, b);
       },
       updateBranch: (b) => {
-        persist({ ...db, branches: db.branches.map((x) => (x.id === b.id ? b : x)) });
+        persist((prev) => ({ ...prev, branches: prev.branches.map((x) => (x.id === b.id ? b : x)) }));
         fsSave("branches", b.id, b);
       },
       deleteBranch: (id) => {
-        persist({ ...db, branches: db.branches.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, branches: prev.branches.filter((x) => x.id !== id) }));
         fsDelete("branches", id);
       },
       addRadiograph: (r: RadiographRec) => {
-        persist({ ...db, radiographs: [r, ...db.radiographs] });
+        persist((prev) => ({ ...prev, radiographs: [r, ...prev.radiographs] }));
         fsSave("radiographs", r.id, r);
       },
       updateRadiograph: (r: RadiographRec) => {
-        persist({ ...db, radiographs: db.radiographs.map((x) => (x.id === r.id ? r : x)) });
+        persist((prev) => ({ ...prev, radiographs: prev.radiographs.map((x) => (x.id === r.id ? r : x)) }));
         fsSave("radiographs", r.id, r);
       },
       deleteRadiograph: (id: string) => {
-        persist({ ...db, radiographs: db.radiographs.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, radiographs: prev.radiographs.filter((x) => x.id !== id) }));
         fsDelete("radiographs", id);
       },
       /* — Firma electrónica / consentimientos — */
       addSignature: (s: SignatureDoc) => {
-        persist({ ...db, signatures: [s, ...db.signatures] });
+        persist((prev) => ({ ...prev, signatures: [s, ...prev.signatures] }));
         fsSave("signatures", s.id, s);
       },
       updateSignature: (s: SignatureDoc) => {
-        persist({ ...db, signatures: db.signatures.map((x) => (x.id === s.id ? s : x)) });
+        persist((prev) => ({ ...prev, signatures: prev.signatures.map((x) => (x.id === s.id ? s : x)) }));
         fsSave("signatures", s.id, s);
       },
       deleteSignature: (id: string) => {
-        persist({ ...db, signatures: db.signatures.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, signatures: prev.signatures.filter((x) => x.id !== id) }));
         fsDelete("signatures", id);
       },
       saveConsentTemplates: (list: ConsentTemplate[]) => {
@@ -1357,71 +1365,72 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const c = db.clinics[0];
         const nextClinic = { ...c, config: { ...c.config, consentTemplates: list } };
         const next = { ...db, clinics: [nextClinic] };
-        persist(next);
+        // Estado local desde `prev` (el último): con `next` armado sobre `db`, una acción encadenada pisaba a la anterior.
+        persist((prev) => ({ ...prev, clinics: [{ ...prev.clinics[0], config: { ...prev.clinics[0].config, consentTemplates: list } }] }));
         fsMeta(next);
       },
       /* — CRM (embudo de pacientes) — */
       addCrmCard: (c: CrmCard) => {
-        persist({ ...db, crmCards: [c, ...db.crmCards] });
+        persist((prev) => ({ ...prev, crmCards: [c, ...prev.crmCards] }));
         fsSave("crmCards", c.id, c);
       },
       updateCrmCard: (c: CrmCard) => {
-        persist({ ...db, crmCards: db.crmCards.map((x) => (x.id === c.id ? c : x)) });
+        persist((prev) => ({ ...prev, crmCards: prev.crmCards.map((x) => (x.id === c.id ? c : x)) }));
         fsSave("crmCards", c.id, c);
       },
       deleteCrmCard: (id: string) => {
-        persist({ ...db, crmCards: db.crmCards.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, crmCards: prev.crmCards.filter((x) => x.id !== id) }));
         fsDelete("crmCards", id);
       },
       addCampaign: (c: Campaign) => {
-        persist({ ...db, campaigns: [c, ...db.campaigns] });
+        persist((prev) => ({ ...prev, campaigns: [c, ...prev.campaigns] }));
         fsSave("campaigns", c.id, c);
       },
       updateCampaign: (c: Campaign) => {
-        persist({ ...db, campaigns: db.campaigns.map((x) => (x.id === c.id ? c : x)) });
+        persist((prev) => ({ ...prev, campaigns: prev.campaigns.map((x) => (x.id === c.id ? c : x)) }));
         fsSave("campaigns", c.id, c);
       },
       deleteCampaign: (id: string) => {
-        persist({ ...db, campaigns: db.campaigns.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, campaigns: prev.campaigns.filter((x) => x.id !== id) }));
         fsDelete("campaigns", id);
       },
       /* — Laboratorios — */
       addLabOrder: (o: LabOrder) => {
-        persist({ ...db, labOrders: [o, ...db.labOrders] });
+        persist((prev) => ({ ...prev, labOrders: [o, ...prev.labOrders] }));
         fsSave("labOrders", o.id, o);
       },
       updateLabOrder: (o: LabOrder) => {
-        persist({ ...db, labOrders: db.labOrders.map((x) => (x.id === o.id ? o : x)) });
+        persist((prev) => ({ ...prev, labOrders: prev.labOrders.map((x) => (x.id === o.id ? o : x)) }));
         fsSave("labOrders", o.id, o);
       },
       deleteLabOrder: (id: string) => {
-        persist({ ...db, labOrders: db.labOrders.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, labOrders: prev.labOrders.filter((x) => x.id !== id) }));
         fsDelete("labOrders", id);
       },
       /* — Liquidaciones — */
       addSettlement: (s: Settlement) => {
-        persist({ ...db, settlements: [s, ...db.settlements] });
+        persist((prev) => ({ ...prev, settlements: [s, ...prev.settlements] }));
         fsSave("settlements", s.id, s);
       },
       updateSettlement: (s: Settlement) => {
-        persist({ ...db, settlements: db.settlements.map((x) => (x.id === s.id ? s : x)) });
+        persist((prev) => ({ ...prev, settlements: prev.settlements.map((x) => (x.id === s.id ? s : x)) }));
         fsSave("settlements", s.id, s);
       },
       deleteSettlement: (id: string) => {
-        persist({ ...db, settlements: db.settlements.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, settlements: prev.settlements.filter((x) => x.id !== id) }));
         fsDelete("settlements", id);
       },
       /* — Box / Sillones — */
       addBox: (b: Box) => {
-        persist({ ...db, boxes: [b, ...db.boxes] });
+        persist((prev) => ({ ...prev, boxes: [b, ...prev.boxes] }));
         fsSave("boxes", b.id, b);
       },
       updateBox: (b: Box) => {
-        persist({ ...db, boxes: db.boxes.map((x) => (x.id === b.id ? b : x)) });
+        persist((prev) => ({ ...prev, boxes: prev.boxes.map((x) => (x.id === b.id ? b : x)) }));
         fsSave("boxes", b.id, b);
       },
       deleteBox: (id: string) => {
-        persist({ ...db, boxes: db.boxes.filter((x) => x.id !== id) });
+        persist((prev) => ({ ...prev, boxes: prev.boxes.filter((x) => x.id !== id) }));
         fsDelete("boxes", id);
       },
       /* — Negociación de presupuestos — */
@@ -1434,7 +1443,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           negociacion: bud.negociacion ? { ...bud.negociacion, status: "listo_para_cerrar" as const } : undefined,
           history: [...bud.history, { at: new Date().toISOString(), action: "Aceptado tras negociación del bot", by }],
         };
-        persist({ ...db, budgets: db.budgets.map((b) => (b.id === budgetId ? up : b)) });
+        persist((prev) => ({ ...prev, budgets: prev.budgets.map((b) => (b.id === budgetId ? up : b)) }));
         fsSave("budgets", budgetId, up);
       },
     };

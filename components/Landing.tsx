@@ -1,65 +1,39 @@
 "use client";
 /**
- * Landing Novudent — identidad tomada de la propuesta de several. (el PDF que
- * eligió Carlos). El sistema, para no improvisarlo en cada sección:
+ * Landing Novudent — estructura de la referencia que eligió el dueño, con marca,
+ * textos y visuales propios (no se copian textos, fotos ni logos de nadie).
  *
- *   · Fondo de página GRIS CÁLIDO (`sv-paper`), nunca blanco. Es lo que hace que
- *     las tarjetas blancas floten; sobre blanco el diseño entero se aplana.
- *   · Navy profundo para el hero y el cierre, con blooms difusos y grano.
- *   · Un solo acento: verde menta. Brillante sobre navy; su versión oscura
- *     (`sv-mintInk`) cuando el texto va sobre claro — el menta puro sobre blanco
- *     no llega a 4.5:1 y no se usa para texto chico en ningún lado.
- *   · Una sola tipografía (Jost) en varios pesos: 200 para el display grande,
- *     400 para cuerpo. La referencia hace exactamente eso.
- *   · Numerales gigantes ultra-finos con regla menta debajo.
- *   · Cabecera de sección: etiqueta izquierda · claim centro · marca derecha,
- *     con una línea fina abajo.
+ *   portada (texto + visual en halo) → problemas → soluciones → cinco filas por etapa
+ *   (Agendar · Atender · Cobrar · Volver · Controlar) → probá el odontograma → franja
+ *   con datos del producto → precios → preguntas → formulario → pie
  *
- * SEO / ARQUITECTURA: cada sección grande está EXPORTADA como componente y
- * tiene su propia página (/odontograma, /capacidades, /como-se-trabaja,
- * /en-accion, /precios, /acceso) con metadata propia. La home las compone
- * todas; las páginas de sección las reutilizan con su intro única. El nav ya
- * no usa anclas #: son rutas reales, indexables, con canonical propio.
- *
- * DOS COSAS SACADAS A PROPÓSITO, y no hay que reponerlas:
- *
- * 1. El revelado por scroll (<Reveal>/<Stagger>). framer-motion sirve el HTML
- *    con `opacity:0` y lo levanta recién cuando el IntersectionObserver avisa.
- *    Si ese observer no dispara —pasa— las secciones NO APARECEN NUNCA. Carlos
- *    lo vio en su celular: media página en blanco. Una animación de entrada no
- *    puede ser lo que decide si se ve el contenido.
- * 2. El contador que subía de 0. Mismo origen: si no disparaba, la franja se
- *    quedaba mostrando "0 piezas FDI con morfología real" — un dato FALSO en la
- *    cara de quien está evaluando comprar. El número importa, no su llegada.
- *
- * La capa de motion actual (sv-rise/sv-drift/sv-view/sv-draw, ver globals.css)
- * respeta ese contrato: TODO es CSS puro o progressive enhancement con fallback
- * estático — si una animación no corre, el contenido se ve igual.
+ * Reglas que siguen valiendo:
+ *   · Nada se esconde esperando una animación (framer-motion con opacity:0 dejó media
+ *     página en blanco en un celular). Si una animación no corre, se ve igual.
+ *   · Nada inventado: sin testimonios ni cifras de clientes que no existen. Lo que
+ *     incluye cada función sale de lib/plan.ts y de los gates reales del panel; las
+ *     tarjetas de muestra dicen «Ejemplo».
+ *   · Sin mención pública a otros sistemas del rubro.
  */
 import { useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
-/* Trazo unificado en 1.75 en toda la landing: el 2 por defecto de lucide pesaba
-   demasiado al lado de un display en Jost 200 — los iconos gritaban más que los
-   titulares. Mismo grosor en todos, un solo set, nada de emojis. */
-import { ArrowUpRight, Check, Plus } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import {
+  Activity, AlarmClock, Armchair, BarChart3, BellRing, Calculator, CalendarClock, CalendarDays, Check,
+  ClipboardList, CreditCard, FileText, FlaskConical, Globe, ListChecks, Megaphone, MessageCircle,
+  Package, PenLine, Plus, Receipt, ShieldCheck, Sparkles, SprayCan, Star, TrendingDown, Users, Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { useStore } from "@/lib/store";
+import { CAPACIDADES } from "@/lib/capacidades";
+import { FAQS } from "@/lib/faqs";
+import { CONDICIONES, PLANES, gs, type PlanPublicoId } from "@/lib/landing/precios";
+import { linkWhatsApp } from "@/lib/site";
 import { ShowcaseBoard, ToothGlyph, type ShowcaseToothRecord } from "./OdontogramShowcase";
 import SolicitarAcceso from "./SolicitarAcceso";
 import EscenaClinica from "./EscenaClinica";
-import { FlagBadge } from "./ui";
-import {
-  BarraSeccion,
-  FooterLanding,
-  Marca,
-  NavLanding,
-  Numeral,
-  PildoraCTA,
-} from "./landing/Chrome";
-
-/* three.js pesa ~150 kB gz: chunk aparte, solo cliente. Mientras carga no se
-   muestra nada (es decoración) — la sección jamás espera por él. */
-const Tooth3D = dynamic(() => import("./Tooth3D"), { ssr: false, loading: () => null });
+import { BarraSeccion, BotonSecundario, FooterLanding, Marca, NavLanding, PildoraCTA } from "./landing/Chrome";
+import { Ejemplo, TablaRoles, TarjetaAgenda, TarjetaFicha, TarjetaHoy, TarjetaPresupuesto, TarjetaVolver } from "./landing/Tarjetas";
 
 /* demo del odontograma (estado local) */
 const DEMO_TEETH: Record<string, ShowcaseToothRecord> = {
@@ -72,107 +46,152 @@ const DEMO_TEETH: Record<string, ShowcaseToothRecord> = {
   "28": { condition: "ausente" },
 };
 
-/* dientes para el marquee de marca */
-const MARQUEE_TEETH: { n: string; rec?: ShowcaseToothRecord }[] = [
-  { n: "11" }, { n: "13", rec: { condition: "restaurado" } },
-  { n: "16" }, { n: "21", rec: { condition: "caries", surfaces: ["O"] } },
-  { n: "23" }, { n: "26", rec: { condition: "corona" } },
-  { n: "14" }, { n: "17" }, { n: "12", rec: { condition: "endodoncia" } },
-  { n: "24" }, { n: "27", rec: { condition: "implante" } }, { n: "15" },
-];
+/** Lleva el plan elegido al formulario (/acceso?plan=…); con sesión va al panel. */
+const hrefDemo = (base: string, plan?: PlanPublicoId) =>
+  plan && base.startsWith("/acceso") ? `/acceso?plan=${plan}` : base;
 
-/* Las ocho capacidades viven en lib/capacidades.ts (módulo plano: las comparte
-   la home y la página /capacidades — ver el motivo en ese archivo). */
-import { CAPACIDADES } from "@/lib/capacidades";
+type Alcance = "todos" | "clinica" | "multi";
+const ALCANCE: Record<Alcance, string> = { todos: "Todos los planes", clinica: "Clínica y Multi", multi: "Multi" };
 
-/* ---------- piezas locales del hero ---------- */
+/* ---------- piezas chicas ---------- */
 
-/** Discos flotantes del hero — el motivo de la portada de la referencia
- *  (lentes translúcidas en curva sobre el navy), hecho en CSS puro.
- *
- *  Se construye en vez de bajar una foto a propósito: no tenemos fotografía
- *  propia de clínicas, y meter stock inventado sería vender algo que no existe.
- *  Esto pesa cero, escala a cualquier ancho y no puede quedar pixelado.
- *  `aria-hidden` porque es puramente decorativo. */
-function DiscosFlotantes() {
-  /* posición X/Y en %, tamaño en rem y giro: la curva se define acá y no en el
-      JSX, así se puede afinar sin tocar el markup. `t`/`d` = duración y delay
-      de la deriva propia de cada disco (sv-drift en globals.css). */
-  const discos = [
-    { x: 3, y: 14, s: 15, r: -20, o: 0.55, t: 13, d: 0 },
-    { x: 15, y: 44, s: 9, r: -13, o: 0.4, t: 10, d: 1.2 },
-    { x: 28, y: 68, s: 6.5, r: -5, o: 0.34, t: 8.5, d: 0.6 },
-    { x: 45, y: 78, s: 7.5, r: 5, o: 0.36, t: 11, d: 2 },
-    { x: 63, y: 66, s: 11, r: 13, o: 0.42, t: 9.5, d: 0.3 },
-    { x: 80, y: 42, s: 17, r: 20, o: 0.5, t: 12.5, d: 1.6 },
-    { x: 95, y: 15, s: 21, r: 26, o: 0.55, t: 14, d: 0.9 },
-  ];
+/** Chip flotante de los visuales: un dato de la interfaz, con su ícono. */
+function Chip({ icon: Icono, children, className = "" }: { icon: LucideIcon; children: React.ReactNode; className?: string }) {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <DiscosParallax>
-        {discos.map((d, i) => (
-          <span
-            key={i}
-            className="sv-drift absolute rounded-[50%]"
-            style={{
-              left: `${d.x}%`,
-              top: `${d.y}%`,
-              /* clamp y no rem fijo: en 375px un disco de 21rem medía 336px y se
-                 comía la pantalla entera. Así escalan con el viewport y en móvil
-                 quedan de fondo, que es su lugar. */
-              width: `clamp(${(d.s * 0.38).toFixed(2)}rem, ${(d.s * 1.9).toFixed(1)}vw, ${d.s}rem)`,
-              height: `clamp(${(d.s * 0.59).toFixed(2)}rem, ${(d.s * 2.95).toFixed(1)}vw, ${d.s * 1.55}rem)`,
-              opacity: d.o,
-              transform: `translate(-50%,-50%) rotate(${d.r}deg)`,
-              ["--drift-t" as string]: `${d.t}s`,
-              ["--drift-d" as string]: `${d.d}s`,
-              /* Aro nítido + relleno casi vacío = lente, no mancha. El relleno con
-                 dos paradas apenas visibles evita el "globo" plano; el brillo vive
-                 en el borde, como en la referencia. */
-              border: "1px solid rgba(160,220,255,0.38)",
-              background:
-                "linear-gradient(145deg, rgba(47,227,174,0.07) 0%, rgba(64,92,240,0.05) 55%, rgba(255,255,255,0) 100%)",
-              boxShadow: "inset 0 0 28px rgba(120,190,255,0.10)",
-            }}
-          />
-        ))}
-      </DiscosParallax>
+    <div className={`flex items-center gap-2.5 whitespace-nowrap rounded-[12px] border border-lp-rule bg-white px-3.5 py-2.5 text-[13px] font-medium text-lp-ink [box-shadow:var(--lp-shadow-float)] ${className}`}>
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-lp-primarywash text-lp-primary">
+        <Icono className="h-4 w-4" strokeWidth={2} aria-hidden />
+      </span>
+      {children}
     </div>
   );
 }
 
-/** Parallax de puntero sobre los discos — capa aparte para no pelear con la
- *  transform propia de cada aro (el contenedor es el que se mueve).
- *  Mejora progresiva pura: solo punteros finos (mouse), sin reduced-motion,
- *  desplazamiento mínimo (±9px) y rAF-throttle. Si algo falla, no se nota. */
-function DiscosParallax({ children }: { children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof window.matchMedia !== "function") return;
-    if (!window.matchMedia("(pointer: fine)").matches) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let raf = 0;
-    const onMove = (e: MouseEvent) => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
-        const nx = e.clientX / window.innerWidth - 0.5; // -0.5..0.5
-        const ny = e.clientY / window.innerHeight - 0.5;
-        el.style.transform = `translate(${(-nx * 18).toFixed(1)}px, ${(-ny * 12).toFixed(1)}px)`;
-      });
-    };
-    window.addEventListener("mousemove", onMove, { passive: true });
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
+/** Visual de las filas: tarjeta del producto sobre un halo, con chips alrededor. */
+function Visual({ children, chips = [], invertido = false }: { children: React.ReactNode; chips?: React.ReactNode[]; invertido?: boolean }) {
   return (
-    <div ref={ref} className="absolute inset-0 transition-transform duration-300 ease-out will-change-transform">
-      {children}
+    <div className="relative mx-auto w-full max-w-[560px] py-6 sm:py-10">
+      <div aria-hidden className={`lp-halo absolute top-1/2 aspect-square w-[88%] -translate-y-1/2 rounded-full ${invertido ? "left-0" : "right-0"}`} />
+      <div className="lp-flota relative z-10 rounded-[var(--lp-radius-card)] border border-lp-rule bg-white p-5 [box-shadow:var(--lp-shadow-lift)] sm:p-6">
+        {children}
+      </div>
+      {chips.map((c, i) => (
+        <div key={i} className={`lp-flota lp-flota-lenta absolute z-20 hidden sm:block ${i === 0 ? (invertido ? "-right-4 top-0" : "-left-6 top-0") : invertido ? "-left-6 bottom-2" : "-right-4 bottom-2"}`}>
+          {c}
+        </div>
+      ))}
     </div>
+  );
+}
+
+/* ---------- las cinco etapas ---------- */
+
+type Funcion = { t: string; icon: LucideIcon; plan: Alcance };
+
+export const ETAPAS: {
+  id: string;
+  n: string;
+  nombre: string;
+  bajada: string;
+  titulo: string;
+  texto: string;
+  funciones: Funcion[];
+  tarjeta: () => React.ReactNode;
+  chips: React.ReactNode[];
+}[] = [
+  {
+    id: "agendar", n: "01", nombre: "Agendar", bajada: "Atendé a más pacientes",
+    titulo: "Agendá, confirmá y llená los huecos de tu semana",
+    texto: "La agenda de cada profesional en una pantalla, con reservas online que el paciente hace solo y una lista de espera para no perder un turno libre.",
+    funciones: [
+      { t: "Agenda por profesional", icon: CalendarDays, plan: "todos" },
+      { t: "Reservas online", icon: Globe, plan: "todos" },
+      { t: "Lista de espera", icon: ListChecks, plan: "todos" },
+      { t: "Confirmación por WhatsApp", icon: MessageCircle, plan: "clinica" },
+      { t: "Box y sillones", icon: Armchair, plan: "clinica" },
+      { t: "Tareas del equipo", icon: ClipboardList, plan: "todos" },
+    ],
+    tarjeta: TarjetaAgenda,
+    chips: [
+      <Chip key="a" icon={Globe}>Reserva online · 13:30</Chip>,
+      <Chip key="b" icon={MessageCircle}>Confirmada por WhatsApp</Chip>,
+    ],
+  },
+  {
+    id: "atender", n: "02", nombre: "Atender", bajada: "Una atención de primer nivel",
+    titulo: "Registrá todo el proceso clínico, pieza por pieza",
+    texto: "Ficha clínica con alertas médicas a la vista y odontograma FDI con cinco superficies por pieza. Cada marca guarda quién la hizo y cuándo.",
+    funciones: [
+      { t: "Ficha clínica y anamnesis", icon: ClipboardList, plan: "todos" },
+      { t: "Odontograma por superficies", icon: Activity, plan: "todos" },
+      { t: "Ortodoncia y recetas", icon: FileText, plan: "todos" },
+      { t: "Esterilización", icon: SprayCan, plan: "todos" },
+      { t: "Consentimientos con firma", icon: PenLine, plan: "clinica" },
+      { t: "IA: radiografías y notas por voz", icon: Sparkles, plan: "clinica" },
+    ],
+    tarjeta: TarjetaFicha,
+    chips: [<Chip key="a" icon={PenLine}>Consentimiento firmado</Chip>, <Chip key="b" icon={Sparkles}>Nota por voz transcripta</Chip>],
+  },
+  {
+    id: "cobrar", n: "03", nombre: "Cobrar", bajada: "Concretá más tratamientos",
+    titulo: "Presupuestos claros y cobros en cuotas, sin planillas",
+    texto: "El paciente acepta el presupuesto por pieza, elige cómo pagar y la caja cierra cada día con su arqueo. Cada cobro tiene su estado y su historial.",
+    funciones: [
+      { t: "Presupuestos por pieza", icon: Receipt, plan: "todos" },
+      { t: "Convenios y descuentos", icon: Users, plan: "todos" },
+      { t: "Cobro en cuotas", icon: CreditCard, plan: "clinica" },
+      { t: "Caja diaria y arqueo", icon: Wallet, plan: "clinica" },
+      { t: "Cuentas por cobrar", icon: AlarmClock, plan: "clinica" },
+      { t: "Liquidación a profesionales", icon: Calculator, plan: "clinica" },
+    ],
+    tarjeta: TarjetaPresupuesto,
+    chips: [<Chip key="a" icon={Check}>Presupuesto aceptado</Chip>, <Chip key="b" icon={CreditCard}>Cuota 1 de 3 pagada</Chip>],
+  },
+  {
+    id: "volver", n: "04", nombre: "Volver", bajada: "Fidelizá y hacé que vuelvan",
+    titulo: "Pacientes que vuelven a la silla",
+    texto: "Controles con fecha, encuestas después de la atención y recordatorios en un clic. En Multi, un embudo para recuperar a los que no volvieron.",
+    funciones: [
+      { t: "Encuestas y NPS", icon: Star, plan: "todos" },
+      { t: "Controles de ortodoncia", icon: CalendarClock, plan: "todos" },
+      { t: "Recordatorio de deuda", icon: BellRing, plan: "clinica" },
+      { t: "CRM de pacientes", icon: Users, plan: "multi" },
+      { t: "Campañas", icon: Megaphone, plan: "multi" },
+    ],
+    tarjeta: TarjetaVolver,
+    chips: [<Chip key="a" icon={Star}>Encuesta respondida</Chip>, <Chip key="b" icon={BellRing}>Recordatorio enviado</Chip>],
+  },
+  {
+    id: "controlar", n: "05", nombre: "Controlar", bajada: "Ordená la operación",
+    titulo: "Sabé qué pasa en cada área de tu clínica",
+    texto: "Tres roles con permisos estrictos: la recepción cobra pero no ve los números del negocio, y el profesional escribe la ficha sin manejar la caja.",
+    funciones: [
+      { t: "Roles y permisos", icon: ShieldCheck, plan: "todos" },
+      { t: "Control de gastos", icon: TrendingDown, plan: "todos" },
+      { t: "Inventario", icon: Package, plan: "clinica" },
+      { t: "Laboratorios", icon: FlaskConical, plan: "clinica" },
+      { t: "Informes y Excel", icon: BarChart3, plan: "clinica" },
+      { t: "Reportes por sucursal", icon: BarChart3, plan: "multi" },
+    ],
+    tarjeta: TablaRoles,
+    chips: [<Chip key="a" icon={ShieldCheck}>Permisos por rol</Chip>],
+  },
+];
+
+/** Grilla de funciones de una etapa: ícono + nombre, y el plan cuando no es de todos. */
+function Funciones({ items }: { items: Funcion[] }) {
+  return (
+    <ul className="mt-6 grid grid-cols-1 gap-x-6 gap-y-3 min-[420px]:grid-cols-2">
+      {items.map((f) => (
+        <li key={f.t} className="flex items-start gap-2.5 text-[14px] text-lp-ink">
+          <f.icon className="mt-0.5 h-[18px] w-[18px] shrink-0 text-lp-primary" strokeWidth={1.75} aria-hidden />
+          <span>
+            {f.t}
+            {f.plan !== "todos" && <span className="ml-1.5 whitespace-nowrap text-[12px] font-medium text-lp-muted">· {ALCANCE[f.plan]}</span>}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -181,347 +200,284 @@ function DiscosParallax({ children }: { children: React.ReactNode }) {
    reutiliza la suya con una intro única (SEO: sin duplicar H1 ni copy).
    ================================================================== */
 
-/** Ventana de producto: el odontograma interactivo real. */
+/** El odontograma interactivo real. */
 export function SeccionOdontograma() {
   const [demoTeeth, setDemoTeeth] = useState<Record<string, ShowcaseToothRecord>>(DEMO_TEETH);
   return (
-    <div className="mx-auto max-w-6xl px-5">
-      {/* Sin barra de navegador falsa (puntitos semáforo + píldora de URL):
-          es de los tells más reconocibles de página generada, y la referencia
-          no la usa en ninguna página. El odontograma es real y se sostiene
-          solo; el epígrafe dice de qué se trata mejor que una URL de mentira.
-          El beam menta orbitando el marco señala EL punto de la página: acá
-          se toca el producto (se apaga con reduced-motion). */}
-      <figure className="relative m-0">
-        <div className="relative overflow-hidden rounded-[1.75rem] bg-white p-4 shadow-[0_32px_80px_-32px_rgba(10,18,64,0.55)] sm:p-7">
-          {/* beam menta orbitando el marco de la tarjeta (no del figure: el
-              epígrafe va fuera). overflow-hidden lo recorta al radio. */}
-          <div className="border-beam-mint absolute inset-0 z-10 rounded-[1.75rem]" aria-hidden />
-          <ShowcaseBoard
-            value={demoTeeth}
-            editable
-            onChange={(tooth, rec) =>
-              setDemoTeeth((prev) => {
-                const next = { ...prev };
-                if (rec) next[tooth] = rec; else delete next[tooth];
-                return next;
-              })
-            }
-          />
-        </div>
-        <figcaption className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[14px] font-light text-sv-muted">
-          <span className="rounded-full bg-sv-ink px-3 py-0.5 text-[12px] font-medium uppercase tracking-wider text-sv-mint">Interactivo</span>
-          Odontograma real de Novudent — hacé clic en cualquier pieza y marcá una superficie.
-        </figcaption>
-      </figure>
-    </div>
+    <figure className="m-0">
+      <div className="overflow-hidden rounded-[var(--lp-radius-card)] border border-lp-rule bg-white p-3 [box-shadow:var(--lp-shadow-lift)] sm:p-6">
+        <ShowcaseBoard
+          value={demoTeeth}
+          editable
+          onChange={(tooth, rec) =>
+            setDemoTeeth((prev) => {
+              const next = { ...prev };
+              if (rec) next[tooth] = rec; else delete next[tooth];
+              return next;
+            })
+          }
+        />
+      </div>
+      <figcaption className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-lp-muted">
+        <span className="rounded-full bg-lp-primarywash px-2.5 py-0.5 text-[12px] font-semibold text-lp-primaryhover">Interactivo</span>
+        Odontograma real de Novudent: tocá cualquier pieza y marcá una superficie.
+      </figcaption>
+    </figure>
   );
 }
 
-/** Las ocho capacidades, con la columna sticky a la izquierda. */
+/** Las ocho capacidades, en lista. */
 export function SeccionCapacidades() {
   return (
-    <div className="mx-auto max-w-6xl px-5">
-      <div className="grid gap-14 lg:grid-cols-12">
-        <div className="lg:col-span-4">
-          <div className="lg:sticky lg:top-28">
-            <h2 className="font-logo text-[2.75rem] font-extralight leading-[1.05] tracking-tight text-sv-ink sm:text-[3.5rem]">
-              Sin módulos
-              <br />de relleno.
-            </h2>
-            <p className="mt-6 max-w-xs text-[15px] font-light leading-relaxed text-sv-muted">
-              Las ocho herramientas que mueven una clínica dental, pulidas hasta el detalle.
-              Nada más — y nada menos.
-            </p>
-            <Numeral n="08" className="mt-10" />
-            <p className="mt-3 text-[13px] uppercase tracking-[0.2em] text-sv-muted">herramientas de trabajo</p>
-          </div>
-        </div>
-
-        <div className="lg:col-span-8">
-          <div className="overflow-hidden rounded-[1.5rem] bg-white">
-            {CAPACIDADES.map((c, i) => (
-              <div
-                key={c.n}
-                className={`lp-row group grid grid-cols-12 items-baseline gap-x-5 gap-y-2 px-6 py-7 transition-colors duration-300 hover:bg-sv-paper2 sm:px-8 ${
-                  i > 0 ? "border-t border-sv-line/70" : ""
-                }`}
-              >
-                <div className="col-span-2 sm:col-span-1">
-                  <span className="font-logo text-lg font-extralight text-sv-mintInk">{c.n}</span>
-                  <span className="lp-num-rule mt-1 hidden sm:block" />
-                </div>
-                <div className="col-span-10 sm:col-span-5">
-                  <h3 className="font-logo text-[1.4rem] font-light leading-snug text-sv-ink transition-transform duration-300 ease-out group-hover:translate-x-1.5">
-                    {c.t}
-                  </h3>
-                </div>
-                <div className="col-span-12 text-[15px] font-light leading-relaxed text-sv-muted transition-colors duration-300 group-hover:text-sv-ink/80 sm:col-span-6">
-                  {c.d}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+    <ol className="divide-y divide-lp-rule border-y border-lp-rule">
+      {CAPACIDADES.map((c) => (
+        <li key={c.n} className="grid gap-x-6 gap-y-1 py-6 sm:grid-cols-12">
+          <span className="text-[14px] font-semibold text-lp-primary sm:col-span-1">{c.n}</span>
+          <h3 className="text-[19px] font-semibold leading-snug text-lp-ink sm:col-span-4">{c.t}</h3>
+          <p className="text-[15px] leading-relaxed text-lp-muted sm:col-span-7">{c.d}</p>
+        </li>
+      ))}
+    </ol>
   );
 }
 
-const PASOS_FLUJO = [
-  {
-    n: "01", tag: "AGENDA", t: "La mañana arranca sola",
-    d: "La recepcionista abre la agenda: los turnos confirmados por WhatsApp en verde, los pendientes en ámbar. Un hueco a las 11:00 — clic, y la cita queda creada.",
-    card: (
-      <>
-        <div className="mb-4 flex items-center justify-between">
-          <span className="font-logo text-lg font-light text-sv-ink">Agenda · hoy</span>
-          <span className="rounded-full bg-sv-mint px-3 py-0.5 text-[11px] font-medium uppercase tracking-wider text-sv-ink">92% ocupación</span>
-        </div>
-        {[["09:00", "María González", "Resina pieza 16", "bg-sv-mintInk"], ["10:30", "Juan Ríos", "Primera consulta", "bg-amber-500"], ["11:00", "+ Crear cita en este hueco", "", "bg-sv-mint"], ["11:45", "Camila Ortega", "Profilaxis", "bg-sv-mintInk"]].map(([h, n, t, dot], idx) => (
-          <div key={idx} className={`mb-2 flex items-center gap-3 rounded-xl px-4 py-3 ${t === "" ? "border border-dashed border-sv-mintInk/40 bg-sv-mint/10" : "bg-sv-paper2"}`}>
-            <span className="text-[13px] font-medium tabular-nums text-sv-ink">{h}</span>
-            <span className="flex-1">
-              <span className={`block text-[14px] ${t === "" ? "font-medium text-sv-mintInk" : "font-medium text-sv-ink"}`}>{n}</span>
-              {t && <span className="block text-[13px] font-light text-sv-muted">{t}</span>}
-            </span>
-            <span className={`h-2 w-2 rounded-full ${dot}`} />
-          </div>
-        ))}
-      </>
-    ),
-  },
-  {
-    n: "02", tag: "FICHA CLÍNICA", t: "El hallazgo queda en la pieza",
-    d: "La doctora marca caries oclusal en la 16 directamente sobre el diente. Rojo = pendiente, azul = resuelto. Quién, cuándo y en qué superficie: auditado.",
-    card: (
-      <>
-        <div className="flex items-center justify-center gap-7 py-2">
-          {[{ n: "14" }, { n: "15" }, { n: "16", rec: { condition: "caries" as const, surfaces: ["O" as const], updatedAt: "", updatedBy: "" } }, { n: "17" }].map((t) => (
-            <div key={t.n} className="flex flex-col items-center gap-1.5">
-              <ToothGlyph n={t.n} rec={t.rec} upper />
-              <span className={`text-[12px] tabular-nums ${t.rec ? "font-medium text-red-600" : "font-light text-sv-muted"}`}>{t.n}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-5 rounded-xl bg-sv-paper2 px-4 py-2.5 text-center text-[13px] font-light text-sv-muted">
-          <b className="font-medium text-sv-ink">16 · Caries oclusal (O)</b> — registrado por Dra. Benítez
-        </p>
-      </>
-    ),
-  },
-  {
-    n: "03", tag: "FACTURACIÓN", t: "El cobro no se escapa",
-    d: "La asistente envía a cobro. El sistema valida los códigos, aplica la retención correcta y nada queda en el limbo: cada reclamo tiene un estado y un historial.",
-    card: (
-      <>
-        {[
-          { flags: [] as string[], label: "Registro creado", sub: "Códigos CPT-DX · POS · MOD validados en vivo" },
-          { flags: ["MBILLED", "HOLD"], label: "Enviado a cobro", sub: "Retención automática del e-claim" },
-          { flags: ["FACTURADO", "ACH"], label: "Liberado y facturado", sub: "Pago automático activo" },
-        ].map((s, i) => (
-          <div key={i} className="mb-2 flex items-center gap-4 rounded-xl bg-sv-paper2 px-4 py-3.5">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white font-logo text-[13px] font-light text-sv-mintInk">{i + 1}</span>
-            <span className="flex-1">
-              <span className="block text-[14px] font-medium text-sv-ink">{s.label}</span>
-              <span className="block text-[13px] font-light text-sv-muted">{s.sub}</span>
-            </span>
-            <span className="flex flex-wrap justify-end gap-1">
-              {s.flags.length === 0
-                ? <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-sv-muted">Sin enviar</span>
-                : s.flags.map((f) => <FlagBadge key={f} flag={f as any} />)}
-            </span>
-          </div>
-        ))}
-      </>
-    ),
-  },
-];
-
-/** Los tres momentos del día en la clínica (agenda → ficha → cobro). */
-export function SeccionFlujo() {
+/** Las cinco etapas en filas alternadas: texto + funciones + botones, y el visual al lado. */
+export function SeccionFlujo({ ctaHref = "/acceso" }: { ctaHref?: string }) {
   return (
-    <div className="mx-auto max-w-6xl space-y-24 px-5">
-      {PASOS_FLUJO.map((paso) => (
-        <div key={paso.n} className="sv-view grid items-start gap-10 lg:grid-cols-12">
-          <div className="lg:col-span-5">
-            {/* pestaña navy de la referencia */}
-            <div className="inline-flex items-center gap-3 rounded-xl bg-sv-ink py-2.5 pl-2.5 pr-5">
-              <span className="rounded-md bg-sv-mint px-2 py-0.5 font-logo text-[13px] font-medium text-sv-ink">{paso.n}</span>
-              <span className="text-[13px] uppercase tracking-[0.18em] text-white/80">{paso.tag}</span>
+    <div className="space-y-20 sm:space-y-28">
+      {ETAPAS.map((e, i) => {
+        const par = i % 2 === 1;
+        return (
+          <article key={e.id} id={`etapa-${e.id}`} className="scroll-mt-28" aria-labelledby={`titulo-${e.id}`}>
+            <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+              <div className={par ? "lg:order-2" : ""}>
+                <BarraSeccion label={e.bajada} />
+                <h3 id={`titulo-${e.id}`} className="text-[clamp(1.75rem,3.4vw,2.5rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-lp-ink">
+                  {e.titulo}
+                </h3>
+                <p className="mt-4 max-w-lg text-[16px] leading-relaxed text-lp-muted">{e.texto}</p>
+                <Funciones items={e.funciones} />
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <PildoraCTA href={ctaHref}>Pedir una demo</PildoraCTA>
+                  <BotonSecundario href="/precios">Ver planes</BotonSecundario>
+                </div>
+              </div>
+              <div className={`min-w-0 ${par ? "lg:order-1" : ""}`}>
+                <Visual chips={e.chips} invertido={par}>
+                  <e.tarjeta />
+                </Visual>
+              </div>
             </div>
-            <h3 className="mt-7 font-logo text-[2.25rem] font-extralight leading-[1.08] tracking-tight text-sv-ink sm:text-[2.75rem]">{paso.t}</h3>
-            <p className="mt-5 max-w-md text-[15px] font-light leading-relaxed text-sv-muted">{paso.d}</p>
-          </div>
-          <div className="lg:col-span-7">
-            <div className="card-3d rounded-[1.5rem] bg-white p-6 sm:p-7">{paso.card}</div>
-          </div>
-        </div>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
 }
 
 /** La escena clínica animada (consultorio → app). */
 export function SeccionAccion() {
-  return (
-    <div className="mx-auto max-w-6xl px-5">
-      <EscenaClinica />
-    </div>
-  );
+  return <EscenaClinica />;
 }
 
-/** Planes y precios. `ctaHref` lo inyecta quien compone (home vs página). */
+/** Planes y precios en guaraníes. `ctaHref` lo inyecta quien compone (home vs página). */
 export function SeccionPrecios({ ctaHref = "/acceso" }: { ctaHref?: string }) {
+  const [anual, setAnual] = useState(false);
+  const quieto = useReducedMotion();
   return (
-    <div className="mx-auto max-w-6xl px-5">
-      <div className="grid gap-12 lg:grid-cols-12">
-        <div className="lg:col-span-4">
-          <h2 className="font-logo text-[2.75rem] font-extralight leading-[1.05] tracking-tight text-sv-ink sm:text-[3.5rem]">
-            Precio y
-            <br />formas de pago
-          </h2>
-          <p className="mt-6 max-w-xs text-[15px] font-light leading-relaxed text-sv-muted">
-            Sin contratos largos. Migración de tus datos incluida, vengas de
-            Dentalink, de planillas o de papel.
-          </p>
-        </div>
-
-        <div className="lg:col-span-8">
-          {/* plan destacado */}
-          <div className="sv-mesh sv-grain relative overflow-hidden rounded-[1.5rem] p-8 sm:p-10">
-            <div className="relative z-10">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <span className="text-[13px] uppercase tracking-[0.2em] text-sv-mint">Plan Clínica · el más elegido</span>
-                  <div className="mt-4 flex items-end gap-2.5">
-                    <span className="font-logo text-[4rem] font-extralight leading-none text-white">$129</span>
-                    <span className="mb-2 text-[15px] font-light text-white/50">USD / mes</span>
-                  </div>
-                </div>
-                <PildoraCTA href={ctaHref} tone="light">Solicitar acceso</PildoraCTA>
-              </div>
-              <p className="mt-5 max-w-md text-[15px] font-light leading-relaxed text-white/65">
-                Para clínicas en crecimiento: hasta 5 sillones con todo Novudent adentro.
-              </p>
-              <ul className="mt-8 grid gap-3 sm:grid-cols-2">
-                {["Hasta 5 sillones / profesionales", "Odontograma por superficies", "Financiamiento y morosidad", "Formularios y consentimientos", "Facturación con estados", "Soporte prioritario"].map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-[15px] font-light text-white/85">
-                    <Check className="mt-1 h-4 w-4 shrink-0 text-sv-mint" strokeWidth={1.75} /> {f}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* barras de plan — el patrón "nombre · timing · precio" de la referencia */}
-          <div className="mt-5 grid gap-4">
+    <div>
+      <div className="flex flex-col items-center gap-3 text-center">
+        <fieldset>
+          <legend className="sr-only">Forma de pago</legend>
+          <div className="inline-flex rounded-[10px] border border-lp-rule bg-lp-paper2 p-1">
             {[
-              { name: "Plan Solo", meta: "1 sillón · odontograma, agenda y facturación básica", price: "$45", per: "USD / mes", cta: "Solicitar acceso" },
-              { name: "Plan Cadena", meta: "Multi-sucursal · comisiones, laboratorio y account manager", price: "A medida", per: "", cta: "Hablar con ventas" },
-            ].map((p) => (
-              <div key={p.name} className="flex flex-wrap items-center justify-between gap-4 rounded-[1.25rem] bg-white px-7 py-6">
-                <div className="min-w-[12rem] flex-1">
-                  <span className="font-logo text-xl font-light text-sv-ink">{p.name}</span>
-                  <p className="mt-1 text-[14px] font-light text-sv-muted">{p.meta}</p>
-                </div>
-                <span className="font-logo text-2xl font-light text-sv-mintInk">
-                  {p.price}
-                  {p.per && <span className="ml-1.5 text-[13px] font-light text-sv-muted">{p.per}</span>}
+              { v: false, t: "Mensual" },
+              { v: true, t: "Anual" },
+            ].map((o) => (
+              <label key={o.t} className="relative cursor-pointer">
+                <input
+                  type="radio"
+                  name="periodo"
+                  className="peer absolute inset-0 z-20 h-full w-full cursor-pointer opacity-0"
+                  checked={anual === o.v}
+                  onChange={() => setAnual(o.v)}
+                />
+                {anual === o.v && (
+                  <motion.span
+                    layoutId="periodo-pildora"
+                    aria-hidden
+                    className="absolute inset-0 rounded-[8px] bg-white [box-shadow:var(--lp-shadow-whisper)]"
+                    transition={quieto ? { duration: 0 } : { type: "spring", bounce: 0, duration: 0.35 }}
+                  />
+                )}
+                <span className="relative z-10 block min-h-[40px] whitespace-nowrap rounded-[8px] px-5 py-2 text-[14px] font-semibold text-lp-muted transition-colors duration-200 peer-checked:text-lp-ink peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--lp-focus)]">
+                  {o.t}
                 </span>
-                <Link href={ctaHref} className="group inline-flex items-center gap-1.5 rounded-full border border-sv-line px-5 py-2.5 text-[14px] font-medium text-sv-ink transition-colors hover:border-sv-ink hover:bg-sv-ink hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sv-mintInk">
-                  {p.cta}
-                  <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" strokeWidth={1.75} />
-                </Link>
-              </div>
+              </label>
             ))}
           </div>
-          <p className="mt-5 text-[13px] font-light uppercase tracking-[0.14em] text-sv-muted">
-            Precios referenciales · Sin contratos largos · Migración de datos incluida
-          </p>
-        </div>
+        </fieldset>
+        <p className="text-[14px] text-lp-muted">
+          Pagando el año, <b className="font-semibold text-lp-primaryhover">{CONDICIONES.mesesGratisAnual} meses sin cargo</b>.
+        </p>
       </div>
+
+      <div className="mt-10 grid gap-5 md:grid-cols-3">
+        {PLANES.map((p) => (
+          <article
+            key={p.id}
+            aria-labelledby={`plan-${p.id}`}
+            className={`relative flex flex-col rounded-[var(--lp-radius-card)] bg-white p-6 sm:p-7 ${
+              p.recomendado ? "border-2 border-lp-primary [box-shadow:var(--lp-shadow-lift)]" : "border border-lp-rule"
+            }`}
+          >
+            {p.recomendado && (
+              <span className="absolute -top-3 left-6 whitespace-nowrap rounded-full bg-lp-primary px-3 py-1 text-[12px] font-semibold text-white">
+                Recomendado
+              </span>
+            )}
+            <h3 id={`plan-${p.id}`} className="text-[20px] font-semibold text-lp-ink">Plan {p.nombre}</h3>
+            <p className="mt-1 text-[14px] text-lp-muted">{p.para} · {p.profesionales}</p>
+
+            <div className="mt-6">
+              <span key={`${p.id}-${anual}`} className="lp-num lp-cambio text-[clamp(1.9rem,3vw,2.3rem)] font-semibold leading-none tracking-[-0.02em] text-lp-ink">
+                {gs(anual ? p.anualGs : p.mensualGs)}
+              </span>
+              <span className="ml-1.5 text-[14px] text-lp-muted">{anual ? "/ año" : "/ mes"}</span>
+            </div>
+            <p className="lp-num mt-2 text-[13px] text-lp-muted">
+              {anual ? `Equivale a ${gs(Math.round(p.anualGs / 12))} por mes` : `Pagando el año: ${gs(p.anualGs)}`}
+            </p>
+
+            <Link
+              href={hrefDemo(ctaHref, p.id)}
+              className={`lp-pulsable mt-6 inline-flex min-h-[46px] items-center justify-center gap-2 whitespace-nowrap rounded-[var(--lp-radius-btn)] px-5 text-[15px] font-semibold ${
+                p.recomendado ? "bg-lp-primary text-white hover:bg-lp-primaryhover" : "border border-lp-primary text-lp-primary hover:bg-lp-primarywash"
+              }`}
+            >
+              Pedir una demo
+              <span className="sr-only"> del Plan {p.nombre}</span>
+            </Link>
+
+            <ul className="mt-7 flex-1 space-y-2.5 border-t border-lp-rule pt-6">
+              {p.incluye.map((f) => (
+                <li key={f} className="flex items-start gap-2.5 text-[14px] text-lp-ink">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-lp-primary" strokeWidth={2.25} aria-hidden /> {f}
+                </li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
+
+      <dl className="mt-10 grid gap-4 rounded-[var(--lp-radius-card)] bg-lp-paper2 p-6 text-[14px] sm:grid-cols-3 sm:p-7">
+        <div>
+          <dt className="font-semibold text-lp-ink">Puesta en marcha</dt>
+          <dd className="lp-num mt-1 text-lp-muted">{gs(CONDICIONES.setupGs)}, pago único: configuración, migración de tus datos y capacitación del equipo.</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-lp-ink">Profesional adicional</dt>
+          <dd className="lp-num mt-1 text-lp-muted">{gs(CONDICIONES.profesionalExtraGs)} por mes, por encima del límite del plan.</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-lp-ink">Pago anual</dt>
+          <dd className="mt-1 text-lp-muted">{CONDICIONES.mesesGratisAnual} meses sin cargo frente al pago mensual (en Multi, un poco más).</dd>
+        </div>
+      </dl>
     </div>
   );
 }
 
-/** Preguntas frecuentes — el contenido vive en lib/faqs.ts (módulo plano, lo
- *  comparte la sección visible y el JSON-LD FAQPage de la home). */
-import { FAQS } from "@/lib/faqs";
+/** Tabla completa de qué incluye cada plan, armada con las funciones de las cinco etapas. */
+export function TablaPlanes() {
+  const tiene = (plan: PlanPublicoId, a: Alcance) => a === "todos" || (a === "clinica" && plan !== "solo") || (a === "multi" && plan === "multi");
+  return (
+    <div className="overflow-x-auto rounded-[var(--lp-radius-card)] border border-lp-rule bg-white">
+      <table className="w-full min-w-[560px] border-collapse text-left text-[14px]">
+        <caption className="sr-only">Qué incluye cada plan</caption>
+        <thead>
+          <tr className="border-b border-lp-rule">
+            <th scope="col" className="px-5 py-4 font-semibold text-lp-ink">Funciones</th>
+            {PLANES.map((p) => (
+              <th key={p.id} scope="col" className={`px-3 py-4 text-center font-semibold ${p.recomendado ? "text-lp-primary" : "text-lp-ink"}`}>
+                {p.nombre}
+                <span className="block text-[12px] font-normal text-lp-muted">{p.profesionales}</span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        {ETAPAS.map((e) => (
+          <tbody key={e.id}>
+            <tr className="bg-lp-paper2">
+              <th scope="colgroup" colSpan={4} className="px-5 py-2.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-lp-primary">
+                {e.n} · {e.nombre}
+              </th>
+            </tr>
+            {e.funciones.map((f) => (
+              <tr key={f.t} className="border-b border-lp-rule last:border-0">
+                <th scope="row" className="px-5 py-3 font-normal text-lp-ink">{f.t}</th>
+                {PLANES.map((p) => (
+                  <td key={p.id} className="px-3 py-3 text-center">
+                    {tiene(p.id, f.plan) ? (
+                      <Check className="mx-auto h-4 w-4 text-lp-primary" strokeWidth={2.5} aria-label="Incluido" />
+                    ) : (
+                      <span className="text-lp-neutral" aria-label="No incluido">—</span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        ))}
+      </table>
+    </div>
+  );
+}
 
+/** Preguntas frecuentes — el contenido vive en lib/faqs.ts (lo comparte el JSON-LD de la home). */
 export function SeccionFaq() {
   return (
-    <div className="mx-auto max-w-6xl px-5">
-      <div className="grid gap-12 lg:grid-cols-12">
-        <div className="lg:col-span-4">
-          <h2 className="font-logo text-[2.75rem] font-extralight leading-[1.05] tracking-tight text-sv-ink sm:text-[3.5rem]">
-            Lo que todos
-            <br />preguntan.
-          </h2>
-        </div>
-        <div className="lg:col-span-8">
-          <div className="overflow-hidden rounded-[1.5rem] bg-white">
-            {FAQS.map((f, i) => (
-              <details key={f.q} className={`lp-faq group ${i > 0 ? "border-t border-sv-line/70" : ""}`}>
-                <summary className="flex cursor-pointer list-none items-center gap-5 px-6 py-5 transition-colors hover:bg-sv-paper2 sm:px-8 [&::-webkit-details-marker]:hidden">
-                  <span className="font-logo text-[15px] font-extralight text-sv-mintInk">{String(i + 1).padStart(2, "0")}</span>
-                  <h3 className="flex-1 font-logo text-[1.15rem] font-light text-sv-ink">{f.q}</h3>
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sv-paper2 transition-colors group-open:bg-sv-mint">
-                    <Plus className="h-4 w-4 text-sv-ink transition-transform duration-300 group-open:rotate-45" strokeWidth={1.75} />
-                  </span>
-                </summary>
-                <p className="lp-faq-a px-6 pb-6 pl-[3.6rem] text-[15px] font-light leading-relaxed text-sv-muted sm:px-8 sm:pl-[4.4rem]">{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </div>
+    <div className="divide-y divide-lp-rule rounded-[var(--lp-radius-card)] border border-lp-rule bg-white px-5 sm:px-7">
+      {FAQS.map((f) => (
+        <details key={f.q} className="lp-faq group">
+          <summary className="flex min-h-[60px] cursor-pointer list-none items-center gap-4 py-4 [&::-webkit-details-marker]:hidden">
+            <h3 className="flex-1 text-[17px] font-semibold text-lp-ink">{f.q}</h3>
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-lp-primarywash text-lp-primary transition-transform duration-200 group-open:rotate-45">
+              <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
+            </span>
+          </summary>
+          <p className="max-w-3xl pb-5 text-[15px] leading-relaxed text-lp-muted">{f.a}</p>
+        </details>
+      ))}
     </div>
   );
 }
 
-/** Cierre con formulario (home). En /acceso el formulario es la página entera. */
+/** Cierre con formulario sobre la franja de color (home). En /acceso el formulario es la página entera. */
 export function SeccionCierre() {
   const { session } = useStore();
   return (
-    <section className="sv-mesh sv-grain relative overflow-hidden">
-      {/* marca fantasma de fondo — el recurso de la contratapa de la referencia.
-          sv-ghost le da una contra-parallax sutil al scrollear (solo con
-          soporte nativo; sin él queda centrada, como siempre). */}
-      <span aria-hidden className="sv-ghost pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-logo text-[26vw] font-extralight leading-none tracking-tight text-white/[0.045]">
-        NOVUdent
-      </span>
-      <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-12 px-5 py-20 sm:py-28 lg:grid-cols-12">
-        <div className="lg:col-span-7">
-          <h2 className="font-logo text-[2.75rem] font-extralight leading-[1.05] tracking-tight text-white sm:text-[4rem]">
-            Tu clínica,
-            <br /><span className="text-sv-mint">funcionando en Novudent.</span>
+    <section id="demo" className="lp-franja scroll-mt-20" aria-labelledby="titulo-demo">
+      <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-12 lg:gap-12">
+        <div className="lg:col-span-5">
+          <p className="mb-3 text-[13px] font-semibold uppercase tracking-[0.08em] text-lp-accent">Pedir una demo</p>
+          <h2 id="titulo-demo" className="text-[clamp(2rem,4vw,2.75rem)] font-semibold leading-[1.12] tracking-[-0.02em] text-white">
+            Completá el formulario y te mostramos Novudent con tu clínica en mente.
           </h2>
-          <p className="mt-6 max-w-md text-[15px] font-light leading-relaxed text-white/60">
-            Te mostramos el sistema con los datos de tu clínica y migramos lo que
-            ya tenés — venga de Dentalink, de planillas o de papel.
-          </p>
           {session ? (
             <div className="mt-8"><PildoraCTA href="/app" tone="light">Ir al panel</PildoraCTA></div>
           ) : (
             <ul className="mt-8 space-y-3">
-              {["Migración de tus datos incluida", "Capacitación del equipo", "Respuesta en menos de 24 h hábiles"].map((t) => (
-                <li key={t} className="flex items-start gap-2.5 text-[15px] font-light text-white/85">
-                  <Check className="mt-1 h-4 w-4 shrink-0 text-sv-mint" strokeWidth={1.75} /> {t}
+              {["Te respondemos en menos de 24 h hábiles", "Migramos tus datos en la puesta en marcha", "Capacitamos a todo tu equipo"].map((t) => (
+                <li key={t} className="flex items-start gap-2.5 text-[16px] text-white">
+                  <Check className="mt-1 h-4 w-4 shrink-0 text-lp-accent" strokeWidth={2.5} aria-hidden /> {t}
                 </li>
               ))}
             </ul>
           )}
         </div>
-        {/* Con sesión abierta va el diente 3D (three.js): mejora progresiva pura
-            — si WebGL falla devuelve null y la sección queda completa. Sin
-            sesión manda el formulario: acá es donde se vende. */}
-        {session ? (
-          <div className="hidden lg:col-span-5 lg:block">
-            <Tooth3D className="h-72 w-full" />
-          </div>
-        ) : (
-          <div className="lg:col-span-5">
+        {!session && (
+          <div className="min-w-0 lg:col-span-7">
             <SolicitarAcceso />
           </div>
         )}
@@ -530,150 +486,240 @@ export function SeccionCierre() {
   );
 }
 
+/** Barra fija del celular: aparece cuando el botón de la portada salió de pantalla.
+ *  Mejora progresiva: si el observer no corre, no aparece y la portada ya tiene su botón. */
+function BarraMovil({ vigilar, href, texto }: { vigilar: React.RefObject<HTMLElement | null>; href: string; texto: string }) {
+  const [visible, setVisible] = useState(false);
+  const wa = linkWhatsApp();
+  useEffect(() => {
+    const el = vigilar.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => setVisible(!e.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, [vigilar]);
+  if (!visible) return null;
+  return (
+    <div className="lp-barra-movil fixed inset-x-0 bottom-0 z-[200] border-t border-lp-rule bg-[var(--lp-paper-glass)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md md:hidden">
+      <div className="flex gap-2">
+        <Link href={href} className="lp-pulsable flex min-h-[48px] flex-1 items-center justify-center whitespace-nowrap rounded-[var(--lp-radius-btn)] bg-lp-primary px-4 text-[16px] font-semibold text-white">
+          {texto}
+        </Link>
+        {wa && (
+          <a href={wa} rel="noopener" className="flex min-h-[48px] items-center justify-center whitespace-nowrap rounded-[var(--lp-radius-btn)] border border-lp-primary px-4 text-[15px] font-semibold text-lp-primary">
+            WhatsApp
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Visual de la portada: el resumen del día sobre un halo, con datos que flotan alrededor. */
+function VisualPortada() {
+  return (
+    <div className="relative mx-auto w-full max-w-[540px] py-8">
+      <div aria-hidden className="lp-halo absolute left-1/2 top-1/2 aspect-square w-[92%] -translate-x-1/2 -translate-y-1/2 rounded-full" />
+      <div className="lp-flota relative z-10 mx-auto w-[88%] rounded-[var(--lp-radius-card)] border border-lp-rule bg-white p-5 [box-shadow:var(--lp-shadow-stage)] sm:p-6">
+        <TarjetaHoy />
+      </div>
+      <div className="lp-flota lp-flota-lenta absolute -left-2 top-2 z-20 hidden sm:block">
+        <Chip icon={Globe}>Reserva online · 13:30 · 30 min</Chip>
+      </div>
+      <div className="lp-flota lp-flota-lenta absolute -right-2 bottom-4 z-20 hidden w-52 rounded-[12px] border border-lp-rule bg-white p-3.5 [box-shadow:var(--lp-shadow-float)] sm:block">
+        <p className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.08em] text-lp-muted">
+          Pieza 16 <Ejemplo />
+        </p>
+        <div className="mt-2 flex items-center gap-3">
+          <span className="scale-90" aria-hidden><ToothGlyph n="16" rec={{ condition: "caries", surfaces: ["O"] }} upper /></span>
+          <span className="text-[13px] font-medium leading-snug text-lp-ink">Caries oclusal<span className="block text-[12px] font-normal text-lp-alert">Pendiente</span></span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ==================================================================
-   HOME — compone todas las secciones. El hero es exclusivo de acá.
+   HOME — compone todas las secciones. La portada es exclusiva de acá.
    ================================================================== */
 
 export default function Landing() {
   const { session } = useStore();
-  /* El CTA manda a la página de acceso real (ruta indexable), no a un ancla. */
-  const ctaAcceso = session ? "/app" : "/acceso";
+  const ctaHref = session ? "/app" : "/acceso";
+  const ctaTexto = session ? "Ir al panel" : "Pedir una demo";
+  const acciones = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="bg-sv-paper font-logo text-[17px] font-normal leading-relaxed text-sv-ink">
+    <div className="lp-root pb-24 font-lp text-[16px] leading-relaxed md:pb-0">
       <NavLanding />
 
-      {/* ===== HERO: navy profundo, display ultra-fino ===== */}
-      <section className="sv-mesh sv-grain relative overflow-hidden pt-28 sm:pt-36">
-        <DiscosFlotantes />
-        <div className="relative z-10 mx-auto max-w-6xl px-5 pb-40 sm:pb-52">
-          {/* píldoras de contexto, arriba a la derecha como en la referencia.
-              Coreografía de carga: cada pieza entra con su delay (sv-fade +
-              animationDelay inline). CSS puro: si la animación no corre, todo
-              queda visible en su lugar. */}
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <span className="sv-fade rounded-full border border-white/25 px-4 py-1.5 text-[13px] font-light text-white/75" style={{ animationDelay: "0.15s" }}>
-              Software odontológico · Paraguay
-            </span>
-            <span className="sv-fade rounded-full border border-white/25 px-4 py-1.5 text-[13px] font-light text-white/75" style={{ animationDelay: "0.3s" }}>
-              Respondemos en menos de 24 h
-            </span>
-          </div>
-
-          {/* Titular por líneas con máscara: cada línea sube desde abajo de su
-              propio overflow-hidden, escalonado — el gesto de entrada de la
-              referencia, hecho sin JS. */}
-          <h1 className="mt-16 max-w-5xl font-logo text-[3rem] font-extralight leading-[0.98] tracking-[-0.02em] text-white sm:mt-24 sm:text-[5rem] lg:text-[6.5rem]">
-            <span className="sv-mask-line" style={{ animationDelay: "0.1s" }}><span>La clínica entera,</span></span>
-            <span className="sv-mask-line" style={{ animationDelay: "0.28s" }}><span>
-              en <span className="text-sv-mint">una sola pantalla</span>.
-            </span></span>
-          </h1>
-
-          <div className="mt-10 flex flex-wrap items-end justify-between gap-8">
-            <p className="sv-fade max-w-lg text-lg font-light leading-relaxed text-white/65" style={{ animationDelay: "0.55s" }}>
-              Agenda, odontograma por superficies, ficha clínica y facturación con
-              estados. Esto que ves abajo <b className="font-medium text-white">es el producto real</b> — tocalo.
-            </p>
-            <div className="sv-fade" style={{ animationDelay: "0.7s" }}>
-              <PildoraCTA href={ctaAcceso}>{session ? "Ir al panel" : "Solicitar acceso"}</PildoraCTA>
+      <main>
+        {/* ===== PORTADA ===== */}
+        <section className="pb-14 pt-24 sm:pb-20 sm:pt-32">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-12">
+            <div className="lp-entrada">
+              <BarraSeccion label="Software dental" />
+              <Link
+                href="/capacidades"
+                className="mb-6 inline-flex max-w-full items-center gap-2 rounded-full border border-lp-rule bg-lp-paper2 py-1 pl-1 pr-3 text-[13px] text-lp-muted transition-colors hover:border-lp-primary hover:text-lp-ink"
+              >
+                <span className="rounded-full bg-lp-ink px-2 py-0.5 text-[11px] font-semibold text-white">Nuevo</span>
+                <span className="truncate">IA clínica: radiografías y notas por voz</span>
+              </Link>
+              <h1 className="text-[clamp(2.3rem,5.2vw,3.5rem)] font-semibold leading-[1.08] tracking-[-0.025em] text-lp-ink">
+                La clínica entera, en una sola pantalla.
+              </h1>
+              <p className="mt-6 max-w-xl text-[18px] leading-relaxed text-lp-muted">
+                Novudent reúne la <b className="font-semibold text-lp-ink">agenda</b>, la <b className="font-semibold text-lp-ink">ficha clínica con odontograma</b>, los{" "}
+                <b className="font-semibold text-lp-ink">presupuestos y cobros en cuotas</b> y los permisos de todo tu equipo. Hecho en Paraguay, con precios en guaraníes.
+              </p>
+              <div ref={acciones} className="mt-8 flex flex-wrap items-center gap-3">
+                <PildoraCTA href={ctaHref}>{ctaTexto}</PildoraCTA>
+                <BotonSecundario href="/precios">Ver planes</BotonSecundario>
+              </div>
+            </div>
+            <div className="lp-entrada min-w-0" style={{ ["--i" as string]: 3 }}>
+              <VisualPortada />
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ===== VENTANA DE PRODUCTO: monta sobre el navy ===== */}
-      <section id="odontograma" className="relative z-20 -mt-32 scroll-mt-24 sm:-mt-40">
-        <SeccionOdontograma />
-      </section>
-
-      {/* ===== CIFRAS: numerales gigantes con regla menta ===== */}
-      <section className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-12 sm:grid-cols-4">
-          {[
-            { v: "32", l: "piezas FDI con morfología real" },
-            { v: "05", l: "superficies marcables por pieza" },
-            { v: "06", l: "estados de facturación auditados" },
-            { v: "03", l: "roles con permisos estrictos" },
-          ].map((x) => (
-            <div key={x.l} className="sv-view">
-              <Numeral n={x.v} />
-              <p className="mt-4 max-w-[170px] text-[15px] font-light leading-snug text-sv-muted">{x.l}</p>
+        {/* ===== PROBLEMAS ===== */}
+        <section className="px-4 sm:px-6" aria-labelledby="titulo-problemas">
+          <div className="lp-manchas mx-auto max-w-6xl rounded-[24px] px-6 py-12 sm:px-12 sm:py-14">
+            <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+              <h2 id="titulo-problemas" className="max-w-2xl text-[clamp(1.6rem,3vw,2.1rem)] font-semibold leading-[1.2] tracking-[-0.015em] text-lp-ink">
+                Tener una clínica no es solo atender: también es agenda, cobros, stock y equipo.
+              </h2>
+              <PildoraCTA href={ctaHref}>{ctaTexto}</PildoraCTA>
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ===== MARQUEE DE DIENTES (firma visual) ===== */}
-      <section aria-hidden className="border-y border-sv-line bg-sv-paper2 py-7">
-        <div className="lp-marquee-mask overflow-hidden">
-          <div className="lp-marquee flex w-max items-center gap-8 opacity-70">
-            {[...MARQUEE_TEETH, ...MARQUEE_TEETH].map((t, i) => (
-              <span key={i} className="flex items-center gap-8">
-                <ToothGlyph n={t.n} rec={t.rec} upper />
-                {i % 3 === 2 && <span className="text-[11px] uppercase tracking-[0.3em] text-sv-ink/25">novudent</span>}
-              </span>
-            ))}
+            <div className="mt-10 grid gap-8 border-t border-lp-primarysoft pt-8 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { icon: CalendarDays, t: "Huecos en la agenda y pacientes que no confirman." },
+                { icon: FileText, t: "Fichas en papel o repartidas en planillas." },
+                { icon: CreditCard, t: "Cobros en cuotas que nadie sabe seguir." },
+                { icon: BarChart3, t: "No saber cuánto produce cada profesional." },
+              ].map((x) => (
+                <div key={x.t}>
+                  <x.icon className="h-7 w-7 text-lp-primary" strokeWidth={1.5} aria-hidden />
+                  <p className="mt-4 text-[16px] leading-snug text-lp-ink">{x.t}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ===== CAPACIDADES ===== */}
-      <section id="capacidades" className="scroll-mt-20 py-20 sm:py-28">
-        <BarraSeccion label="Capacidades" />
-        <SeccionCapacidades />
-      </section>
-
-      {/* ===== CÓMO SE TRABAJA — patrón de la referencia: pestaña + contador ===== */}
-      <section id="flujo" className="scroll-mt-20 border-t border-sv-line bg-sv-paper2 py-20 sm:py-28">
-        <div className="mx-auto max-w-6xl px-5">
-          <BarraSeccion label="Cómo se trabaja" />
-          <h2 className="mb-16 max-w-3xl font-logo text-[2.75rem] font-extralight leading-[1.05] tracking-tight text-sv-ink sm:text-[3.5rem]">
-            Un día en tu clínica, <span className="text-sv-mintInk">sin fricción</span>.
-          </h2>
-        </div>
-        <SeccionFlujo />
-      </section>
-
-      {/* ===== EL PRODUCTO EN ACCIÓN: escena + app con un solo reloj ===== */}
-      <section id="accion" className="scroll-mt-20 py-20 sm:py-28">
-        <div className="mx-auto max-w-6xl px-5">
-          <BarraSeccion label="El producto en acción" />
-          <div className="mb-12 grid gap-6 lg:grid-cols-12 lg:items-end">
-            <h2 className="font-logo text-[2.75rem] font-extralight leading-[1.05] tracking-tight text-sv-ink sm:text-[3.5rem] lg:col-span-7">
-              De la silla dental
-              <br />a la app, <span className="text-sv-mintInk">solo</span>.
+        {/* ===== SOLUCIONES ===== */}
+        <section className="py-20 sm:py-28" aria-labelledby="titulo-soluciones">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <h2 id="titulo-soluciones" className="mx-auto max-w-3xl text-center text-[clamp(1.9rem,3.8vw,2.6rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-lp-ink">
+              Un sistema para cada etapa de tus pacientes y cada área de tu clínica
             </h2>
-            <p className="text-[15px] font-light leading-relaxed text-sv-muted lg:col-span-5">
-              El día completo de una consulta, en un loop de catorce segundos: la
-              cita se agenda, el hallazgo se marca en la pieza, el cobro se
-              factura. Miralo las veces que quieras — es el producto real.
+            <div className="mt-14 grid items-center gap-12 lg:grid-cols-2">
+              <Visual chips={[<Chip key="a" icon={MessageCircle}>Recordatorio por WhatsApp</Chip>, <Chip key="b" icon={Globe}>Reserva desde el celular</Chip>]}>
+                <TarjetaPresupuesto />
+              </Visual>
+              <ul className="divide-y divide-lp-rule border-y border-lp-rule">
+                {[
+                  { icon: ClipboardList, t: "Soluciones clínicas", d: "Ficha, odontograma por superficies, ortodoncia, recetas y consentimientos.", a: "atender" },
+                  { icon: Wallet, t: "Cobros y financiamiento", d: "Presupuestos por pieza, cuotas, caja diaria y cuentas por cobrar.", a: "cobrar" },
+                  { icon: Sparkles, t: "Inteligencia artificial", d: "Análisis de radiografías y notas clínicas dictadas por voz.", a: "atender" },
+                  { icon: ShieldCheck, t: "Administración", d: "Roles y permisos, inventario, laboratorios, gastos e informes.", a: "controlar" },
+                ].map((s) => (
+                  <li key={s.t}>
+                    <a href={`#etapa-${s.a}`} className="group flex gap-4 py-5">
+                      <s.icon className="mt-0.5 h-6 w-6 shrink-0 text-lp-primary" strokeWidth={1.5} aria-hidden />
+                      <span>
+                        <span className="block text-[18px] font-semibold text-lp-ink group-hover:text-lp-primary">{s.t}</span>
+                        <span className="mt-1 block text-[14px] leading-relaxed text-lp-muted">{s.d}</span>
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* ===== CINCO ETAPAS ===== */}
+        <section className="pb-20 sm:pb-28" aria-label="Qué hace Novudent en cada etapa">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <SeccionFlujo ctaHref={ctaHref} />
+          </div>
+        </section>
+
+        {/* ===== PROBÁ EL ODONTOGRAMA ===== */}
+        <section className="bg-lp-paper2 py-20 sm:py-24" aria-labelledby="titulo-probalo">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mx-auto mb-10 max-w-2xl text-center">
+              <BarraSeccion label="Probalo acá mismo" />
+              <h2 id="titulo-probalo" className="text-[clamp(1.9rem,3.8vw,2.6rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-lp-ink">
+                El odontograma de Novudent, en tu navegador
+              </h2>
+              <p className="mt-4 text-[16px] text-lp-muted">32 piezas FDI y cinco superficies por pieza. Tocá una y marcá lo que encontraste.</p>
+            </div>
+            <SeccionOdontograma />
+          </div>
+        </section>
+
+        {/* ===== FRANJA CON DATOS DEL PRODUCTO ===== */}
+        <section className="lp-franja" aria-labelledby="titulo-franja">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-2">
+            <div>
+              <h2 id="titulo-franja" className="text-[clamp(2rem,4vw,2.75rem)] font-semibold leading-[1.12] tracking-[-0.02em] text-white">
+                Novudent es el software dental hecho en Paraguay, para cómo trabajan las clínicas acá.
+              </h2>
+              <p className="mt-5 max-w-lg text-[17px] leading-relaxed text-lp-oninkmuted">
+                Precios en guaraníes, WhatsApp para confirmar turnos y todo en la nube: entrás desde la computadora, la tablet o el celular.
+              </p>
+            </div>
+            <ul className="divide-y divide-white/20 border-y border-white/20">
+              {[
+                { v: "32", t: "piezas FDI con morfología real", icon: Activity },
+                { v: "5", t: "superficies marcables por pieza", icon: ClipboardList },
+                { v: "3", t: "roles con permisos estrictos", icon: ShieldCheck },
+                { v: "100%", t: "web: sin nada para instalar", icon: Globe },
+              ].map((x) => (
+                <li key={x.t} className="flex items-center gap-5 py-4">
+                  <x.icon className="h-6 w-6 shrink-0 text-white/80" strokeWidth={1.5} aria-hidden />
+                  <span className="lp-num w-24 shrink-0 text-[2.25rem] font-semibold leading-none text-white">{x.v}</span>
+                  <span className="text-[15px] text-lp-oninkmuted">{x.t}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ===== PRECIOS ===== */}
+        <section id="precios" className="scroll-mt-20 py-20 sm:py-28" aria-labelledby="titulo-precios">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mx-auto mb-10 max-w-2xl text-center">
+              <BarraSeccion label="Planes" />
+              <h2 id="titulo-precios" className="text-[clamp(1.9rem,3.8vw,2.6rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-lp-ink">
+                Precios en guaraníes, según el tamaño de tu clínica
+              </h2>
+            </div>
+            <SeccionPrecios ctaHref={ctaHref} />
+            <p className="mt-6 text-center">
+              <Link href="/precios" className="inline-flex min-h-[44px] items-center text-[15px] font-semibold text-lp-primary underline-offset-4 hover:underline">Ver todo lo que incluye cada plan</Link>
             </p>
           </div>
-        </div>
-        <SeccionAccion />
-      </section>
+        </section>
 
-      {/* ===== PRECIOS ===== */}
-      <section id="precios" className="scroll-mt-20 py-20 sm:py-28">
-        <div className="mx-auto max-w-6xl px-5">
-          <BarraSeccion label="Precios" />
-        </div>
-        <SeccionPrecios ctaHref={ctaAcceso} />
-      </section>
+        {/* ===== PREGUNTAS ===== */}
+        <section className="bg-lp-paper2 py-20 sm:py-24" aria-labelledby="titulo-faq">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6">
+            <h2 id="titulo-faq" className="mb-8 text-center text-[clamp(1.9rem,3.8vw,2.6rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-lp-ink">
+              Preguntas frecuentes
+            </h2>
+            <SeccionFaq />
+          </div>
+        </section>
 
-      {/* ===== FAQ ===== */}
-      <section className="border-t border-sv-line bg-sv-paper2 py-20 sm:py-24">
-        <div className="mx-auto max-w-6xl px-5">
-          <BarraSeccion label="Preguntas" />
-          <SeccionFaq />
-        </div>
-      </section>
-
-      {/* ===== CIERRE ===== */}
-      <SeccionCierre />
-
+        <SeccionCierre />
+      </main>
       <FooterLanding />
+      <BarraMovil vigilar={acciones} href={ctaHref} texto={ctaTexto} />
     </div>
   );
 }

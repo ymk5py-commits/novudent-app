@@ -14,7 +14,7 @@ export default function OdontogramaPage() {
     <PaginaSeccion
       activa="/odontograma"
       etiqueta="Odontograma"
-      titulo={<>El diente entero, marcado <span className="text-sv-mint">donde corresponde</span>.</>}
+      titulo="El diente entero, marcado donde corresponde."
       intro="No un dibujito con colores: 32 piezas FDI con morfología real y cinco superficies por pieza. Tocá el tablero de abajo — es el odontograma de verdad, corriendo en tu navegador."
     >
       <div className="pb-4">
@@ -28,9 +28,9 @@ export default function OdontogramaPage() {
           { t: "Auditoría completa", d: "Cada marca guarda quién la hizo y cuándo. El historial del hallazgo no se pisa ni se pierde." },
           { t: "Estados clínicos reales", d: "Caries, restaurado, corona, endodoncia, implante, extracción indicada y ausente — con el código de color del consultorio." },
         ].map((x) => (
-          <div key={x.t} className="rounded-[1.25rem] bg-white p-6 shadow-card">
-            <h2 className="font-logo text-[1.3rem] font-light text-sv-ink">{x.t}</h2>
-            <p className="mt-2 text-[14.5px] font-light leading-relaxed text-sv-muted">{x.d}</p>
+          <div key={x.t} className="border-t border-lp-ink pt-4">
+            <h2 className="text-[20px] font-bold text-lp-ink">{x.t}</h2>
+            <p className="mt-2 text-[15px] leading-relaxed text-lp-muted">{x.d}</p>
           </div>
         ))}
       </div>

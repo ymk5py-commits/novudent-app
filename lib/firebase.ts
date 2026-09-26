@@ -186,9 +186,22 @@ export async function updateCurrentPassword(newPassword: string): Promise<void> 
   await updatePassword(u, newPassword); // puede pedir reautenticación si la sesión es vieja
 }
 
-// Analytics opcional (no bloquea si el entorno no lo soporta)
+/* Analytics SOLO con consentimiento (lib/consentimiento.ts). Antes se cargaba siempre y ponía sus
+ * cookies apenas entraba alguien. Ahora arranca si la persona ya aceptó, o en el momento en que
+ * acepta desde el banner; si rechaza, no se carga nunca. */
 if (typeof window !== "undefined") {
-  import("firebase/analytics")
-    .then(({ getAnalytics, isSupported }) => isSupported().then((ok) => ok && getAnalytics(app)))
+  let analyticsIniciado = false;
+  const iniciarAnalytics = () => {
+    if (analyticsIniciado) return;
+    analyticsIniciado = true;
+    import("firebase/analytics")
+      .then(({ getAnalytics, isSupported }) => isSupported().then((ok) => ok && getAnalytics(app)))
+      .catch(() => {});
+  };
+  import("./consentimiento")
+    .then(({ leerConsentimiento, alCambiarConsentimiento }) => {
+      if (leerConsentimiento()?.analitica) iniciarAnalytics();
+      alCambiarConsentimiento((c) => { if (c.analitica) iniciarAnalytics(); });
+    })
     .catch(() => {});
 }

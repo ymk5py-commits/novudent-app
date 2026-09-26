@@ -1,6 +1,7 @@
 import Landing from "@/components/Landing";
 import { SITE_URL } from "@/lib/site";
 import { FAQS } from "@/lib/faqs";
+import { PLANES } from "@/lib/landing/precios";
 
 /* La home es un Server Component para emitir el JSON-LD en el HTML que Google
    lee de una. <Landing/> sigue siendo cliente (usa estado/sesión) — Next lo
@@ -40,10 +41,9 @@ const jsonLd = {
       description:
         "Agenda inteligente, odontograma por superficies FDI, ficha clínica, presupuestos y facturación con estados para clínicas dentales.",
       publisher: { "@id": `${SITE_URL}/#org` },
-      offers: [
-        { "@type": "Offer", name: "Plan Solo", price: "45", priceCurrency: "USD", url: `${SITE_URL}/precios` },
-        { "@type": "Offer", name: "Plan Clínica", price: "129", priceCurrency: "USD", url: `${SITE_URL}/precios` },
-      ],
+      offers: PLANES.map((p) => ({
+        "@type": "Offer", name: `Plan ${p.nombre}`, price: String(p.mensualGs), priceCurrency: "PYG", url: `${SITE_URL}/precios`,
+      })),
     },
     {
       "@type": "FAQPage",
