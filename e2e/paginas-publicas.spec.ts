@@ -1,6 +1,6 @@
 import { test, expect, sinScrollHorizontal } from "./soporte";
 
-const PUBLICAS = ["/capacidades", "/como-se-trabaja", "/en-accion", "/precios", "/odontograma", "/acceso", "/login"];
+const PUBLICAS = ["/capacidades", "/como-se-trabaja", "/en-accion", "/precios", "/odontograma", "/acceso", "/login", "/privacidad", "/terminos", "/cookies"];
 
 for (const ruta of PUBLICAS) {
   test(`${ruta} carga sin errores y entra en la pantalla`, async ({ page }) => {

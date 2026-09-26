@@ -3,11 +3,29 @@ import { test, expect, sinScrollHorizontal } from "./soporte";
 test.describe("Landing", () => {
   test.beforeEach(async ({ page }) => { await page.goto("/"); });
 
-  test("el hero dice qué es y lleva a pedir acceso", async ({ page }) => {
+  test("el hero dice qué es y lleva a pedir una demo", async ({ page }) => {
     await expect(page.getByRole("heading", { level: 1 })).toContainText("La clínica entera");
-    const cta = page.getByRole("link", { name: /Solicitar acceso/ }).first();
+    const cta = page.getByRole("main").getByRole("link", { name: /Pedir una demo/ }).first();
     await expect(cta).toBeVisible();
-    await expect(cta).toHaveAttribute("href", /\/acceso|#/);
+    await expect(cta).toHaveAttribute("href", /\/acceso/);
+  });
+
+  test("¿Cómo es tu clínica? lleva al formulario con el plan elegido", async ({ page }) => {
+    await page.getByRole("link", { name: /Somos un equipo/ }).click();
+    await page.waitForURL("**/acceso?plan=clinica");
+    await expect(page.locator('select[name="plan"]')).toHaveValue("clinica");
+  });
+
+  test("el recorrido tiene sus cinco etapas en orden", async ({ page }) => {
+    const etapas = page.locator('article[id^="etapa-"]');
+    await expect(etapas).toHaveCount(5);
+    await expect(etapas.locator("h3")).toHaveText([
+      "Turnos que no se pierden",
+      "El hallazgo, en la pieza y en la superficie",
+      "Del presupuesto al cobro, sin planillas",
+      "Pacientes que vuelven a la silla",
+      "Cada rol ve lo que le toca",
+    ]);
   });
 
   test("SEO básico: título, descripción, canónica y imagen para compartir", async ({ page }) => {
@@ -29,15 +47,21 @@ test.describe("Landing", () => {
     await expect(page.getByRole("button", { name: /^Pieza 18 — / })).toHaveAccessibleName("Pieza 18 — Caries");
   });
 
-  test("precios: los tres planes con su precio", async ({ page }) => {
-    await expect(page.getByText("$129").first()).toBeVisible();
-    await expect(page.getByText(/\$45/).first()).toBeVisible();
-    await expect(page.getByText("A medida").first()).toBeVisible();
+  test("precios: los tres planes en guaraníes, mensual y anual", async ({ page }) => {
+    const precios = page.locator("#precios");
+    for (const p of ["Gs. 330.000", "Gs. 620.000", "Gs. 980.000"]) await expect(precios.getByText(p, { exact: true })).toBeVisible();
+    const anual = precios.getByRole("radio", { name: "Anual" });
+    await anual.scrollIntoViewIfNeeded(); // Playwright acerca el control antes de tocarlo: medir después de eso
+    const antes = await page.evaluate(() => scrollY);
+    await anual.check();
+    for (const p of ["Gs. 3.300.000", "Gs. 6.200.000", "Gs. 9.000.000"]) await expect(precios.getByText(p, { exact: true })).toBeVisible();
+    expect(Math.abs((await page.evaluate(() => scrollY)) - antes), "cambiar a anual no mueve la página").toBeLessThan(2);
+    await expect(precios.getByText(/Gs\. 1\.500\.000, pago único/)).toBeVisible();
   });
 
   test("preguntas frecuentes: se abren y muestran la respuesta", async ({ page }) => {
     const preguntas = page.locator("details.lp-faq");
-    await expect(preguntas).toHaveCount(5);
+    await expect(preguntas).toHaveCount(6);
     const primera = preguntas.first();
     await primera.locator("summary").click();
     await expect(primera).toHaveAttribute("open", "");
@@ -48,27 +72,33 @@ test.describe("Landing", () => {
   });
 });
 
-test.describe("Formulario «Solicitar acceso»", () => {
+test.describe("Formulario «Pedí tu demo»", () => {
   const form = (page: import("@playwright/test").Page) => page.locator("form").filter({ has: page.locator('input[name="email"]') });
 
-  test("sin nombre ni email muestra el error del servidor", async ({ page }) => {
-    // Mismo 400 que devuelve /api/contacto: el formulario tiene noValidate y no valida antes de enviar.
-    await page.route("**/api/contacto", (r) => r.fulfill({ status: 400, json: { ok: false, error: "Necesitamos tu nombre y tu email." } }));
+  test("si el servidor rechaza el pedido, muestra su mensaje", async ({ page }) => {
+    await page.route("**/api/contacto", (r) => r.fulfill({ status: 400, json: { ok: false, error: "Ese email no parece válido." } }));
     await page.goto("/");
-    await form(page).locator('input[name="nombre"]').focus();
-    await page.keyboard.press("Enter");
-    await expect(page.getByText("Necesitamos tu nombre y tu email.")).toBeVisible();
+    const f = form(page);
+    await f.locator('input[name="nombre"]').fill("Dra. Prueba E2E");
+    await f.locator('input[name="email"]').fill("e2e@example.com");
+    await f.getByRole("button", { name: "Pedir la demo" }).click();
+    await expect(page.getByText("Ese email no parece válido.")).toBeVisible();
   });
 
-  test.fixme("valida en el navegador antes de enviar", async ({ page }) => {
-    /* PENDIENTE (etapa landing): hoy un pedido vacío o con el email mal escrito viaja al servidor, y
-       /api/contacto acepta 5 por hora por IP: cada error gasta un intento. Quien se equivoca 5 veces
-       queda una hora sin poder dejar sus datos. Esta prueba pasa cuando el formulario valide antes. */
+  test("valida en el navegador antes de enviar (no gasta intentos)", async ({ page }) => {
+    /* /api/contacto acepta 5 pedidos por hora por IP: un error de tipeo no puede gastar uno. */
     let enviado = false;
     await page.route("**/api/contacto", (r) => { enviado = true; return r.fulfill({ json: { ok: true } }); });
     await page.goto("/");
-    await form(page).locator('input[name="nombre"]').focus();
-    await page.keyboard.press("Enter");
+    const f = form(page);
+    await f.getByRole("button", { name: "Pedir la demo" }).click();
+    await expect(f.getByText("Escribí tu nombre y apellido.")).toBeVisible();
+    await expect(f.locator('input[name="nombre"]')).toBeFocused();
+    await f.locator('input[name="nombre"]').fill("Dra. Prueba E2E");
+    await f.locator('input[name="email"]').fill("sin-arroba.com");
+    await f.getByRole("button", { name: "Pedir la demo" }).click();
+    await expect(f.getByText(/Revisá el email/)).toBeVisible();
+    await expect(f.locator('input[name="email"]')).toHaveAttribute("aria-invalid", "true");
     expect(enviado).toBe(false);
   });
 
@@ -80,7 +110,7 @@ test.describe("Formulario «Solicitar acceso»", () => {
     await f.locator('input[name="nombre"]').fill("Dra. Prueba E2E");
     await f.locator('input[name="clinica"]').fill("Consultorio de pruebas");
     await f.locator('input[name="email"]').fill("e2e@example.com");
-    await f.getByRole("button", { name: "Solicitar acceso" }).click();
+    await f.getByRole("button", { name: "Pedir la demo" }).click();
     await expect(page.getByRole("heading", { name: "Recibimos tu pedido" })).toBeVisible();
     expect(cuerpo).toMatchObject({ nombre: "Dra. Prueba E2E", email: "e2e@example.com" });
     expect(cuerpo.website ?? "").toBe(""); // la trampa para bots queda vacía
@@ -92,9 +122,9 @@ test.describe("Formulario «Solicitar acceso»", () => {
     const f = form(page);
     await f.locator('input[name="nombre"]').fill("Dra. Prueba E2E");
     await f.locator('input[name="email"]').fill("e2e@example.com");
-    await f.getByRole("button", { name: "Solicitar acceso" }).click();
+    await f.getByRole("button", { name: "Pedir la demo" }).click();
     await expect(page.getByText("Servicio no disponible")).toBeVisible();
-    await expect(f.getByRole("button", { name: "Solicitar acceso" })).toBeEnabled();
+    await expect(f.getByRole("button", { name: "Pedir la demo" })).toBeEnabled();
   });
 
   test("la trampa para bots no la ve una persona", async ({ page }) => {
@@ -103,4 +133,28 @@ test.describe("Formulario «Solicitar acceso»", () => {
     await expect(trampa).toHaveAttribute("tabindex", "-1");
     await expect(trampa).not.toBeInViewport();
   });
+});
+
+test.describe("Anchos de celular y tablet", () => {
+  for (const ancho of [320, 375, 414, 768]) {
+    test(`${ancho}px: sin scroll lateral y ningún botón en dos renglones`, async ({ page }) => {
+      await page.setViewportSize({ width: ancho, height: 800 });
+      for (const ruta of ["/", "/precios", "/acceso"]) {
+        await page.goto(ruta);
+        await sinScrollHorizontal(page);
+        const partidos = await page.evaluate(() =>
+          [...document.querySelectorAll<HTMLElement>("main a, main button, header a, header button, footer a, footer button")]
+            // un enlace dentro de un párrafo es texto corrido: ese sí puede cortar renglón
+            .filter((el) => el.offsetParent !== null && el.textContent?.trim() && !el.closest("p"))
+            .filter((el) => {
+              const r = el.getClientRects();
+              const lineas = Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight || "0"));
+              return r.length > 1 || (getComputedStyle(el).display.startsWith("inline") && lineas > 2);
+            })
+            .map((el) => el.textContent!.trim().slice(0, 40)),
+        );
+        expect(partidos, `${ruta} a ${ancho}px`).toEqual([]);
+      }
+    });
+  }
 });

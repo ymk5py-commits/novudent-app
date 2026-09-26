@@ -7,22 +7,26 @@
 export const FAQS = [
   {
     q: "¿Necesito instalar algo?",
-    a: "No. Novudent es 100% web: navegador de computadora, tablet o celular, con tus datos seguros en la nube (Firebase).",
+    a: "No. Novudent es 100% web: funciona en el navegador de la computadora, la tablet o el celular, con tus datos guardados en la nube.",
   },
   {
     q: "¿El odontograma marca superficies?",
-    a: "Sí: cada pieza tiene su vista oclusal de 5 superficies (M·D·V·L·O). Marcás caries en mesial o una restauración en vestibular y queda pintado en el tablero, con autor y fecha.",
+    a: "Sí: cada pieza tiene sus cinco superficies (mesial, distal, vestibular, lingual y oclusal). Marcás una caries en mesial o una restauración en vestibular y queda pintada en el tablero, con quién la registró y cuándo.",
   },
   {
-    q: "¿Cómo evita errores de facturación?",
-    a: "Con una máquina de estados estricta y validación de emparejamientos CPT-DX, POS-CPT y modificadores antes de cada envío. Las retenciones (HOLD/MGRHOLD) se asignan solas.",
+    q: "¿Cómo evita errores en los cobros?",
+    a: "Cada cobro pasa por estados fijos —enviado, retenido, facturado— y el sistema revisa los datos antes de enviarlo. Si algo no cierra, queda retenido con el motivo a la vista en vez de perderse.",
   },
   {
-    q: "¿Quién crea los usuarios?",
-    a: "Solo el administrador de la clínica, desde Configuración. Cada usuario entra con su email y contraseña, con los permisos de su rol.",
+    q: "¿Quién ve los datos de mis pacientes?",
+    a: "Solo tu equipo, y cada persona según su rol: la recepción cobra pero no ve los números del negocio, y el profesional escribe la ficha sin manejar la caja. Los usuarios los crea el administrador de la clínica.",
+  },
+  {
+    q: "¿Puedo traer mis datos de otro sistema?",
+    a: "Sí. En la puesta en marcha migramos tus pacientes desde otro sistema, planillas o papel, y capacitamos a tu equipo.",
   },
   {
     q: "¿Cómo empiezo?",
-    a: "Pedís tu acceso desde el formulario de la página de acceso. Te contactamos dentro de las 24 horas hábiles, te mostramos el sistema funcionando y te abrimos la cuenta con 30 días de prueba. Migramos tus datos sin costo.",
+    a: "Pedís una demo desde el formulario. Te contactamos dentro de las 24 horas hábiles, te mostramos el sistema funcionando y, si te sirve, abrimos la cuenta de tu clínica.",
   },
 ] as const;

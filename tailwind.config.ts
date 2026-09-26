@@ -45,6 +45,14 @@ const config: Config = {
           line: "#D5D5D8",    // reglas finas y bordes de tarjeta
           muted: "#545B6B",   // texto secundario que sí pasa AA sobre paper
         },
+        /* Landing (Hallmark): cada color apunta a un token OKLCH de app/globals.css. */
+        lp: {
+          surface: "var(--lp-surface)", paper: "var(--lp-paper)", paper2: "var(--lp-paper-2)", paper3: "var(--lp-paper-3)",
+          rule: "var(--lp-rule)", rule2: "var(--lp-rule-strong)", neutral: "var(--lp-neutral)", muted: "var(--lp-muted)",
+          ink: "var(--lp-ink)", ink2: "var(--lp-ink-2)", onink: "var(--lp-on-ink)", oninkmuted: "var(--lp-on-ink-muted)",
+          accent: "var(--lp-accent)", accentink: "var(--lp-accent-ink)", accentwash: "var(--lp-accent-wash)",
+          focus: "var(--lp-focus)", alert: "var(--lp-alert)", alertwash: "var(--lp-alert-wash)",
+        },
         state: {
           ok: "#0B7E57",
           okbg: "#DEF7EC",

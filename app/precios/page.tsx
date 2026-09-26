@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { PaginaSeccion } from "@/components/landing/Chrome";
 import { SeccionPrecios } from "@/components/Landing";
 import { SITE_URL } from "@/lib/site";
+import { PLANES, gs } from "@/lib/landing/precios";
 
 export const metadata: Metadata = {
-  title: "Precios y planes — Solo, Clínica y Cadena",
+  title: "Precios y planes en guaraníes — Solo, Clínica y Multi",
   description:
-    "Plan Solo $45/mes (1 sillón), Plan Clínica $129/mes (hasta 5 sillones, el más elegido) y Plan Cadena a medida. Sin contratos largos, migración de datos incluida y 30 días de prueba.",
+    `Plan Solo ${gs(PLANES[0].mensualGs)}/mes (1 profesional), Plan Clínica ${gs(PLANES[1].mensualGs)}/mes (hasta 4) y Plan Multi ${gs(PLANES[2].mensualGs)}/mes (hasta 10). Pagando el año, 2 meses sin cargo.`,
   alternates: { canonical: "/precios" },
 };
 
@@ -16,13 +17,13 @@ const jsonLd = {
   "@type": "Product",
   name: "Novudent — Software de gestión odontológica",
   description:
-    "Software dental completo: agenda, odontograma FDI, ficha clínica, presupuestos y facturación con estados. Prueba gratuita de 30 días.",
+    "Software dental completo: agenda, odontograma FDI, ficha clínica, presupuestos y cobros con estados.",
   brand: { "@type": "Brand", name: "Novudent" },
   url: `${SITE_URL}/precios`,
-  offers: [
-    { "@type": "Offer", name: "Plan Solo", price: "45", priceCurrency: "USD", availability: "https://schema.org/InStock", url: `${SITE_URL}/precios` },
-    { "@type": "Offer", name: "Plan Clínica", price: "129", priceCurrency: "USD", availability: "https://schema.org/InStock", url: `${SITE_URL}/precios` },
-  ],
+  offers: PLANES.map((p) => ({
+    "@type": "Offer", name: `Plan ${p.nombre}`, price: String(p.mensualGs), priceCurrency: "PYG",
+    availability: "https://schema.org/InStock", url: `${SITE_URL}/precios`,
+  })),
 };
 
 export default function PreciosPage() {
@@ -30,8 +31,8 @@ export default function PreciosPage() {
     <PaginaSeccion
       activa="/precios"
       etiqueta="Precios"
-      titulo={<>Un precio claro por clínica, <span className="text-sv-mint">no por usuario</span>.</>}
-      intro="Todos los planes incluyen odontograma, agenda, ficha clínica y soporte. Los usuarios que necesites, dentro del plan. Empezás con 30 días gratis y migración de datos sin costo."
+      titulo="Un precio claro por clínica, en guaraníes."
+      intro="Todos los planes incluyen agenda, ficha clínica, odontograma por superficies y presupuestos. El precio depende de cuántos profesionales atienden; la puesta en marcha incluye la migración de tus datos."
     >
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <SeccionPrecios />

@@ -20,6 +20,8 @@ import { setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore
  */
 export const runtime = "nodejs";
 
+const PLANES_VALIDOS = new Set(["solo", "clinica", "multi"]);
+
 const MAX = { nombre: 120, clinica: 120, email: 160, telefono: 40, mensaje: 1200 };
 
 /** Recorta y normaliza. Todo lo que entra es texto de un desconocido. */
@@ -53,6 +55,8 @@ export async function POST(req: NextRequest) {
   const email = limpiar(body.email, MAX.email);
   const telefono = limpiar(body.telefono, MAX.telefono);
   const mensaje = limpiar(body.mensaje, MAX.mensaje);
+  /* El plan llega de un <select>, pero lo escribe igual un desconocido: solo valores conocidos. */
+  const plan = PLANES_VALIDOS.has(limpiar(body.plan, 20)) ? limpiar(body.plan, 20) : "";
 
   if (!nombre || !email) {
     return NextResponse.json({ ok: false, error: "Necesitamos tu nombre y tu email." }, { status: 400 });
@@ -78,7 +82,7 @@ export async function POST(req: NextRequest) {
     try {
       const id = `lead_${Date.parse(recibidoEn)}_${Math.random().toString(36).slice(2, 8)}`;
       await setDocument(`leads/${id}`, {
-        id, nombre, clinica, email, telefono, mensaje,
+        id, nombre, clinica, email, telefono, mensaje, plan,
         recibidoEn,
         origen: "landing:solicitar-acceso",
         ip, // para poder rastrear abuso; no se muestra en ningún lado
@@ -101,6 +105,7 @@ export async function POST(req: NextRequest) {
     const filas: [string, string][] = [
       ["Nombre", nombre], ["Clínica", clinica || "—"],
       ["Email", email], ["Teléfono", telefono || "—"],
+      ["Plan", plan || "—"],
     ];
     try {
       const res = await fetch("https://api.resend.com/emails", {

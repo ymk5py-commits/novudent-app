@@ -9,6 +9,10 @@ test.beforeEach(async ({ page }) => { await entrarDemo(page); });
 
 test("agenda: dar una cita y que siga ahí al recargar", async ({ page }) => {
   await page.goto("/app/agenda");
+  /* El total del día depende de qué día corre la prueba (el seed arma citas alrededor de hoy):
+     se compara contra el total de antes, nunca contra un número fijo. */
+  const contador = page.locator("main").getByText(/^\d+ citas$/).first();
+  const antes = Number((await contador.innerText()).split(" ")[0]);
   await page.getByRole("button", { name: "Dar cita" }).first().click();
   const dialogo = page.getByRole("dialog");
   await expect(dialogo).toContainText("Nueva cita");
@@ -17,7 +21,7 @@ test("agenda: dar una cita y que siga ahí al recargar", async ({ page }) => {
   await dialogo.getByRole("button", { name: "Crear cita" }).click();
   await expect(dialogo).toBeHidden();
   // la lista del día muestra al paciente; el título queda en la cita guardada
-  await expect(page.locator("main").getByText("3 citas")).toBeVisible();
+  await expect(contador).toHaveText(`${antes + 1} citas`);
   await expect(page.locator("main").getByText("Juan Ríos").first()).toBeVisible();
   expect((await leerDB(page)).appointments.some((a: { title: string }) => a.title === "Control E2E")).toBe(true);
   await page.reload();
