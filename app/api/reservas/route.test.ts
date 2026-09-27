@@ -143,3 +143,68 @@ describe("POST — la frontera real", () => {
     CLINIC.config.onlineBooking = { minLeadHoras: 2 };
   });
 });
+
+describe("campos extra (Pacientes → Configuración, columna «Agenda online»)", () => {
+  const conCampos = (pf: unknown) => { (CLINIC.config as Record<string, unknown>).patientFields = pf; };
+  const listaOriginal = listCollection.getMockImplementation()!;
+  const llamadas = () => setDocument.mock.calls as unknown as [string, Record<string, unknown>][];
+  const docPaciente = () => llamadas().find(([path]) => path.includes("/patients/"))?.[1];
+  const turno = { ...datosPaciente, date: MANANA, time: "11:00" };
+
+  beforeEach(() => { setDocument.mockClear(); createIfAbsent.mockClear(); });
+  afterEach(() => {
+    delete (CLINIC.config as Record<string, unknown>).patientFields;
+    listCollection.mockImplementation(listaOriginal);
+  });
+
+  it("el GET publica los campos que pide la clínica (solo clave, etiqueta, tipo y si es requerido)", async () => {
+    conCampos({ email: { present: { online: true }, required: { online: true } }, fechaNacimiento: { present: { online: true } } });
+    const j = await (await GET(req(`http://x/api/reservas?clinicId=cl_demo&date=${MANANA}`))).json();
+    expect(j.campos).toEqual([
+      { key: "email", label: "Email", tipo: "email", requerido: true },
+      { key: "fechaNacimiento", label: "Fecha de nacimiento", tipo: "fecha", requerido: false },
+    ]);
+  });
+
+  it("sin configuración no pide nada extra", async () => {
+    const j = await (await GET(req(`http://x/api/reservas?clinicId=cl_demo&date=${MANANA}`))).json();
+    expect(j.campos).toEqual([]);
+  });
+
+  it("si falta un extra requerido rechaza la reserva sin tomar el turno", async () => {
+    conCampos({ email: { present: { online: true }, required: { online: true } } });
+    const r = await POST(post(turno));
+    expect(r.status).toBe(400);
+    expect((await r.json()).error).toMatch(/Email/);
+    expect(createIfAbsent).not.toHaveBeenCalled();
+    expect(setDocument).not.toHaveBeenCalled();
+  });
+
+  it("un email mal escrito cuenta como faltante", async () => {
+    conCampos({ email: { present: { online: true }, required: { online: true } } });
+    const r = await POST(post({ ...turno, extras: { email: "no-es-un-mail" } }));
+    expect(r.status).toBe(400);
+  });
+
+  it("guarda los extras válidos en el paciente nuevo y descarta lo que la clínica no pidió", async () => {
+    conCampos({ email: { present: { online: true }, required: { online: true } }, ciudad: { present: { online: true } }, numeroInterno: { present: { online: true } } });
+    const r = await POST(post({ ...turno, extras: { email: "Ana@Mail.com", ciudad: "Luque", direccion: "no la pidieron", numeroInterno: "X-1", firstName: "hack" } }));
+    expect((await r.json()).ok).toBe(true);
+    const p = docPaciente();
+    expect(p).toMatchObject({ firstName: "Ana", lastName: "Prueba", document: "1234567", email: "ana@mail.com", city: "Luque" });
+    expect(p).not.toHaveProperty("address");
+    expect(p).not.toHaveProperty("internalNumber"); // no aplica en la reserva online
+  });
+
+  it("a un paciente que ya existe (mismo CI) no le pisa los datos", async () => {
+    conCampos({ email: { present: { online: true } } });
+    listCollection.mockImplementation((async (_parent: string, col: string) =>
+      col === "users" ? [{ id: "u2", data: { role: "dentist", active: true, name: "Dra. Prueba" } }]
+        : col === "patients" ? [{ id: "p9", data: { document: "1234567" } }]
+        : []) as unknown as typeof listaOriginal,
+    );
+    const r = await POST(post({ ...turno, extras: { email: "otro@mail.com" } }));
+    expect((await r.json()).ok).toBe(true);
+    expect(docPaciente()).toBeUndefined();
+  });
+});

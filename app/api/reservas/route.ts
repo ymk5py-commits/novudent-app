@@ -8,6 +8,8 @@ import {
 } from "@/lib/server/firestore-rest";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 import { ahoraEnZona, slotAlcanzaAnticipacion, anticipacionDe } from "@/lib/reserva-online";
+import { camposDe, datosPaciente, extrasOnline, type ValoresCampos } from "@/lib/camposPaciente";
+import type { FieldConfig } from "@/lib/types";
 
 /**
  * Agendamiento online — Fase 3 Novudent.
@@ -15,7 +17,10 @@ import { ahoraEnZona, slotAlcanzaAnticipacion, anticipacionDe } from "@/lib/rese
  * GET  ?clinicId=cl_demo&date=2026-06-15
  *   → { ok, clinic: {name}, dentists: [{id,name}], slots: {dentistId: ["08:00",...]} }
  *
- * POST { clinicId, dentistId, date, time, nombre, apellido, ci, telefono, motivo? }
+ *   + campos: los datos extra que la clínica pide en la reserva (Pacientes →
+ *     Configuración, columna «Agenda online»): [{ key, label, tipo, requerido }].
+ *
+ * POST { clinicId, dentistId, date, time, nombre, apellido, ci, telefono, motivo?, extras? }
  *   → crea paciente (si el CI no existe) + cita "pendiente" con
  *     fuente online + (si Botika está conectado con confirmCita ON)
  *     encola la tarea de confirmación por WhatsApp en el outbox.
@@ -50,6 +55,11 @@ function sumarDias(fecha: string, dias: number): string {
   const d = new Date(`${fecha}T00:00:00.000Z`);
   d.setUTCDate(d.getUTCDate() + dias);
   return d.toISOString().slice(0, 10);
+}
+
+/** La matriz de campos del paciente de la clínica (clinic.config.patientFields). */
+function camposConfig(clinic: Record<string, unknown>): Record<string, FieldConfig> | undefined {
+  return (clinic.config as { patientFields?: Record<string, FieldConfig> } | undefined)?.patientFields;
 }
 
 export async function GET(req: NextRequest) {
@@ -123,6 +133,7 @@ export async function GET(req: NextRequest) {
       dentists,
       slots,
       minLeadHoras: minLead,
+      campos: extrasOnline(camposConfig(clinic)),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -199,6 +210,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Horario no disponible" }, { status: 400 });
     }
 
+    // Datos extra que pide la clínica. Se validan acá, con la configuración guardada,
+    // y no en la página: el POST es la frontera real. Solo se aceptan las claves que la
+    // clínica tiene prendidas en «Agenda online»; el resto se descarta. Un valor con
+    // formato inválido (email, fecha) cuenta como faltante si el campo es requerido.
+    const camposOnline = camposDe(camposConfig(clinic), "online").filter((c) => c.presente && !c.fijo);
+    const extrasBody = body.extras && typeof body.extras === "object" ? (body.extras as Record<string, unknown>) : {};
+    const valores: ValoresCampos = {};
+    for (const c of camposOnline) if (typeof extrasBody[c.key] === "string") valores[c.key] = extrasBody[c.key] as string;
+    const extras = datosPaciente(camposOnline, valores);
+    const falta = camposOnline.filter((c) => c.requerido && extras[c.prop] === undefined).map((c) => c.label);
+    if (falta.length > 0) {
+      return NextResponse.json({ ok: false, error: `Completá o corregí: ${falta.join(", ")}` }, { status: 400 });
+    }
+
     // Lock de slot para serializar reservas concurrentes del mismo horario.
     // Es un guard de corta vida (TTL): solo evita la carrera entre dos POST
     // simultáneos. La disponibilidad REAL la define la colección de citas (el
@@ -246,7 +271,11 @@ export async function POST(req: NextRequest) {
     let patientId = patients.find((p) => String(p.data.document || "") === ci)?.id || null;
     if (!patientId) {
       patientId = `p_${Date.now()}`;
+      // Los extras solo se guardan en un paciente NUEVO. A uno existente no se le pisan
+      // los datos desde una página pública: cualquiera que sepa un CI podría cambiarle
+      // el email o la dirección.
       await setDocument(`clinics/${clinicId}/patients/${patientId}`, {
+        ...extras,
         id: patientId,
         clinicId,
         firstName: nombre,

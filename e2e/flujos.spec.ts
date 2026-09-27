@@ -35,7 +35,7 @@ test("pacientes: dar de alta un paciente y encontrarlo por su CI", async ({ page
   const dialogo = page.getByRole("dialog");
   await campo(page, /^nombre/i).fill("Prueba");
   await campo(page, /^apellido/i).fill("Automática");
-  await campo(page, /^ci/i).fill(ci);
+  await campo(page, /^c[eé]dula/i).fill(ci);
   await campo(page, /tel[eé]fono/i).fill("+595 981 000 000");
   await dialogo.getByRole("button", { name: "Crear paciente" }).click();
   await expect(dialogo).toBeHidden();

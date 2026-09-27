@@ -6,12 +6,14 @@ import { Search, FileText, ClipboardList, Plus, ChevronRight } from "lucide-reac
 import { useStore, fullName } from "@/lib/store";
 import { patientBalance } from "@/lib/budgets";
 import type { Patient } from "@/lib/types";
-import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
+import { Card, Btn, Modal, Badge, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 import { AnalisisConversion } from "@/components/AnalisisConversion";
 import { PacientesOrtodoncia } from "@/components/PacientesOrtodoncia";
 import { ConfiguracionCampos } from "@/components/ConfiguracionCampos";
 import { useAlcance } from "@/lib/useAlcance";
+import { visibles, faltantes, datosPaciente, nuevoPaciente, type ValoresCampos } from "@/lib/camposPaciente";
+import { CamposPacienteForm } from "@/components/CamposPacienteForm";
 
 export default function PatientsPage() {
   const { db, session, upsertPatient } = useStore();
@@ -152,42 +154,24 @@ export default function PatientsPage() {
 }
 
 function NewPatient({ onClose, onSave, clinicId }: { onClose: () => void; onSave: (p: Patient) => void; clinicId: string }) {
-  const [f, setF] = useState({ firstName: "", lastName: "", document: "", phone: "", email: "", insurer: "" });
+  const { db } = useStore();
+  // Qué se pide y qué es obligatorio lo decide la clínica en Pacientes → Configuración.
+  const campos = visibles(db.clinics[0]?.config.patientFields, "nuevo");
+  const [valores, setValores] = useState<ValoresCampos>({});
+  const [error, setError] = useState<string | null>(null);
   return (
     <Modal title="Nuevo paciente" onClose={onClose}>
       <form
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
-          onSave({
-            id: `p_${Date.now()}`,
-            clinicId,
-            firstName: f.firstName,
-            lastName: f.lastName,
-            document: f.document,
-            phone: f.phone,
-            email: f.email || undefined,
-            insurer: f.insurer || undefined,
-            forms: [
-              { id: `f_${Date.now()}`, templateName: "Anamnesis inicial", status: "pendiente", fields: [{ label: "Alergias", value: "" }, { label: "Medicación actual", value: "" }, { label: "Antecedentes", value: "" }] },
-            ],
-            historyUpdatePending: false,
-            emr: [],
-          });
+          const falta = faltantes(campos, valores);
+          if (falta.length > 0) { setError(`Completá: ${falta.join(", ")}.`); return; }
+          onSave(nuevoPaciente(datosPaciente(campos, valores), clinicId));
         }}
       >
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Nombre"><input required className={inputCls} value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></Field>
-          <Field label="Apellido"><input required className={inputCls} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></Field>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="CI"><input required className={inputCls} value={f.document} onChange={(e) => setF({ ...f, document: e.target.value })} /></Field>
-          <Field label="Teléfono"><input required className={inputCls} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="+595 …" /></Field>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Email (opcional)"><input type="email" className={inputCls} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
-          <Field label="Seguro (opcional)"><input className={inputCls} value={f.insurer} onChange={(e) => setF({ ...f, insurer: e.target.value })} /></Field>
-        </div>
+        <CamposPacienteForm campos={campos} valores={valores} onChange={setValores} convenios={(db.clinics[0]?.config.convenios ?? []).map((c) => c.name)} />
+        {error && <p role="alert" className="rounded-xl bg-state-errbg px-3 py-2 text-xs font-semibold text-state-err">{error}</p>}
         <p className="rounded-xl bg-azure-50 p-3 text-xs text-azure-700">Se asigna automáticamente el formulario de <b>Anamnesis inicial</b> como pendiente.</p>
         <div className="flex justify-end gap-2"><Btn variant="outline" onClick={onClose}>Cancelar</Btn><Btn type="submit">Crear paciente</Btn></div>
       </form>
