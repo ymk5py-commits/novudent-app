@@ -44,6 +44,9 @@ miembro de ninguna clínica).
 ### Qué permite/niega el modelo
 - **Miembro** (`clinics/{cid}/users/{uid}` existe) → lee/escribe los datos de SU
   clínica (pacientes, agenda, caja, etc.).
+- **Mensajes directos** (`directMessages`) → los leen solo sus dos participantes y el
+  admin; nadie manda uno a nombre de otro, la difusión la manda solo el admin y a cada
+  destinatario le llega su copia (no ve a quién más). Ni el usuario de servicio los lee.
 - **Admin** → además gestiona la lista de usuarios y la config/plan de la clínica.
   Un asistente/dentista **no** puede auto-ascenderse a admin (las reglas rechazan
   la escritura a `users/`).

@@ -406,6 +406,19 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
       { id: "tm2", clinicId: CLINIC_ID, userId: "u2", userName: "Dra. Sofía Benítez", text: "Perfecto, hacela pasar al box 2 en 5 minutos.", createdAt: at(0, 11) },
       { id: "tm3", clinicId: CLINIC_ID, userId: "u1", userName: "Carlos Admin", text: "Recordatorio: la reposición de guantes M llega mañana a la mañana.", createdAt: at(0, 12) },
     ],
+    /* Chat directo: tres mensajes de persona a persona y una difusión del admin,
+     * que es una copia por destinatario (lib/chat.ts armarDifusion). En una clínica
+     * real los ids salen de idMensaje, al azar; acá, en la demo pública, da igual. */
+    directMessages: [
+      { id: "dm_demo_01", clinicId: CLINIC_ID, fromId: "u1", fromName: "Carlos Admin", toId: "u2", participants: ["u1", "u2"], text: "Sofía, ¿podés cubrir el sábado a la mañana? Quedaron dos controles de ortodoncia sin doctor.", createdAt: at(-1, 17), readAt: at(-1, 17, 20) },
+      { id: "dm_demo_02", clinicId: CLINIC_ID, fromId: "u2", fromName: "Dra. Sofía Benítez", toId: "u1", participants: ["u2", "u1"], text: "Dale, los atiendo yo. Pasame los nombres así los confirmo.", createdAt: at(-1, 17, 40) },
+      { id: "dm_demo_03", clinicId: CLINIC_ID, fromId: "u5", fromName: "Laura Recepción", toId: "u6", participants: ["u5", "u6"], text: "Marta, el señor Mejía viene a las 15 a pagar la exodoncia.", createdAt: at(0, 9, 15) },
+      ...(["u2", "u3", "u4", "u5", "u6"] as const).map((toId, i) => ({
+        id: `dm_demo_d${i + 1}`, clinicId: CLINIC_ID, fromId: "u1", fromName: "Carlos Admin", toId, participants: ["u1", toId],
+        text: "Buen día a todos: desde el lunes atendemos de 7:30 a 19:00, de corrido.", createdAt: at(-2, 8), difusionId: "dif_demo_01",
+        ...(toId === "u2" ? { readAt: at(-2, 9) } : {}),
+      })),
+    ],
     surveys: [
       { id: "sv_nps", clinicId: CLINIC_ID, title: "¿Nos recomendarías?", kind: "nps", active: true, createdAt: at(-20, 9), questions: [
         { id: "q1", text: "¿Qué tan probable es que recomiendes nuestra clínica a un amigo o familiar?", type: "nps" },

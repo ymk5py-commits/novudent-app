@@ -802,6 +802,27 @@ export interface TeamMessage {
   createdAt: string;
 }
 
+/** Mensaje directo del chat: de una persona a otra, o una copia de una difusión
+ *  del admin (una por destinatario, ver lib/chat.ts). Lo leen solo sus dos
+ *  participantes y el admin — firestore.rules, colección `directMessages`. */
+export interface DirectMessage {
+  id: string;
+  clinicId: string;
+  fromId: string;
+  /** Nombre al momento de mandarlo. La interfaz muestra el del padrón y cae a
+   *  este solo si el usuario ya no está (no es fuente de verdad: lo escribe el cliente). */
+  fromName: string;
+  toId: string;
+  /** Siempre [fromId, toId]: es lo que miran las reglas y la consulta `array-contains`. */
+  participants: string[];
+  text: string;
+  createdAt: string;
+  /** Copia de una difusión general: todas las copias comparten este id. */
+  difusionId?: string;
+  /** Cuándo lo leyó el destinatario (ISO). Solo él puede marcarlo. */
+  readAt?: string;
+}
+
 /** Encuestas de satisfacción / NPS (spec 7.4). */
 export type SurveyKind = "nps" | "satisfaccion";
 export interface SurveyQuestion {
@@ -936,6 +957,8 @@ export interface DB {
   cashSessions: CashSession[];
   sterilizationCycles: SterilizationCycle[];
   teamMessages: TeamMessage[];
+  /** Solo los directos propios; el admin y la demo, todos (ver loadFirestore). */
+  directMessages: DirectMessage[];
   surveys: Survey[];
   surveyResponses: SurveyResponse[];
   mgmtTasks: MgmtTask[];

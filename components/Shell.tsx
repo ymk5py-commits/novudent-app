@@ -1,13 +1,14 @@
 "use client";
 /** Shell estilo Dentalink: header de 2 filas — fila 1 (logo + buscador global +
- *  clínica + campana + usuario), fila 2 (nav horizontal con desplegables). En móvil
- *  el nav colapsa en un drawer. CRM siempre visible (paridad Dentalink). */
+ *  clínica + campana + ayuda + usuario), fila 2 (nav horizontal con desplegables). En
+ *  móvil el nav colapsa en un drawer, que lleva también el usuario y la ayuda. CRM
+ *  siempre visible (paridad Dentalink). */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, Bell, CreditCard,
   FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown, Banknote, Handshake, Image as ImageIcon,
-  Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star, ListChecks, Leaf, Video, MapPin,
+  Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star, ListChecks, Leaf, Video, MapPin, Headset,
 } from "lucide-react";
 import { useAlcance } from "@/lib/useAlcance";
 import { useStore, fullName } from "@/lib/store";
@@ -18,6 +19,8 @@ import ChangePasswordGate from "@/components/ChangePasswordGate";
 import { PageTransition } from "@/components/motion";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import AvisoNoGuardado from "@/components/AvisoNoGuardado";
+import AyudaNovum from "@/components/AyudaNovum";
+import { sinLeer } from "@/lib/chat";
 
 type NavLeaf = { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature; section?: string };
 type NavTop = { label: string; href?: string; icon?: any; perm?: Permission; feature?: PlanFeature; children?: NavLeaf[] };
@@ -79,6 +82,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [q, setQ] = useState("");
   const [navOpen, setNavOpen] = useState(false); // drawer móvil
+  const [ayuda, setAyuda] = useState(false); // panel «Ayuda de Novum»
   const alcance = useAlcance();
   useEffect(() => { setNavOpen(false); }, [pathname]);
 
@@ -141,6 +145,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   const isActive = (href: string) => (href === "/app" ? pathname === "/app" : pathname.startsWith(href));
   const initials = session.name.split(" ").map((w) => w[0]).slice(0, 2).join("");
+  // Directos sin leer: el store los escucha en vivo, así el número se mueve en cualquier pantalla.
+  const sinLeerChat = sinLeer(db.directMessages, session.userId);
+  const badgeDe = (href: string) => (href === "/app/chat" ? sinLeerChat : 0);
+  const abrirAyuda = () => { setNavOpen(false); setAyuda(true); };
 
   return (
     <div className="min-h-screen bg-clinic-bg">
@@ -156,13 +164,23 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <div key={e.label}>
               <div className="px-3 pb-1.5 text-[11px] font-extrabold uppercase tracking-[0.18em] text-clinic-muted/80">{e.label}</div>
               <div className="space-y-1">
-                {e.children.map((it) => <DrawerLink key={it.href} {...it} active={isActive(it.href)} />)}
+                {e.children.map((it) => <DrawerLink key={it.href} {...it} active={isActive(it.href)} badge={badgeDe(it.href)} />)}
               </div>
             </div>
           ) : (
-            <DrawerLink key={e.href} href={e.href!} label={e.label} icon={e.icon} active={isActive(e.href!)} />
+            <DrawerLink key={e.href} href={e.href!} label={e.label} icon={e.icon} active={isActive(e.href!)} badge={badgeDe(e.href!)} />
           ))}
         </nav>
+        {/* En el celular el nombre no entra en la barra: va acá, y la ayuda al lado. */}
+        <div className="flex items-center gap-3 border-t border-clinic-border px-4 py-3">
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-bold text-clinic-text">{session.name}</span>
+            <span className="block truncate text-[11px] text-clinic-muted">{ROLE_LABEL[session.role]}</span>
+          </span>
+          <button type="button" onClick={abrirAyuda} aria-haspopup="dialog" className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-2 text-sm font-bold text-azure-700 transition-colors hover:bg-azure-50">
+            <Headset className="h-4 w-4" aria-hidden /> Ayuda
+          </button>
+        </div>
       </aside>
 
       {/* ===== Header 2 filas ===== */}
@@ -227,7 +245,21 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <Bell className="h-[18px] w-[18px]" />
               {pendings > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 font-mono text-[11px] font-bold text-white">{pendings}</span>}
             </a>
-            <span className="hidden text-right sm:block">
+            {/* Ayuda de Novum («call center»): al lado del nombre. Desde md, que es donde
+                entra en la barra (el texto, desde lg); en el celular está en el menú,
+                junto al nombre. */}
+            <button
+              type="button"
+              onClick={abrirAyuda}
+              aria-haspopup="dialog"
+              aria-label="Ayuda"
+              data-tip="Hablá con Novum: WhatsApp, correo y horario"
+              data-tip-pos="down-left"
+              className="hidden h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/30 bg-white/10 px-2.5 text-sm font-bold text-white transition-colors hover:bg-white/20 md:inline-flex lg:px-3"
+            >
+              <Headset className="h-4 w-4" aria-hidden /> <span className="hidden lg:inline">Ayuda</span>
+            </button>
+            <span className="hidden text-right sm:block md:whitespace-nowrap">
               <span className="block text-xs font-bold leading-tight text-white">{session.name}</span>
               <span className="block text-[11px] leading-tight text-white/75">{ROLE_LABEL[session.role]}</span>
             </span>
@@ -244,7 +276,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <nav className="mx-auto flex max-w-6xl items-center gap-0.5 px-3 sm:px-5">
             {nav.map((e) => e.children
               ? <NavDropdown key={e.label} label={e.label} icon={e.icon} items={e.children} pathname={pathname} />
-              : <NavLink key={e.href} href={e.href!} label={e.label} icon={e.icon} active={isActive(e.href!)} />
+              : <NavLink key={e.href} href={e.href!} label={e.label} icon={e.icon} active={isActive(e.href!)} badge={badgeDe(e.href!)} />
             )}
           </nav>
         </div>
@@ -259,18 +291,31 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           PageTransition quedaría atrapada por su transform (contexto de
           apilamiento) y dejaría de posicionarse contra la ventana. */}
       <AvisoNoGuardado />
+      {ayuda && <AyudaNovum clinica={clinicName} usuario={session.name} onClose={() => setAyuda(false)} />}
     </div>
   );
 }
 
+/** Contador de no leídos junto a un link del menú (hoy: los directos del Chat). */
+function Contador({ n }: { n: number }) {
+  if (n <= 0) return null;
+  return (
+    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 font-mono text-[11px] font-bold leading-none text-white">
+      <span aria-hidden>{n}</span>
+      <span className="sr-only">{n === 1 ? ", 1 mensaje sin leer" : `, ${n} mensajes sin leer`}</span>
+    </span>
+  );
+}
+
 /* — Link de nav (nivel superior, desktop) — */
-function NavLink({ href, label, icon: Icon, active }: { href: string; label: string; icon: any; active: boolean }) {
+function NavLink({ href, label, icon: Icon, active, badge = 0 }: { href: string; label: string; icon: any; active: boolean; badge?: number }) {
   return (
     <a
       href={href}
       className={`relative flex items-center gap-1.5 px-3.5 py-3 text-sm font-bold transition-colors ${active ? "text-azure-700" : "text-clinic-muted hover:text-clinic-text"}`}
     >
       <Icon className="h-4 w-4" /> {label}
+      <Contador n={badge} />
       {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-azure-600" />}
     </a>
   );
@@ -328,13 +373,14 @@ function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; ic
 }
 
 /* — Link del drawer móvil — */
-function DrawerLink({ href, label, icon: Icon, active }: { href: string; label: string; icon: any; active: boolean }) {
+function DrawerLink({ href, label, icon: Icon, active, badge = 0 }: { href: string; label: string; icon: any; active: boolean; badge?: number }) {
   return (
     <a
       href={href}
       className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${active ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
     >
       <Icon className="h-[18px] w-[18px]" strokeWidth={2} /> {label}
+      <Contador n={badge} />
     </a>
   );
 }

@@ -71,6 +71,18 @@ falta, esa función responde 503 con un mensaje entendible.
 | `OWNER_PANEL_KEY` | Alta de clínicas desde `/superadmin` |
 | `RESEND_API_KEY` · `EMAIL_FROM` | Envío de email (presupuestos) |
 
+### Soporte de Novum (botón «Ayuda» de la barra superior)
+Son **públicas**: Next.js las incrusta en el bundle al compilar, así que las ve cualquiera
+que abra la app (nunca un secreto acá) y cambiarlas pide un nuevo deploy. El panel muestra
+solo los canales bien cargados; sin WhatsApp ni correo dice que el canal de soporte
+todavía no está configurado. Se leen en `lib/soporte.ts`.
+
+| Variable | Habilita |
+|---|---|
+| `NEXT_PUBLIC_SOPORTE_WHATSAPP` | Botón «Escribir por WhatsApp» (`wa.me`, con un mensaje que ya dice la clínica y el usuario). Número con código de país, p. ej. `595981123456`; se aceptan `+`, espacios y guiones. Si no es un número (de 8 a 15 dígitos), no se muestra |
+| `NEXT_PUBLIC_SOPORTE_EMAIL` | Botón «Escribir un correo» (`mailto:` con asunto y cuerpo prearmados) |
+| `NEXT_PUBLIC_SOPORTE_HORARIO` | Texto libre del horario de atención, p. ej. `Lunes a viernes de 8:00 a 18:00`. Solo no alcanza: hace falta WhatsApp o correo |
+
 ---
 
 ## Tests
@@ -98,6 +110,8 @@ prueba falla si el navegador registra una excepción o un `console.error` real.
 | `flujos.spec.ts` | dar una cita, alta de paciente, presentar/aceptar presupuesto, registrar pago, cierre de caja, pestañas de la ficha |
 | `roles.spec.ts` | matriz RBAC: qué ve y qué no el dentista y la asistente |
 | `planes.spec.ts` | gating del plan Solo y el cambio de contraseña obligatorio |
+| `chat.spec.ts` | chat interno: elegir a una persona y mandarle un directo, que otra persona no lo vea, y la difusión del admin (le llega a cada uno sin ver a quién más) |
+| `ayuda.spec.ts` | el botón «Ayuda» avisa que el canal de soporte no está configurado (la compilación de prueba no trae las `NEXT_PUBLIC_SOPORTE_*`) |
 | `publicas-con-token.spec.ts` | reservar, firmar, pagar, encuestas, videoconsulta con tokens inválidos |
 | `api.spec.ts` | rutas del servidor sin credenciales: validaciones, trampa para bots, límite de 5/h, mensajes sin trazas |
 | `visual.spec.ts` | `@visual`: capturas de referencia de la landing y el login (no corren en la CI) |
