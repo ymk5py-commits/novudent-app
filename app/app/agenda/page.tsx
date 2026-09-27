@@ -5,17 +5,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft, ChevronRight, CalendarDays, CalendarRange, List, MoreHorizontal, Eye, Pencil, Trash2, Plus, User, Video,
-  MessageCircle, Hourglass, BellRing, Users, AlertTriangle, Printer, Search, Phone, ChevronDown,
+  Hourglass, BellRing, Users, AlertTriangle, Printer, Search, Phone, ChevronDown, Mail, Check, MessageSquareText,
 } from "lucide-react";
-import { buildICS, toICSDate, downloadICS, type ICSEvent } from "@/lib/ical";
 import { newSignToken } from "@/lib/firma";
-import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } from "@/lib/store";
+import { useStore, fmtGs, fmtTime, fmtDate, fullName } from "@/lib/store";
 import { useAlcance } from "@/lib/useAlcance";
+import { ESTADOS_CITA, ESTADO_LABEL, ESTADO_COLOR } from "@/lib/estadosCita";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { patientBalance } from "@/lib/budgets";
 import type { Appointment, AppointmentStatus, Patient } from "@/lib/types";
-import { visibles, faltantes, datosPaciente, nuevoPaciente, type ValoresCampos } from "@/lib/camposPaciente";
-import { CamposPacienteForm } from "@/components/CamposPacienteForm";
+import { DarCita } from "@/components/DarCita";
+import { Desplegable, ItemMenu } from "@/components/Desplegable";
+import { enviarAvisoCita } from "@/lib/avisoCita";
 import { Card, Btn, Modal, Field, inputCls, StatusBadge, Badge, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 
@@ -37,19 +38,16 @@ const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const STATUS_BG: Record<AppointmentStatus, string> = {
   confirmada: "bg-state-okbg border-state-ok/30 text-state-ok",
   en_atencion: "bg-azure-50 border-azure-400/50 text-azure-700",
+  en_sala: "bg-violet-50 border-violet-300/60 text-violet-700",
   pendiente: "bg-state-warnbg border-state-warn/30 text-state-warn",
   completada: "bg-state-infobg border-azure-300/40 text-azure-700",
   cancelada: "bg-state-errbg border-state-err/30 text-state-err line-through",
   ausente: "bg-state-warnbg border-state-warn/30 text-state-warn",
 };
-/* Estados de cita estilo Dentalink */
-const ALL_STATUSES: AppointmentStatus[] = ["confirmada", "en_atencion", "pendiente", "completada", "cancelada", "ausente"];
-const STATUS_LABEL: Record<AppointmentStatus, string> = {
-  confirmada: "Confirmado", en_atencion: "En atención", pendiente: "No confirmado", completada: "Atendido", cancelada: "Cancelado", ausente: "Ausente",
-};
-const STATUS_DOT: Record<AppointmentStatus, string> = {
-  confirmada: "#0E9F6E", en_atencion: "#14A6C0", pendiente: "#94A3B8", completada: "#2E83F5", cancelada: "#E24B4A", ausente: "#F59E0B",
-};
+/* Estados de cita (nombres, orden y colores en lib/estadosCita.ts) */
+const ALL_STATUSES = ESTADOS_CITA;
+const STATUS_LABEL = ESTADO_LABEL;
+const STATUS_DOT = ESTADO_COLOR;
 
 type Tab = "diaria" | "global" | "semanal" | "mensual" | "reprog";
 
@@ -115,12 +113,15 @@ function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (
 }
 
 export default function AgendaPage() {
-  const { db, session, upsertAppointment, upsertPatient, deleteAppointment, setOnboarding, removeWaitlist, addOutboxTask } = useStore();
+  const { db, session, upsertAppointment, deleteAppointment, setOnboarding, addWaitlist, removeWaitlist, addOutboxTask } = useStore();
   const alcance = useAlcance();
   // Dentista y asistente de doctores: solo la agenda de sus doctores, en todas las vistas.
   const citas = useMemo(() => db.appointments.filter((a) => alcance.veDoctor(a.dentistId)), [db.appointments, alcance]);
   const verMontos = alcance.puede("money.view");
   const verPersonales = alcance.puede("patients.personal");
+  // Dentista y asistente ven la agenda en solo lectura: los cambios los hace la recepción.
+  const puedeAgendar = alcance.puede("agenda.create");
+  const puedeEditar = alcance.puede("agenda.edit");
   const enEspera = db.waitlist.filter((w) => alcance.vePaciente(w.patientId)).length;
   const [tab, setTab] = useState<Tab>("diaria");
   const [day, setDay] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
@@ -130,9 +131,21 @@ export default function AgendaPage() {
   const [statusFilter, setStatusFilter] = useState<Set<AppointmentStatus>>(new Set(ALL_STATUSES));
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Appointment | null>(null);
+  const [preseleccion, setPreseleccion] = useState<{ fecha: Date; hora: string } | undefined>(undefined);
   const [viewing, setViewing] = useState<Appointment | null>(null);
-  const [menuFor, setMenuFor] = useState<string | null>(null);
   const [waitOpen, setWaitOpen] = useState(false);
+  const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
+  useEffect(() => { if (!aviso) return; const t = setTimeout(() => setAviso(null), 7000); return () => clearTimeout(t); }, [aviso]);
+  /** Avisa al paciente por correo (confirmación de la cita o su estado actual). */
+  const notificar = async (a: Appointment, tipo: "confirmacion" | "estado") => {
+    const r = await enviarAvisoCita(session!.clinicId, a.id, tipo);
+    if (r.ok) {
+      if (tipo === "confirmacion") upsertAppointment({ ...a, reminderSent: true });
+      setAviso({ ok: true, texto: r.demo ? "En la demo no se mandan correos: quedó marcado como enviado." : "Correo enviado al paciente." });
+    } else {
+      setAviso({ ok: false, texto: r.error });
+    }
+  };
   const [fromWaitlist, setFromWaitlist] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -153,7 +166,7 @@ export default function AgendaPage() {
   const dayAllPro = useMemo(
     () => dayAll.filter((a) => {
       const okBranch = branchFilter === "all" || (a.branchId ?? mainBranchId) === branchFilter;
-      const okPro = tab === "global" || proFilter === "all" || a.dentistId === proFilter;
+      const okPro = proFilter === "all" || a.dentistId === proFilter;
       return okBranch && okPro;
     }),
     [dayAll, tab, proFilter, branchFilter, mainBranchId]
@@ -168,70 +181,56 @@ export default function AgendaPage() {
     });
   }, [dayAllPro, statusFilter, q, db.patients]);
 
+  /* — Filtro de profesional y sucursal, el mismo en todas las vistas — */
+  const pasaFiltros = (a: Appointment) =>
+    (proFilter === "all" || a.dentistId === proFilter) && (branchFilter === "all" || (a.branchId ?? mainBranchId) === branchFilter);
+
   /* — Semanal — */
   const weekEnd = addDays(weekStart, 7);
   const weekAppointments = useMemo(
-    () => citas.filter((a) => { const t = new Date(a.start); return t >= weekStart && t < weekEnd; }).sort((a, b) => a.start.localeCompare(b.start)),
-    [citas, weekStart, weekEnd]
+    () => citas.filter((a) => { const t = new Date(a.start); return t >= weekStart && t < weekEnd && pasaFiltros(a); }).sort((a, b) => a.start.localeCompare(b.start)),
+    [citas, weekStart, weekEnd, proFilter, branchFilter, mainBranchId] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   /* — Reprogramación: canceladas a reagendar — */
   const reprog = useMemo(
-    () => citas.filter((a) => a.status === "cancelada").sort((a, b) => b.start.localeCompare(a.start)),
-    [citas]
+    () => citas.filter((a) => a.status === "cancelada" && pasaFiltros(a)).sort((a, b) => b.start.localeCompare(a.start)),
+    [citas, proFilter, branchFilter, mainBranchId] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   /* — Mensual: citas del mes de `day` — */
   const monthAppts = useMemo(() => {
     const y = day.getFullYear(), m = day.getMonth();
-    return citas.filter((a) => { const t = new Date(a.start); return t.getFullYear() === y && t.getMonth() === m; });
-  }, [citas, day]);
+    return citas.filter((a) => { const t = new Date(a.start); return t.getFullYear() === y && t.getMonth() === m && pasaFiltros(a); });
+  }, [citas, day, proFilter, branchFilter, mainBranchId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const porValidar = dayAllPro.filter((a) => a.source === "online" && a.status === "pendiente").length;
   const headerCount = tab === "semanal" ? weekAppointments.length : tab === "mensual" ? monthAppts.length : tab === "reprog" ? reprog.length : dayAppts.length;
 
-  /* — Exportar agenda a .ics (calendario universal: Outlook/Apple/Google) — */
-  const apptToICS = (a: Appointment): ICSEvent => {
-    const pat = db.patients.find((x) => x.id === a.patientId);
-    const dent = db.users.find((x) => x.id === a.dentistId);
-    const branch = a.branchId ? db.branches.find((b) => b.id === a.branchId)?.name : undefined;
+  /** Cita en blanco para «Dar cita»: la fecha y la hora salen de la grilla. */
+  const citaBase = (extra: Partial<Appointment> = {}): Appointment => {
+    const ahora = new Date().toISOString();
     return {
-      uid: `${a.id}@novudent`, start: a.start, end: a.end,
-      title: `${pat ? fullName(pat) : "Paciente"} — ${a.title || "Cita"}`,
-      description: [dent && `Profesional: ${dent.name}`, a.telemed && "Videoconsulta", a.notes].filter(Boolean).join("\n") || undefined,
-      location: [db.clinics[0]?.name, branch].filter(Boolean).join(" · ") || undefined,
+      id: `a_${Date.now()}`, clinicId: session!.clinicId, patientId: "", dentistId: proFilter !== "all" ? proFilter : dentists[0]?.id ?? "",
+      title: "", start: ahora, end: ahora, status: "pendiente", amount: 0, discount: 0, ...extra,
     };
   };
-  const exportICS = () => {
-    const list = tab === "semanal" ? weekAppointments : tab === "mensual" ? monthAppts : tab === "reprog" ? reprog : dayAppts;
-    if (list.length === 0) return;
-    downloadICS(`agenda-novudent-${selKey}`, buildICS(list.map(apptToICS), toICSDate(new Date().toISOString())));
-  };
-
   function newAppt(base: Date) {
-    const start = new Date(base);
-    if (start.getHours() === 0) start.setHours(Math.min(today.getHours() + 1, 19), 0, 0, 0);
-    const end = new Date(start); end.setHours(start.getHours() + 1);
-    setEditing({
-      id: `a_${Date.now()}`, clinicId: session!.clinicId, patientId: db.patients[0]?.id ?? "",
-      dentistId: dentists[0]?.id ?? "", title: "", start: start.toISOString(), end: end.toISOString(),
-      status: "pendiente", amount: 0, discount: 0,
-    });
+    const d = new Date(base); d.setHours(0, 0, 0, 0);
+    const hoy0 = new Date(); hoy0.setHours(0, 0, 0, 0);
+    // La grilla arranca en el día que se está mirando (o hoy, si es un día pasado).
+    setPreseleccion(d > hoy0 ? { fecha: d, hora: "" } : undefined);
+    setEditing(citaBase());
   }
   function quickCreate(dayIdx: number, hour: number) {
-    const start = addDays(weekStart, dayIdx); start.setHours(hour, 0, 0, 0);
-    const end = new Date(start); end.setHours(hour + 1);
-    setEditing({
-      id: `a_${Date.now()}`, clinicId: session!.clinicId, patientId: db.patients[0]?.id ?? "",
-      dentistId: dentists[0]?.id ?? "", title: "", start: start.toISOString(), end: end.toISOString(),
-      status: "pendiente", amount: 0, discount: 0,
-    });
+    const fecha = addDays(weekStart, dayIdx); fecha.setHours(0, 0, 0, 0);
+    setPreseleccion({ fecha, hora: `${String(hour).padStart(2, "0")}:00` });
+    setEditing(citaBase());
   }
   const reagendar = (a: Appointment) => {
-    // Pre-carga la cita cancelada (paciente/dentista/título/importe) en una nueva.
-    const start = new Date(); start.setDate(start.getDate() + 1); start.setHours(9, 0, 0, 0);
-    const end = new Date(start); end.setHours(10);
-    setEditing({ ...a, id: `a_${Date.now()}`, start: start.toISOString(), end: end.toISOString(), status: "pendiente" });
+    // Pre-carga la cita anulada (paciente, profesional, tipo, box) en una nueva.
+    setPreseleccion(undefined);
+    setEditing({ ...a, id: `a_${Date.now()}`, status: "pendiente", cancelReason: undefined, reminderSent: undefined, confirmedVia: undefined, videoToken: undefined });
   };
   const toggleStatus = (s: AppointmentStatus) =>
     setStatusFilter((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
@@ -249,15 +248,33 @@ export default function AgendaPage() {
     upsertAppointment({ ...a, status: s, cancelReason });
   };
 
+  const sucursalUnica = db.branches.length <= 1;
+  const selectProfesional = (
+    <select aria-label="Filtrar por profesional" value={proFilter} onChange={(e) => setProFilter(e.target.value)} className={inputCls}>
+      <option value="all">Todos los profesionales</option>
+      {dentists.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+    </select>
+  );
+  // Con una sola sucursal se muestra, pero no se puede cambiar (queda la de la clínica).
+  const selectSucursal = (
+    <select aria-label="Filtrar por sucursal" value={sucursalUnica ? db.branches[0]?.id ?? "all" : branchFilter} onChange={(e) => setBranchFilter(e.target.value)} disabled={sucursalUnica} className={`${inputCls} disabled:bg-clinic-bg disabled:text-clinic-muted`}>
+      {sucursalUnica ? <option value={db.branches[0]?.id ?? "all"}>{db.branches[0]?.name ?? "Sede principal"}</option> : <>
+        <option value="all">Todas las sucursales</option>
+        {db.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+      </>}
+    </select>
+  );
+  const VISTA: Record<Tab, string> = { diaria: "Diaria", global: "Diaria global", semanal: "Semanal", mensual: "Mensual", reprog: "Reprogramación" };
+
   const TABS: [Tab, string, any][] = [
     ["diaria", "Diaria", List], ["semanal", "Semanal", CalendarDays], ["mensual", "Mensual", CalendarRange],
     ["global", "Diaria global", Users], ["reprog", "Reprogramación", AlertTriangle],
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="print-area space-y-4">
       {/* Header estilo Dentalink: título + tabs + acciones */}
-      <Reveal className="flex flex-wrap items-center gap-2">
+      <Reveal className="flex flex-wrap items-center gap-2 print:hidden">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-extrabold text-clinic-text">Agenda</h1>
           <span className="rounded-full bg-azure-50 px-2 py-0.5 font-mono text-[11px] font-bold text-azure-700">{headerCount} citas</span>
@@ -270,19 +287,22 @@ export default function AgendaPage() {
           ))}
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Btn onClick={() => newAppt(tab === "semanal" ? new Date() : day)}><Plus className="h-4 w-4" /> Dar cita</Btn>
+          {puedeAgendar && <Btn onClick={() => newAppt(tab === "semanal" ? weekStart : day)}><Plus className="h-4 w-4" /> Dar cita</Btn>}
           <label className="relative inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-clinic-muted hover:text-clinic-text">
             <CalendarDays className="h-4 w-4" /> Fecha
             <input type="date" value={selKey} onChange={(e) => e.target.value && setDay(new Date(e.target.value + "T00:00:00"))} className="absolute inset-0 cursor-pointer opacity-0" aria-label="Elegir fecha" />
           </label>
           <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-clinic-muted hover:text-clinic-text"><Printer className="h-4 w-4" /> Imprimir</button>
-          <button onClick={exportICS} title="Exportar a tu calendario (Outlook/Apple/Google)" className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-clinic-muted hover:text-clinic-text"><CalendarDays className="h-4 w-4" /> Exportar (.ics)</button>
           <Btn variant="outline" onClick={() => setWaitOpen(true)}>
             <Hourglass className="h-4 w-4" /> Lista de espera
             {enEspera > 0 && <span className="rounded-full bg-azure-600 px-1.5 font-mono text-[11px] font-bold text-white">{enEspera}</span>}
           </Btn>
         </div>
       </Reveal>
+
+      {aviso && (
+        <p role="status" className={`rounded-xl px-4 py-2.5 text-sm font-semibold print:hidden ${aviso.ok ? "bg-state-okbg text-state-ok" : "bg-state-errbg text-state-err"}`}>{aviso.texto}</p>
+      )}
 
       {/* Banner: citas por validar */}
       {(tab === "diaria" || tab === "global") && porValidar > 0 && (
@@ -297,6 +317,26 @@ export default function AgendaPage() {
           Todavía no tenés doctores asignados, así que no ves ninguna agenda. Pedile al administrador que te asigne en Configuración → Usuarios.
         </p>
       )}
+      {(tab === "semanal" || tab === "mensual" || tab === "reprog") && (
+        <div className="grid gap-2 sm:grid-cols-2 lg:max-w-xl print:hidden">
+          {selectProfesional}
+          {selectSucursal}
+        </div>
+      )}
+
+      {/* Encabezado que solo sale al imprimir */}
+      <div className="hidden print:block">
+        <p className="text-lg font-extrabold">{db.clinics[0]?.name} · Agenda {VISTA[tab].toLowerCase()}</p>
+        <p className="text-sm">
+          {tab === "semanal" ? `Semana del ${weekStart.toLocaleDateString("es-PY", { day: "numeric", month: "long", year: "numeric" })}`
+            : tab === "mensual" ? day.toLocaleDateString("es-PY", { month: "long", year: "numeric" })
+            : tab === "reprog" ? "Citas anuladas para reagendar"
+            : day.toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          {proFilter !== "all" ? ` · ${db.users.find((u) => u.id === proFilter)?.name ?? ""}` : ""}
+          {branchFilter !== "all" ? ` · ${db.branches.find((b) => b.id === branchFilter)?.name ?? ""}` : ""}
+        </p>
+      </div>
+
       {tab === "semanal" ? (
         /* ===== SEMANAL (grilla 24h) ===== */
         <Reveal>
@@ -320,7 +360,7 @@ export default function AgendaPage() {
                 );
               })}
             </div>
-            <div ref={gridRef} className="max-h-[560px] overflow-y-auto">
+            <div ref={gridRef} className="max-h-[560px] overflow-y-auto print:max-h-none print:overflow-visible">
               <div className="relative grid" style={{ gridTemplateColumns: "56px repeat(7,1fr)" }}>
                 <div>
                   {Array.from({ length: 24 }, (_, h) => (
@@ -335,8 +375,10 @@ export default function AgendaPage() {
                   const dayAppts2 = weekAppointments.filter((a) => new Date(a.start).getDay() === ((dayIdx + 1) % 7));
                   return (
                     <div key={dayIdx} className={`relative border-l border-clinic-border ${isToday ? "bg-azure-50/40" : ""}`}>
-                      {Array.from({ length: 24 }, (_, h) => (
-                        <button key={h} onClick={() => quickCreate(dayIdx, h)} className="block h-14 w-full border-b border-clinic-border/60 transition-colors hover:bg-azure-50" aria-label={`Crear cita ${DAYS[dayIdx]} ${h}:00`} />
+                      {Array.from({ length: 24 }, (_, h) => puedeAgendar ? (
+                        <button key={h} onClick={() => quickCreate(dayIdx, h)} className="block h-14 w-full border-b border-clinic-border/60 transition-colors hover:bg-azure-50" aria-label={`Dar cita ${DAYS[dayIdx]} ${h}:00`} />
+                      ) : (
+                        <div key={h} className="h-14 border-b border-clinic-border/60" />
                       ))}
                       {dayAppts2.map((a) => {
                         const s = new Date(a.start); const e = new Date(a.end);
@@ -345,13 +387,16 @@ export default function AgendaPage() {
                         const p = db.patients.find((x) => x.id === a.patientId);
                         const dent = db.users.find((x) => x.id === a.dentistId);
                         return (
-                          <button key={a.id} onClick={(ev) => { ev.stopPropagation(); setViewing(a); }} style={{ top, height }} className={`absolute left-1 right-1 overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] font-semibold shadow-card transition-all duration-150 hover:z-10 hover:-translate-y-px hover:shadow-pop ${STATUS_BG[a.status]}`}>
-                            <div className="flex items-center gap-1 truncate">
-                              {dent && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: dent.color }} title={dent.name} />}
-                              <span className="truncate">{fmtTime(a.start)} · {a.title || "Cita"}</span>
-                            </div>
-                            {p && <div className="truncate font-normal opacity-80">{fullName(p)}</div>}
-                          </button>
+                          <div key={a.id} style={{ top, height }} className="absolute left-1 right-1 hover:z-10">
+                            <button onClick={(ev) => { ev.stopPropagation(); setViewing(a); }} className={`h-full w-full overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] font-semibold shadow-card transition-all duration-150 hover:-translate-y-px hover:shadow-pop ${STATUS_BG[a.status]} ${a.notes ? "pr-6" : ""}`}>
+                              <div className="flex items-center gap-1 truncate">
+                                {dent && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: dent.color }} title={dent.name} />}
+                                <span className="truncate">{fmtTime(a.start)} · {a.title || "Cita"}</span>
+                              </div>
+                              {p && <div className="truncate font-normal opacity-80">{fullName(p)}</div>}
+                            </button>
+                            <ComentarioCita texto={a.notes} className="absolute right-0.5 top-0.5 bg-white/80 print:hidden" />
+                          </div>
                         );
                       })}
                     </div>
@@ -380,10 +425,10 @@ export default function AgendaPage() {
                     const dent = db.users.find((x) => x.id === a.dentistId);
                     return (
                       <tr key={a.id} className="hover:bg-clinic-bg/60">
-                        <td className="px-4 py-2.5"><div className="font-semibold text-clinic-text">{a.title || "Cita"}</div><div className="text-xs text-clinic-muted">{new Date(a.start).toLocaleDateString("es-PY", { day: "2-digit", month: "short", year: "numeric" })} · {fmtTime(a.start)}</div></td>
+                        <td className="px-4 py-2.5"><div className="flex items-center gap-1 font-semibold text-clinic-text">{a.title || "Cita"}<ComentarioCita texto={a.notes} className="print:hidden" /></div><div className="text-xs text-clinic-muted">{new Date(a.start).toLocaleDateString("es-PY", { day: "2-digit", month: "short", year: "numeric" })} · {fmtTime(a.start)}</div></td>
                         <td className="px-2 py-2.5">{p ? <a href={`/app/pacientes/${p.id}`} className="font-semibold text-azure-700 hover:underline">{fullName(p)}</a> : "—"}</td>
                         <td className="px-2 py-2.5 text-clinic-muted">{dent?.name ?? "—"}</td>
-                        <td className="px-2 py-2.5 text-right"><Btn variant="outline" onClick={() => reagendar(a)}><CalendarDays className="h-3.5 w-3.5" /> Reagendar</Btn></td>
+                        <td className="px-2 py-2.5 text-right print:hidden">{puedeAgendar && <Btn variant="outline" onClick={() => reagendar(a)}><CalendarDays className="h-3.5 w-3.5" /> Reagendar</Btn>}</td>
                       </tr>
                     );
                   })}
@@ -396,7 +441,7 @@ export default function AgendaPage() {
         /* ===== DIARIA / DIARIA GLOBAL ===== */
         <Reveal className="flex flex-col gap-4 lg:flex-row lg:items-start">
           {/* Sidebar */}
-          <aside className="w-full shrink-0 space-y-3 lg:w-64">
+          <aside className="w-full shrink-0 space-y-3 lg:w-64 print:hidden">
             <Card className="p-4">
               <div className="flex items-center justify-between">
                 <button onClick={() => setDay(addDays(day, -1))} className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-clinic-bg" aria-label="Día anterior"><ChevronLeft className="h-4 w-4" /></button>
@@ -412,20 +457,10 @@ export default function AgendaPage() {
               )}
             </Card>
 
-            {tab === "diaria" && (
-              <Card className="space-y-2 p-3">
-                <select aria-label="Filtrar por profesional" value={proFilter} onChange={(e) => setProFilter(e.target.value)} className={inputCls}>
-                  <option value="all">Todos los profesionales</option>
-                  {dentists.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-                {db.branches.length > 1 && (
-                  <select aria-label="Filtrar por sucursal" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className={inputCls}>
-                    <option value="all">Todas las sucursales</option>
-                    {db.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                )}
-              </Card>
-            )}
+            <Card className="space-y-2 p-3">
+              {selectProfesional}
+              {selectSucursal}
+            </Card>
 
             <Card className="p-3">
               <div className="mb-2 flex items-center justify-between">
@@ -452,9 +487,9 @@ export default function AgendaPage() {
           <div className="min-w-0 flex-1 space-y-3">
             {tab === "global" ? (
               <div className="overflow-x-auto pb-1">
-                <div className="flex gap-3" style={{ minWidth: Math.max(1, dentists.length) * 210 }}>
-                  {dentists.map((d) => {
-                    const list = dayAll.filter((a) => a.dentistId === d.id && statusFilter.has(a.status)).sort((a, b) => a.start.localeCompare(b.start));
+                <div className="flex gap-3" style={{ minWidth: Math.max(1, dentists.filter((d) => proFilter === "all" || d.id === proFilter).length) * 210 }}>
+                  {dentists.filter((d) => proFilter === "all" || d.id === proFilter).map((d) => {
+                    const list = dayAll.filter((a) => a.dentistId === d.id && statusFilter.has(a.status) && pasaFiltros(a)).sort((a, b) => a.start.localeCompare(b.start));
                     return (
                       <div key={d.id} className="min-w-[200px] flex-1">
                         <div className="mb-2 flex items-center gap-2 rounded-xl bg-clinic-bg px-3 py-2">
@@ -466,11 +501,14 @@ export default function AgendaPage() {
                           {list.length === 0 ? <p className="py-4 text-center text-xs text-clinic-muted">Sin citas</p> : list.map((a) => {
                             const p = db.patients.find((x) => x.id === a.patientId);
                             return (
-                              <button key={a.id} onClick={() => setViewing(a)} className="block w-full rounded-xl border border-clinic-border border-l-4 bg-white p-2.5 text-left shadow-card transition-shadow hover:shadow-pop" style={{ borderLeftColor: STATUS_DOT[a.status] }}>
-                                <div className="font-mono text-[11px] font-bold text-clinic-text">{fmtTime(a.start)}–{fmtTime(a.end)}</div>
-                                <div className="truncate text-sm font-semibold text-clinic-text">{p ? fullName(p) : "—"}</div>
-                                <div className="truncate text-[11px] font-semibold" style={{ color: STATUS_DOT[a.status] }}>{STATUS_LABEL[a.status]}</div>
-                              </button>
+                              <div key={a.id} className="relative">
+                                <button onClick={() => setViewing(a)} className="block w-full rounded-xl border border-clinic-border border-l-4 bg-white p-2.5 text-left shadow-card transition-shadow hover:shadow-pop" style={{ borderLeftColor: STATUS_DOT[a.status] }}>
+                                  <div className="font-mono text-[11px] font-bold text-clinic-text">{fmtTime(a.start)}–{fmtTime(a.end)}</div>
+                                  <div className="truncate pr-6 text-sm font-semibold text-clinic-text">{p ? fullName(p) : "—"}</div>
+                                  <div className="truncate text-[11px] font-semibold" style={{ color: STATUS_DOT[a.status] }}>{STATUS_LABEL[a.status]}</div>
+                                </button>
+                                <ComentarioCita texto={a.notes} className="absolute right-1.5 top-1.5 print:hidden" />
+                              </div>
                             );
                           })}
                         </div>
@@ -487,8 +525,8 @@ export default function AgendaPage() {
             {dayAppts.length === 0 ? (
               <Empty title="Sin citas para este día" desc="Usá “Dar cita” para agendar, o cambiá de fecha." />
             ) : (
-              <Card className="overflow-x-auto p-0">
-                <table className="w-full min-w-[820px] text-sm">
+              <Card className="overflow-x-auto p-0 print:overflow-visible">
+                <table className="w-full min-w-[820px] text-sm print:min-w-0">
                   <thead><tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
                     <th className="px-3 py-3">Hora</th><th className="px-2 py-3">Paciente</th><th className="px-2 py-3">Doctor</th><th className="px-2 py-3">Estado de la cita</th>{verMontos && <th className="px-2 py-3">Situación</th>}<th className="px-2 py-3"></th>
                   </tr></thead>
@@ -508,23 +546,27 @@ export default function AgendaPage() {
                             {p ? <a href={`/app/pacientes/${p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(p)}</a> : <span className="text-clinic-muted">—</span>}
                             {a.source === "online" && <span className="ml-2 rounded bg-state-infobg px-1.5 text-[11px] font-bold text-state-info">Online</span>}
                             {multi && <span className="ml-2 rounded bg-state-warnbg px-1.5 text-[11px] font-bold text-state-warn">Múltiples citas hoy</span>}
+                            <ComentarioCita texto={a.notes} className="ml-1 align-middle print:hidden" />
                             {verPersonales && p?.phone && <div className="mt-0.5 flex items-center gap-1 text-xs text-clinic-muted"><Phone className="h-3 w-3" /> {p.phone}</div>}
                           </td>
                           <td className="px-2 py-3 text-clinic-muted">{dent?.name ?? "—"}</td>
                           <td className="px-2 py-3">
-                            <EstadoCell appt={a} onSet={(s) => setEstado(a, s)} />
+                            <EstadoCell
+                              appt={a}
+                              editable={puedeEditar}
+                              onSet={(st) => setEstado(a, st)}
+                              onNotificar={verPersonales ? () => void notificar(a, "estado") : undefined}
+                              sinEmail={!p?.email}
+                            />
                             {(a.status === "cancelada" || a.status === "ausente") && <div className="mt-0.5 text-[11px] text-clinic-muted">{a.cancelReason || "Sin motivo"}</div>}
                           </td>
                           {verMontos && <td className="px-2 py-3"><SituacionPill patientId={a.patientId} /></td>}
-                          <td className="relative px-2 py-3 text-right">
-                            <button onClick={() => setMenuFor(menuFor === a.id ? null : a.id)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-clinic-bg" aria-label="Acciones"><MoreHorizontal className="h-4 w-4 text-clinic-muted" /></button>
-                            {menuFor === a.id && (
-                              <div className="absolute right-2 top-11 z-20 w-36 overflow-hidden rounded-xl border border-clinic-border bg-white text-left shadow-pop">
-                                <button onClick={() => { setViewing(a); setMenuFor(null); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-clinic-bg"><Eye className="h-3.5 w-3.5" /> Ver</button>
-                                <button onClick={() => { setEditing(a); setMenuFor(null); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-clinic-bg"><Pencil className="h-3.5 w-3.5" /> Editar</button>
-                                <button onClick={() => { deleteAppointment(a.id); setMenuFor(null); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-state-err hover:bg-state-errbg"><Trash2 className="h-3.5 w-3.5" /> Eliminar</button>
-                              </div>
-                            )}
+                          <td className="px-2 py-3 text-right print:hidden">
+                            <AccionesCita
+                              onVer={() => setViewing(a)}
+                              onEditar={puedeEditar ? () => { setPreseleccion(undefined); setEditing(a); } : undefined}
+                              onEliminar={puedeEditar ? () => { if (window.confirm("¿Eliminar esta cita?")) deleteAppointment(a.id); } : undefined}
+                            />
                           </td>
                         </tr>
                       );
@@ -544,14 +586,7 @@ export default function AgendaPage() {
           {(() => {
             const p = db.patients.find((x) => x.id === viewing.patientId);
             const d = db.users.find((x) => x.id === viewing.dentistId);
-            const clinic = db.clinics[0];
             const live = db.appointments.find((x) => x.id === viewing.id) ?? viewing;
-            const reminderMsg = p
-              ? fillReminder(
-                  clinic.config.reminderTemplate ?? "Hola {paciente}, te recordamos tu cita en {clinica} el {fecha} a las {hora}.",
-                  { paciente: p.firstName, fecha: new Date(live.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" }), hora: fmtTime(live.start), clinica: clinic.name }
-                )
-              : "";
             return (
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Estado</span><StatusBadge status={live.status} /></div>
@@ -571,24 +606,29 @@ export default function AgendaPage() {
                   </div>
                 )}
 
-                {p && verPersonales && (
+                {p && verPersonales && puedeEditar && (
                   <div className="rounded-xl border border-clinic-border p-3">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-clinic-muted"><BellRing className="h-3.5 w-3.5" /> Confirmación de cita</span>
                       {live.reminderSent ? <Badge tone="ok" tip="Ya se envió el recordatorio">Enviado</Badge> : <Badge tone="warn" tip="Aún sin recordatorio">Pendiente</Badge>}
                     </div>
                     <div className="mt-2.5 flex flex-wrap gap-2">
-                      <a href={waLink(p.phone, reminderMsg)} target="_blank" rel="noopener noreferrer" onClick={() => upsertAppointment({ ...live, reminderSent: true })} className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366]/10 px-3.5 py-2 text-xs font-bold text-[#128C7E] transition-colors hover:bg-[#25D366]/20">
-                        <MessageCircle className="h-4 w-4" /> Enviar por WhatsApp
-                      </a>
+                      <button
+                        type="button"
+                        disabled={!p.email}
+                        title={p.email ? `Se manda a ${p.email}` : "El paciente no tiene email cargado"}
+                        onClick={() => void notificar(live, "confirmacion")}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-azure-50 px-3.5 py-2 text-xs font-bold text-azure-700 transition-colors hover:bg-azure-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Mail className="h-4 w-4" /> Enviar al correo
+                      </button>
                       <button onClick={() => upsertAppointment({ ...live, reminderSent: !live.reminderSent })} className="rounded-xl border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-muted hover:text-clinic-text">{live.reminderSent ? "Marcar como no enviado" : "Marcar como enviado"}</button>
                     </div>
                   </div>
                 )}
 
                 <div className="flex flex-wrap justify-end gap-2 pt-2">
-                  <Btn variant="outline" onClick={() => downloadICS(`cita-${live.id}`, buildICS([apptToICS(live)], toICSDate(new Date().toISOString())))}><CalendarDays className="h-3.5 w-3.5" /> Agregar al calendario</Btn>
-                  <Btn variant="outline" onClick={() => { setEditing(live); setViewing(null); }}><Pencil className="h-3.5 w-3.5" /> Editar</Btn>
+                  {puedeEditar && <Btn variant="outline" onClick={() => { setPreseleccion(undefined); setEditing(live); setViewing(null); }}><Pencil className="h-3.5 w-3.5" /> Editar</Btn>}
                 </div>
               </div>
             );
@@ -600,38 +640,38 @@ export default function AgendaPage() {
       {waitOpen && (
         <WaitlistModal
           onClose={() => setWaitOpen(false)}
+          puedeAgendar={puedeAgendar}
           onSchedule={(entry) => {
-            const start = new Date(); start.setDate(start.getDate() + 1); start.setHours(9, 0, 0, 0);
-            const end = new Date(start); end.setHours(10);
             setFromWaitlist(entry.id);
-            setEditing({ id: `a_${Date.now()}`, clinicId: session!.clinicId, patientId: entry.patientId, dentistId: dentists[0]?.id ?? "", title: entry.reason, start: start.toISOString(), end: end.toISOString(), status: "pendiente", amount: 0, discount: 0 });
+            setPreseleccion(undefined);
+            setEditing(citaBase({ patientId: entry.patientId, title: entry.reason }));
             setWaitOpen(false);
           }}
         />
       )}
 
-      {/* Modal CREAR/EDITAR */}
+      {/* Modal DAR CITA / EDITAR */}
       {editing && (
-        <ApptForm
-          appt={editing}
-          onClose={() => { setEditing(null); setFromWaitlist(null); }}
-          onSave={(a, pacienteNuevo) => {
-            const old = db.appointments.find((x) => x.id === a.id);
-            const isNew = !old;
-            // El paciente nuevo va primero: la cita lo referencia. Y todavía no está en
-            // `db` (se actualiza en el próximo render), así que se usa el objeto directo.
-            if (pacienteNuevo) upsertPatient(pacienteNuevo);
-            upsertAppointment(a);
-            if (fromWaitlist) removeWaitlist(fromWaitlist);
-            if (old && old.status !== "cancelada" && a.status === "cancelada" && botikaEnabled(db, "reagendar")) {
-              const p = db.patients.find((x) => x.id === a.patientId);
-              if (p?.phone) addOutboxTask(makeOutboxTask({ db, type: "reagendar", patient: p, refId: a.id, by: session!.name, message: botikaMessage(db, "reagendar", { paciente: p.firstName, clinica: db.clinics[0].name, titulo: a.title || "Cita", fecha: new Date(a.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" }), hora: fmtTime(a.start) }) }));
+        <DarCita
+          cita={editing}
+          esNueva={!db.appointments.some((x) => x.id === editing.id)}
+          preseleccion={preseleccion?.hora ? preseleccion : undefined}
+          desdeFecha={preseleccion && !preseleccion.hora ? preseleccion.fecha : undefined}
+          onClose={() => { setEditing(null); setFromWaitlist(null); setPreseleccion(undefined); }}
+          onGuardar={(nuevas, espera) => {
+            for (const a of nuevas) {
+              const old = db.appointments.find((x) => x.id === a.id);
+              upsertAppointment(a);
+              if (!old && botikaEnabled(db, "confirmCita")) {
+                const p = db.patients.find((x) => x.id === a.patientId);
+                if (p?.phone) addOutboxTask(makeOutboxTask({ db, type: "confirmar_cita", patient: p, refId: a.id, by: session!.name, message: botikaMessage(db, "confirmCita", { paciente: p.firstName, clinica: db.clinics[0].name, titulo: a.title || "Cita", fecha: new Date(a.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" }), hora: fmtTime(a.start) }) }));
+              }
             }
-            if (isNew && a.status !== "cancelada" && botikaEnabled(db, "confirmCita")) {
-              const p = pacienteNuevo ?? db.patients.find((x) => x.id === a.patientId);
-              if (p?.phone) addOutboxTask(makeOutboxTask({ db, type: "confirmar_cita", patient: p, refId: a.id, by: session!.name, message: botikaMessage(db, "confirmCita", { paciente: p.firstName, clinica: db.clinics[0].name, titulo: a.title || "Cita", fecha: new Date(a.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" }), hora: fmtTime(a.start) }) }));
+            if (espera) {
+              addWaitlist({ id: `w_${Date.now()}`, clinicId: session!.clinicId, patientId: espera.patientId, reason: espera.motivo, preference: espera.preferencia || "Sin preferencia", createdAt: new Date().toISOString() });
             }
-            setEditing(null); setFromWaitlist(null);
+            if (fromWaitlist && nuevas.length > 0) removeWaitlist(fromWaitlist);
+            setEditing(null); setFromWaitlist(null); setPreseleccion(undefined);
           }}
         />
       )}
@@ -639,33 +679,88 @@ export default function AgendaPage() {
   );
 }
 
-/* ===== Celda "Estado de la cita" con desplegable para cambiarlo ===== */
-function EstadoCell({ appt, onSet }: { appt: Appointment; onSet: (s: AppointmentStatus) => void }) {
+/* ===== Celda "Estado de la cita" con desplegable para cambiarlo =====
+   El menú se dibuja en un portal (components/Desplegable): dentro de la tabla con scroll
+   quedaba cortado y aparecía una barra interna. Arriba, «Notificar por mail». */
+function EstadoCell({ appt, onSet, editable, onNotificar, sinEmail }: {
+  appt: Appointment; onSet: (s: AppointmentStatus) => void; editable: boolean;
+  /** Avisa al paciente por correo el estado actual. Sin esto no se muestra la opción. */
+  onNotificar?: () => void;
+  sinEmail?: boolean;
+}) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [open]);
+  const ref = useRef<HTMLButtonElement>(null);
+  const punto = <span className="h-2 w-2 rounded-full" style={{ background: STATUS_DOT[appt.status] }} />;
+  if (!editable) {
+    return <span className="flex items-center gap-1.5 px-1 py-0.5 text-sm font-semibold" style={{ color: STATUS_DOT[appt.status] }}>{punto}{STATUS_LABEL[appt.status]}</span>;
+  }
   return (
-    <div ref={ref} className="relative">
-      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 rounded-lg px-1 py-0.5 text-sm font-semibold hover:bg-clinic-bg" style={{ color: STATUS_DOT[appt.status] }}>
-        <span className="h-2 w-2 rounded-full" style={{ background: STATUS_DOT[appt.status] }} />
+    <>
+      <button ref={ref} type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 rounded-lg px-1 py-0.5 text-sm font-semibold hover:bg-clinic-bg" style={{ color: STATUS_DOT[appt.status] }}>
+        {punto}
         {STATUS_LABEL[appt.status]}
         <ChevronDown className={`h-3.5 w-3.5 text-clinic-muted transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-44 overflow-hidden rounded-xl border border-clinic-border bg-white py-1 shadow-pop">
-          {ALL_STATUSES.map((s) => (
-            <button key={s} onClick={() => { onSet(s); setOpen(false); }} className={`flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold hover:bg-clinic-bg ${s === appt.status ? "bg-clinic-bg" : ""}`}>
-              <span className="h-2 w-2 rounded-full" style={{ background: STATUS_DOT[s] }} /> {STATUS_LABEL[s]}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      <Desplegable ancla={ref} abierto={open} onCerrar={() => setOpen(false)} ancho={220} etiqueta="Estado de la cita">
+        {onNotificar && (
+          <>
+            <ItemMenu onClick={() => { setOpen(false); onNotificar(); }} deshabilitado={sinEmail} titulo={sinEmail ? "El paciente no tiene email cargado" : undefined}>
+              <Mail className="h-3.5 w-3.5 text-azure-600" /> Notificar por mail{sinEmail ? " (sin email)" : ""}
+            </ItemMenu>
+            <div className="my-1 border-t border-clinic-border" />
+          </>
+        )}
+        {ALL_STATUSES.map((st) => (
+          <ItemMenu key={st} onClick={() => { onSet(st); setOpen(false); }}>
+            <span className="h-2 w-2 rounded-full" style={{ background: STATUS_DOT[st] }} />
+            <span className={st === appt.status ? "font-bold" : ""}>{STATUS_LABEL[st]}</span>
+            {st === appt.status && <Check className="ml-auto h-3.5 w-3.5 text-azure-600" />}
+          </ItemMenu>
+        ))}
+      </Desplegable>
+    </>
+  );
+}
+
+/* ===== Comentario de la cita: vista rápida en un globo. Sin comentario no se muestra. ===== */
+function ComentarioCita({ texto, className = "" }: { texto?: string; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLButtonElement>(null);
+  if (!texto?.trim()) return null;
+  return (
+    <>
+      <button
+        ref={ref}
+        type="button"
+        aria-label="Ver el comentario de la cita"
+        aria-expanded={open}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        className={`inline-grid h-6 w-6 place-items-center rounded-md text-azure-700 hover:bg-azure-50 ${className}`}
+      >
+        <MessageSquareText className="h-3.5 w-3.5" />
+      </button>
+      <Desplegable ancla={ref} abierto={open} onCerrar={() => setOpen(false)} ancho={260} etiqueta="Comentario de la cita">
+        <p className="whitespace-pre-wrap px-3 py-2 text-sm text-clinic-text">{texto}</p>
+      </Desplegable>
+    </>
+  );
+}
+
+/* ===== Menú ⋮ de la cita (Ver / Editar / Eliminar), también en un portal ===== */
+function AccionesCita({ onVer, onEditar, onEliminar }: { onVer: () => void; onEditar?: () => void; onEliminar?: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLButtonElement>(null);
+  return (
+    <>
+      <button ref={ref} type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-clinic-bg" aria-label="Acciones de la cita">
+        <MoreHorizontal className="h-4 w-4 text-clinic-muted" />
+      </button>
+      <Desplegable ancla={ref} abierto={open} onCerrar={() => setOpen(false)} ancho={160} alinear="derecha" etiqueta="Acciones de la cita">
+        <ItemMenu onClick={() => { setOpen(false); onVer(); }}><Eye className="h-3.5 w-3.5" /> Ver</ItemMenu>
+        {onEditar && <ItemMenu onClick={() => { setOpen(false); onEditar(); }}><Pencil className="h-3.5 w-3.5" /> Editar</ItemMenu>}
+        {onEliminar && <ItemMenu peligro onClick={() => { setOpen(false); onEliminar(); }}><Trash2 className="h-3.5 w-3.5" /> Eliminar</ItemMenu>}
+      </Desplegable>
+    </>
   );
 }
 
@@ -684,7 +779,7 @@ function SituacionPill({ patientId }: { patientId: string }) {
 }
 
 /* ===== Lista de espera ===== */
-function WaitlistModal({ onClose, onSchedule }: { onClose: () => void; onSchedule: (e: import("@/lib/types").WaitlistEntry) => void }) {
+function WaitlistModal({ onClose, onSchedule, puedeAgendar }: { onClose: () => void; onSchedule: (e: import("@/lib/types").WaitlistEntry) => void; puedeAgendar: boolean }) {
   const { db, addWaitlist, removeWaitlist } = useStore();
   // Roles v3: dentista y asistente ven y agregan solo a sus pacientes.
   const alcance = useAlcance();
@@ -700,7 +795,7 @@ function WaitlistModal({ onClose, onSchedule }: { onClose: () => void; onSchedul
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-clinic-muted">Pacientes esperando un hueco — agendalos cuando se libere un horario.</p>
-          <Btn variant="outline" onClick={() => setAdding((v) => !v)}><Plus className="h-3.5 w-3.5" /> Agregar</Btn>
+          {puedeAgendar && <Btn variant="outline" onClick={() => setAdding((v) => !v)}><Plus className="h-3.5 w-3.5" /> Agregar</Btn>}
         </div>
 
         {adding && (
@@ -726,131 +821,14 @@ function WaitlistModal({ onClose, onSchedule }: { onClose: () => void; onSchedul
                     <span className="block truncate text-sm font-bold text-clinic-text">{p ? fullName(p) : "—"}</span>
                     <span className="block text-xs text-clinic-muted">{w.reason} · {w.preference} · en espera desde {fmtDate(w.createdAt)}</span>
                   </span>
-                  <Btn onClick={() => onSchedule(w)}><CalendarDays className="h-3.5 w-3.5" /> Agendar</Btn>
-                  <button onClick={() => removeWaitlist(w.id)} className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err" title="Quitar de la lista"><Trash2 className="h-4 w-4" /></button>
+                  {puedeAgendar && <Btn onClick={() => onSchedule(w)}><CalendarDays className="h-3.5 w-3.5" /> Agendar</Btn>}
+                  {puedeAgendar && <button onClick={() => removeWaitlist(w.id)} className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err" title="Quitar de la lista"><Trash2 className="h-4 w-4" /></button>}
                 </li>
               );
             })}
           </ul>
         )}
       </div>
-    </Modal>
-  );
-}
-
-function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () => void; onSave: (a: Appointment, pacienteNuevo?: Patient) => void }) {
-  const { db } = useStore();
-  const alcance = useAlcance();
-  const verMontos = alcance.puede("money.view");
-  const [form, setForm] = useState(appt);
-  const [conflict, setConflict] = useState<string | null>(null);
-  const isNew = !db.appointments.some((x) => x.id === appt.id);
-  // «Paciente nuevo» al agendar: los campos los decide la clínica (Pacientes → Configuración,
-  // columna «Al agendar»). Solo para quien carga datos personales (recepción, caja, admin).
-  const puedeCrearPaciente = isNew && alcance.puede("patients.personal");
-  const camposNuevo = visibles(db.clinics[0]?.config.patientFields, "agenda");
-  const [nuevo, setNuevo] = useState<ValoresCampos | null>(() => (puedeCrearPaciente && db.patients.length === 0 ? {} : null));
-
-  const toLocal = (iso: string) => {
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
-
-  function findConflict(a: Appointment): string | null {
-    const s = new Date(a.start).getTime();
-    const e = new Date(a.end).getTime();
-    if (e <= s) return "La hora de fin debe ser posterior a la de inicio.";
-    const clash = db.appointments.find((x) => x.id !== a.id && x.dentistId === a.dentistId && x.status !== "cancelada" && new Date(x.start).getTime() < e && new Date(x.end).getTime() > s);
-    if (clash) {
-      const p = db.patients.find((y) => y.id === clash.patientId);
-      return `El dentista ya tiene una cita en ese horario: "${clash.title}"${p ? ` con ${fullName(p)}` : ""} (${fmtTime(clash.start)}–${fmtTime(clash.end)}).`;
-    }
-    return null;
-  }
-
-  return (
-    <Modal title={isNew ? "Nueva cita" : "Editar cita"} onClose={onClose}>
-      <form
-        className="space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (nuevo) {
-            const falta = faltantes(camposNuevo, nuevo);
-            if (falta.length > 0) { setConflict(`Completá los datos del paciente: ${falta.join(", ")}.`); return; }
-          }
-          const c = findConflict(form); setConflict(c);
-          if (c) return;
-          if (nuevo) {
-            const paciente = nuevoPaciente(datosPaciente(camposNuevo, nuevo), appt.clinicId);
-            onSave({ ...form, patientId: paciente.id }, paciente);
-          } else onSave(form);
-        }}
-      >
-        <Field label="Título"><input required className={inputCls} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej.: Profilaxis" /></Field>
-        {nuevo && (
-          <fieldset className="space-y-3 rounded-xl border border-azure-200 bg-azure-50/40 p-3">
-            <legend className="px-1 text-xs font-extrabold uppercase tracking-wide text-azure-700">Paciente nuevo</legend>
-            <CamposPacienteForm campos={camposNuevo} valores={nuevo} onChange={setNuevo} convenios={(db.clinics[0]?.config.convenios ?? []).map((c) => c.name)} />
-            {db.patients.length > 0 && (
-              <button type="button" onClick={() => setNuevo(null)} className="text-xs font-bold text-azure-700 hover:underline">Elegir un paciente existente</button>
-            )}
-          </fieldset>
-        )}
-        <div className="grid grid-cols-2 gap-3">
-          {!nuevo && (
-            <Field label="Paciente">
-              <select className={inputCls} value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })}>
-                {db.patients.filter((p) => alcance.vePaciente(p.id) || p.id === form.patientId).map((p) => <option key={p.id} value={p.id}>{fullName(p)}</option>)}
-              </select>
-              {puedeCrearPaciente && (
-                <button type="button" onClick={() => setNuevo({})} className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-azure-700 hover:underline">
-                  <Plus className="h-3 w-3" /> Paciente nuevo
-                </button>
-              )}
-            </Field>
-          )}
-          <Field label="Dentista">
-            <select className={inputCls} value={form.dentistId} onChange={(e) => setForm({ ...form, dentistId: e.target.value })}>
-              {db.users.filter((u) => u.role === "dentist" && (alcance.veDoctor(u.id) || u.id === form.dentistId)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-          </Field>
-        </div>
-        {db.branches.length > 1 && (
-          <Field label="Sucursal">
-            <select className={inputCls} value={form.branchId ?? db.branches.find((b) => b.isMain)?.id ?? ""} onChange={(e) => setForm({ ...form, branchId: e.target.value || undefined })}>
-              {db.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </Field>
-        )}
-        <label className="flex items-center gap-2 text-sm text-clinic-text"><input type="checkbox" checked={!!form.telemed} onChange={(e) => setForm({ ...form, telemed: e.target.checked })} /> <Video className="h-4 w-4 text-azure-600" /> Videoconsulta (telemedicina)</label>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Inicio"><input type="datetime-local" required className={inputCls} value={toLocal(form.start)} onChange={(e) => setForm({ ...form, start: new Date(e.target.value).toISOString() })} /></Field>
-          <Field label="Fin"><input type="datetime-local" required className={inputCls} value={toLocal(form.end)} onChange={(e) => setForm({ ...form, end: new Date(e.target.value).toISOString() })} /></Field>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <Field label="Estado">
-            <select className={inputCls} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as AppointmentStatus })}>
-              <option value="pendiente">Pendiente</option>
-              <option value="confirmada">Confirmada</option>
-              <option value="completada">Completada</option>
-              <option value="cancelada">Cancelada</option>
-              <option value="ausente">Ausente</option>
-            </select>
-          </Field>
-          {verMontos && <Field label="Importe (Gs)"><input type="number" min={0} className={inputCls} value={form.amount} onChange={(e) => setForm({ ...form, amount: +e.target.value })} /></Field>}
-          {verMontos && <Field label="Descuento (Gs)"><input type="number" min={0} className={inputCls} value={form.discount} onChange={(e) => setForm({ ...form, discount: +e.target.value })} /></Field>}
-        </div>
-        <Field label="Notas"><textarea className={inputCls} rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
-        {conflict && <p role="alert" className="rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-state-err">⚠ {conflict}</p>}
-        <div className="flex items-center justify-between pt-1">
-          {verMontos ? <span className="text-xs text-clinic-muted">Total a cobrar: <b className="font-mono text-clinic-text">{fmtGs(form.amount - form.discount)}</b></span> : <span />}
-          <div className="flex gap-2">
-            <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
-            <Btn type="submit">{isNew ? "Crear cita" : "Guardar cambios"}</Btn>
-          </div>
-        </div>
-      </form>
     </Modal>
   );
 }

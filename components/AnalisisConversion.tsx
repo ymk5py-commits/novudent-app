@@ -2,6 +2,7 @@
 /** Pantalla "Análisis & Conversión de pacientes" (paridad 1:1 Dentalink):
  *  encabezados cian centrados + rombo · embudo + línea temporal · tarjetas de
  *  color · 6 donuts demográficos con leyenda debajo. */
+import { ESTADO_LABEL } from "@/lib/estadosCita";
 import { useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
 import { conversionFunnel, conversionTimeline } from "@/lib/conversion";
@@ -19,7 +20,7 @@ const AGE_LABEL: Record<string, string> = {
   "<14": "Menor de 14", "15-20": "Entre 15 y 20", "21-35": "Entre 21 y 35",
   "36-50": "Entre 36 y 50", "51-65": "Entre 51 y 65", ">65": "Sobre 65", "Sin dato": "Desconocida",
 };
-const APPT_STATUS_LABEL: Record<string, string> = { confirmada: "Confirmada", en_atencion: "En atención", pendiente: "Pendiente", completada: "Completada", cancelada: "Cancelada", ausente: "Ausente" };
+const APPT_STATUS_LABEL: Record<string, string> = ESTADO_LABEL;
 
 function countBy<T>(items: T[], key: (x: T) => string): { label: string; v: number }[] {
   const m = new Map<string, number>();

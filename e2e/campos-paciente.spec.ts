@@ -58,51 +58,53 @@ test.describe("alta de paciente", () => {
 });
 
 test.describe("paciente nuevo al agendar", () => {
-  test("la recepción crea el paciente desde la cita", async ({ page }) => {
-    await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+  /** Abre «Dar cita» y, desde el buscador de pacientes, «Crear nuevo paciente». */
+  async function abrirCrearPaciente(page: Page) {
     await page.goto("/app/agenda");
     await main(page).getByRole("button", { name: "Dar cita" }).click();
-    const d = dialogo(page);
-    await d.getByRole("button", { name: "Paciente nuevo" }).click();
-    await d.getByLabel("Nombre legal *").fill("Tomás");
-    await d.getByLabel("Apellidos *").fill("Agenda");
-    await d.getByLabel("Cédula / DNI *").fill("8.888.888");
-    await d.getByLabel("Teléfono móvil *").fill("0982 888 888");
-    await d.getByLabel("Título").fill("Evaluación inicial de Tomás");
-    // Un horario lejos de las citas de la demo, para no chocar con ninguna.
-    await d.getByLabel("Inicio").fill("2027-03-10T10:00");
-    await d.getByLabel("Fin").fill("2027-03-10T11:00");
-    await d.getByRole("button", { name: "Crear cita" }).click();
-    await expect(d).toHaveCount(0);
+    const cita = page.getByRole("dialog", { name: "Dar cita" });
+    await cita.getByRole("combobox", { name: "Paciente" }).click();
+    await cita.getByRole("option", { name: "Crear nuevo paciente" }).click();
+    return { cita, ficha: page.getByRole("dialog", { name: "Nuevo paciente" }) };
+  }
+
+  test("la recepción crea el paciente desde la cita", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+    const { cita, ficha } = await abrirCrearPaciente(page);
+    await ficha.getByLabel("Nombre legal *").fill("Tomás");
+    await ficha.getByLabel("Apellidos *").fill("Agenda");
+    await ficha.getByLabel("Cédula / DNI *").fill("8.888.888");
+    await ficha.getByLabel("Teléfono móvil *").fill("0982 888 888");
+    await ficha.getByRole("button", { name: "Crear paciente" }).click();
+    await expect(ficha).toHaveCount(0);
+    await expect(cita.getByRole("combobox", { name: "Paciente" })).toHaveValue("8.888.888 | TOMÁS AGENDA");
+    await cita.locator("button[aria-pressed]").first().click();
+    await cita.getByRole("button", { name: "Crear cita" }).click();
+    await expect(cita).toHaveCount(0);
 
     const db = await leerDB(page);
     const paciente = db.patients.find((p: { document: string }) => p.document === "8.888.888");
     expect(paciente).toMatchObject({ firstName: "Tomás", lastName: "Agenda", phone: "0982 888 888" });
-    expect(db.appointments.find((a: { title: string }) => a.title === "Evaluación inicial de Tomás")?.patientId).toBe(paciente.id);
+    expect(db.appointments.some((a: { patientId: string }) => a.patientId === paciente.id)).toBe(true);
   });
 
   test("sin completar los obligatorios no crea nada", async ({ page }) => {
     await entrarDemo(page, USUARIOS_DEMO.recepcionista);
-    await page.goto("/app/agenda");
-    await main(page).getByRole("button", { name: "Dar cita" }).click();
-    const d = dialogo(page);
-    await d.getByRole("button", { name: "Paciente nuevo" }).click();
-    await expect(d.getByLabel("Cédula / DNI *")).toHaveAttribute("required", "");
+    const { ficha } = await abrirCrearPaciente(page);
+    await expect(ficha.getByLabel("Cédula / DNI *")).toHaveAttribute("required", "");
     const antes = (await leerDB(page)).patients.length;
-    await d.getByLabel("Nombre legal *").fill("Sin");
-    await d.getByLabel("Apellidos *").fill("Cédula");
-    await d.getByLabel("Título").fill("Cita incompleta");
-    await d.getByRole("button", { name: "Crear cita" }).click();
-    await expect(d).toBeVisible(); // el navegador frena el envío: faltan CI y teléfono
+    await ficha.getByLabel("Nombre legal *").fill("Sin");
+    await ficha.getByLabel("Apellidos *").fill("Cédula");
+    await ficha.getByRole("button", { name: "Crear paciente" }).click();
+    await expect(ficha).toBeVisible(); // el navegador frena el envío: faltan CI y teléfono
     expect((await leerDB(page)).patients.length).toBe(antes);
-    expect((await leerDB(page)).appointments.some((a: { title: string }) => a.title === "Cita incompleta")).toBe(false);
   });
 
-  test("el dentista no crea pacientes (no carga datos personales)", async ({ page }) => {
+  test("el dentista no da citas ni crea pacientes: su agenda es de solo lectura", async ({ page }) => {
     await entrarDemo(page, USUARIOS_DEMO.dentista);
     await page.goto("/app/agenda");
-    await main(page).getByRole("button", { name: "Dar cita" }).click();
-    await expect(dialogo(page).getByRole("button", { name: "Paciente nuevo" })).toHaveCount(0);
+    await expect(main(page)).toContainText("Agenda");
+    await expect(main(page).getByRole("button", { name: "Dar cita" })).toHaveCount(0);
   });
 });
 

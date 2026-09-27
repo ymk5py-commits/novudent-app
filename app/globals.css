@@ -518,6 +518,9 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
     background: white;
   }
   .print-area .print\:hidden { display: none !important; }
+  /* Las secciones con <Reveal> arrancan en opacity 0 hasta entrar en pantalla: al
+     imprimir se muestran todas, estén donde estén. */
+  .print-area [style*="opacity"] { opacity: 1 !important; transform: none !important; }
 }
 
 /* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V3

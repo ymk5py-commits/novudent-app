@@ -114,11 +114,18 @@ export interface User {
   asiste?: string[];
   /** Especialidad del profesional (Ortodoncia, Endodoncia, …) */
   specialty?: string;
+  /** Días y franja en que atiende (0 = domingo). Sin cargar: lunes a sábado 08–18,
+   *  ver lib/disponibilidad.ts. */
+  horario?: { dias: number[]; desde: string; hasta: string };
   /** Sucursal asignada (multi-sede) */
   branchId?: string;
 }
 
-export type AppointmentStatus = "confirmada" | "en_atencion" | "pendiente" | "completada" | "cancelada" | "ausente";
+/** Estados de la cita. En pantalla (revisión de Novum, 27/9/2026): pendiente = «No confirmado»,
+ *  confirmada = «Confirmado», completada = «Atendido», en_atencion = «Atendiéndose»,
+ *  en_sala = «En sala de espera», ausente = «No asiste», cancelada = «Anulado».
+ *  Las claves no cambian para no romper los datos guardados. */
+export type AppointmentStatus = "confirmada" | "en_atencion" | "en_sala" | "pendiente" | "completada" | "cancelada" | "ausente";
 
 export interface Appointment {
   id: string;
@@ -149,6 +156,8 @@ export interface Appointment {
   boxId?: string;
   /** Plan de tratamiento al que pertenece la cita (paridad Dentalink) */
   budgetId?: string;
+  /** Tipo de consulta elegido en «Dar cita» (reemplaza al título libre). */
+  tipoConsulta?: "general" | "estetica" | "ortodoncia" | "rehabilitacion";
 }
 
 export type FormStatus = "pendiente" | "completado";

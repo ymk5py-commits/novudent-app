@@ -24,11 +24,18 @@ describe("can — matriz RBAC (roles v3)", () => {
     for (const r of ROLES) expect(ROLE_DESCRIPCION[r].length).toBeGreaterThan(20);
   });
 
-  it("todos usan la agenda y las tareas", () => {
+  it("todos ven la agenda y usan las tareas", () => {
     for (const r of ROLES) {
       expect(can(r, "agenda.view")).toBe(true);
-      expect(can(r, "agenda.create")).toBe(true);
       expect(can(r, "tasks.use")).toBe(true);
+    }
+  });
+
+  it("solo la recepción, la caja y el admin dan o cambian citas: lo clínico ve la agenda en lectura", () => {
+    for (const r of ROLES) {
+      const recepcion = r === "admin" || r === "cashier" || r === "receptionist";
+      expect(can(r, "agenda.create")).toBe(recepcion);
+      expect(can(r, "agenda.edit")).toBe(recepcion);
     }
   });
 });
