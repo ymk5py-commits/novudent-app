@@ -58,6 +58,12 @@ falta, esa función responde 503 con un mensaje entendible.
 | `GEMINI_VISION_MODEL` | Opcional — default `gemini-2.5-pro` |
 | `GEMINI_TEXT_MODEL` · `GEMINI_AUDIO_MODEL` · `GEMINI_IMAGE_MODEL` | Opcionales |
 
+### Correo al paciente (Resend)
+| Variable | Habilita |
+|---|---|
+| `RESEND_API_KEY` | «Enviar al correo» y «Notificar por mail» de la agenda (`/api/notificaciones/cita`). **Solo del lado del servidor** |
+| `RESEND_FROM` | Remitente, con un dominio verificado en Resend: `Clínica <avisos@tu-dominio>` |
+
 ### Cobro (Lemon Squeezy)
 | Variable | Habilita |
 |---|---|
