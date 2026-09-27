@@ -13,7 +13,9 @@ import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } fro
 import { useAlcance } from "@/lib/useAlcance";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { patientBalance } from "@/lib/budgets";
-import type { Appointment, AppointmentStatus } from "@/lib/types";
+import type { Appointment, AppointmentStatus, Patient } from "@/lib/types";
+import { visibles, faltantes, datosPaciente, nuevoPaciente, type ValoresCampos } from "@/lib/camposPaciente";
+import { CamposPacienteForm } from "@/components/CamposPacienteForm";
 import { Card, Btn, Modal, Field, inputCls, StatusBadge, Badge, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 
@@ -113,7 +115,7 @@ function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (
 }
 
 export default function AgendaPage() {
-  const { db, session, upsertAppointment, deleteAppointment, setOnboarding, removeWaitlist, addOutboxTask } = useStore();
+  const { db, session, upsertAppointment, upsertPatient, deleteAppointment, setOnboarding, removeWaitlist, addOutboxTask } = useStore();
   const alcance = useAlcance();
   // Dentista y asistente de doctores: solo la agenda de sus doctores, en todas las vistas.
   const citas = useMemo(() => db.appointments.filter((a) => alcance.veDoctor(a.dentistId)), [db.appointments, alcance]);
@@ -613,9 +615,12 @@ export default function AgendaPage() {
         <ApptForm
           appt={editing}
           onClose={() => { setEditing(null); setFromWaitlist(null); }}
-          onSave={(a) => {
+          onSave={(a, pacienteNuevo) => {
             const old = db.appointments.find((x) => x.id === a.id);
             const isNew = !old;
+            // El paciente nuevo va primero: la cita lo referencia. Y todavía no está en
+            // `db` (se actualiza en el próximo render), así que se usa el objeto directo.
+            if (pacienteNuevo) upsertPatient(pacienteNuevo);
             upsertAppointment(a);
             if (fromWaitlist) removeWaitlist(fromWaitlist);
             if (old && old.status !== "cancelada" && a.status === "cancelada" && botikaEnabled(db, "reagendar")) {
@@ -623,7 +628,7 @@ export default function AgendaPage() {
               if (p?.phone) addOutboxTask(makeOutboxTask({ db, type: "reagendar", patient: p, refId: a.id, by: session!.name, message: botikaMessage(db, "reagendar", { paciente: p.firstName, clinica: db.clinics[0].name, titulo: a.title || "Cita", fecha: new Date(a.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" }), hora: fmtTime(a.start) }) }));
             }
             if (isNew && a.status !== "cancelada" && botikaEnabled(db, "confirmCita")) {
-              const p = db.patients.find((x) => x.id === a.patientId);
+              const p = pacienteNuevo ?? db.patients.find((x) => x.id === a.patientId);
               if (p?.phone) addOutboxTask(makeOutboxTask({ db, type: "confirmar_cita", patient: p, refId: a.id, by: session!.name, message: botikaMessage(db, "confirmCita", { paciente: p.firstName, clinica: db.clinics[0].name, titulo: a.title || "Cita", fecha: new Date(a.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" }), hora: fmtTime(a.start) }) }));
             }
             setEditing(null); setFromWaitlist(null);
@@ -733,13 +738,18 @@ function WaitlistModal({ onClose, onSchedule }: { onClose: () => void; onSchedul
   );
 }
 
-function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () => void; onSave: (a: Appointment) => void }) {
+function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () => void; onSave: (a: Appointment, pacienteNuevo?: Patient) => void }) {
   const { db } = useStore();
   const alcance = useAlcance();
   const verMontos = alcance.puede("money.view");
   const [form, setForm] = useState(appt);
   const [conflict, setConflict] = useState<string | null>(null);
   const isNew = !db.appointments.some((x) => x.id === appt.id);
+  // «Paciente nuevo» al agendar: los campos los decide la clínica (Pacientes → Configuración,
+  // columna «Al agendar»). Solo para quien carga datos personales (recepción, caja, admin).
+  const puedeCrearPaciente = isNew && alcance.puede("patients.personal");
+  const camposNuevo = visibles(db.clinics[0]?.config.patientFields, "agenda");
+  const [nuevo, setNuevo] = useState<ValoresCampos | null>(() => (puedeCrearPaciente && db.patients.length === 0 ? {} : null));
 
   const toLocal = (iso: string) => {
     const d = new Date(iso);
@@ -761,14 +771,45 @@ function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () =>
 
   return (
     <Modal title={isNew ? "Nueva cita" : "Editar cita"} onClose={onClose}>
-      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); const c = findConflict(form); setConflict(c); if (!c) onSave(form); }}>
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (nuevo) {
+            const falta = faltantes(camposNuevo, nuevo);
+            if (falta.length > 0) { setConflict(`Completá los datos del paciente: ${falta.join(", ")}.`); return; }
+          }
+          const c = findConflict(form); setConflict(c);
+          if (c) return;
+          if (nuevo) {
+            const paciente = nuevoPaciente(datosPaciente(camposNuevo, nuevo), appt.clinicId);
+            onSave({ ...form, patientId: paciente.id }, paciente);
+          } else onSave(form);
+        }}
+      >
         <Field label="Título"><input required className={inputCls} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej.: Profilaxis" /></Field>
+        {nuevo && (
+          <fieldset className="space-y-3 rounded-xl border border-azure-200 bg-azure-50/40 p-3">
+            <legend className="px-1 text-xs font-extrabold uppercase tracking-wide text-azure-700">Paciente nuevo</legend>
+            <CamposPacienteForm campos={camposNuevo} valores={nuevo} onChange={setNuevo} convenios={(db.clinics[0]?.config.convenios ?? []).map((c) => c.name)} />
+            {db.patients.length > 0 && (
+              <button type="button" onClick={() => setNuevo(null)} className="text-xs font-bold text-azure-700 hover:underline">Elegir un paciente existente</button>
+            )}
+          </fieldset>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Paciente">
-            <select className={inputCls} value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })}>
-              {db.patients.filter((p) => alcance.vePaciente(p.id) || p.id === form.patientId).map((p) => <option key={p.id} value={p.id}>{fullName(p)}</option>)}
-            </select>
-          </Field>
+          {!nuevo && (
+            <Field label="Paciente">
+              <select className={inputCls} value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })}>
+                {db.patients.filter((p) => alcance.vePaciente(p.id) || p.id === form.patientId).map((p) => <option key={p.id} value={p.id}>{fullName(p)}</option>)}
+              </select>
+              {puedeCrearPaciente && (
+                <button type="button" onClick={() => setNuevo({})} className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-azure-700 hover:underline">
+                  <Plus className="h-3 w-3" /> Paciente nuevo
+                </button>
+              )}
+            </Field>
+          )}
           <Field label="Dentista">
             <select className={inputCls} value={form.dentistId} onChange={(e) => setForm({ ...form, dentistId: e.target.value })}>
               {db.users.filter((u) => u.role === "dentist" && (alcance.veDoctor(u.id) || u.id === form.dentistId)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}

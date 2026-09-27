@@ -31,6 +31,9 @@ type Availability = {
    *  para explicarle al paciente por qué no ve turnos; el filtro real lo hace
    *  el servidor. */
   minLeadHoras?: number;
+  /** Datos extra que pide la clínica (Pacientes → Configuración, «Agenda online»).
+   *  El servidor los vuelve a validar al reservar. */
+  campos?: { key: string; label: string; tipo: string; requerido: boolean }[];
 };
 
 const inputCls =
@@ -53,6 +56,7 @@ export default function ReservaOnline() {
   const [dentistId, setDentistId] = useState<string | null>(null);
   const [time, setTime] = useState<string | null>(null);
   const [form, setForm] = useState({ nombre: "", apellido: "", ci: "", telefono: "", motivo: "" });
+  const [extras, setExtras] = useState<Record<string, string>>({});
   const [booking, setBooking] = useState(false);
   const [result, setResult] = useState<{ botikaQueued: boolean } | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -98,7 +102,7 @@ export default function ReservaOnline() {
       const res = await fetch("/api/reservas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clinicId, dentistId, date, time, ...form }),
+        body: JSON.stringify({ clinicId, dentistId, date, time, ...form, extras }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -283,6 +287,40 @@ export default function ReservaOnline() {
                 <input required className={inputCls} placeholder="WhatsApp (09xx xxx xxx)" inputMode="tel" value={form.telefono}
                   onChange={(e) => setForm({ ...form, telefono: e.target.value })} maxLength={25} />
               </div>
+              {(avail?.campos?.length ?? 0) > 0 && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {avail!.campos!.map((c) => {
+                    const ph = c.requerido ? c.label : `${c.label} (opcional)`;
+                    const valor = extras[c.key] ?? "";
+                    const cambiar = (v: string) => setExtras({ ...extras, [c.key]: v });
+                    if (c.tipo === "sexo" || c.tipo === "genero") {
+                      return (
+                        <select key={c.key} aria-label={ph} required={c.requerido} className={inputCls} value={valor} onChange={(e) => cambiar(e.target.value)}>
+                          <option value="">{ph}</option>
+                          <option value="F">Femenino</option>
+                          <option value="M">Masculino</option>
+                          {c.tipo === "genero" && <option value="otro">Otro</option>}
+                        </select>
+                      );
+                    }
+                    if (c.tipo === "fecha") {
+                      return (
+                        <label key={c.key} className="block text-xs font-semibold text-clinic-muted">
+                          {ph}
+                          <input type="date" required={c.requerido} className={`${inputCls} mt-1`} value={valor}
+                            max={new Date().toISOString().slice(0, 10)} onChange={(e) => cambiar(e.target.value)} />
+                        </label>
+                      );
+                    }
+                    return (
+                      <input key={c.key} aria-label={ph} placeholder={ph} required={c.requerido} className={inputCls} value={valor} maxLength={160}
+                        type={c.tipo === "email" ? "email" : c.tipo === "tel" ? "tel" : "text"}
+                        inputMode={c.tipo === "tel" ? "tel" : c.tipo === "email" ? "email" : undefined}
+                        onChange={(e) => cambiar(e.target.value)} />
+                    );
+                  })}
+                </div>
+              )}
               <input className={inputCls} placeholder="Motivo (opcional): limpieza, dolor, consulta…" value={form.motivo}
                 onChange={(e) => setForm({ ...form, motivo: e.target.value })} maxLength={140} />
               <div className="flex items-center justify-between gap-3 pt-1">
