@@ -161,8 +161,8 @@ describe("campos extra (Pacientes → Configuración, columna «Agenda online»)
     conCampos({ email: { present: { online: true }, required: { online: true } }, fechaNacimiento: { present: { online: true } } });
     const j = await (await GET(req(`http://x/api/reservas?clinicId=cl_demo&date=${MANANA}`))).json();
     expect(j.campos).toEqual([
-      { key: "email", label: "Email", tipo: "email", requerido: true },
       { key: "fechaNacimiento", label: "Fecha de nacimiento", tipo: "fecha", requerido: false },
+      { key: "email", label: "Email", tipo: "email", requerido: true },
     ]);
   });
 

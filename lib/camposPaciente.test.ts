@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CAMPOS, CONTEXTOS, camposDe, visibles, faltantes, datosPaciente, extrasOnline } from "./camposPaciente";
+import { CAMPOS, CONTEXTOS, camposDe, visibles, faltantes, datosPaciente, extrasOnline, esMenor, siguienteCodigo, codigosFaltantes, nuevoPaciente } from "./camposPaciente";
 import type { FieldConfig } from "./types";
 
 const req = (ctx: "nuevo" | "agenda" | "online", config?: Record<string, FieldConfig>) =>
@@ -8,11 +8,12 @@ const pres = (ctx: "nuevo" | "agenda" | "online", config?: Record<string, FieldC
   visibles(config, ctx).map((c) => c.key);
 
 describe("catálogo", () => {
-  it("son los 21 campos de la matriz de Dentalink, en su orden", () => {
-    expect(CAMPOS).toHaveLength(21);
+  it("son los 21 campos de Dentalink más los 5 que pidió Novum, agrupados por sección", () => {
+    expect(CAMPOS).toHaveLength(26);
     expect(CAMPOS[0].key).toBe("nombreLegal");
-    expect(CAMPOS.at(-1)?.key).toBe("dniRepLegal");
-    expect(new Set(CAMPOS.map((c) => c.key)).size).toBe(21);
+    expect(new Set(CAMPOS.map((c) => c.key)).size).toBe(26);
+    for (const k of ["barrio", "parentesco", "ruc", "razonSocial", "codigoReferido"]) expect(CAMPOS.some((c) => c.key === k)).toBe(true);
+    expect(CAMPOS.filter((c) => c.grupo === "responsable").map((c) => c.label)).toEqual(["Responsable", "CI del responsable", "Qué es del paciente"]);
   });
 
   it("los contextos son nuevo paciente, al agendar y agenda online (el check-in queda para después)", () => {
@@ -20,10 +21,13 @@ describe("catálogo", () => {
   });
 });
 
-describe("sin configuración guardada, la app se comporta como hasta ahora", () => {
-  it("nuevo paciente: nombre, apellidos, CI y teléfono obligatorios; email y convenio opcionales", () => {
-    expect(pres("nuevo")).toEqual(["nombreLegal", "apellidos", "documento", "email", "convenio", "telefonoMovil"]);
-    expect(req("nuevo")).toEqual(["nombreLegal", "apellidos", "documento", "telefonoMovil"]);
+describe("sin configuración guardada, se pide lo de la revisión de Novum", () => {
+  it("nuevo paciente: obligatorios nombre, apellido, CI, fecha de nacimiento, sexo, género y teléfono", () => {
+    expect(req("nuevo")).toEqual(["nombreLegal", "apellidos", "documento", "fechaNacimiento", "sexo", "genero", "telefonoMovil"]);
+    for (const k of ["email", "barrio", "direccion", "ruc", "razonSocial", "convenio", "actividad", "referencia", "codigoReferido", "apoderado", "dniRepLegal", "parentesco"]) {
+      expect(pres("nuevo")).toContain(k);
+    }
+    expect(pres("nuevo")).not.toContain("empleador");
   });
 
   it("al agendar pide lo mismo que el alta de paciente", () => {
@@ -39,10 +43,10 @@ describe("sin configuración guardada, la app se comporta como hasta ahora", () 
 
 describe("la configuración de la clínica manda", () => {
   it("prender un campo lo muestra; marcarlo requerido lo exige", () => {
-    const config = { fechaNacimiento: { present: { nuevo: true }, required: { nuevo: true } } };
-    expect(pres("nuevo", config)).toContain("fechaNacimiento");
-    expect(req("nuevo", config)).toContain("fechaNacimiento");
-    expect(pres("agenda", config)).not.toContain("fechaNacimiento"); // cada contexto va por separado
+    const config = { empleador: { present: { nuevo: true }, required: { nuevo: true } } };
+    expect(pres("nuevo", config)).toContain("empleador");
+    expect(req("nuevo", config)).toContain("empleador");
+    expect(pres("agenda", config)).not.toContain("empleador"); // cada contexto va por separado
   });
 
   it("un «no» explícito apaga un campo que por defecto estaba", () => {
@@ -81,8 +85,10 @@ describe("la configuración de la clínica manda", () => {
 describe("validación", () => {
   it("faltantes devuelve los requeridos vacíos (los espacios no cuentan)", () => {
     const campos = camposDe(undefined, "nuevo");
-    expect(faltantes(campos, { nombreLegal: "Ana", apellidos: "  ", documento: "123", telefonoMovil: "" })).toEqual(["Apellidos", "Teléfono móvil"]);
-    expect(faltantes(campos, { nombreLegal: "Ana", apellidos: "Paz", documento: "123", telefonoMovil: "0981" })).toEqual([]);
+    expect(faltantes(campos, { nombreLegal: "Ana", apellidos: "  ", documento: "123", telefonoMovil: "" }))
+      .toEqual(["Apellidos", "Fecha de nacimiento", "Sexo", "Género", "Teléfono móvil"]);
+    const completo = { nombreLegal: "Ana", apellidos: "Paz", documento: "123", telefonoMovil: "0981", fechaNacimiento: "1990-04-12", sexo: "F", genero: "F" };
+    expect(faltantes(campos, completo)).toEqual([]);
   });
 
   it("datosPaciente pasa los valores a los campos del paciente y descarta vacíos y opciones inválidas", () => {
@@ -100,7 +106,7 @@ describe("validación", () => {
 
   it("datosPaciente ignora los campos que no están presentes en el contexto", () => {
     const campos = camposDe(undefined, "nuevo");
-    expect(datosPaciente(campos, { nombreLegal: "Ana", apellidos: "Paz", ciudad: "Luque" })).toEqual({ firstName: "Ana", lastName: "Paz" });
+    expect(datosPaciente(campos, { nombreLegal: "Ana", apellidos: "Paz", empleador: "ACME" })).toEqual({ firstName: "Ana", lastName: "Paz" });
   });
 
   it("una fecha de nacimiento imposible no se guarda", () => {
@@ -121,5 +127,43 @@ describe("extrasOnline (lo que la página pública pide además de nombre, CI y 
       { key: "email", label: "Email", tipo: "email", requerido: true },
       { key: "ciudad", label: "Ciudad", tipo: "texto", requerido: false },
     ]);
+  });
+});
+
+describe("paciente menor de edad", () => {
+  const HOY = Date.parse("2026-09-27T12:00:00Z");
+  it("esMenor calcula la edad con la fecha de nacimiento", () => {
+    expect(esMenor({ fechaNacimiento: "2010-01-01" }, HOY)).toBe(true);
+    expect(esMenor({ fechaNacimiento: "2008-09-27" }, HOY)).toBe(false); // cumple 18 hoy
+    expect(esMenor({ fechaNacimiento: "2008-09-28" }, HOY)).toBe(true);
+    expect(esMenor({}, HOY)).toBe(false);
+  });
+
+  it("si es menor, el responsable es obligatorio aunque la clínica no lo haya marcado", () => {
+    const config = { apoderado: { present: { nuevo: false } }, dniRepLegal: { present: { nuevo: false } }, parentesco: { present: { nuevo: false } } };
+    const campos = camposDe(config, "nuevo");
+    const base = { nombreLegal: "Leo", apellidos: "Paz", documento: "9", telefonoMovil: "0981", sexo: "M", genero: "M" };
+    expect(faltantes(campos, { ...base, fechaNacimiento: "2015-05-05" })).toEqual(["Responsable", "CI del responsable", "Qué es del paciente"]);
+    expect(faltantes(campos, { ...base, fechaNacimiento: "1990-05-05" })).toEqual([]);
+    expect(datosPaciente(campos, { ...base, fechaNacimiento: "2015-05-05", apoderado: "Ana Paz", dniRepLegal: "123", parentesco: "Madre" }))
+      .toMatchObject({ guardian: "Ana Paz", legalRepDoc: "123", parentesco: "Madre" });
+  });
+
+  it("género acepta «Prefiero no decirlo»", () => {
+    const campos = camposDe(undefined, "nuevo");
+    expect(datosPaciente(campos, { genero: "nd" }).gender).toBe("nd");
+  });
+});
+
+describe("código interno", () => {
+  it("el siguiente es el mayor más uno", () => {
+    expect(siguienteCodigo([])).toBe(1);
+    expect(siguienteCodigo([{ code: 3 }, {}, { code: 7 }])).toBe(8);
+    expect(nuevoPaciente({ firstName: "A" }, "cl", 1, 9).code).toBe(9);
+  });
+
+  it("los pacientes viejos reciben códigos en orden de alta, a continuación del mayor", () => {
+    const r = codigosFaltantes([{ id: "p_300" }, { id: "p1", code: 1 }, { id: "p_20" }, { id: "p2" }]);
+    expect(r).toEqual([{ id: "p2", code: 2 }, { id: "p_20", code: 3 }, { id: "p_300", code: 4 }]);
   });
 });

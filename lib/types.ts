@@ -227,8 +227,9 @@ export interface Patient {
   email?: string;
   birthDate?: string;
   insurer?: string;
-  /** Datos demográficos (Análisis & Conversión): género y ciudad/localidad */
-  gender?: "F" | "M" | "otro";
+  /** Datos demográficos (Análisis & Conversión): género y ciudad/localidad.
+   *  "nd" = «Prefiero no decirlo»; "otro" queda por compatibilidad con datos viejos. */
+  gender?: "F" | "M" | "nd" | "otro";
   city?: string;
   /** Datos personales completos (paridad Dentalink) */
   sex?: "M" | "F";              // sexo biológico (separado de género)
@@ -244,7 +245,16 @@ export interface Patient {
   guardian?: string;            // apoderado
   referencia?: string;          // cómo nos conoció
   observaciones?: string;       // observaciones (demográfico, no clínico)
-  legalRepDoc?: string;         // DNI representante legal
+  legalRepDoc?: string;         // CI del responsable (paciente menor) / DNI representante legal
+  parentesco?: string;          // qué es del paciente el responsable (madre, padre, tutor…)
+  codigoReferido?: string;      // código de la acción comercial por la que llegó
+  barrio?: string;
+  ruc?: string;                 // facturación
+  razonSocial?: string;         // facturación
+  /** Código interno correlativo de la clínica (se asigna al crear el paciente). */
+  code?: number;
+  /** Paciente deshabilitado: no se ofrece para nuevas citas y sale del listado habitual. */
+  disabled?: boolean;
   emergencyContact?: string;    // contacto de emergencia (nombre + parentesco)
   emergencyPhone?: string;      // teléfono del contacto de emergencia
   /** Foto del paciente (data URL base64, redimensionada) */

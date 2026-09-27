@@ -11,7 +11,7 @@ import { ChevronLeft, ChevronRight, Plus, Search, Video, Hourglass, X } from "lu
 import { useStore, fullName } from "@/lib/store";
 import { useAlcance } from "@/lib/useAlcance";
 import { TIPOS_CONSULTA, especialidadCoincide, huecosDelDia, diasDesde, inicioDe, finDeCita, type TipoConsulta } from "@/lib/disponibilidad";
-import { visibles, faltantes, datosPaciente, nuevoPaciente, type ValoresCampos } from "@/lib/camposPaciente";
+import { camposDe, faltantes, datosPaciente, nuevoPaciente, siguienteCodigo, type ValoresCampos } from "@/lib/camposPaciente";
 import { CamposPacienteForm } from "@/components/CamposPacienteForm";
 import type { Appointment, Patient } from "@/lib/types";
 import { Btn, Modal, Field, inputCls } from "@/components/ui";
@@ -299,7 +299,8 @@ function BuscadorPaciente({ valor, onElegir, onCrear }: { valor: string; onElegi
   const { db } = useStore();
   const alcance = useAlcance();
   const id = useId();
-  const pacientes = db.patients.filter((p) => alcance.vePaciente(p.id) || p.id === valor);
+  // Los deshabilitados no se ofrecen para citas nuevas (salvo el que ya tiene la cita).
+  const pacientes = db.patients.filter((p) => (alcance.vePaciente(p.id) && !p.disabled) || p.id === valor);
   const etiqueta = (p: Patient) => `${p.document || "Sin CI"} | ${fullName(p).toLocaleUpperCase("es-PY")}`;
   const elegido = pacientes.find((p) => p.id === valor);
   const [texto, setTexto] = useState(elegido ? etiqueta(elegido) : "");
@@ -392,7 +393,7 @@ function BuscadorPaciente({ valor, onElegir, onCrear }: { valor: string; onElegi
 /** Popup con la ficha del paciente nuevo (campos de «Al agendar» en Pacientes → Configuración). */
 function CrearPaciente({ onClose, onCreado, clinicId }: { onClose: () => void; onCreado: (p: Patient) => void; clinicId: string }) {
   const { db } = useStore();
-  const campos = visibles(db.clinics[0]?.config.patientFields, "agenda");
+  const campos = camposDe(db.clinics[0]?.config.patientFields, "agenda");
   const [valores, setValores] = useState<ValoresCampos>({});
   const [error, setError] = useState<string | null>(null);
   return (
@@ -403,7 +404,7 @@ function CrearPaciente({ onClose, onCreado, clinicId }: { onClose: () => void; o
           e.preventDefault();
           const falta = faltantes(campos, valores);
           if (falta.length > 0) { setError(`Completá: ${falta.join(", ")}.`); return; }
-          onCreado(nuevoPaciente(datosPaciente(campos, valores), clinicId));
+          onCreado(nuevoPaciente(datosPaciente(campos, valores), clinicId, Date.now(), siguienteCodigo(db.patients)));
         }}
       >
         <CamposPacienteForm campos={campos} valores={valores} onChange={setValores} convenios={(db.clinics[0]?.config.convenios ?? []).map((c) => c.name)} />

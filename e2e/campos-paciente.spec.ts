@@ -6,53 +6,69 @@ import type { Page } from "@playwright/test";
    online. Sin configuración, la app pide lo mismo que antes. */
 
 const main = (page: Page) => page.locator("main");
-const dialogo = (page: Page) => page.getByRole("dialog");
 
-async function abrirNuevoPaciente(page: Page) {
-  await page.goto("/app/pacientes");
-  await main(page).getByRole("button", { name: "Nuevo paciente" }).click();
-  await expect(dialogo(page)).toBeVisible();
+/** Obligatorios por defecto (revisión de Novum): nombre, apellido, CI, fecha de nacimiento,
+ *  sexo, género y teléfono. */
+async function completarObligatorios(zona: import("@playwright/test").Locator, datos: { nombre: string; apellido: string; ci: string; tel: string; nacimiento?: string }) {
+  await zona.getByLabel("Nombre legal *").fill(datos.nombre);
+  await zona.getByLabel("Apellidos *").fill(datos.apellido);
+  await zona.getByLabel("Cédula / DNI *").fill(datos.ci);
+  await zona.getByLabel("Fecha de nacimiento *").fill(datos.nacimiento ?? "1990-05-20");
+  await zona.getByLabel("Sexo *").selectOption("F");
+  await zona.getByLabel("Género *").selectOption("nd");
+  await zona.getByLabel("Teléfono móvil *").fill(datos.tel);
 }
 
-test.describe("alta de paciente", () => {
+test.describe("alta de paciente (página completa)", () => {
   test.beforeEach(async ({ page }) => { await entrarDemo(page, USUARIOS_DEMO.admin); });
 
-  test("sin configuración pide lo de siempre", async ({ page }) => {
-    await abrirNuevoPaciente(page);
-    for (const campo of ["Nombre legal *", "Apellidos *", "Cédula / DNI *", "Teléfono móvil *", "Email", "Convenio"]) {
-      await expect(dialogo(page).getByText(campo, { exact: true })).toBeVisible();
+  test("sin configuración pide lo de la revisión de Novum", async ({ page }) => {
+    await page.goto("/app/pacientes");
+    await main(page).getByRole("button", { name: "Nuevo paciente" }).click();
+    await page.waitForURL("**/app/pacientes/nuevo");
+    for (const campo of ["Nombre legal *", "Apellidos *", "Cédula / DNI *", "Fecha de nacimiento *", "Sexo *", "Género *", "Teléfono móvil *", "Email", "Barrio", "RUC", "Razón social", "Referido por (de quién)"]) {
+      await expect(main(page).getByText(campo, { exact: true })).toBeVisible();
     }
-    await expect(dialogo(page).getByText("Fecha de nacimiento")).toHaveCount(0);
+    await expect(main(page).getByLabel("Género *").locator("option", { hasText: "Prefiero no decirlo" })).toHaveCount(1);
   });
 
   test("la configuración de la clínica cambia lo que pide el alta", async ({ page }) => {
     await page.goto("/app/pacientes");
     await main(page).getByRole("button", { name: "Configuración" }).click();
-    // Nombre y apellidos no se pueden apagar.
-    await expect(main(page).getByLabel("Nombre legal: presente en Nuevo paciente")).toBeDisabled();
-    await main(page).getByLabel("Fecha de nacimiento: requerido en Nuevo paciente").check();
-    await expect(main(page).getByLabel("Fecha de nacimiento: presente en Nuevo paciente")).toBeChecked(); // requerido ⇒ presente
+    await expect(main(page).getByLabel("Nombre legal: presente en Nuevo paciente")).toBeDisabled(); // no se puede apagar
+    await main(page).getByLabel("Empleador: requerido en Nuevo paciente").check();
+    await expect(main(page).getByLabel("Empleador: presente en Nuevo paciente")).toBeChecked(); // requerido ⇒ presente
     await main(page).getByLabel("Email: presente en Nuevo paciente").uncheck();
     await expect(main(page).getByRole("status")).toContainText("cambios sin guardar");
     await main(page).getByRole("button", { name: "Guardar" }).click();
-    await expect.poll(async () => (await leerDB(page))?.clinics[0].config.patientFields?.fechaNacimiento?.required?.nuevo).toBe(true);
+    await expect.poll(async () => (await leerDB(page))?.clinics[0].config.patientFields?.empleador?.required?.nuevo).toBe(true);
 
-    await main(page).getByRole("button", { name: "Pacientes", exact: true }).click();
-    await main(page).getByRole("button", { name: "Nuevo paciente" }).click();
-    const d = dialogo(page);
-    await expect(d.getByText("Email", { exact: true })).toHaveCount(0);
-    const nacimiento = d.getByLabel("Fecha de nacimiento *");
-    await expect(nacimiento).toHaveAttribute("required", "");
-
-    await d.getByLabel("Nombre legal *").fill("Rosa");
-    await d.getByLabel("Apellidos *").fill("Campos");
-    await d.getByLabel("Cédula / DNI *").fill("7.777.777");
-    await d.getByLabel("Teléfono móvil *").fill("0981 777 777");
-    await nacimiento.fill("1991-05-20");
-    await d.getByRole("button", { name: "Crear paciente" }).click();
-    await expect(d).toHaveCount(0);
+    await page.goto("/app/pacientes/nuevo");
+    await expect(main(page).getByText("Email", { exact: true })).toHaveCount(0);
+    await expect(main(page).getByLabel("Empleador *")).toHaveAttribute("required", "");
+    await completarObligatorios(main(page), { nombre: "Rosa", apellido: "Campos", ci: "7.777.777", tel: "0981 777 777" });
+    await main(page).getByLabel("Empleador *").fill("Clínica Sur");
+    await main(page).locator("#foto-paciente").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64") });
+    await expect(main(page).getByAltText("Foto del paciente")).toBeVisible();
+    await main(page).getByRole("button", { name: "Crear paciente" }).click();
+    await page.waitForURL(/\/app\/pacientes\/p_/);
     await expect.poll(async () => (await leerDB(page))?.patients.find((p: { document: string }) => p.document === "7.777.777")).toMatchObject({
-      firstName: "Rosa", lastName: "Campos", phone: "0981 777 777", birthDate: "1991-05-20",
+      firstName: "Rosa", lastName: "Campos", phone: "0981 777 777", birthDate: "1990-05-20", sex: "F", gender: "nd", employer: "Clínica Sur",
+    });
+  });
+
+  test("si es menor de edad pide el responsable", async ({ page }) => {
+    await page.goto("/app/pacientes/nuevo");
+    await completarObligatorios(main(page), { nombre: "Leo", apellido: "Chico", ci: "9.999.999", tel: "0981 999 999", nacimiento: "2016-03-10" });
+    await expect(main(page).getByText("El paciente es menor de edad")).toBeVisible();
+    await expect(main(page).getByLabel("Responsable *", { exact: true })).toHaveAttribute("required", "");
+    await main(page).getByLabel("Responsable *", { exact: true }).fill("Ana Chico");
+    await main(page).getByLabel("CI del responsable *").fill("1.111.111");
+    await main(page).getByLabel("Qué es del paciente *").fill("Madre");
+    await main(page).getByRole("button", { name: "Crear paciente" }).click();
+    await page.waitForURL(/\/app\/pacientes\/p_/);
+    await expect.poll(async () => (await leerDB(page))?.patients.find((p: { document: string }) => p.document === "9.999.999")).toMatchObject({
+      guardian: "Ana Chico", legalRepDoc: "1.111.111", parentesco: "Madre",
     });
   });
 });
@@ -71,10 +87,7 @@ test.describe("paciente nuevo al agendar", () => {
   test("la recepción crea el paciente desde la cita", async ({ page }) => {
     await entrarDemo(page, USUARIOS_DEMO.recepcionista);
     const { cita, ficha } = await abrirCrearPaciente(page);
-    await ficha.getByLabel("Nombre legal *").fill("Tomás");
-    await ficha.getByLabel("Apellidos *").fill("Agenda");
-    await ficha.getByLabel("Cédula / DNI *").fill("8.888.888");
-    await ficha.getByLabel("Teléfono móvil *").fill("0982 888 888");
+    await completarObligatorios(ficha, { nombre: "Tomás", apellido: "Agenda", ci: "8.888.888", tel: "0982 888 888" });
     await ficha.getByRole("button", { name: "Crear paciente" }).click();
     await expect(ficha).toHaveCount(0);
     await expect(cita.getByRole("combobox", { name: "Paciente" })).toHaveValue("8.888.888 | TOMÁS AGENDA");

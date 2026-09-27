@@ -21,6 +21,8 @@ export function DatosTab({ patient }: { patient: Patient }) {
     address: patient.address ?? "", activity: patient.activity ?? "", employer: patient.employer ?? "",
     landline: patient.landline ?? "", guardian: patient.guardian ?? "", referencia: patient.referencia ?? "",
     observaciones: patient.observaciones ?? "", legalRepDoc: patient.legalRepDoc ?? "",
+    parentesco: patient.parentesco ?? "", barrio: patient.barrio ?? "", ruc: patient.ruc ?? "",
+    razonSocial: patient.razonSocial ?? "", codigoReferido: patient.codigoReferido ?? "",
     emergencyContact: patient.emergencyContact ?? "", emergencyPhone: patient.emergencyPhone ?? "",
   };
   const [f, setF] = useState(orig);
@@ -48,6 +50,8 @@ export function DatosTab({ patient }: { patient: Patient }) {
       employer: f.employer.trim() || undefined, landline: f.landline.trim() || undefined,
       guardian: f.guardian.trim() || undefined, referencia: f.referencia.trim() || undefined,
       observaciones: f.observaciones.trim() || undefined, legalRepDoc: f.legalRepDoc.trim() || undefined,
+      parentesco: f.parentesco.trim() || undefined, barrio: f.barrio.trim() || undefined, ruc: f.ruc.trim() || undefined,
+      razonSocial: f.razonSocial.trim() || undefined, codigoReferido: f.codigoReferido.trim() || undefined,
       emergencyContact: f.emergencyContact.trim() || undefined, emergencyPhone: f.emergencyPhone.trim() || undefined,
     });
 
@@ -100,18 +104,24 @@ export function DatosTab({ patient }: { patient: Patient }) {
               <option value="">Sin especificar</option>
               <option value="F">Femenino</option>
               <option value="M">Masculino</option>
-              <option value="otro">Otro</option>
+              <option value="nd">Prefiero no decirlo</option>
+              {f.gender === "otro" && <option value="otro">Otro</option>}
             </select>
           </Field>
           {T("Ciudad", "city")}
           {T("Municipio / comuna", "municipio")}
+          {T("Barrio", "barrio")}
           {T("Dirección", "address")}
           {T("Actividad o profesión", "activity")}
           {T("Empleador", "employer")}
           {T("Teléfono fijo", "landline")}
-          {T("Apoderado", "guardian")}
-          {T("Referencia (cómo nos conoció)", "referencia")}
-          {T("DNI representante legal", "legalRepDoc")}
+          {T("Responsable (paciente menor)", "guardian")}
+          {T("CI del responsable", "legalRepDoc")}
+          {T("Qué es del paciente", "parentesco")}
+          {T("RUC", "ruc")}
+          {T("Razón social", "razonSocial")}
+          {T("Referido por (de quién)", "referencia")}
+          {T("Código de referido", "codigoReferido")}
           {T("Contacto de emergencia", "emergencyContact")}
           {T("Teléfono de emergencia", "emergencyPhone", "tel")}
         </div>

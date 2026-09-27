@@ -1,7 +1,7 @@
 "use client";
 /** Perfil del paciente: Resumen · Odontograma · Historial (EMR) · Presupuestos · Recetas ·
  *  Archivos · Ortodoncia · Formularios (pencil-flow) · Facturación. */
-import { useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams } from "next/navigation";
 import {
   FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2, Smile,
@@ -78,6 +78,11 @@ export default function PatientProfile() {
   const hasIA = useClinicPlan().features.includes("ia"); // Novudent IA: Plan Clínica+
   const alcance = useAlcance();
   const [tabElegida, setTab] = useState<SubTab>("resumen");
+  // ?tab=… (desde el menú ⋮ del listado de pacientes): abre esa pestaña si existe.
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t && GROUPS.some((g) => g.tabs.some((x) => x.key === t))) setTab(t as SubTab);
+  }, []);
   const [fillingForm, setFillingForm] = useState<PatientForm | null>(null);
   const [writingNote, setWritingNote] = useState(false);
   const [clipOpen, setClipOpen] = useState(false);

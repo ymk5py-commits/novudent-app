@@ -97,7 +97,9 @@ test.describe("Recepcionista", () => {
     await page.goto("/app/pacientes/p1");
     await expect(main(page).getByRole("button", { name: "Datos personales" })).toBeVisible();
     await expect(main(page).getByRole("button", { name: "Ficha clínica" })).toHaveCount(0);
-    await expect(main(page).getByRole("button", { name: "Planes de tratamiento" })).toHaveCount(0);
+    // Ve los tratamientos, sin montos (revisión del 27/9/2026).
+    await main(page).getByRole("button", { name: "Planes de tratamiento" }).click();
+    await expect(main(page)).not.toContainText(MONTO);
     await expect(main(page).getByRole("button", { name: "Recibir pago" })).toHaveCount(0);
     // El brief de «Preparar consulta» resume la ficha clínica: no es para la recepción.
     await expect(main(page).getByRole("button", { name: "Preparar consulta" })).toHaveCount(0);
