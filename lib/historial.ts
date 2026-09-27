@@ -1,3 +1,4 @@
+import { ESTADO_LABEL } from "./estadosCita";
 import type { Appointment, OrthoRecord, Budget, Payment, EmrNote } from "./types";
 
 /** Tipos de entrada del timeline unificado (paridad Historial de Dentalink). */
@@ -14,9 +15,7 @@ export interface HistorialEntry {
   amount?: number;   // sólo en pagos
 }
 
-const APPT_LABEL: Record<string, string> = {
-  confirmada: "Confirmada", pendiente: "No confirmada", completada: "Atendido", cancelada: "Anulada",
-};
+const APPT_LABEL: Record<string, string> = ESTADO_LABEL;
 
 /** Agrega citas + evoluciones de ortodoncia + prestaciones realizadas + pagos + notas EMR
  *  en una lista cronológica (desc). Puro y tolerante a datos faltantes. */

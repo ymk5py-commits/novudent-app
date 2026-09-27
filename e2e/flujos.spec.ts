@@ -9,23 +9,21 @@ test.beforeEach(async ({ page }) => { await entrarDemo(page); });
 
 test("agenda: dar una cita y que siga ahí al recargar", async ({ page }) => {
   await page.goto("/app/agenda");
-  /* El total del día depende de qué día corre la prueba (el seed arma citas alrededor de hoy):
-     se compara contra el total de antes, nunca contra un número fijo. */
-  const contador = page.locator("main").getByText(/^\d+ citas$/).first();
-  const antes = Number((await contador.innerText()).split(" ")[0]);
   await page.getByRole("button", { name: "Dar cita" }).first().click();
-  const dialogo = page.getByRole("dialog");
-  await expect(dialogo).toContainText("Nueva cita");
-  await dialogo.getByPlaceholder("Ej.: Profilaxis").fill("Control E2E");
-  await campo(page, /paciente/i, "select").selectOption({ label: "Juan Ríos" });
+  const dialogo = page.getByRole("dialog", { name: "Dar cita" });
+  await dialogo.getByRole("combobox", { name: "Paciente" }).fill("Ríos");
+  await dialogo.getByRole("option", { name: /JUAN RÍOS/ }).click();
+  await dialogo.getByLabel("Tipo de consulta").selectOption({ label: "Ortodoncia" });
+  /* El primer horario libre depende de qué día y a qué hora corre la prueba: se toma el
+     primero que ofrezca la grilla, sea hoy o más adelante. */
+  await dialogo.locator("button[aria-pressed]").first().click();
   await dialogo.getByRole("button", { name: "Crear cita" }).click();
   await expect(dialogo).toBeHidden();
-  // la lista del día muestra al paciente; el título queda en la cita guardada
-  await expect(contador).toHaveText(`${antes + 1} citas`);
-  await expect(page.locator("main").getByText("Juan Ríos").first()).toBeVisible();
-  expect((await leerDB(page)).appointments.some((a: { title: string }) => a.title === "Control E2E")).toBe(true);
+  const nueva = (db: { appointments: { patientId: string; title: string; status: string }[] }) =>
+    db.appointments.find((a) => a.patientId === "p2" && a.title === "Ortodoncia");
+  expect(nueva(await leerDB(page))).toMatchObject({ status: "pendiente" });
   await page.reload();
-  await expect(page.locator("main").getByText("Juan Ríos").first()).toBeVisible();
+  expect(nueva(await leerDB(page))).toBeTruthy();
 });
 
 test("pacientes: dar de alta un paciente y encontrarlo por su CI", async ({ page }) => {

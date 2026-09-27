@@ -2,6 +2,7 @@
 import { ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { ESTADO_LABEL, ESTADO_TONO } from "@/lib/estadosCita";
 import type { BillingFlag, AppointmentStatus } from "@/lib/types";
 import { FLAG_INFO } from "@/lib/billing";
 
@@ -68,15 +69,7 @@ export function FlagBadge({ flag }: { flag: BillingFlag }) {
 }
 
 export function StatusBadge({ status }: { status: AppointmentStatus }) {
-  const map = {
-    confirmada: { tone: "ok" as const, label: "Confirmada" },
-    en_atencion: { tone: "info" as const, label: "En atención" },
-    pendiente: { tone: "warn" as const, label: "Pendiente" },
-    completada: { tone: "info" as const, label: "Completada" },
-    cancelada: { tone: "err" as const, label: "Cancelada" },
-    ausente: { tone: "warn" as const, label: "Ausente" },
-  }[status];
-  return <Badge tone={map.tone}>{map.label}</Badge>;
+  return <Badge tone={ESTADO_TONO[status] ?? "muted"}>{ESTADO_LABEL[status] ?? status}</Badge>;
 }
 
 /** Selector de lo que puede recibir foco dentro del diálogo (para la trampa de foco). */
@@ -110,6 +103,10 @@ export function useDialogA11y(onClose: () => void) {
     (enfocables()[0] ?? panel.current)?.focus();
 
     const onKey = (e: KeyboardEvent) => {
+      // Con un diálogo abierto encima de otro (p. ej. «Crear paciente» sobre «Dar
+      // cita»), solo responde el de más arriba: si no, Escape cerraba los dos.
+      const abiertos = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+      if (abiertos.length > 1 && abiertos[abiertos.length - 1] !== panel.current) return;
       if (e.key === "Escape") { e.stopPropagation(); onClose(); return; }
       if (e.key !== "Tab") return;
       const els = enfocables();
@@ -146,7 +143,7 @@ export function useDialogA11y(onClose: () => void) {
  * llega a tapar el header sticky (z-30) — el usuario podía seguir usando el
  * buscador y cerrar sesión con un modal abierto, contradiciendo aria-modal.
  */
-function Portal({ children }: { children: ReactNode }) {
+export function Portal({ children }: { children: ReactNode }) {
   const [montado, setMontado] = useState(false);
   useEffect(() => { setMontado(true); }, []);   // en SSR no hay document
   return montado ? createPortal(children, document.body) : null;
@@ -156,13 +153,13 @@ function Portal({ children }: { children: ReactNode }) {
  *  se monta DENTRO del portal, cuando el panel ya existe en el DOM. Si el hook
  *  viviera en Modal, su efecto correría en el primer render —cuando el portal
  *  todavía devuelve null— y el foco nunca entraría al diálogo. */
-function ModalContent({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+function ModalContent({ title, onClose, children, wide, xl }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; xl?: boolean }) {
   const { titleId, dialogProps } = useDialogA11y(onClose);
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4" onClick={onClose} role="presentation">
       <div
         {...dialogProps}
-        className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl bg-white p-6 shadow-pop outline-none ${wide ? "max-w-3xl" : "max-w-lg"}`}
+        className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl bg-white p-6 shadow-pop outline-none ${xl ? "max-w-6xl" : wide ? "max-w-3xl" : "max-w-lg"}`}
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 id={titleId} className="text-lg font-extrabold text-clinic-text">{title}</h3>
@@ -177,7 +174,7 @@ function ModalContent({ title, onClose, children, wide }: { title: string; onClo
 }
 
 /** Diálogo modal accesible. Ver useDialogA11y. */
-export function Modal(props: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+export function Modal(props: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; xl?: boolean }) {
   return (
     <Portal>
       <ModalContent {...props} />

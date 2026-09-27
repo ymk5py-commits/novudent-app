@@ -36,10 +36,11 @@ export const ROLES: Role[] = ["admin", "cashier", "receptionist", "dentist", "as
 const MATRIX: Record<Permission, Role[]> = {
   "users.manage": ["admin"],
   "practice.config": ["admin"],
-  // Todos usan la agenda; dentista y asistente, solo la suya o la de sus doctores.
+  // Todos ven la agenda; dentista y asistente, solo la suya o la de sus doctores y en
+  // solo lectura: los cambios de horario los hace la recepción (revisión del 27/9/2026).
   "agenda.view": ROLES,
-  "agenda.create": ROLES,
-  "agenda.edit": ROLES,
+  "agenda.create": ["admin", "cashier", "receptionist"],
+  "agenda.edit": ["admin", "cashier", "receptionist"],
   "agenda.all": ["admin", "cashier", "receptionist"],
   "patients.personal": ["admin", "cashier", "receptionist"],
   "emr.read": ["admin", "dentist", "assistant"], // asistente: solo lectura
@@ -80,6 +81,6 @@ export const ROLE_DESCRIPCION: Record<Role, string> = {
   admin: "Acceso completo, incluida la configuración de la clínica.",
   cashier: "Agenda de todos, datos del paciente, cobros y arqueo de caja. No ve reportes del negocio.",
   receptionist: "Agenda de todos y datos del paciente para cargarlos o editarlos. No ve montos ni la ficha clínica.",
-  dentist: "Su agenda, sus planes de tratamiento y la ficha clínica de sus pacientes. No ve montos ni datos personales.",
+  dentist: "Su agenda (solo lectura), sus planes de tratamiento y la ficha clínica de sus pacientes. No ve montos ni datos personales.",
   assistant: "La agenda, los planes y la ficha de los doctores que tenga asignados, en solo lectura. No ve montos ni datos personales.",
 };

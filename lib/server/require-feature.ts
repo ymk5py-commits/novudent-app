@@ -72,3 +72,23 @@ export async function requireFeature(uid: string, feature: PlanFeature): Promise
 
   return { uid, clinicId, role: String(user.role ?? "") };
 }
+
+/**
+ * Exige que `uid` sea miembro activo de una clínica con la suscripción vigente, sin
+ * mirar el plan: para funciones que tienen todos los planes (por ejemplo, avisar al
+ * paciente por correo). Mismas lecturas y mismos 403 que `requireFeature`.
+ */
+export async function requireMiembro(uid: string): Promise<Autorizado> {
+  if (!uid || !isValidId(uid)) throw new AuthError("Sesión inválida", 403);
+  const dir = (await getDocument(`directory/${uid}`).catch(() => null)) as { clinicId?: string } | null;
+  const clinicId = dir?.clinicId;
+  if (!clinicId || typeof clinicId !== "string" || !isValidId(clinicId)) {
+    throw new AuthError("Tu cuenta no está asignada a ninguna clínica.", 403);
+  }
+  const user = (await getDocument(`clinics/${clinicId}/users/${uid}`).catch(() => null)) as
+    | { active?: boolean; role?: string } | null;
+  if (!user || user.active === false) throw new AuthError("Tu usuario no está activo en la clínica.", 403);
+  const sub = (await getDocument(`subscriptions/${clinicId}`).catch(() => null)) as Subscription | null;
+  if (!isSubscriptionActive(sub)) throw new AuthError("La suscripción de la clínica no está vigente.", 403);
+  return { uid, clinicId, role: String(user.role ?? "") };
+}
