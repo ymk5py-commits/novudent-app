@@ -14,7 +14,7 @@ import { describe, it, expect } from "vitest";
  * alguien "simplifica" el catch: un permission-denied es una colección vacía;
  * cualquier otro error sigue explotando. */
 
-/** Copia exacta de la lógica de `col()` en lib/store.tsx. */
+/** Copia exacta de la lógica de `leer()` en lib/store.tsx (la que usa `col()`). */
 async function leerColeccion<T>(getDocs: () => Promise<{ docs: { data: () => T }[] }>) {
   try {
     return await getDocs();

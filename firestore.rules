@@ -155,6 +155,34 @@ service cloud.firestore {
       return ['emr', 'odontogram', 'prescriptions', 'ortho', 'perio'];
     }
 
+    // Alta de un mensaje directo (chat), SIEMPRE a nombre propio:
+    //   • `fromId` es quien escribe: nadie manda un directo a nombre de otro, ni el admin;
+    //   • `participants` son exactamente remitente y destinatario, y el destinatario
+    //     es OTRA persona activa de la misma clínica;
+    //   • texto no vacío y de hasta 2000 caracteres (el mismo tope que la interfaz,
+    //     lib/chat.ts MAX_TEXTO);
+    //   • `difusionId` (copia de una difusión general) solo lo pone el admin;
+    //   • lista blanca de campos: `readAt` no viene en el alta, lo marca después el
+    //     destinatario.
+    function directoValido(cid, docId) {
+      let d = request.resource.data;
+      let destinatario = /databases/$(database)/documents/clinics/$(cid)/users/$(d.toId);
+      return d.keys().hasAll(['id', 'clinicId', 'fromId', 'fromName', 'toId', 'participants', 'text', 'createdAt'])
+        && d.keys().hasOnly(['id', 'clinicId', 'fromId', 'fromName', 'toId', 'participants', 'text', 'createdAt', 'difusionId'])
+        && d.id == docId
+        && d.clinicId == cid
+        && d.fromId == request.auth.uid
+        && d.toId is string && d.toId != d.fromId
+        && d.participants is list && d.participants.size() == 2
+        && d.participants.hasAll([d.fromId, d.toId])
+        && d.text is string && d.text.trim().size() > 0 && d.text.size() <= 2000
+        && d.fromName is string && d.fromName.size() <= 200
+        && d.createdAt is string
+        && (!('difusionId' in d) || (d.difusionId is string && isAdmin(cid)))
+        && exists(destinatario)
+        && get(destinatario).data.get('active', true) != false;
+    }
+
     // ---- Allowlist de servicio: nunca accesible por el cliente. ----
     // isService() la consulta con exists() (privilegiado), así que puede quedar
     // totalmente cerrada. Solo el dueño la edita desde la consola de Firebase.
@@ -417,10 +445,40 @@ service cloud.firestore {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
         allow write: if canWrite(cid);
       }
-      // Chat interno del equipo
+      // Chat interno del equipo (canal «Equipo»: lo lee todo miembro)
       match /teamMessages/{docId} {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
         allow write: if canWrite(cid);
+      }
+      // Mensajes directos del chat: 1 a 1, y las copias de una difusión del admin.
+      //
+      // La ÚNICA colección de la clínica que un miembro no lee entera: un directo
+      // es de sus dos participantes y del admin, nadie más (ni el usuario de
+      // servicio: ningún proceso del servidor los necesita). Como las reglas NO
+      // son filtros, el store de un no-admin la consulta con
+      // `participants array-contains <su uid>`; pedirla completa falla entera.
+      //
+      // La difusión general se guarda como UN documento por destinatario con el
+      // mismo `difusionId`: cada uno lee su copia y ninguna otra, así que no hay
+      // forma de saber a quién más le llegó. El admin sí, porque lee todo. Los ids
+      // de las copias son aleatorios (lib/chat.ts idMensaje): si se derivaran del
+      // destinatario, cualquiera adivinaría la ruta de la copia de un compañero y
+      // con un alta de prueba (libre → pasa, ocupada → falla) sabría si la recibió.
+      match /directMessages/{docId} {
+        allow read: if isDemo(cid)
+          || (isMember(cid) && (request.auth.uid in resource.data.participants || isAdmin(cid)));
+        allow create: if isDemoRW(cid)
+          || (isMember(cid) && subActive(cid) && directoValido(cid, docId));
+        // Solo el destinatario, y solo para marcarlo leído. Sin subActive a
+        // propósito: marcar leído es parte de CONSULTAR (no crea contenido), y con
+        // la suscripción vencida la clínica sigue leyendo su chat.
+        allow update: if isDemoRW(cid)
+          || (isMember(cid)
+              && request.auth.uid == resource.data.toId
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt'])
+              && request.resource.data.readAt is string);
+        // Un mensaje no se borra, ni siquiera el admin. La demo sí, para reiniciarla.
+        allow delete: if isDemoRW(cid);
       }
       // Encuestas (definición): admin escribe; la respuesta pública entra por route de servicio
       match /surveys/{docId} {

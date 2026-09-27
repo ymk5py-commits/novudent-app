@@ -21,15 +21,15 @@ import {
   assertFails,
   assertSucceeds,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, getDocs, collection, collectionGroup, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, collectionGroup, setDoc, updateDoc, deleteDoc, query, where } from "firebase/firestore";
 
 const PROJECT_ID = "novudent-rules-test";
 let testEnv;
 
-/** Las 31 colecciones por clínica que escribe el store (lib/store.tsx:162-164)
- *  + `slotLocks`, que escribe la ruta de reservas online. Se usan para barrer
- *  el aislamiento colección por colección: alcanza con que UNA se escape para
- *  que se filtre historia clínica entre clínicas. */
+/** Las 32 colecciones por clínica que escribe el store (loadFirestore en
+ *  lib/store.tsx) + `slotLocks`, que escribe la ruta de reservas online. Se usan
+ *  para barrer el aislamiento colección por colección: alcanza con que UNA se
+ *  escape para que se filtre historia clínica entre clínicas. */
 const COLECCIONES_DE_CLINICA = [
   "users", "patients", "appointments", "billing", "procedures", "budgets",
   "payments", "expenses", "stock", "stockMoves", "waitlist", "outbox",
@@ -37,8 +37,17 @@ const COLECCIONES_DE_CLINICA = [
   "campaigns", "labOrders", "settlements", "boxes", "patientNotes",
   "fiscalDocs", "cashSessions", "sterilizationCycles", "teamMessages",
   "surveys", "surveyResponses", "mgmtTasks", "environmentalLogs", "eduVideos",
-  "branches",
+  "branches", "directMessages",
 ];
+
+/** Un mensaje directo bien formado, igual al que arma lib/chat.ts. `extra` pisa
+ *  o agrega campos: así cada prueba rompe UNA sola condición de la regla. */
+function directo({ id, cid = "clA", de, a, texto = "Hola, ¿tenés un minuto?", ...extra }) {
+  return {
+    id, clinicId: cid, fromId: de, fromName: `Usuario ${de}`, toId: a,
+    participants: [de, a], text: texto, createdAt: "2026-09-27T12:00:00.000Z", ...extra,
+  };
+}
 
 /** Contexto autenticado con uid + (opcional) seed de membresía vía admin. */
 function authed(uid) {
@@ -81,6 +90,15 @@ before(async () => {
     await setDoc(doc(db, "clinics/clA/payments/pay1"), { id: "pay1", amount: 1000 });
     await setDoc(doc(db, "clinics/clA/expenses/exp1"), { id: "exp1", amount: 500 });
     await setDoc(doc(db, "clinics/clA/settlements/liq1"), { id: "liq1", dentistId: "dentA", total: 3000000 });
+
+    // Chat directo (ver el bloque MENSAJES DIRECTOS al final): un directo entre la
+    // dentista y la asistente, y una difusión del admin repartida en tres copias.
+    await setDoc(doc(db, "clinics/clA/users/exA"), { id: "exA", role: "receptionist", active: false, clinicId: "clA", email: "ex@a.com" });
+    await setDoc(doc(db, "clinics/clA/directMessages/dm1"), directo({ id: "dm1", de: "dentA", a: "asisA" }));
+    await setDoc(doc(db, "clinics/clA/directMessages/dmEx"), directo({ id: "dmEx", de: "adminA", a: "exA", texto: "Pasá a firmar la baja" }));
+    for (const [id, a] of [["cpDent", "dentA"], ["cpAsis", "asisA"], ["cpRecep", "recepA"]]) {
+      await setDoc(doc(db, `clinics/clA/directMessages/${id}`), directo({ id, de: "adminA", a, texto: "El viernes cerramos a las 16", difusionId: "dif1" }));
+    }
     // Clínica B
     await setDoc(doc(db, "clinics/clB"), { id: "clB", name: "B", plan: "solo" });
     await setDoc(doc(db, "clinics/clB/users/adminB"), { id: "adminB", role: "admin", active: true, clinicId: "clB", email: "admin@b.com" });
@@ -90,6 +108,8 @@ before(async () => {
     await setDoc(doc(db, "clinics/clV/users/adminV"), { id: "adminV", role: "admin", active: true, clinicId: "clV", email: "admin@v.com" });
     await setDoc(doc(db, "clinics/clV/patients/pv"), { id: "pv", firstName: "Vito" });
     await setDoc(doc(db, "subscriptions/clV"), { clinicId: "clV", plan: "clinica", status: "past_due" });
+    await setDoc(doc(db, "clinics/clV/users/dentV"), { id: "dentV", role: "dentist", active: true, clinicId: "clV", email: "dent@v.com" });
+    await setDoc(doc(db, "clinics/clV/directMessages/dmV"), directo({ id: "dmV", cid: "clV", de: "adminV", a: "dentV" }));
 
     // Clínica S: plan SOLO al día — para probar el gating de módulos premium
     await setDoc(doc(db, "clinics/clS"), { id: "clS", name: "S", plan: "solo" });
@@ -112,6 +132,8 @@ before(async () => {
     await setDoc(doc(db, "clinics/clX"), { id: "clX", name: "X", plan: "cadena", config: { botika: { token: "SECRETO" } } });
     await setDoc(doc(db, "subscriptions/clX"), { clinicId: "clX", plan: "cadena", status: "active" });
     await setDoc(doc(db, "clinics/clX/users/adminX"), { id: "adminX", role: "admin", active: true, clinicId: "clX", email: "admin@x.com" });
+    // Segunda persona de X: un directo necesita un destinatario de la misma clínica.
+    await setDoc(doc(db, "clinics/clX/users/recepX"), { id: "recepX", role: "receptionist", active: true, clinicId: "clX", email: "recep@x.com" });
     for (const c of COLECCIONES_DE_CLINICA) {
       await setDoc(doc(db, `clinics/clX/${c}/seed`), { id: "seed", clinicId: "clX", secreto: "PII de la clínica X" });
     }
@@ -642,7 +664,7 @@ async function fugas(fn) {
   return rotas;
 }
 
-// ---- 1. Barrido cross-clínica sobre las 32 colecciones ----
+// ---- 1. Barrido cross-clínica sobre las 33 colecciones ----
 
 test("AISLAMIENTO: un miembro de A no LEE ninguna colección de la clínica X", async () => {
   const rotas = await fugas((c) => getDoc(doc(authed("adminA"), `clinics/clX/${c}/seed`)));
@@ -682,7 +704,9 @@ test("CONTROL: un miembro legítimo de X SÍ opera sus colecciones (el deny de a
   for (const c of COLECCIONES_DE_CLINICA) {
     // surveyResponses es de escritura server-only por diseño (alta pública vía /api)
     if (c === "surveyResponses") continue;
-    try { await assertSucceeds(setDoc(doc(authed("adminX"), `clinics/clX/${c}/ok`), { id: "ok" })); }
+    // directMessages valida el contenido (remitente, destinatario, texto): va un directo bien formado.
+    const datos = c === "directMessages" ? directo({ id: "ok", cid: "clX", de: "adminX", a: "recepX" }) : { id: "ok" };
+    try { await assertSucceeds(setDoc(doc(authed("adminX"), `clinics/clX/${c}/ok`), datos)); }
     catch { rotas.push(c); }
   }
   assert.deepEqual(rotas, [], `colecciones que el propio dueño NO puede escribir: ${rotas.join(", ")}`);
@@ -733,7 +757,7 @@ test("COLLECTION GROUP: no se puede barrer una colección a través de TODAS las
   // El agujero clásico de multi-tenant en Firestore: si existiera un
   // `match /{path=**}/patients/{id}` permisivo, un solo query devolvería los
   // pacientes de todas las clínicas del proyecto.
-  for (const c of ["patients", "users", "signatures", "radiographs", "payments", "settlements", "billing"]) {
+  for (const c of ["patients", "users", "signatures", "radiographs", "payments", "settlements", "billing", "directMessages"]) {
     await assertFails(getDocs(collectionGroup(authed("adminA"), c)));
     await assertFails(getDocs(collectionGroup(anon(), c)));
   }
@@ -876,4 +900,144 @@ test("DEMO: `cl_clinica-demo` es una clínica REAL — isDemo debe ser igualdad 
   await assertFails(setDoc(doc(anon(), "clinics/cl_clinica-demo/patients/pReal"), { firstName: "Hackeado" }));
   await assertFails(getDoc(doc(anon(), "clinics/cl_demo-suffix/patients/pReal")));
   await assertFails(getDoc(doc(authed("forastero"), "clinics/cl_clinica-demo/patients/pReal")));
+});
+
+// =============================================================================
+// MENSAJES DIRECTOS (chat) — la única colección de la clínica que un miembro NO
+// lee entera. Un directo es de sus dos participantes y del admin. La difusión del
+// admin se guarda como UNA copia por destinatario (mismo difusionId): cada uno lee
+// la suya y nada más, así que no hay forma de averiguar a quién más le llegó.
+//
+// Fixtures del before(): dm1 (dentA → asisA), dmEx (adminA → exA, dado de baja),
+// la difusión dif1 repartida en cpDent / cpAsis / cpRecep, y dmV en la clínica V
+// (suscripción vencida).
+// =============================================================================
+
+const DM = (cid = "clA") => `clinics/${cid}/directMessages`;
+
+test("DIRECTOS: lo leen sus dos participantes; otra persona de la misma clínica NO", async () => {
+  await assertSucceeds(getDoc(doc(authed("dentA"), `${DM()}/dm1`))); // quien lo mandó
+  await assertSucceeds(getDoc(doc(authed("asisA"), `${DM()}/dm1`))); // a quien le llegó
+  await assertFails(getDoc(doc(authed("recepA"), `${DM()}/dm1`)));
+  await assertFails(getDoc(doc(authed("cajaA"), `${DM()}/dm1`)));
+});
+
+test("DIRECTOS: el admin lee cualquier directo de su clínica y lista la colección entera", async () => {
+  await assertSucceeds(getDoc(doc(authed("adminA"), `${DM()}/dm1`)));
+  const todos = await assertSucceeds(getDocs(collection(authed("adminA"), DM())));
+  const ids = todos.docs.map((d) => d.id);
+  for (const id of ["dm1", "dmEx", "cpDent", "cpAsis", "cpRecep"]) assert.ok(ids.includes(id), `falta ${id}`);
+});
+
+test("DIRECTOS: un no-admin NO lista la colección entera; SÍ la consulta por participants (la del store)", async () => {
+  // Las reglas no son filtros: pedir todo siendo recepcionista no trae «lo suyo», falla entero.
+  await assertFails(getDocs(collection(authed("recepA"), DM())));
+  const mios = await assertSucceeds(getDocs(query(collection(authed("recepA"), DM()), where("participants", "array-contains", "recepA"))));
+  assert.ok(mios.docs.some((d) => d.id === "cpRecep"));
+  assert.ok(mios.docs.every((d) => d.data().participants.includes("recepA")));
+  // Y no sirve pedir las conversaciones de OTRO.
+  await assertFails(getDocs(query(collection(authed("recepA"), DM()), where("participants", "array-contains", "dentA"))));
+});
+
+test("DIFUSIÓN: cada destinatario lee solo SU copia — no averigua a quién más le llegó", async () => {
+  const asis = authed("asisA");
+  await assertSucceeds(getDoc(doc(asis, `${DM()}/cpAsis`)));
+  await assertFails(getDoc(doc(asis, `${DM()}/cpDent`)));
+  await assertFails(getDoc(doc(asis, `${DM()}/cpRecep`)));
+  // Ni consultando por el difusionId que trae su propia copia.
+  await assertFails(getDocs(query(collection(asis, DM()), where("difusionId", "==", "dif1"))));
+  // El admin sí ve a quién le llegó.
+  const copias = await assertSucceeds(getDocs(query(collection(authed("adminA"), DM()), where("difusionId", "==", "dif1"))));
+  assert.deepEqual(copias.docs.map((d) => d.data().toId).sort(), ["asisA", "dentA", "recepA"]);
+});
+
+test("DIRECTOS: un ex empleado (active:false) ya no lee ni sus propios directos", async () => {
+  await assertFails(getDoc(doc(authed("exA"), `${DM()}/dmEx`)));
+  await assertFails(getDocs(query(collection(authed("exA"), DM()), where("participants", "array-contains", "exA"))));
+});
+
+test("DIRECTOS: un miembro manda un directo bien formado a otra persona de su clínica", async () => {
+  await assertSucceeds(setDoc(doc(authed("recepA"), `${DM()}/dmOk`), directo({ id: "dmOk", de: "recepA", a: "dentA" })));
+  // El tope es de 2000 caracteres, inclusive (el mismo que la interfaz).
+  await assertSucceeds(setDoc(doc(authed("recepA"), `${DM()}/dmLargo`), directo({ id: "dmLargo", de: "recepA", a: "dentA", texto: "x".repeat(2000) })));
+});
+
+test("DIRECTOS: nadie manda un directo a nombre de otro (ni el admin, ni sin sesión)", async () => {
+  const casos = [
+    ["remitente ajeno", "dentA", directo({ id: "fx1", de: "asisA", a: "recepA" })],
+    ["participants sin el que escribe", "dentA", directo({ id: "fx2", de: "dentA", a: "recepA", participants: ["asisA", "recepA"] })],
+    ["un tercero colado en participants", "dentA", directo({ id: "fx3", de: "dentA", a: "recepA", participants: ["dentA", "recepA", "cajaA"] })],
+    ["el admin firmando por la dentista", "adminA", directo({ id: "fx4", de: "dentA", a: "recepA" })],
+  ];
+  const pasaron = [];
+  for (const [nombre, quien, datos] of casos) {
+    try { await assertFails(setDoc(doc(authed(quien), `${DM()}/${datos.id}`), datos)); }
+    catch { pasaron.push(nombre); }
+  }
+  assert.deepEqual(pasaron, [], `suplantaciones que la regla dejó pasar: ${pasaron.join(", ")}`);
+  await assertFails(setDoc(doc(anon(), `${DM()}/fx5`), directo({ id: "fx5", de: "dentA", a: "recepA" })));
+});
+
+test("DIRECTOS: el alta valida destinatario, texto y forma del documento", async () => {
+  const sinTexto = directo({ id: "v11", de: "dentA", a: "recepA" });
+  delete sinTexto.text;
+  const casos = [
+    ["a sí mismo", "v1", directo({ id: "v1", de: "dentA", a: "dentA", participants: ["dentA", "dentA"] })],
+    ["a alguien que no es de la clínica", "v2", directo({ id: "v2", de: "dentA", a: "forastero" })],
+    ["a un ex empleado", "v3", directo({ id: "v3", de: "dentA", a: "exA" })],
+    ["a alguien de otra clínica", "v4", directo({ id: "v4", de: "dentA", a: "adminB" })],
+    ["texto en blanco", "v5", directo({ id: "v5", de: "dentA", a: "recepA", texto: "   " })],
+    ["texto de 2001 caracteres", "v6", directo({ id: "v6", de: "dentA", a: "recepA", texto: "x".repeat(2001) })],
+    ["clinicId de otra clínica", "v7", directo({ id: "v7", de: "dentA", a: "recepA", clinicId: "clB" })],
+    ["id distinto del documento", "v8", directo({ id: "otro", de: "dentA", a: "recepA" })],
+    ["campo de más", "v9", directo({ id: "v9", de: "dentA", a: "recepA", adjunto: "data:x" })],
+    ["ya marcado leído en el alta", "v10", directo({ id: "v10", de: "dentA", a: "recepA", readAt: "2026-09-27T12:01:00.000Z" })],
+    ["sin texto", "v11", sinTexto],
+  ];
+  const pasaron = [];
+  for (const [nombre, docId, datos] of casos) {
+    try { await assertFails(setDoc(doc(authed("dentA"), `${DM()}/${docId}`), datos)); }
+    catch { pasaron.push(nombre); }
+  }
+  assert.deepEqual(pasaron, [], `altas inválidas que la regla dejó pasar: ${pasaron.join(", ")}`);
+});
+
+test("DIFUSIÓN: solo el admin la manda — un difusionId en el alta de otro rol se rechaza", async () => {
+  await assertFails(setDoc(doc(authed("dentA"), `${DM()}/dfNo`), directo({ id: "dfNo", de: "dentA", a: "asisA", difusionId: "difTrucha" })));
+  await assertFails(setDoc(doc(authed("cajaA"), `${DM()}/dfNo2`), directo({ id: "dfNo2", de: "cajaA", a: "asisA", difusionId: "difTrucha" })));
+  await assertSucceeds(setDoc(doc(authed("adminA"), `${DM()}/dfSi`), directo({ id: "dfSi", de: "adminA", a: "cajaA", difusionId: "dif2" })));
+});
+
+test("DIRECTOS: lo marca leído el destinatario y nadie más (ni el remitente, ni el admin)", async () => {
+  const leido = { readAt: "2026-09-27T12:05:00.000Z" };
+  await assertFails(updateDoc(doc(authed("dentA"), `${DM()}/dm1`), leido));  // quien lo mandó
+  await assertFails(updateDoc(doc(authed("recepA"), `${DM()}/dm1`), leido)); // un tercero
+  await assertFails(updateDoc(doc(authed("adminA"), `${DM()}/dm1`), leido)); // el admin lo lee, no lo toca
+  await assertSucceeds(updateDoc(doc(authed("asisA"), `${DM()}/dm1`), leido));
+});
+
+test("DIRECTOS: el destinatario solo toca readAt — no reescribe el texto ni el remitente", async () => {
+  const asis = authed("asisA");
+  await assertFails(updateDoc(doc(asis, `${DM()}/dm1`), { text: "Nunca dije eso" }));
+  await assertFails(updateDoc(doc(asis, `${DM()}/dm1`), { readAt: "2026-09-27T12:06:00.000Z", fromId: "adminA" }));
+  await assertFails(updateDoc(doc(asis, `${DM()}/dm1`), { participants: ["asisA", "recepA"] }));
+});
+
+test("DIRECTOS: nadie borra un mensaje, ni el admin", async () => {
+  for (const quien of ["dentA", "asisA", "adminA"]) {
+    await assertFails(deleteDoc(doc(authed(quien), `${DM()}/dm1`)));
+  }
+});
+
+test("DIRECTOS: con la suscripción vencida se leen y se marcan leídos, pero no se manda nada nuevo", async () => {
+  await assertSucceeds(getDoc(doc(authed("dentV"), `${DM("clV")}/dmV`)));
+  await assertSucceeds(updateDoc(doc(authed("dentV"), `${DM("clV")}/dmV`), { readAt: "2026-09-27T12:07:00.000Z" }));
+  await assertFails(setDoc(doc(authed("adminV"), `${DM("clV")}/dmV2`), directo({ id: "dmV2", cid: "clV", de: "adminV", a: "dentV" })));
+});
+
+test("DIRECTOS: la demo sigue siendo el sandbox público de siempre", async () => {
+  await assertSucceeds(getDocs(collection(anon(), DM("cl_demo"))));
+  // En la demo el remitente es un usuario de ejemplo (u1…), no el uid de la sesión anónima.
+  await assertSucceeds(setDoc(doc(authed("visitante"), `${DM("cl_demo")}/dmDemo`), directo({ id: "dmDemo", cid: "cl_demo", de: "u1", a: "u2" })));
+  await assertFails(setDoc(doc(anon(), `${DM("cl_demo")}/dmDemo2`), directo({ id: "dmDemo2", cid: "cl_demo", de: "u1", a: "u2" })));
 });

@@ -68,7 +68,8 @@ clinics/{cid}                     ← doc raíz: nombre, config, plan (legacy)
   ├── billing/{id} · fiscalDocs/{id}
   ├── radiographs · signatures · labOrders · settlements · boxes
   ├── crmCards · campaigns · surveys · surveyResponses
-  └── … (30 colecciones en total)
+  ├── teamMessages · directMessages   ← chat: canal «Equipo» y directos 1 a 1
+  └── … (32 colecciones en total)
 ```
 
 **Regla dura:** nunca se escriben datos de una clínica en otra. El store escribe con
@@ -106,6 +107,13 @@ Helpers principales de las reglas:
 - `isDemo(cid)` — sandbox público `cl_demo`.
 - `subActive(cid)` — suscripción al día (chequea **status y fecha**).
 - `effectivePlan(cid)` + `canWritePremium(cid, planes)` — gating de módulos por plan.
+
+**La excepción: `directMessages`.** Es la única colección de la clínica que un miembro no
+lee entera: un directo lo leen sus dos participantes y el admin. Como las reglas no son
+filtros, el store de un no-admin la carga con `participants array-contains <uid>` (pedirla
+completa falla entera) y la del admin, completa. La difusión general del admin es un
+fan-out —una copia por destinatario, con ids al azar—, así que nadie puede averiguar a
+quién más le llegó. No la «normalices» al patrón `isMember` de las demás.
 
 **Default-deny**: las colecciones se enumeran explícitamente. Una colección nueva sin
 regla queda **denegada** — por eso agregar una feature exige tocar `firestore.rules` y

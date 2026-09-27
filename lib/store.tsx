@@ -8,7 +8,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, onSnapshot,
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, onSnapshot, query, where, type Query,
 } from "firebase/firestore";
 import { app, fsdb, createAuthUser, signInEmail, currentIdToken, signOutUser, currentAuthUid, signInAnonymousIfNeeded } from "./firebase";
 
@@ -47,10 +47,11 @@ async function ensureAuth() {
   }
 }
 import type {
-  DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, OdontogramStatus, OdontogramToothState, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic, OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo, Branch, CrmCard, Campaign, LabOrder, Settlement, Box, Subscription,
+  DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, OdontogramStatus, OdontogramToothState, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic, OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, DirectMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo, Branch, CrmCard, Campaign, LabOrder, Settlement, Box, Subscription,
 } from "./types";
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
+import { can } from "./rbac";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { planUserLimitError } from "./plan";
 import { worstSeverity } from "./recovery";
@@ -81,7 +82,11 @@ const clean = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
 function loadLocal(): DB {
   try {
     const raw = localStorage.getItem(DB_KEY);
-    if (raw) return JSON.parse(raw) as DB;
+    if (raw) {
+      const guardada = JSON.parse(raw) as DB;
+      // Un caché guardado antes del chat directo no trae la colección.
+      return { ...guardada, directMessages: guardada.directMessages ?? [] };
+    }
   } catch {}
   const seed = buildSeed();
   try { localStorage.setItem(DB_KEY, JSON.stringify(seed)); } catch {}
@@ -109,6 +114,7 @@ async function seedFirestore(seed: DB) {
   for (const cs of seed.cashSessions) batch.set(doc(fsdb, "clinics", CLINIC_ID, "cashSessions", cs.id), clean(cs));
   for (const sc of seed.sterilizationCycles) batch.set(doc(fsdb, "clinics", CLINIC_ID, "sterilizationCycles", sc.id), clean(sc));
   for (const tm of seed.teamMessages) batch.set(doc(fsdb, "clinics", CLINIC_ID, "teamMessages", tm.id), clean(tm));
+  for (const dm of seed.directMessages) batch.set(doc(fsdb, "clinics", CLINIC_ID, "directMessages", dm.id), clean(dm));
   for (const s of seed.surveys) batch.set(doc(fsdb, "clinics", CLINIC_ID, "surveys", s.id), clean(s));
   for (const r of seed.surveyResponses) batch.set(doc(fsdb, "clinics", CLINIC_ID, "surveyResponses", r.id), clean(r));
   for (const mt of seed.mgmtTasks) batch.set(doc(fsdb, "clinics", CLINIC_ID, "mgmtTasks", mt.id), clean(mt));
@@ -137,7 +143,7 @@ async function loadFirestore(): Promise<DB> {
    *
    * Esto no es defensa preventiva: sin el catch, Novudent queda INUTILIZABLE
    * para dentistas y asistentes en cuanto se despliegan las reglas de RBAC.
-   * Las 31 colecciones se piden en un solo `Promise.all`, que rechaza al primer
+   * Las 32 colecciones se piden en un solo `Promise.all`, que rechaza al primer
    * error; `expenses` y `settlements` son admin-only por regla, así que el
    * permission-denied de un dentista tumbaba el arranque ENTERO y lo mandaba a
    * "modo local". O sea: la clínica compra el sistema y solo el dueño puede
@@ -147,21 +153,44 @@ async function loadFirestore(): Promise<DB> {
    * Devolver vacío es lo correcto, no un parche: que una asistente no vea los
    * gastos ES la regla de negocio. La interfaz ya esconde esas pantallas por
    * `can(role, …)`, así que una lista vacía es exactamente lo que corresponde. */
-  const col = async (name: string) => {
+  const leer = async (ref: Query) => {
     try {
-      return await getDocs(collection(fsdb, "clinics", CLINIC_ID, name));
+      return await getDocs(ref);
     } catch (e: any) {
       if (e?.code === "permission-denied") return null;
       throw e; // red caída, cuota, config rota: eso sí tiene que explotar
     }
   };
+  const col = (name: string) => leer(collection(fsdb, "clinics", CLINIC_ID, name));
   /** `.docs` de un snapshot que puede no haberse podido leer. */
   const filas = <T,>(snap: { docs: { data: () => unknown }[] } | null): T[] =>
     snap ? snap.docs.map((d) => d.data() as T) : [];
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos, branches] = await Promise.all([
-    col("users"), col("patients"), col("appointments"), col("billing"), col("procedures"),
+  const usersP = col("users");
+  /* Mensajes directos del chat: la ÚNICA colección de la clínica que un miembro no
+   * lee entera. Un directo es de sus dos participantes y del admin
+   * (firestore.rules), y como las reglas NO son filtros, pedir la colección
+   * completa siendo recepcionista no devuelve "lo suyo": Firestore rechaza la
+   * consulta ENTERA (y el `leer` de arriba la dejaría vacía). Cada uno pide sus
+   * conversaciones con `participants array-contains <su uid>`; la colección
+   * completa queda para el admin y para la demo, que es pública.
+   *
+   * El rol sale del padrón que se está cargando —la misma fuente que usan las
+   * reglas— y no de la sesión de localStorage, que se edita a mano. En una clínica
+   * real el id del usuario ES su uid de Firebase (users/{uid}, lo que mira
+   * isMember), así que `participants` y `request.auth.uid` hablan de lo mismo. */
+  const directosP = (async () => {
+    const ref = collection(fsdb, "clinics", CLINIC_ID, "directMessages");
+    if (CLINIC_ID === DEMO_CLINIC_ID) return leer(ref);
+    const uid = await currentAuthUid();
+    const yo = uid ? filas<User>(await usersP).find((u) => u.id === uid) : undefined;
+    if (!uid || !yo || yo.active === false) return null;
+    return leer(can(yo.role, "users.manage") ? ref : query(ref, where("participants", "array-contains", uid)));
+  })();
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos, branches, directMessages] = await Promise.all([
+    usersP, col("patients"), col("appointments"), col("billing"), col("procedures"),
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
     col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"), col("sterilizationCycles"), col("teamMessages"), col("surveys"), col("surveyResponses"), col("mgmtTasks"), col("environmentalLogs"), col("eduVideos"), col("branches"),
+    directosP,
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -190,6 +219,7 @@ async function loadFirestore(): Promise<DB> {
     cashSessions: filas<CashSession>(cashSessions),
     sterilizationCycles: filas<SterilizationCycle>(sterilizationCycles),
     teamMessages: filas<TeamMessage>(teamMessages),
+    directMessages: filas<DirectMessage>(directMessages),
     surveys: filas<Survey>(surveys),
     surveyResponses: filas<SurveyResponse>(surveyResponses),
     mgmtTasks: filas<MgmtTask>(mgmtTasks),
@@ -468,6 +498,12 @@ interface Ctx {
   deleteSterilizationCycle: (id: string) => void;
   /* — Chat interno del equipo — */
   addTeamMessage: (m: TeamMessage) => void;
+  /** Mensaje directo a una persona (lo arma lib/chat.ts nuevoDirecto). */
+  addDirectMessage: (m: DirectMessage) => void;
+  /** Difusión general del admin: una copia por destinatario (lib/chat.ts armarDifusion). */
+  addDifusion: (copias: DirectMessage[]) => void;
+  /** Marca como leídos los directos recibidos; ignora los que no son para la sesión. */
+  markDirectsRead: (ids: string[]) => void;
   /* — Encuestas / NPS — */
   addSurvey: (s: Survey) => void;
   updateSurvey: (s: Survey) => void;
@@ -689,6 +725,35 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return unsub;
     // re-suscribir si cambia la clínica cargada (login multi-clínica)
   }, [backend, activeClinicId]);
+
+  /* ===== Tiempo real: mensajes directos del chat =====
+   * Un directo tiene que llegar sin F5, y el contador de no leídos del menú tiene
+   * que moverse en cualquier pantalla: por eso escucha el store y no la página del
+   * chat. Misma consulta que loadFirestore (ver ahí por qué un no-admin NO puede
+   * pedir la colección entera). En una clínica real `session.userId` es el uid de
+   * Firebase: la sesión solo se restaura si coincide (ver el primer efecto). */
+  const sesionUid = session?.userId;
+  const sesionRol = session?.role;
+  useEffect(() => {
+    if (backend !== "firebase" || !sesionUid || !sesionRol) return;
+    const cid = activeClinicId;
+    const ref = collection(fsdb, "clinics", cid, "directMessages");
+    const todos = cid === DEMO_CLINIC_ID || can(sesionRol, "users.manage");
+    const unsub = onSnapshot(
+      todos ? ref : query(ref, where("participants", "array-contains", sesionUid)),
+      (snap) => {
+        const directMessages = snap.docs.map((d) => d.data() as DirectMessage);
+        setDb((prev) => {
+          if ((prev.clinics[0]?.id ?? cid) !== cid) return prev; // snapshot tardío de otra clínica
+          const next = { ...prev, directMessages };
+          try { localStorage.setItem(DB_KEY, JSON.stringify(next)); } catch {}
+          return next;
+        });
+      },
+      (e) => console.warn("listener directMessages:", e)
+    );
+    return unsub;
+  }, [backend, activeClinicId, sesionUid, sesionRol]);
 
   /* write-through a Firestore (no-op en modo local). Siempre escribe en la
    * clínica cargada en memoria (clinicIdRef), nunca en la global mutable. */
@@ -956,6 +1021,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           // nada: el override sobrevive, y como su trabajo es SUPRIMIR la tarea
           // derivada, la bandeja queda muda para siempre.
           delExtras("mgmtTasks", db.mgmtTasks.map((x) => x.id), seed.mgmtTasks.map((x) => x.id));
+          // Lo que escribieron los visitantes en el chat directo de la demo.
+          delExtras("directMessages", db.directMessages.map((x) => x.id), seed.directMessages.map((x) => x.id));
           seedFirestore(seed).catch(() => {});
         }
         persist(seed);
@@ -1273,6 +1340,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addTeamMessage: (m) => {
         persist((prev) => ({ ...prev, teamMessages: [...prev.teamMessages, m] }));
         fsSave("teamMessages", m.id, m);
+      },
+      addDirectMessage: (m) => {
+        persist((prev) => ({ ...prev, directMessages: [...prev.directMessages, m] }));
+        fsSave("directMessages", m.id, m);
+      },
+      addDifusion: (copias) => {
+        // Todas las copias en un solo updater: nada de last-write-wins (ver persist).
+        persist((prev) => ({ ...prev, directMessages: [...prev.directMessages, ...copias] }));
+        copias.forEach((m) => fsSave("directMessages", m.id, m));
+      },
+      markDirectsRead: (ids) => {
+        if (!session || ids.length === 0) return;
+        const at = new Date().toISOString();
+        // Solo lo que es PARA la sesión: la regla rechaza el resto (el admin y la
+        // demo tienen en memoria directos ajenos).
+        const leidos = db.directMessages
+          .filter((m) => ids.includes(m.id) && m.toId === session.userId && !m.readAt)
+          .map((m) => ({ ...m, readAt: at }));
+        if (leidos.length === 0) return;
+        const porId = new Map(leidos.map((m) => [m.id, m]));
+        persist((prev) => ({ ...prev, directMessages: prev.directMessages.map((m) => porId.get(m.id) ?? m) }));
+        // Doc completo con readAt: es lo único que cambia, así la regla
+        // (affectedKeys ⊆ [readAt]) lo acepta.
+        leidos.forEach((m) => fsSave("directMessages", m.id, m));
       },
       addSurvey: (s) => {
         persist((prev) => ({ ...prev, surveys: [s, ...prev.surveys] }));
