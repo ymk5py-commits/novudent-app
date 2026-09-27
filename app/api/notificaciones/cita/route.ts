@@ -18,7 +18,7 @@ import type { AppointmentStatus, Role } from "@/lib/types";
  * clínica; el navegador solo dice QUÉ cita y QUÉ aviso. Así la ruta no sirve para
  * mandar texto arbitrario en nombre de la clínica.
  *
- * Env: RESEND_API_KEY y RESEND_FROM («Clínica <avisos@dominio-verificado>»). Sin ellas
+ * Env: RESEND_API_KEY y EMAIL_FROM («Clínica <avisos@dominio-verificado>»). Sin ellas
  * responde 503 con un mensaje claro: el resto de la agenda funciona igual.
  */
 
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   if (!rlIp.ok) return tooManyRequests(rlIp.retryAfterSec);
 
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM;
+  const from = process.env.EMAIL_FROM;
   if (!apiKey || !from || !isServerFirestoreConfigured()) {
     return NextResponse.json({ ok: false, error: "El envío de correos todavía no está configurado." }, { status: 503 });
   }

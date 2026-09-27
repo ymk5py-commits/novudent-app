@@ -61,8 +61,7 @@ falta, esa función responde 503 con un mensaje entendible.
 ### Correo al paciente (Resend)
 | Variable | Habilita |
 |---|---|
-| `RESEND_API_KEY` | «Enviar al correo» y «Notificar por mail» de la agenda (`/api/notificaciones/cita`). **Solo del lado del servidor** |
-| `RESEND_FROM` | Remitente, con un dominio verificado en Resend: `Clínica <avisos@tu-dominio>` |
+| `RESEND_API_KEY` · `EMAIL_FROM` | «Enviar al correo» y «Notificar por mail» de la agenda (`/api/notificaciones/cita`), las mismas que usa `/api/email`. El remitente lleva un dominio verificado en Resend: `Clínica <avisos@tu-dominio>`. **Solo del lado del servidor** |
 
 ### Cobro (Lemon Squeezy)
 | Variable | Habilita |
