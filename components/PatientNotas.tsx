@@ -10,7 +10,10 @@ import { Card, Btn, Field, inputCls, Empty } from "@/components/ui";
 
 const NOUN: Record<PatientNoteKind, string> = { comentario: "comentario", tarea: "tarea", email: "email" };
 
-export function PatientNotas({ patient, kind }: { patient: Patient; kind: PatientNoteKind }) {
+/** `sinAlta`: lista sin el formulario de carga. Lo usa la pestaña "Tareas de
+ *  gestión" para seguir mostrando las notas viejas de tipo tarea sin ofrecer
+ *  crear nuevas (ahora son tareas personalizadas). */
+export function PatientNotas({ patient, kind, sinAlta }: { patient: Patient; kind: PatientNoteKind; sinAlta?: boolean }) {
   const { db, session, addPatientNote, updatePatientNote, deletePatientNote } = useStore();
   const canWrite = session ? can(session.role, "patients.personal") : false; // roles v3: la pestaña es de datos personales
   const notes = db.patientNotes
@@ -38,7 +41,7 @@ export function PatientNotas({ patient, kind }: { patient: Patient; kind: Patien
 
   return (
     <div className="space-y-4">
-      {canWrite && (
+      {canWrite && !sinAlta && (
         <Card className="space-y-3 p-4">
           {kind === "email" && <Field label="Asunto"><input className={inputCls} value={subject} onChange={(e) => setSubject(e.target.value)} /></Field>}
           <Field label={kind === "tarea" ? "Descripción de la tarea" : kind === "email" ? "Detalle del email" : "Comentario"}>

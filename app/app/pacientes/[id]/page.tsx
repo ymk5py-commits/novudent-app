@@ -26,6 +26,7 @@ import { RecibirPagoTab } from "@/components/RecibirPago";
 import { HistorialTimeline } from "@/components/Historial";
 import { FacturacionPaciente } from "@/components/FacturacionPaciente";
 import { PatientNotas } from "@/components/PatientNotas";
+import { TareasPaciente } from "@/components/tareas/TareasPaciente";
 import { VoiceNoteButton, PatientBriefButton } from "@/components/NovudentIA";
 import { useClinicPlan } from "@/components/PlanGate";
 import Periodontogram from "@/components/Periodontogram";
@@ -39,12 +40,18 @@ type SubTab =
 
 type GroupDef = { key: string; label: string; tabs: { key: SubTab; label: string; icon: any }[] };
 
+const TODAS_LAS_PESTANAS = new Set<SubTab>([
+  "datos", "citas", "comentarios", "tareas", "emails", "formularios", "archivos", "consentimientos",
+  "resumen", "evoluciones", "antecedentes", "odontograma", "periodoncia", "historial", "radiografias", "copilot", "recetas",
+  "planes", "facturacion", "recibir-pago",
+]);
+
 const GROUPS: GroupDef[] = [
   { key: "datos-personales", label: "Datos personales", tabs: [
     { key: "datos", label: "Datos", icon: User },
     { key: "citas", label: "Citas", icon: CalendarDays },
     { key: "comentarios", label: "Comentarios", icon: MessageSquare },
-    { key: "tareas", label: "Tareas", icon: CheckSquare },
+    { key: "tareas", label: "Tareas de gestión", icon: CheckSquare },
     { key: "emails", label: "Emails", icon: Mail },
     { key: "formularios", label: "Formularios", icon: FileText },
     { key: "archivos", label: "Archivos", icon: FolderOpen },
@@ -89,6 +96,12 @@ export default function PatientProfile() {
   const [clipDate, setClipDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [medOpen, setMedOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Enlace directo a una pestaña (#planes desde "Ir al tratamiento" de la bandeja
+  // de tareas, #tareas…). Si el rol no la ve, cae en la primera que sí.
+  useEffect(() => {
+    const h = window.location.hash.slice(1);
+    if (TODAS_LAS_PESTANAS.has(h as SubTab)) setTab(h as SubTab);
+  }, []);
 
   const p = db.patients.find((x) => x.id === id);
   const appts = useMemo(() => db.appointments.filter((a) => a.patientId === id).sort((a, b) => b.start.localeCompare(a.start)), [db.appointments, id]);
@@ -108,7 +121,9 @@ export default function PatientProfile() {
   const verMontos = alcance.puede("money.view");
   const puedeVerPestana = (t: SubTab): boolean => {
     switch (t) {
-      case "datos": case "citas": case "comentarios": case "tareas": case "emails": return verPersonales;
+      case "datos": case "citas": case "comentarios": case "emails": return verPersonales;
+      // Las tareas de gestión son de todos (tasks.use): cada uno ve las suyas y las de sus pacientes.
+      case "tareas": return alcance.puede("tasks.use");
       case "formularios": case "consentimientos": return alcance.puede("engagement.forms");
       case "archivos": return verPersonales || alcance.puede("emr.read");
       case "planes": return alcance.puede("plans.view");
@@ -120,10 +135,11 @@ export default function PatientProfile() {
   };
   let grupos = GROUPS.map((g) => ({ ...g, tabs: g.tabs.filter((t) => puedeVerPestana(t.key)) })).filter((g) => g.tabs.length > 0);
   if (!verPersonales) {
-    // Sin datos personales el grupo quedaría solo con Archivos (las fotos de estudios): va a la ficha clínica.
-    const archivos = grupos.find((g) => g.key === "datos-personales")?.tabs.find((t) => t.key === "archivos");
+    // Sin datos personales el grupo quedaría solo con Archivos (las fotos de estudios)
+    // y Tareas de gestión: van a la ficha clínica.
+    const sueltas = grupos.find((g) => g.key === "datos-personales")?.tabs.filter((t) => t.key === "archivos" || t.key === "tareas") ?? [];
     grupos = grupos.filter((g) => g.key !== "datos-personales");
-    if (archivos) grupos = grupos.map((g) => (g.key === "ficha-clinica" ? { ...g, tabs: [...g.tabs, archivos] } : g));
+    if (sueltas.length) grupos = grupos.map((g) => (g.key === "ficha-clinica" ? { ...g, tabs: [...g.tabs, ...sueltas] } : g));
   }
   const tab: SubTab = puedeVerPestana(tabElegida) ? tabElegida : (grupos[0]?.tabs[0]?.key ?? "resumen");
 
@@ -417,7 +433,7 @@ export default function PatientProfile() {
         </Reveal>
       )}
       {tab === "comentarios" && <Reveal><PatientNotas patient={p} kind="comentario" /></Reveal>}
-      {tab === "tareas" && <Reveal><PatientNotas patient={p} kind="tarea" /></Reveal>}
+      {tab === "tareas" && <Reveal><TareasPaciente patient={p} /></Reveal>}
       {tab === "emails" && <Reveal><PatientNotas patient={p} kind="email" /></Reveal>}
       {tab === "planes" && <Reveal><PlanTratamiento patient={p} /></Reveal>}
       {tab === "recibir-pago" && <Reveal><RecibirPagoTab patient={p} /></Reveal>}

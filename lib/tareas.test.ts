@@ -308,11 +308,24 @@ describe("regla cita", () => {
     expect(t.filter((x) => x.type === "cita")).toHaveLength(1);
   });
 
-  it.each(["confirmada", "en_atencion", "completada", "cancelada", "ausente"] as const)(
+  it.each(["confirmada", "en_atencion", "completada"] as const)(
     "NO abre para una cita en estado %s — auto-cierre al confirmar",
     (status) => {
       const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2026-07-31T10:00:00.000Z", status)] }, HOY);
       expect(t.filter((x) => x.type === "cita")).toHaveLength(0);
+    },
+  );
+
+  // Antes estos dos estaban en la lista de arriba ("ninguna tarea de cita").
+  // Con la regla de Dentalink una cita cancelada o ausente, sin otra futura, SÍ
+  // abre tarea de cita: la de re-agenda. Lo que se sigue verificando es que la
+  // de confirmación no se dispara.
+  it.each(["cancelada", "ausente"] as const)(
+    "NO abre la de confirmación para una cita %s (esa abre la de re-agenda)",
+    (status) => {
+      const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2026-07-31T10:00:00.000Z", status)] }, HOY);
+      expect(t.filter((x) => x.type === "cita" && x.title === "Cita sin confirmar")).toHaveLength(0);
+      expect(t.filter((x) => x.type === "cita").map((x) => x.instanceKey)).toEqual([`${status}:a1`]);
     },
   );
 
@@ -660,5 +673,493 @@ describe("detalleTarea", () => {
 
   it("sin ninguno de los dos, devuelve undefined", () => {
     expect(detalleTarea({})).toBeUndefined();
+  });
+});
+
+/* ═══ Paridad Dentalink: tarea de cita, captura, bandeja por fecha, Finalizar ▾ ═══ */
+
+describe("regla cita — re-agenda (la tarea de cita de Dentalink)", () => {
+  const reagendas = (t: DerivedTask[]) => t.filter((x) => x.type === "cita" && x.title !== "Cita sin confirmar");
+
+  it("abre cuando la última cita quedó AUSENTE y el paciente no tiene citas futuras", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2026-07-29T10:00:00.000Z", "ausente")] }, HOY);
+    const c = reagendas(t);
+    expect(c).toHaveLength(1);
+    expect(c[0].derivedKey).toBe("cita:a1");
+    expect(c[0].instanceKey).toBe("ausente:a1");
+    expect(c[0].title).toBe("Faltó a su cita");
+    expect(c[0].appointmentId).toBe("a1");
+    expect(c[0].professionalId).toBe("u1");
+    expect(c[0].dueDate).toBe("2026-07-29"); // inmediato: el día de la cita
+  });
+
+  it("abre cuando la última cita quedó CANCELADA (anulada) y no programó otra", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2026-07-28T10:00:00.000Z", "cancelada")] }, HOY);
+    expect(reagendas(t).map((x) => [x.derivedKey, x.title])).toEqual([["cita:a1", "Cita cancelada sin reagendar"]]);
+  });
+
+  it.each(["pendiente", "confirmada"] as const)("NO abre si tiene una cita futura %s — auto-cierre al re-agendar", (status) => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [
+      cita("a1", "p1", "2026-07-28T10:00:00.000Z", "ausente"),
+      cita("a2", "p1", "2026-08-20T10:00:00.000Z", status),
+    ] }, HOY);
+    expect(reagendas(t)).toHaveLength(0);
+  });
+
+  it("una cita de HOY cuenta como próxima visita (mismo criterio que control)", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [
+      cita("a1", "p1", "2026-07-20T10:00:00.000Z", "ausente"),
+      cita("a2", "p1", `${HOY}T18:00:00.000Z`, "confirmada"),
+    ] }, HOY);
+    expect(reagendas(t)).toHaveLength(0);
+  });
+
+  it("una cita futura cancelada no cuenta como futura: la tarea es por ESA, la última", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [
+      cita("a1", "p1", "2026-07-10T10:00:00.000Z", "completada"),
+      cita("a2", "p1", "2026-08-05T10:00:00.000Z", "cancelada"),
+    ] }, HOY);
+    const c = reagendas(t);
+    expect(c.map((x) => x.derivedKey)).toEqual(["cita:a2"]);
+    expect(c[0].dueDate).toBe("2026-08-05"); // "luego de que la cita no se ejecutó": el día de la cita
+  });
+
+  it("NO abre si después de faltar vino a otra cita (la última es la que manda)", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [
+      cita("a1", "p1", "2026-07-01T10:00:00.000Z", "ausente"),
+      cita("a2", "p1", "2026-07-15T10:00:00.000Z", "completada"),
+    ] }, HOY);
+    expect(reagendas(t)).toHaveLength(0);
+  });
+
+  it("una sola por paciente aunque haya faltado varias veces: la de su última cita", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [
+      cita("a1", "p1", "2026-06-01T10:00:00.000Z", "ausente"),
+      cita("a2", "p1", "2026-07-01T10:00:00.000Z", "cancelada"),
+      cita("a3", "p1", "2026-07-20T10:00:00.000Z", "ausente"),
+    ] }, HOY);
+    expect(reagendas(t).map((x) => x.derivedKey)).toEqual(["cita:a3"]);
+  });
+
+  it("el vencimiento es el día de la cita + el plazo configurado para cita", () => {
+    const t = derivarTareas({
+      ...vacio, patients: [pac("p1")], deadlines: { cita: { kind: "dias", n: 1 } },
+      appointments: [cita("a1", "p1", "2026-07-28T10:00:00.000Z", "ausente")],
+    }, HOY);
+    expect(reagendas(t)[0].dueDate).toBe("2026-07-29");
+  });
+
+  it("fuera de la ventana de 6 meses no abre: la historia importada no inunda la bandeja", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2025-12-01T10:00:00.000Z", "ausente")] }, HOY);
+    expect(reagendas(t)).toHaveLength(0);
+    const dentro = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2026-02-15T10:00:00.000Z", "ausente")] }, HOY);
+    expect(reagendas(dentro)).toHaveLength(1);
+  });
+
+  it("no mezcla pacientes: la cita futura de otro no cierra la de este", () => {
+    const t = derivarTareas({ ...vacio, patients: [pac("p1"), pac("p2")], appointments: [
+      cita("a1", "p1", "2026-07-28T10:00:00.000Z", "ausente"),
+      cita("a2", "p2", "2026-08-20T10:00:00.000Z", "confirmada"),
+    ] }, HOY);
+    expect(reagendas(t).map((x) => x.patientId)).toEqual(["p1"]);
+  });
+
+  it("la confirmación y la re-agenda de la MISMA cita tienen instancias distintas", () => {
+    // Pendiente → la de confirmación; si después se cancela → la de re-agenda,
+    // con la misma clave pero otra instancia: el cierre de una no entierra la otra.
+    const antes = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2026-07-31T10:00:00.000Z", "pendiente")] }, HOY);
+    const despues = derivarTareas({ ...vacio, patients: [pac("p1")], appointments: [cita("a1", "p1", "2026-07-31T10:00:00.000Z", "cancelada")] }, HOY);
+    expect(antes[0].derivedKey).toBe(despues[0].derivedKey);
+    expect(antes[0].instanceKey).not.toBe(despues[0].instanceKey);
+    const ov = override("cita:a1", { type: "cita", status: "cerrada", resolution: "acepto", closedInstance: antes[0].instanceKey });
+    expect(fusionarTareas(despues, [ov], HOY)).toHaveLength(1);
+  });
+});
+
+describe("regla cita sin confirmar — plazo", () => {
+  // El plazo configurable es el de la re-agenda: si lo usara, con "1 semana" la
+  // llamada para confirmar llegaría después de la cita.
+  it("vence siempre hoy, aunque la clínica configure otro plazo para cita", () => {
+    const t = derivarTareas({
+      ...vacio, patients: [pac("p1")], deadlines: { cita: { kind: "dias", n: 7 } },
+      appointments: [cita("a1", "p1", "2026-07-31T10:00:00.000Z", "pendiente")],
+    }, HOY);
+    expect(t.find((x) => x.title === "Cita sin confirmar")!.dueDate).toBe(HOY);
+  });
+});
+
+describe("regla captura — presupuesto no empezado ni pagado (Dentalink)", () => {
+  it("NO abre si el presupuesto presentado ya tiene un abono", () => {
+    const abono: Payment = { ...pay("y1", "p1", 100_000), budgetId: "b1" };
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "presentado", 500_000)], payments: [abono] }, HOY);
+    expect(t.filter((x) => x.type === "captura")).toHaveLength(0);
+  });
+
+  it("SÍ abre si el único abono del presupuesto está anulado", () => {
+    const abono: Payment = { ...pay("y1", "p1", 100_000, true), budgetId: "b1" };
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "presentado", 500_000)], payments: [abono] }, HOY);
+    expect(t.filter((x) => x.type === "captura")).toHaveLength(1);
+  });
+
+  it("NO abre si ya tiene una prestación realizada", () => {
+    const b = bud("b1", "p1", "presentado", 500_000);
+    const empezado: Budget = { ...b, items: [{ ...b.items[0], status: "realizado" }] };
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [empezado] }, HOY);
+    expect(t.filter((x) => x.type === "captura")).toHaveLength(0);
+  });
+
+  it("un pago de OTRO presupuesto no lo da por empezado", () => {
+    const otro: Payment = { ...pay("y1", "p1", 100_000), budgetId: "b9" };
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "presentado", 500_000)], payments: [otro] }, HOY);
+    expect(t.filter((x) => x.type === "captura")).toHaveLength(1);
+  });
+
+  it("presupuestoIniciado coincide con la regla", () => {
+    const b = bud("b1", "p1", "presentado", 500_000);
+    expect(presupuestoIniciado(b, [])).toBe(false);
+    expect(presupuestoIniciado(b, [{ budgetId: "b1" }])).toBe(true);
+    expect(presupuestoIniciado(b, [{ budgetId: "b1", voidedAt: "2026-07-01T00:00:00.000Z" }])).toBe(false);
+  });
+});
+
+describe("profesional de cada tarea (lo que va debajo del paciente)", () => {
+  it("cobranza: el dentista del presupuesto con saldo más antiguo", () => {
+    const b1: Budget = { ...bud("b1", "p1", "aceptado", 500_000, "2026-07-01T10:00:00.000Z"), dentistId: "u4" };
+    const b2: Budget = { ...bud("b2", "p1", "aceptado", 500_000, "2026-07-10T10:00:00.000Z"), dentistId: "u2" };
+    const t = derivarTareas({ ...vacio, patients: [pac("p1")], budgets: [b2, b1] }, HOY);
+    expect(t.find((x) => x.type === "cobranza")!.professionalId).toBe("u4");
+  });
+
+  it("captura y control: el dentista del plan; cheque: el del plan al que abona", () => {
+    const pres: Budget = { ...bud("b1", "p1", "presentado", 100_000), dentistId: "u4" };
+    const comp: Budget = { ...bud("b2", "p2", "completado", 100_000, "2026-07-01T10:00:00.000Z"), dentistId: "u2" };
+    const ch = payCheque("y1", "p2", 100_000, { cashDate: "2026-08-05" }, { budgetId: "b2" });
+    const t = derivarTareas({ ...vacio, patients: [pac("p1"), pac("p2")], budgets: [pres, comp], payments: [ch] }, HOY);
+    expect(t.find((x) => x.type === "captura")!.professionalId).toBe("u4");
+    expect(t.find((x) => x.type === "control")!.professionalId).toBe("u2");
+    expect(t.find((x) => x.type === "cheque")!.professionalId).toBe("u2");
+  });
+});
+
+import {
+  PLAZOS_RAPIDOS, diasDePlazo, plazoDeDias, opcionDePlazo, presupuestoIniciado,
+  fechaLocal, sumarDias, esFecha, tituloFecha, fechaCorta, fechaLarga,
+  filasDeTareas, bandejaDelDia, ordenarFilas, baseRecontacto, gestionarTarea, asignarTarea,
+  nuevaPersonalizada, resumenGestion, type FilaTarea,
+} from "./tareas";
+
+describe("configuración de plazos (los botones de Dentalink)", () => {
+  it("los botones son Inmediato · 1 día · 1 semana · 1 mes · 1 año", () => {
+    expect(PLAZOS_RAPIDOS.map((x) => x.label)).toEqual(["Inmediato", "1 día", "1 semana", "1 mes", "1 año"]);
+  });
+
+  it("ida y vuelta entre días y plazo", () => {
+    expect(plazoDeDias(0)).toEqual({ kind: "inmediato" });
+    expect(plazoDeDias(7)).toEqual({ kind: "dias", n: 7 });
+    expect(diasDePlazo({ kind: "inmediato" })).toBe(0);
+    expect(diasDePlazo({ kind: "dias", n: 180 })).toBe(180);
+  });
+
+  it("lo que escribe una persona en 'otro' se redondea, se topa y la basura es inmediato", () => {
+    expect(plazoDeDias(2.6)).toEqual({ kind: "dias", n: 3 });
+    expect(plazoDeDias(-4)).toEqual({ kind: "inmediato" });
+    expect(plazoDeDias(Number.NaN)).toEqual({ kind: "inmediato" });
+    expect(plazoDeDias(99_999)).toEqual({ kind: "dias", n: 3650 });
+  });
+
+  it("marca el botón que coincide, o 'otro' — los defaults de 3 y 180 días son 'otro'", () => {
+    expect(opcionDePlazo(DEFAULT_DEADLINES.cobranza)).toBe(7);
+    expect(opcionDePlazo(DEFAULT_DEADLINES.cita)).toBe(0);
+    expect(opcionDePlazo(DEFAULT_DEADLINES.captura)).toBe("otro");
+    expect(opcionDePlazo(DEFAULT_DEADLINES.control)).toBe("otro");
+    expect(opcionDePlazo({ kind: "dias", n: 365 })).toBe(365);
+  });
+});
+
+describe("fechas de la bandeja", () => {
+  it("fechaLocal usa el día LOCAL, no el de UTC", () => {
+    // 23:30 del 30 de julio en hora local: en UTC-3 ya es 31 en UTC.
+    expect(fechaLocal(new Date(2026, 6, 30, 23, 30))).toBe("2026-07-30");
+  });
+
+  it("sumarDias cruza meses y años", () => {
+    expect(sumarDias("2026-07-30", 3)).toBe("2026-08-02");
+    expect(sumarDias("2026-12-30", 5)).toBe("2027-01-04");
+    expect(sumarDias("2026-03-01", -1)).toBe("2026-02-28");
+  });
+
+  it("esFecha rechaza formatos y fechas imposibles", () => {
+    expect(esFecha("2026-07-30")).toBe(true);
+    expect(esFecha("2026-02-31")).toBe(false);
+    expect(esFecha("30/07/2026")).toBe(false);
+    expect(esFecha(undefined)).toBe(false);
+  });
+
+  it("el título es como el de Dentalink: 'Martes 19 Octubre'", () => {
+    expect(tituloFecha("2021-10-19")).toBe("Martes 19 Octubre");
+    expect(tituloFecha("2026-07-30", HOY)).toBe("Jueves 30 Julio");
+    expect(tituloFecha("2027-01-04", HOY)).toBe("Lunes 4 Enero 2027");
+  });
+
+  it("fecha corta de la fila y fecha larga para frases", () => {
+    expect(fechaCorta("2026-12-01", HOY)).toBe("01 Dic");
+    expect(fechaCorta("2027-01-04", HOY)).toBe("04 Ene 2027");
+    expect(fechaLarga("2026-11-08", HOY)).toBe("domingo 8 de noviembre");
+  });
+});
+
+/* ─── Bandeja por fecha ─── */
+
+const quien = { id: "u5", name: "Laura Recepción" };
+const AHORA = "2026-07-30T13:00:00.000Z";
+
+/** Deriva y arma las filas en un paso, como la página. */
+const filas = (input: typeof vacio & { deadlines?: import("./types").TaskDeadlines }, guardadas: MgmtTask[], hoy = HOY) =>
+  filasDeTareas(derivarTareas(input, hoy), guardadas, hoy);
+
+const conCobranza = { ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "aceptado", 500_000, "2026-07-23T10:00:00.000Z")] };
+
+describe("filasDeTareas + bandejaDelDia", () => {
+  it("una derivada va en el día de su vencimiento, y solo ahí", () => {
+    const f = filas(conCobranza, []);
+    expect(f).toHaveLength(1);
+    expect(f[0].fecha).toBe("2026-07-30"); // 23/7 + 7
+    expect(f[0].estado).toBe("pendiente");
+    expect(bandejaDelDia(f, HOY, HOY).delDia).toHaveLength(1);
+    expect(bandejaDelDia(f, "2026-07-31", HOY).delDia).toHaveLength(0);
+  });
+
+  it("una tarea futura se ve navegando a su fecha (control a 180 días)", () => {
+    const f = filas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "completado", 100_000, "2026-07-01T10:00:00.000Z")], payments: [pay("y1", "p1", 100_000)] }, []);
+    expect(f[0].type).toBe("control");
+    expect(bandejaDelDia(f, HOY, HOY).delDia).toHaveLength(0);
+    expect(bandejaDelDia(f, "2026-12-28", HOY).delDia.map((x) => x.type)).toEqual(["control"]);
+  });
+
+  it("las atrasadas se miden contra HOY y no van además en 'Tareas del día' (dos listas, como Dentalink)", () => {
+    const vieja = { ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "aceptado", 500_000, "2026-07-01T10:00:00.000Z")] };
+    const f = filas(vieja, []);
+    expect(f[0].fecha).toBe("2026-07-08");
+    const hoyMismo = bandejaDelDia(f, HOY, HOY);
+    expect(hoyMismo.delDia).toHaveLength(0);
+    expect(hoyMismo.atrasadas).toHaveLength(1);
+    // Navegar a otro día no cambia el contador de atrasadas.
+    expect(bandejaDelDia(f, "2026-12-01", HOY).atrasadas).toHaveLength(1);
+    // En su propio día (pasado) se la ve también.
+    expect(bandejaDelDia(f, "2026-07-08", HOY).delDia).toHaveLength(1);
+  });
+
+  it("una manual sin fecha (dato viejo) flota en hoy; con fecha, va en su fecha", () => {
+    const f = filas(vacio, [manual("mt1"), manual("mt2", { dueDate: "2026-08-10" })]);
+    expect(f.find((x) => x.id === "mt1")!.fecha).toBe(HOY);
+    expect(f.find((x) => x.id === "mt2")!.fecha).toBe("2026-08-10");
+  });
+
+  it("lo postergado con el mecanismo viejo (snoozedUntil) va en esa fecha, no desaparece", () => {
+    const f = filas(conCobranza, [override("cobranza:p1", { snoozedUntil: "2026-08-15" })]);
+    expect(f[0].fecha).toBe("2026-08-15");
+    expect(bandejaDelDia(f, "2026-08-15", HOY).delDia).toHaveLength(1);
+  });
+
+  it("un cierre viejo (sin gestiones) sigue visible con su ✓ el día que se cerró", () => {
+    const f = filas(vacio, [manual("mt1", { status: "cerrada", resolution: "contacto_posterior", updatedAt: "2026-07-25T15:00:00.000Z" })]);
+    expect(f).toHaveLength(1);
+    expect(f[0].estado).toBe("completada");
+    expect(f[0].fecha).toBe("2026-07-25");
+    expect(f[0].resolution).toBe("contacto_posterior");
+  });
+
+  it("ordenarFilas: fecha, después tipo en el orden de Dentalink, después paciente", () => {
+    const fila = (id: string, fecha: string, type: MgmtTask["type"]): FilaTarea => ({ ...manual(id), type, fecha, estado: "pendiente" });
+    const nombres: Record<string, string> = { a: "Zoe", b: "Ana", c: "Beto", d: "Ana" };
+    const r = ordenarFilas([fila("a", HOY, "cita"), fila("b", HOY, "cita"), fila("c", HOY, "personalizada"), fila("d", "2026-07-29", "control")], (f) => nombres[f.id]);
+    expect(r.map((x) => x.id)).toEqual(["d", "c", "b", "a"]);
+  });
+});
+
+describe("Finalizar ▾ en una derivada (vía override)", () => {
+  const opts = (extra: Partial<Parameters<typeof gestionarTarea>[1]> = {}) => ({
+    accion: "recontactar" as const, hasta: "2026-08-08", quien, ahora: AHORA, hoy: HOY, clinicId: "c1", ...extra,
+  });
+
+  it("Volver a contactar: desaparece de pendientes hoy, queda ✓ hoy y vuelve pendiente en la fecha elegida", () => {
+    const antes = filas(conCobranza, []);
+    const r = gestionarTarea(antes[0], opts());
+    expect(r.nuevo).toBe(true);
+    expect(r.doc.derivedKey).toBe("cobranza:p1");
+    expect(r.doc.snoozedUntil).toBe("2026-08-08");
+    expect(r.doc.gestiones).toEqual([{ fecha: HOY, at: AHORA, by: "u5", byName: "Laura Recepción", accion: "recontactar", hasta: "2026-08-08", instancia: "500000" }]);
+
+    const despues = filas(conCobranza, [r.doc]);
+    const hoyDia = bandejaDelDia(despues, HOY, HOY).delDia;
+    expect(hoyDia.map((x) => x.estado)).toEqual(["completada"]);
+    expect(hoyDia[0].id).toBe(r.filaId);
+    const nuevaFecha = bandejaDelDia(despues, "2026-08-08", HOY).delDia;
+    expect(nuevaFecha.map((x) => [x.type, x.estado])).toEqual([["cobranza", "pendiente"]]);
+    // La fila pendiente conserva su id: el panel no pierde la selección.
+    expect(nuevaFecha[0].id).toBe(antes[0].id);
+  });
+
+  it("el mismo override se reusa: una segunda vuelta agrega otra gestión", () => {
+    const r1 = gestionarTarea(filas(conCobranza, [])[0], opts());
+    const enLaFecha = bandejaDelDia(filas(conCobranza, [r1.doc], "2026-08-08"), "2026-08-08", "2026-08-08").delDia.find((x) => x.estado === "pendiente")!;
+    const r2 = gestionarTarea(enLaFecha, opts({ hoy: "2026-08-08", ahora: "2026-08-08T13:00:00.000Z", hasta: "2026-08-15", doc: r1.doc }));
+    expect(r2.nuevo).toBe(false);
+    expect(r2.doc.id).toBe(r1.doc.id);
+    expect(r2.doc.gestiones).toHaveLength(2);
+    expect(r2.doc.snoozedUntil).toBe("2026-08-15");
+  });
+
+  it("El paciente dice OK: cierra ESTA instancia (Aceptó) y queda ✓ hoy", () => {
+    const r = gestionarTarea(filas(conCobranza, [])[0], opts({ accion: "ok", hasta: undefined }));
+    expect(r.doc).toMatchObject({ status: "cerrada", resolution: "acepto", closedInstance: "500000" });
+    const f = filas(conCobranza, [r.doc]);
+    expect(f.filter((x) => x.estado === "pendiente")).toHaveLength(0);
+    expect(bandejaDelDia(f, HOY, HOY).delDia.map((x) => x.estado)).toEqual(["completada"]);
+  });
+
+  it("…y si la situación cambia (la deuda crece), la tarea vuelve", () => {
+    const r = gestionarTarea(filas(conCobranza, [])[0], opts({ accion: "ok", hasta: undefined }));
+    const masDeuda = { ...conCobranza, budgets: [...conCobranza.budgets, bud("b2", "p1", "aceptado", 300_000, "2026-07-24T10:00:00.000Z")] };
+    expect(filas(masDeuda, [r.doc]).filter((x) => x.estado === "pendiente")).toHaveLength(1);
+  });
+
+  it("Cerrar el caso: cierra la instancia con 'Rechazó' (respuesta negativa)", () => {
+    const r = gestionarTarea(filas(conCobranza, [])[0], opts({ accion: "cerrar", hasta: undefined }));
+    expect(r.doc).toMatchObject({ status: "cerrada", resolution: "rechazo", closedInstance: "500000" });
+    expect(r.doc.snoozedUntil).toBeUndefined();
+  });
+
+  it("reprogramar una tarea cerrada contra OTRA instancia la reabre limpia", () => {
+    const viejo = override("cobranza:p1", { status: "cerrada", resolution: "rechazo", closedInstance: "123" });
+    const fila = filas(conCobranza, [viejo])[0];
+    expect(fila.estado).toBe("pendiente");
+    const r = gestionarTarea(fila, opts({ doc: viejo }));
+    expect(r.doc).toMatchObject({ id: viejo.id, status: "pendiente", snoozedUntil: "2026-08-08" });
+    expect(r.doc.closedInstance).toBeUndefined();
+    expect(r.doc.resolution).toBeUndefined();
+  });
+
+  it("no acepta una fecha que no sea posterior a la de la tarea, ni trabajar una ya completada", () => {
+    const fila = filas(conCobranza, [])[0];
+    expect(() => gestionarTarea(fila, opts({ hasta: HOY }))).toThrow();
+    expect(() => gestionarTarea(fila, opts({ hasta: "no-es-fecha" }))).toThrow();
+    const r = gestionarTarea(fila, opts({ accion: "ok", hasta: undefined }));
+    const hecha = filas(conCobranza, [r.doc]).find((x) => x.estado === "completada")!;
+    expect(() => gestionarTarea(hecha, opts())).toThrow();
+  });
+
+  it("trabajar por adelantado una tarea futura: los 'N días más' se cuentan desde su fecha", () => {
+    const futura = { fecha: "2026-12-01" } as const;
+    expect(baseRecontacto(futura, HOY)).toBe("2026-12-01");
+    expect(baseRecontacto({ fecha: "2026-07-01" }, HOY)).toBe(HOY);
+  });
+
+  it("lo guardado es un MgmtTask limpio: sin fecha/estado/monto de memoria ni claves undefined", () => {
+    const r = gestionarTarea(filas(conCobranza, [])[0], opts());
+    for (const k of ["fecha", "estado", "gestion", "instanceKey", "overrideId", "amount", "professionalId", "appointmentId"]) expect(r.doc).not.toHaveProperty(k);
+    expect(Object.values(r.doc).some((v) => v === undefined)).toBe(false);
+    // El createdAt del override es el del hecho (lo que el reporte llama "generada").
+    expect(r.doc.createdAt).toBe("2026-07-23T10:00:00.000Z");
+  });
+});
+
+describe("Finalizar ▾ en una personalizada", () => {
+  const tarea = manual("mt1", { patientId: "p1", dueDate: HOY });
+  const fila = () => filas(vacio, [tarea])[0];
+  const opts = (accion: "ok" | "recontactar" | "cerrar", hasta?: string) => ({ accion, hasta, quien, ahora: AHORA, hoy: HOY, clinicId: "c1" });
+
+  it("El paciente dice OK: la de hoy queda ✓ y se reactiva a la semana", () => {
+    const r = gestionarTarea(fila(), opts("ok"));
+    expect(r.nuevo).toBe(false);
+    expect(r.doc).toMatchObject({ id: "mt1", status: "pendiente", dueDate: "2026-08-06" });
+    const f = filas(vacio, [r.doc]);
+    expect(bandejaDelDia(f, HOY, HOY).delDia.map((x) => x.estado)).toEqual(["completada"]);
+    expect(bandejaDelDia(f, "2026-08-06", HOY).delDia.map((x) => x.estado)).toEqual(["pendiente"]);
+    expect(resumenGestion(r.doc.gestiones![0], true, HOY)).toBe("El paciente dice OK · vuelve a la bandeja el jueves 6 de agosto");
+  });
+
+  it("Volver a contactar: la mueve a la fecha elegida", () => {
+    const r = gestionarTarea(fila(), opts("recontactar", "2026-09-01"));
+    expect(r.doc.dueDate).toBe("2026-09-01");
+    expect(resumenGestion(r.doc.gestiones![0], true, HOY)).toBe("Paciente será contactado nuevamente el martes 1 de septiembre");
+  });
+
+  it("Cerrar el caso: se ejecutó", () => {
+    const r = gestionarTarea(fila(), opts("cerrar"));
+    expect(r.doc).toMatchObject({ status: "cerrada", resolution: "ejecutada" });
+    const f = filas(vacio, [r.doc]);
+    expect(f.map((x) => [x.estado, x.resolution])).toEqual([["completada", "ejecutada"]]);
+    expect(resumenGestion(r.doc.gestiones![0], true)).toBe("Caso cerrado · la tarea se ejecutó");
+  });
+
+  it("una tarea postergada con el 'Postergar' viejo se reprograma sin arrastrar el snooze", () => {
+    const vieja = manual("mt1", { dueDate: "2026-07-20", snoozedUntil: "2026-07-29" });
+    const r = gestionarTarea(filas(vacio, [vieja])[0], opts("recontactar", "2026-08-03"));
+    expect(r.doc.dueDate).toBe("2026-08-03");
+    expect(r.doc.snoozedUntil).toBeUndefined();
+  });
+});
+
+describe("completadas por el sistema", () => {
+  it("un override huérfano que nadie cerró es 'completada por el sistema' en su fecha", () => {
+    // Laura se asignó la cobranza; después el paciente pagó y la derivada dejó de producirse.
+    const asignada = asignarTarea(filas(conCobranza, [])[0], "u5", { ahora: AHORA, clinicId: "c1" });
+    expect(asignada.doc.dueDate).toBe(HOY);
+    const pagado = { ...conCobranza, payments: [pay("y1", "p1", 500_000)] };
+    const f = filas(pagado, [asignada.doc]);
+    expect(f.map((x) => x.estado)).toEqual(["sistema"]);
+    // Escondidas por defecto, como la casilla de Dentalink.
+    expect(bandejaDelDia(f, HOY, HOY).delDia).toHaveLength(0);
+    expect(bandejaDelDia(f, HOY, HOY, false).delDia.map((x) => x.estado)).toEqual(["sistema"]);
+  });
+
+  it("si la habían reprogramado, la del sistema va en la fecha nueva y la trabajada queda en la suya", () => {
+    const r = gestionarTarea(filas(conCobranza, [])[0], { accion: "recontactar", hasta: "2026-08-08", quien, ahora: AHORA, hoy: HOY, clinicId: "c1" });
+    const pagado = { ...conCobranza, payments: [pay("y1", "p1", 500_000)] };
+    const f = filas(pagado, [r.doc]);
+    expect(f.map((x) => [x.estado, x.fecha]).sort()).toEqual([["completada", HOY], ["sistema", "2026-08-08"]]);
+  });
+
+  it("una cerrada a mano cuya condición se resolvió NO cuenta como del sistema", () => {
+    const r = gestionarTarea(filas(conCobranza, [])[0], { accion: "ok", quien, ahora: AHORA, hoy: HOY, clinicId: "c1" });
+    const pagado = { ...conCobranza, payments: [pay("y1", "p1", 500_000)] };
+    expect(filas(pagado, [r.doc]).map((x) => x.estado)).toEqual(["completada"]);
+  });
+});
+
+describe("asignarTarea y nuevaPersonalizada", () => {
+  it("asignar una derivada crea el override con su fecha; desasignar lo actualiza", () => {
+    const fila = filas(conCobranza, [])[0];
+    const a = asignarTarea(fila, "u6", { ahora: AHORA, clinicId: "c1" });
+    expect(a.nuevo).toBe(true);
+    expect(a.doc).toMatchObject({ derivedKey: "cobranza:p1", assigneeId: "u6", dueDate: HOY, status: "pendiente" });
+    const filaAsignada = filas(conCobranza, [a.doc])[0];
+    expect(filaAsignada.assigneeId).toBe("u6");
+    const b = asignarTarea(filaAsignada, undefined, { ahora: AHORA, clinicId: "c1", doc: a.doc });
+    expect(b.nuevo).toBe(false);
+    expect(b.doc).not.toHaveProperty("assigneeId");
+  });
+
+  it("asignar una personalizada actualiza su propio doc", () => {
+    const r = asignarTarea(filas(vacio, [manual("mt1")])[0], "u2", { ahora: AHORA, clinicId: "c1" });
+    expect(r.nuevo).toBe(false);
+    expect(r.doc).toMatchObject({ id: "mt1", assigneeId: "u2" });
+    expect(r.doc).not.toHaveProperty("fecha");
+  });
+
+  it("una personalizada nueva exige detalle y fecha, y el presupuesto solo si hay paciente", () => {
+    const base = { id: "mt9", clinicId: "c1", detalle: "  Agendar cita para evaluación de prótesis ", fecha: "2026-12-01", createdBy: "u5", ahora: AHORA };
+    const t = nuevaPersonalizada({ ...base, patientId: "p1", budgetId: "b1" });
+    expect(t).toMatchObject({ type: "personalizada", title: "Agendar cita para evaluación de prótesis", dueDate: "2026-12-01", patientId: "p1", budgetId: "b1", status: "pendiente" });
+    expect(nuevaPersonalizada({ ...base, budgetId: "b1" })).not.toHaveProperty("budgetId");
+    expect(() => nuevaPersonalizada({ ...base, detalle: "   " })).toThrow();
+    expect(() => nuevaPersonalizada({ ...base, fecha: "" })).toThrow();
+  });
+
+  it("resumen de las automáticas", () => {
+    const g = { fecha: HOY, at: AHORA, by: "u5", byName: "Laura", accion: "ok" as const };
+    expect(resumenGestion(g, false)).toBe("El paciente dice OK");
+    expect(resumenGestion({ ...g, accion: "cerrar" }, false)).toBe("Caso cerrado · respuesta negativa del paciente");
   });
 });
