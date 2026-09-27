@@ -7,7 +7,7 @@ import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
  * Simulador de sonrisas — Novudent IA.
  * POST { image: base64, mimeType, treatment } → { ok, image: dataUrl }
  * Usa el modelo de GENERACIÓN/edición de imagen de Gemini (env GEMINI_IMAGE_MODEL,
- * default gemini-2.5-flash-image). La key vive solo acá (server). Es una PROYECCIÓN
+ * default gemini-3.1-flash-image-preview). La key vive solo acá (server). Es una PROYECCIÓN
  * estética estimada, no un resultado garantizado.
  */
 
@@ -62,7 +62,9 @@ export async function POST(req: NextRequest) {
 
   const prompt = `Editá esta foto del rostro de un paciente para SIMULAR de forma realista el resultado estético de un tratamiento dental. Tratamiento: ${TREATMENT_PROMPT[treatment] ?? treatment}. Reglas estrictas: mantené EXACTAMENTE la misma persona, identidad, ángulo, encuadre, iluminación, tono de piel, ojos, labios, cabello y fondo; modificá ÚNICAMENTE los dientes y la sonrisa de forma natural y creíble; no agregues texto, logos ni marcas de agua. Devolvé solo la imagen editada.`;
 
-  const model = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
+  // gemini-2.5-flash-image se apaga el 2/10/2026 (ai.google.dev/gemini-api/docs/deprecations);
+  // el reemplazo que indica Google es 3.1 Flash Image. Misma API: generateContent con IMAGE.
+  const model = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image-preview";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   try {
