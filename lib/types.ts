@@ -829,6 +829,30 @@ export interface SurveyResponse {
   createdAt: string;
 }
 
+/** Qué se hizo con una tarea desde "Finalizar ▾" (paridad Dentalink):
+ *  - `ok`: "El paciente dice OK" (respuesta positiva);
+ *  - `recontactar`: "Volver a contactar en…" — completa la de hoy y la reprograma;
+ *  - `cerrar`: "Cerrar el caso" (respuesta negativa; en una personalizada, que se ejecutó). */
+export type TaskAccion = "ok" | "recontactar" | "cerrar";
+
+/** Una vez que alguien trabajó la tarea. Es una LISTA y no un campo porque una
+ *  misma tarea se trabaja muchas veces: "Volver a contactar" completa la de hoy y
+ *  la reprograma, y cada una de esas vueltas queda con su ✓ en su día. */
+export interface TaskGestion {
+  /** Día en que se trabajó (YYYY-MM-DD, hora local): la fila queda con ✓ en esa fecha de la bandeja. */
+  fecha: string;
+  /** Momento exacto (ISO). */
+  at: string;
+  /** Usuario que la trabajó. El nombre va denormalizado: el usuario se puede dar de baja. */
+  by: string;
+  byName: string;
+  accion: TaskAccion;
+  /** Fecha en que la tarea vuelve a la bandeja (volver a contactar, o el OK de una personalizada). */
+  hasta?: string;
+  /** Instancia de la derivada contra la que se trabajó (ver `DerivedTask.instanceKey` en lib/tareas.ts). */
+  instancia?: string;
+}
+
 /** Tarea de gestión (spec 3.2 / 6.5 / 7.2): bandeja de captura/control/cobranza/cita. */
 export type MgmtTaskType = "cita" | "captura" | "control" | "cobranza" | "cheque" | "personalizada";
 export interface MgmtTask {
@@ -844,10 +868,17 @@ export interface MgmtTask {
   /** Quién la creó (roles v3: dentista y asistente ven las suyas aunque no tengan paciente). */
   createdBy?: string;
   status: "pendiente" | "en_proceso" | "cerrada";
-  resolution?: "acepto" | "contacto_posterior" | "rechazo";
+  /** Cómo se cerró. `ejecutada` = "Cerrar el caso" de una personalizada (la tarea se hizo);
+   *  `contacto_posterior` solo aparece en datos anteriores a "Volver a contactar en…". */
+  resolution?: "acepto" | "contacto_posterior" | "rechazo" | "ejecutada";
+  /** En las manuales, el día en que la tarea está en la bandeja. En los overrides,
+   *  la fecha de bandeja que tenía la derivada la última vez que alguien la tocó:
+   *  es lo que ubica en el calendario a la "completada por el sistema". */
   dueDate?: string;
   createdAt: string;
   updatedAt?: string;
+  /** Lo que se hizo con la tarea desde "Finalizar ▾", en orden (ver `TaskGestion`). */
+  gestiones?: TaskGestion[];
   /** Clave de la tarea DERIVADA sobre la que este doc actúa como override
    *  (`cobranza:p_123`). Vacío en las tareas manuales (`personalizada`).
    *  Las derivadas no se guardan: este doc solo carga la decisión humana. */

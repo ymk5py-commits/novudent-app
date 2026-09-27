@@ -1,77 +1,84 @@
 "use client";
-/** Tareas de gestión (paridad Dentalink): bandeja que se llena y se vacía sola.
+/** Tareas de gestión (paridad Dentalink, "Configura las Tareas Automáticas").
  *
- *  Las automáticas —cobranza, captura, control, cita— NO se guardan: las deriva
- *  `lib/tareas.ts` del estado de la clínica en cada render. Por eso se cierran
- *  solas: si el paciente pagó, la condición deja de cumplirse y la tarea no se
- *  deriva más. Lo guardado en `mgmtTasks` son las manuales y los OVERRIDES: la
- *  decisión humana sobre una derivada (postergarla, asignarla, cerrarla). */
-import { useMemo, useState } from "react";
-import { useStore, fmtDate, fmtGs, fullName, waLink } from "@/lib/store";
+ *  Tres secciones con íconos, como Dentalink: la bandeja (✓), las estadísticas
+ *  (indicador) y la configuración de plazos (engranaje).
+ *
+ *  La bandeja es POR DÍA: "Tareas - Martes 19 Octubre" con ‹ Anterior · Fecha ·
+ *  Siguiente ›. Las automáticas —cobranza, captura, control, cita, cheque— NO se
+ *  guardan: las deriva `lib/tareas.ts` del estado de la clínica en cada render,
+ *  y por eso se cierran solas. Lo guardado en `mgmtTasks` son las personalizadas
+ *  y los OVERRIDES: la decisión humana sobre una derivada (asignarla, trabajarla
+ *  desde "Finalizar ▾", reprogramarla). */
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowUp, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Gauge, ListChecks, ListFilter, Plus, Settings, ShieldAlert } from "lucide-react";
+import { useStore } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { useAlcance } from "@/lib/useAlcance";
-import { tiposDeTareaVisibles, veTarea } from "@/lib/alcance";
-import { derivarTareas, fusionarTareas, clasificarTareas, detalleTarea, type TaskRow } from "@/lib/tareas";
-import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
+import { useTareas } from "@/lib/useTareas";
+import { tiposDeTareaVisibles } from "@/lib/alcance";
+import { bandejaDelDia, esFecha, fechaCorta, ordenarFilas, sumarDias, tituloFecha, TIPO_TAREA_LABEL, type FilaTarea } from "@/lib/tareas";
+import type { MgmtTaskType } from "@/lib/types";
+import { Btn, Card } from "@/components/ui";
 import { Reveal } from "@/components/motion";
-import { ListChecks, Plus, MessageCircle, Trash2, Clock, ShieldAlert } from "lucide-react";
-import type { MgmtTask, MgmtTaskType } from "@/lib/types";
+import { Desplegable, ESTADO_LABEL, EstadoCheck, Opcion, TipoBadge, useNombres } from "@/components/tareas/comun";
+import { PanelTarea } from "@/components/tareas/PanelTarea";
+import { NuevaTareaModal } from "@/components/tareas/NuevaTareaModal";
+import { PlazosTareas } from "@/components/tareas/PlazosTareas";
+import { EstadisticasTareas } from "@/components/tareas/EstadisticasTareas";
 
-const TYPE_LABEL: Record<MgmtTaskType, string> = { cita: "Cita", captura: "Captura", control: "Control", cobranza: "Cobranza", cheque: "Cheque", personalizada: "Personalizada" };
-// "warn" — mismo tono que captura: plata que todavía no se puede dar por
-// perdida, pero tampoco por segura hasta que se acredite.
-const TYPE_TONE: Record<MgmtTaskType, "info" | "ok" | "warn" | "err" | "muted"> = { cita: "info", captura: "warn", control: "ok", cobranza: "err", cheque: "warn", personalizada: "muted" };
-const RES_LABEL: Record<string, string> = { acepto: "Aceptó", contacto_posterior: "Contacto posterior", rechazo: "Rechazó" };
-const hoyISO = () => new Date().toISOString().slice(0, 10);
+type Vista = "bandeja" | "estadisticas" | "configuracion";
+type Lista = "dia" | "atrasadas";
+type FiltroResp = "todos" | "mias" | "sin";
 
 export default function TareasPage() {
-  const { db, session, addMgmtTask, updateMgmtTask, deleteMgmtTask } = useStore();
-  const cid = db.clinics[0]?.id ?? "";
-  const canManage = session ? can(session.role, "tasks.use") : false;
-  // Roles v3: todos usan la bandeja, pero cada uno ve lo suyo. Sin plata no hay
-  // cobranza ni cheques ni montos; sin datos personales no hay WhatsApp; con
-  // alcance (dentista, asistente) solo sus tareas y las de sus pacientes.
+  const { session } = useStore();
   const alcance = useAlcance();
-  const verMontos = alcance.puede("money.view");
-  const verPersonales = alcance.puede("patients.personal");
-  const tipos = useMemo(() => (session ? tiposDeTareaVisibles(session.role) : []), [session]);
-  const [vista, setVista] = useState<"dia" | "atrasadas" | "todas">("dia");
-  const [typeFilter, setTypeFilter] = useState<"todas" | MgmtTaskType>("todas");
-  const [soloMias, setSoloMias] = useState(false);
-  const [showClosed, setShowClosed] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const nombres = useNombres();
+  const tareas = useTareas();
+  const { hoy } = tareas;
+
+  const [vista, setVista] = useState<Vista>("bandeja");
+  const [fecha, setFecha] = useState(hoy);
+  const [lista, setLista] = useState<Lista>("dia");
+  const [filtroTipo, setFiltroTipo] = useState<"todas" | MgmtTaskType>("todas");
+  const [filtroResp, setFiltroResp] = useState<FiltroResp>("todos");
+  const [esconderSistema, setEsconderSistema] = useState(true);
   const [selId, setSelId] = useState<string | null>(null);
+  const [nueva, setNueva] = useState(false);
+  const listaRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  const hoy = hoyISO();
+  // Enlaces directos: ?fecha=AAAA-MM-DD&tarea=<id> (desde la ficha del
+  // paciente) y #estadisticas / #configuracion. Se lee en un efecto y no con
+  // useSearchParams para no obligar a la página entera a renderizar en el servidor.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const f = q.get("fecha");
+    if (esFecha(f)) setFecha(f);
+    const id = q.get("tarea");
+    if (id) setSelId(id);
+    const h = window.location.hash.slice(1);
+    if (h === "estadisticas" || h === "configuracion") setVista(h);
+  }, []);
 
-  const { delDia, atrasadas, todas } = useMemo(() => {
-    const derivadas = derivarTareas({
-      patients: db.patients,
-      budgets: db.budgets,
-      payments: db.payments,
-      appointments: db.appointments,
-      deadlines: db.clinics[0]?.config?.taskDeadlines,
-    }, hoy);
-    const fusionadas = fusionarTareas(derivadas, db.mgmtTasks, hoy, showClosed)
-      .filter((t) => tipos.includes(t.type) && veTarea(t, session?.userId ?? "", alcance.pacientes));
-    const c = clasificarTareas(fusionadas, hoy);
-    return { delDia: c.delDia, atrasadas: c.atrasadas, todas: fusionadas };
-  }, [db.patients, db.budgets, db.payments, db.appointments, db.mgmtTasks, db.clinics, hoy, showClosed, tipos, alcance.pacientes, session?.userId]);
+  const verStats = alcance.puede("billing.reports");
+  const verConfig = alcance.puede("practice.config");
+  const vistaEfectiva: Vista = (vista === "estadisticas" && !verStats) || (vista === "configuracion" && !verConfig) ? "bandeja" : vista;
 
-  const tasks = useMemo(() => {
-    const base = vista === "dia" ? delDia : vista === "atrasadas" ? atrasadas : todas;
-    return base
-      .filter((t) => typeFilter === "todas" || t.type === typeFilter)
-      .filter((t) => !soloMias || t.assigneeId === session?.userId)
-      .sort((a, b) => (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999"));
-  }, [delDia, atrasadas, todas, vista, typeFilter, soloMias, session?.userId]);
+  const { delDia, atrasadas } = useMemo(() => {
+    const pasaFiltros = (f: FilaTarea) =>
+      (filtroTipo === "todas" || f.type === filtroTipo)
+      && (filtroResp === "todos" || (filtroResp === "mias" ? f.assigneeId === session?.userId : !f.assigneeId));
+    const b = bandejaDelDia(tareas.filas.filter(pasaFiltros), fecha, hoy, esconderSistema);
+    const nombre = (f: FilaTarea) => nombres.paciente(f) || f.title;
+    return { delDia: ordenarFilas(b.delDia, nombre), atrasadas: ordenarFilas(b.atrasadas, nombre) };
+  }, [tareas.filas, filtroTipo, filtroResp, session?.userId, fecha, hoy, esconderSistema, nombres]);
 
-  // Guard de RUTA, no solo de botones: la lista muestra una fila por paciente
-  // con deuda y su monto, o sea la cartera de cuentas por cobrar entera. Sin
-  // esto, un dentista la ve escribiendo la URL aunque el ítem del nav no esté.
-  // (Va después de los hooks: no se puede return antes de llamarlos todos.)
+  // Guard de RUTA, no solo del menú: la bandeja muestra pacientes con deuda y
+  // sus montos. (Va después de los hooks: no se puede return antes de llamarlos todos.)
   if (!session) return null;
-  if (!canManage) {
+  if (!can(session.role, "tasks.use")) {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
@@ -81,238 +88,267 @@ export default function TareasPage() {
     );
   }
 
-  const sel = tasks.find((t) => t.id === selId) ?? null;
+  const filasLista = lista === "dia" ? delDia : atrasadas;
+  // La seleccionada se busca en TODAS las filas: después de "Volver a contactar"
+  // la selección pasa a la fila ✓ de hoy, que puede no estar en la lista abierta.
+  const sel = tareas.filas.find((f) => f.id === selId) ?? null;
+  const tipos = tiposDeTareaVisibles(session.role);
+  const filtrosActivos = (filtroTipo !== "todas" ? 1 : 0) + (filtroResp !== "todos" ? 1 : 0);
 
-  /** Aplica un cambio a una tarea. Si es manual, actualiza su doc. Si es derivada,
-   *  crea o actualiza el OVERRIDE: el doc que guarda la decisión humana sobre una
-   *  tarea que no existe como fila.
-   *
-   *  El doc a tocar sale de `overrideId`, no del `id` de la fila: ese es
-   *  sintético (`d_cobranza:p1`) y no existe en Firestore. */
-  const aplicar = (t: TaskRow, cambio: Partial<MgmtTask>) => {
-    if (!t.derivedKey) { updateMgmtTask({ ...t, ...cambio, updatedAt: new Date().toISOString() }); return; }
-    const existente = t.overrideId ? db.mgmtTasks.find((x) => x.id === t.overrideId) : undefined;
-    if (existente) { updateMgmtTask({ ...existente, ...cambio, updatedAt: new Date().toISOString() }); return; }
-    addMgmtTask({
-      id: `ov_${t.derivedKey.replace(":", "_")}_${Date.now()}`,
-      clinicId: cid,
-      type: t.type,
-      patientId: t.patientId,
-      derivedKey: t.derivedKey,
-      title: t.title,
-      status: "pendiente",
-      createdAt: new Date().toISOString(),
-      ...cambio,
-    });
+  const irA = (f: string) => { setFecha(f); setLista("dia"); setSelId(null); };
+  const seleccionar = (id: string) => {
+    setSelId(id);
+    // En el celular el panel queda debajo de la lista: se lo trae a la vista.
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      const suave = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      requestAnimationFrame(() => panelRef.current?.scrollIntoView({ behavior: suave ? "smooth" : "auto", block: "start" }));
+    }
   };
 
-  /** Cerrar una derivada guarda CONTRA QUÉ se cerró. Sin eso el cierre queda
-   *  pegado a la clave (`cobranza:p1`), que dura toda la vida del paciente: el
-   *  día que firme un plan nuevo y no pague, la tarea nunca volvería a salir. */
-  const cerrar = (t: TaskRow, resolution: MgmtTask["resolution"]) =>
-    aplicar(t, { status: "cerrada", resolution, ...(t.instanceKey ? { closedInstance: t.instanceKey } : {}) });
-  const postergar = (t: TaskRow, dias: number) => {
-    const d = new Date(); d.setUTCDate(d.getUTCDate() + dias);
-    aplicar(t, { snoozedUntil: d.toISOString().slice(0, 10) });
-  };
-
-  const pName = (t: MgmtTask) => { const p = t.patientId ? db.patients.find((x) => x.id === t.patientId) : undefined; return p ? fullName(p) : t.patientName ?? "—"; };
-  const pPhone = (t: MgmtTask) => (t.patientId ? db.patients.find((x) => x.id === t.patientId)?.phone : undefined);
-  /** El motor no formatea moneda (la app maneja 17): el monto llega crudo y se
-   *  formatea acá con `fmtGs`, que resuelve por la moneda activa de la clínica.
-   *  amount y detail pueden coexistir (la regla cheque setea los dos) — por eso
-   *  se concatenan en vez de elegir uno, ver detalleTarea en lib/tareas.ts. */
-  const detalle = (t: TaskRow) => detalleTarea(t, verMontos ? fmtGs : undefined);
-  const FILTERS: ("todas" | MgmtTaskType)[] = ["todas", ...tipos];
+  const titulo = vistaEfectiva === "bandeja" ? `Tareas - ${tituloFecha(fecha, hoy)}` : vistaEfectiva === "estadisticas" ? "Estadísticas" : "Configuración";
 
   return (
-    <Reveal className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-azure-50 text-azure-600"><ListChecks className="h-5 w-5" /></span>
-        <div>
-          <h1 className="text-lg font-extrabold text-clinic-text">Tareas de gestión</h1>
-          <p className="text-xs text-clinic-muted">{delDia.length} para hoy · se generan y se cierran solas.</p>
-        </div>
-        <Btn className="ml-auto" onClick={() => setShowForm(true)}><Plus className="h-4 w-4" /> Nueva tarea</Btn>
+    <Reveal className="space-y-4">
+      {/* Encabezado: secciones (íconos, como Dentalink) + título + navegación por día */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {(verStats || verConfig) && (
+          <div role="tablist" aria-label="Secciones de tareas" className="flex rounded-xl border border-clinic-border bg-white p-1">
+            {([
+              ["bandeja", "Bandeja de tareas", ListChecks, true],
+              ["estadisticas", "Estadísticas", Gauge, verStats],
+              ["configuracion", "Configuración de plazos", Settings, verConfig],
+            ] as const).filter(([, , , ok]) => ok).map(([k, label, Icono]) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={vistaEfectiva === k}
+                aria-label={label}
+                title={label}
+                onClick={() => { setVista(k); history.replaceState(null, "", k === "bandeja" ? window.location.pathname + window.location.search : `#${k}`); }}
+                className={`grid h-8 w-9 place-items-center rounded-lg transition-colors ${vistaEfectiva === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
+              >
+                <Icono className="h-4 w-4" />
+              </button>
+            ))}
+          </div>
+        )}
+        <h1 className="min-w-0 text-lg font-extrabold text-clinic-text sm:text-xl">{titulo}</h1>
+
+        {vistaEfectiva === "bandeja" && (
+          <div className="flex w-full flex-wrap items-center gap-1.5 sm:ml-auto sm:w-auto">
+            <Btn variant="outline" onClick={() => irA(sumarDias(fecha, -1))} tip="Día anterior">
+              <ChevronLeft aria-hidden className="h-4 w-4" /><span className="sr-only sm:not-sr-only">Anterior</span>
+            </Btn>
+            <label className="flex h-[38px] items-center gap-1.5 rounded-xl border border-clinic-border bg-white px-2.5 text-sm font-semibold text-clinic-text focus-within:border-azure-600">
+              <CalendarDays aria-hidden className="h-4 w-4 text-clinic-muted" />
+              <span className="sr-only">Fecha</span>
+              <input
+                type="date"
+                aria-label="Fecha"
+                value={fecha}
+                onChange={(e) => { if (esFecha(e.target.value)) irA(e.target.value); }}
+                className="w-[8.5rem] bg-transparent font-mono text-[13px] outline-none"
+              />
+            </label>
+            <Btn variant="outline" onClick={() => irA(sumarDias(fecha, 1))} tip="Día siguiente">
+              <span className="sr-only sm:not-sr-only">Siguiente</span><ChevronRight aria-hidden className="h-4 w-4" />
+            </Btn>
+            {fecha !== hoy && <Btn variant="ghost" onClick={() => irA(hoy)}>Hoy</Btn>}
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-clinic-border pb-2">
-        {([["dia", "Tareas del día", delDia.length], ["atrasadas", "Atrasadas", atrasadas.length], ["todas", "Todas", todas.length]] as const).map(([k, label, n]) => (
-          <button key={k} onClick={() => { setVista(k); setSelId(null); }}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${vista === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:text-clinic-text"}`}>
-            {label}
-            {n > 0 && <span className={`rounded px-1.5 py-0.5 text-[10px] ${vista === k ? "bg-white/20" : k === "atrasadas" ? "bg-state-errbg text-state-err" : "bg-clinic-bg"}`}>{n}</span>}
-          </button>
-        ))}
-      </div>
+      {vistaEfectiva === "estadisticas" && <EstadisticasTareas />}
+      {vistaEfectiva === "configuracion" && <PlazosTareas />}
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        {FILTERS.map((f) => (
-          <button key={f} onClick={() => setTypeFilter(f)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${typeFilter === f ? "bg-azure-600 text-white" : "border border-clinic-border bg-white text-clinic-muted hover:text-clinic-text"}`}>
-            {f === "todas" ? "Todas" : TYPE_LABEL[f]}
-          </button>
-        ))}
-        <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-xs font-bold text-clinic-muted">
-          <input type="checkbox" checked={soloMias} onChange={(e) => setSoloMias(e.target.checked)} /> Sólo mías
-        </label>
-        <label className="flex cursor-pointer items-center gap-1.5 text-xs font-bold text-clinic-muted">
-          <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} /> Ver cerradas
-        </label>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-2">
-          {tasks.length === 0 ? (
-            <Empty title="Nada pendiente" desc={verMontos ? "Cuando haya un saldo sin cobrar, un presupuesto sin aceptar o una cita sin confirmar, la tarea aparece acá sola." : "Cuando haya una cita sin confirmar o un control por agendar, la tarea aparece acá sola."} />
-          ) : tasks.map((t) => (
-            <button key={t.id} onClick={() => setSelId(t.id)}
-              className={`w-full rounded-xl border p-3 text-left transition-colors ${selId === t.id ? "border-azure-400 bg-azure-50" : "border-clinic-border bg-white hover:border-azure-300"}`}>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge tone={TYPE_TONE[t.type]}>{TYPE_LABEL[t.type]}</Badge>
-                <span className="text-sm font-bold text-clinic-text">{t.title}</span>
-                {t.dueDate && t.dueDate < hoy && <Badge tone="err">Atrasada</Badge>}
-                {t.status === "cerrada" && t.resolution && <Badge tone="muted">{RES_LABEL[t.resolution]}</Badge>}
-              </div>
-              <div className="mt-1 text-xs text-clinic-muted">{pName(t)}{detalle(t) ? ` · ${detalle(t)}` : ""}</div>
-            </button>
-          ))}
-        </div>
-
-        <Card className="h-fit p-4">
-          {!sel ? (
-            <p className="py-8 text-center text-xs text-clinic-muted">Seleccione una tarea para ver su detalle</p>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Badge tone={TYPE_TONE[sel.type]}>{TYPE_LABEL[sel.type]}</Badge>
-                {sel.derivedKey && <span className="text-[10px] font-bold uppercase tracking-wide text-clinic-muted">Automática</span>}
-              </div>
-              <p className="text-sm font-bold text-clinic-text">{sel.title}</p>
-              {detalle(sel) && <p className="text-xs text-clinic-muted">{detalle(sel)}</p>}
-              {sel.patientId && <a href={`/app/pacientes/${sel.patientId}`} className="block text-xs font-bold text-azure-700 hover:underline">{pName(sel)}</a>}
-              <dl className="space-y-1 border-t border-clinic-border pt-3 text-xs">
-                <div className="flex justify-between"><dt className="text-clinic-muted">Origen</dt><dd className="font-bold text-clinic-text">{fmtDate(sel.createdAt)}</dd></div>
-                {sel.dueDate && <div className="flex justify-between"><dt className="text-clinic-muted">Vence</dt><dd className={`font-bold ${sel.dueDate < hoy ? "text-state-err" : "text-clinic-text"}`}>{sel.dueDate}</dd></div>}
-              </dl>
-
-              {sel.status !== "cerrada" && (
-                <div className="space-y-3 border-t border-clinic-border pt-3">
-                  <Field label="Asignar a">
-                    <select value={sel.assigneeId ?? ""} onChange={(e) => aplicar(sel, { assigneeId: e.target.value || undefined })} className={inputCls}>
-                      <option value="">Sin asignar</option>
-                      {db.users.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
-                  </Field>
-                  <div>
-                    <p className="mb-1 flex items-center gap-1 text-[11px] font-bold text-clinic-muted"><Clock className="h-3 w-3" /> Postergar</p>
-                    <div className="flex gap-1.5">
-                      {([["1 día", 1], ["1 semana", 7], ["1 mes", 30]] as const).map(([label, d]) => (
-                        <button key={d} onClick={() => { postergar(sel, d); setSelId(null); }} className="rounded-lg border border-clinic-border px-2 py-1 text-[11px] font-bold text-clinic-muted hover:text-clinic-text">{label}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="mb-1 text-[11px] font-bold text-clinic-muted">Cerrar caso</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      <button onClick={() => { cerrar(sel, "acepto"); setSelId(null); }} className="rounded-lg border border-state-ok/40 bg-state-okbg px-2 py-1 text-[11px] font-bold text-state-ok hover:brightness-95">Aceptó</button>
-                      <button onClick={() => { cerrar(sel, "contacto_posterior"); setSelId(null); }} className="rounded-lg border border-state-warn/40 bg-state-warnbg px-2 py-1 text-[11px] font-bold text-state-warn hover:brightness-95">Contacto posterior</button>
-                      <button onClick={() => { cerrar(sel, "rechazo"); setSelId(null); }} className="rounded-lg border border-state-err/40 bg-state-errbg px-2 py-1 text-[11px] font-bold text-state-err hover:brightness-95">Rechazó</button>
-                    </div>
-                  </div>
-                  {verPersonales && pPhone(sel) && (
-                    <a href={waLink(pPhone(sel)!, `Hola ${pName(sel)}, te contactamos de la clínica.`)} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-1.5 rounded-lg border border-clinic-border py-2 text-xs font-bold text-state-ok hover:bg-state-okbg">
-                      <MessageCircle className="h-3.5 w-3.5" /> Escribir por WhatsApp
-                    </a>
+      {vistaEfectiva === "bandeja" && (
+        <>
+          {/* Barra de la bandeja: pestañas + nueva personalizada + filtros */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div role="tablist" aria-label="Listas de tareas" className="flex rounded-xl border border-clinic-border bg-white p-1">
+              {([["dia", "Tareas del día", null], ["atrasadas", "Tareas atrasadas", atrasadas.length]] as const).map(([k, label, n]) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="tab"
+                  aria-selected={lista === k}
+                  onClick={() => { setLista(k); setSelId(null); }}
+                  className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${lista === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:text-clinic-text"}`}
+                >
+                  {label}
+                  {n != null && (
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${lista === k ? "bg-white/20" : n > 0 ? "bg-state-errbg text-state-err" : "bg-clinic-bg"}`}>{n}</span>
                   )}
-                </div>
-              )}
+                </button>
+              ))}
+            </div>
+            <Btn onClick={() => setNueva(true)}><Plus aria-hidden className="h-4 w-4" /> Nueva tarea personalizada</Btn>
+            <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 sm:ml-auto sm:w-auto">
+              <Desplegable
+                alinear="auto"
+                ancho="w-64"
+                boton={<><ListFilter aria-hidden className="h-3.5 w-3.5" /> Filtrar por{filtrosActivos > 0 ? ` (${filtrosActivos})` : ""} <ChevronDown aria-hidden className="h-3.5 w-3.5" /></>}
+              >
+                {(cerrar) => (
+                  <>
+                    <p className="px-3 pb-1 pt-2 text-[10px] font-extrabold uppercase tracking-wide text-clinic-muted">Tipo de tarea</p>
+                    {(["todas", ...tipos] as const).map((t) => (
+                      <Opcion key={t} marcada={filtroTipo === t} onClick={() => { setFiltroTipo(t); cerrar(); }}>
+                        {t === "todas" ? "Todas" : TIPO_TAREA_LABEL[t]}
+                      </Opcion>
+                    ))}
+                    <p className="mt-1 border-t border-clinic-border px-3 pb-1 pt-2 text-[10px] font-extrabold uppercase tracking-wide text-clinic-muted">Responsable</p>
+                    {([["todos", "Todas"], ["mias", "Asignadas a mí"], ["sin", "Sin asignar"]] as const).map(([k, label]) => (
+                      <Opcion key={k} marcada={filtroResp === k} onClick={() => { setFiltroResp(k); cerrar(); }}>{label}</Opcion>
+                    ))}
+                  </>
+                )}
+              </Desplegable>
+              <label
+                className="flex cursor-pointer items-center gap-1.5 text-xs font-bold text-clinic-muted"
+                title="Las que se resolvieron solas (el paciente pagó, agendó o aceptó) cuando alguien ya las tenía asignadas o trabajadas."
+              >
+                <input type="checkbox" checked={esconderSistema} onChange={(e) => setEsconderSistema(e.target.checked)} className="accent-azure-600" />
+                Esconder tareas completadas por sistema
+              </label>
+            </div>
+          </div>
 
-              {/* Fuera del gate de "cerrada": una manual cerrada también se
-                  borra. Adentro, la única forma de sacarla era no cerrarla. */}
-              {!sel.derivedKey && (
-                <button onClick={() => { if (confirm("¿Eliminar tarea?")) { deleteMgmtTask(sel.id); setSelId(null); } }}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border-t border-clinic-border pt-3 text-[11px] font-bold text-clinic-muted hover:text-state-err">
-                  <Trash2 className="h-3 w-3" /> Eliminar tarea
+          {/* grid-cols-1 = minmax(0, 1fr): sin eso, en el celular la columna implícita
+              crece hasta el texto sin cortes de las filas y la página se recorta. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <div ref={listaRef} className="min-w-0 scroll-mt-28">
+              <Card className="overflow-visible">
+                {filasLista.length === 0 ? (
+                  <p className="px-6 py-14 text-center text-sm text-clinic-muted">
+                    {lista === "atrasadas"
+                      ? "No hay tareas atrasadas."
+                      : fecha === hoy ? "No hay tareas para hoy." : `No hay tareas para el ${tituloFecha(fecha, hoy).toLowerCase()}.`}
+                  </p>
+                ) : (
+                  <ul aria-label={lista === "dia" ? "Tareas del día" : "Tareas atrasadas"} className="divide-y divide-clinic-border">
+                    {filasLista.map((f) => (
+                      <FilaBandeja
+                        key={f.id}
+                        f={f}
+                        hoy={hoy}
+                        seleccionada={f.id === selId}
+                        onSeleccionar={() => seleccionar(f.id)}
+                        onAsignar={(u) => tareas.asignar(f, u)}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            </div>
+
+            <div ref={panelRef} className="min-w-0 scroll-mt-28 space-y-2 lg:sticky lg:top-28 lg:self-start">
+              {sel && (
+                <button
+                  type="button"
+                  onClick={() => listaRef.current?.scrollIntoView({ block: "start" })}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-azure-700 lg:hidden"
+                >
+                  <ArrowUp aria-hidden className="h-3.5 w-3.5" /> Volver a la lista
                 </button>
               )}
+              <PanelTarea
+                fila={sel}
+                hoy={hoy}
+                saldo={tareas.saldoDe(sel?.patientId)}
+                onGestionar={(accion, hasta) => { if (!sel) return; const id = tareas.gestionar(sel, accion, hasta); if (id) setSelId(id); }}
+                onEliminar={sel && !sel.derivedKey ? () => { tareas.eliminar(sel.id.split("@")[0]); setSelId(null); } : undefined}
+              />
             </div>
-          )}
-        </Card>
-      </div>
+          </div>
+        </>
+      )}
 
-      {showForm && (
-        <TaskForm
-          clinicId={cid}
-          patients={db.patients.filter((p) => alcance.vePaciente(p.id)).map((p) => ({ id: p.id, name: fullName(p) }))}
-          createdBy={session.userId}
-          users={db.users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
-          onClose={() => setShowForm(false)}
-          onSave={(t) => { addMgmtTask(t); setShowForm(false); }}
+      {nueva && (
+        <NuevaTareaModal
+          fechaInicial={fecha}
+          onClose={() => setNueva(false)}
+          onCreada={(t) => { if (t.dueDate) { setFecha(t.dueDate); setLista("dia"); } setSelId(t.id); }}
         />
       )}
     </Reveal>
   );
 }
 
-function TaskForm({ clinicId, patients, users, createdBy, onClose, onSave }: {
-  clinicId: string;
-  createdBy: string;
-  patients: { id: string; name: string }[];
-  users: { id: string; name: string }[];
-  onClose: () => void;
-  onSave: (t: MgmtTask) => void;
+/* ─── Fila de la bandeja ─── */
+function FilaBandeja({ f, hoy: hoyFila, seleccionada, onSeleccionar, onAsignar }: {
+  f: FilaTarea; hoy: string; seleccionada: boolean; onSeleccionar: () => void; onAsignar: (userId: string | undefined) => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [detail, setDetail] = useState("");
-  const [patientId, setPatientId] = useState("");
-  const [assigneeId, setAssigneeId] = useState("");
-  const [dueDate, setDueDate] = useState("");
-
-  const guardar = () => {
-    if (!title.trim()) return;
-    onSave({
-      id: `mt_${Date.now()}`,
-      clinicId,
-      type: "personalizada",
-      patientId: patientId || undefined,
-      patientName: patients.find((p) => p.id === patientId)?.name,
-      title: title.trim(),
-      detail: detail.trim() || undefined,
-      assigneeId: assigneeId || undefined,
-      createdBy,
-      status: "pendiente",
-      dueDate: dueDate || undefined,
-      createdAt: new Date().toISOString(),
-    });
-  };
-
+  const { db, session } = useStore();
+  const nombres = useNombres();
+  const nombre = nombres.paciente(f) || "Tarea interna";
+  const profesional = nombres.usuario(f.professionalId) || (f.type === "personalizada" ? nombres.usuario(f.createdBy) : "");
+  const sub = [profesional, f.title].filter(Boolean).join(" · ");
+  const atrasada = f.estado === "pendiente" && f.fecha < hoyFila;
+  const asignado = nombres.usuario(f.assigneeId);
+  // A quién se le puede asignar: a quien puede ver ese tipo de tarea (una
+  // cobranza no se le asigna a un dentista, que no ve plata).
+  const asignables = db.users.filter((u) => u.active && u.id !== session?.userId && tiposDeTareaVisibles(u.role).includes(f.type));
   return (
-    <Modal title="Nueva tarea de gestión" onClose={onClose}>
-      <div className="space-y-3">
-        <Field label="Título"><input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} placeholder="Ej. Llamar para confirmar control" /></Field>
-        <Field label="Detalle"><textarea rows={2} value={detail} onChange={(e) => setDetail(e.target.value)} className={inputCls} /></Field>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Paciente">
-            <select value={patientId} onChange={(e) => setPatientId(e.target.value)} className={inputCls}>
-              <option value="">— (sin paciente)</option>
-              {patients.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Asignar a">
-            <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className={inputCls}>
-              <option value="">Sin asignar</option>
-              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-          </Field>
-        </div>
-        <Field label="Vencimiento (opcional)"><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputCls} /></Field>
-        <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-xl border border-clinic-border px-4 py-2 text-sm font-bold text-clinic-muted hover:text-clinic-text">Cancelar</button>
-          <Btn onClick={guardar}>Crear tarea</Btn>
-        </div>
+    // En el celular: casillero · [tipo + fecha / paciente / detalle] y debajo el
+    // responsable. Desde sm, todo en una línea como Dentalink.
+    <li className={`flex items-start gap-2.5 px-3 py-2.5 sm:items-center sm:gap-3 sm:px-4 ${seleccionada ? "bg-azure-50" : "hover:bg-clinic-bg/60"}`}>
+      <span className="mt-1 sm:mt-0"><EstadoCheck estado={f.estado} /></span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+        <button
+          type="button"
+          onClick={onSeleccionar}
+          aria-current={seleccionada || undefined}
+          aria-label={`${TIPO_TAREA_LABEL[f.type]} — ${nombre} — ${ESTADO_LABEL[f.estado]}${atrasada ? ` (atrasada, ${fechaCorta(f.fecha, hoyFila)})` : ""}`}
+          className="flex min-w-0 flex-1 flex-col items-start gap-1 text-left sm:flex-row sm:items-center sm:gap-3"
+        >
+          <span className="flex items-center gap-2 sm:w-[112px] sm:shrink-0">
+            <TipoBadge type={f.type} apagada={f.estado !== "pendiente"} />
+            <span className={`whitespace-nowrap font-mono text-[11px] sm:hidden ${atrasada ? "font-bold text-state-err" : "text-clinic-muted"}`}>{fechaCorta(f.fecha, hoyFila)}</span>
+          </span>
+          <span className="block w-full min-w-0">
+            <span className={`block truncate text-sm font-bold ${f.estado === "pendiente" ? "text-clinic-text" : "text-clinic-muted"}`}>{nombre}</span>
+            {sub && <span className="block truncate text-xs text-clinic-muted">{sub}</span>}
+          </span>
+        </button>
+        {f.estado === "pendiente" ? (
+          <Desplegable
+            alinear="auto"
+            ancho="w-60"
+            className="self-start sm:self-auto"
+            etiqueta={asignado ? `Responsable: ${asignado}` : "Responsable"}
+            boton={<><span className="max-w-[6.5rem] truncate">{asignado ? asignado.split(" ").slice(0, 2).join(" ") : "Responsable"}</span><ChevronDown aria-hidden className="h-3.5 w-3.5 shrink-0" /></>}
+          >
+            {(cerrar) => (
+              <>
+                <Opcion marcada={f.assigneeId === session?.userId} onClick={() => { if (session) onAsignar(session.userId); cerrar(); }}>Asignar a mí</Opcion>
+                {asignables.length > 0 && (
+                  <>
+                    <p className="border-t border-clinic-border px-3 pb-1 pt-2 text-[10px] font-extrabold uppercase tracking-wide text-clinic-muted">Asignar a otro usuario</p>
+                    <div className="max-h-56 overflow-y-auto">
+                      {asignables.map((u) => (
+                        <Opcion key={u.id} marcada={f.assigneeId === u.id} onClick={() => { onAsignar(u.id); cerrar(); }}>{u.name}</Opcion>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {f.assigneeId && (
+                  <div className="border-t border-clinic-border">
+                    <Opcion onClick={() => { onAsignar(undefined); cerrar(); }}>Quitar responsable</Opcion>
+                  </div>
+                )}
+              </>
+            )}
+          </Desplegable>
+        ) : (
+          <span className="max-w-[7rem] truncate text-xs text-clinic-muted">{asignado || "No asignado"}</span>
+        )}
       </div>
-    </Modal>
+      <span className={`hidden w-14 shrink-0 text-right font-mono text-xs sm:block ${atrasada ? "font-bold text-state-err" : "text-clinic-muted"}`}>{fechaCorta(f.fecha, hoyFila)}</span>
+      <button type="button" tabIndex={-1} aria-hidden onClick={onSeleccionar} className="hidden text-clinic-muted hover:text-clinic-text sm:block">
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </li>
   );
 }

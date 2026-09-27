@@ -6,7 +6,9 @@ import { ShieldAlert, Download, TrendingUp, TrendingDown, Scale, FileSpreadsheet
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, patientBalance, netAmount, retentionPct, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
-import { Card, Btn, Badge } from "@/components/ui";
+import { Card, Btn, Badge, Field, inputCls } from "@/components/ui";
+import { derivarTareas, esFecha, fechaLocal, sumarDias } from "@/lib/tareas";
+import { lineasDeTareas, reporteTareas, type LineaTarea } from "@/lib/tareas-reportes";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { ReportsIAPanel } from "@/components/NovudentIA";
 import { CashflowAreaChart, ProductionBarsChart } from "@/components/Charts";
@@ -29,6 +31,9 @@ const DAYS30 = 30 * 24 * 3600 * 1000;
 export default function ReportsPage() {
   const { db, session } = useStore();
   const [tab, setTab] = useState<"desempeno" | "analisis" | "excel">("desempeno");
+  // Rango de los reportes de CRM (tareas de gestión): por defecto, el mes en curso.
+  const [crmDesde, setCrmDesde] = useState(() => `${fechaLocal().slice(0, 7)}-01`);
+  const [crmHasta, setCrmHasta] = useState(() => sumarDias(`${sumarDias(`${fechaLocal().slice(0, 7)}-01`, 32).slice(0, 7)}-01`, -1));
   // Deep-link desde el menú (Reportes ▾): /app/reportes#analisis abre esa pestaña.
   useEffect(() => {
     const apply = () => {
@@ -189,6 +194,22 @@ export default function ReportsPage() {
       ],
     },
   ];
+
+  /* CRM → Tareas de gestión (paridad Dentalink). Las tareas automáticas no se
+     guardan, así que se derivan al descargar, igual que la bandeja. */
+  const crmRangoValido = esFecha(crmDesde) && esFecha(crmHasta) && crmDesde <= crmHasta;
+  const descargarTareas = (tipo: "generadas" | "a_vencer") => {
+    const hoy = fechaLocal();
+    const derivadas = derivarTareas({
+      patients: db.patients, budgets: db.budgets, payments: db.payments, appointments: db.appointments,
+      deadlines: db.clinics[0]?.config?.taskDeadlines,
+    }, hoy);
+    const filas = reporteTareas(tipo, lineasDeTareas(derivadas, db.mgmtTasks, hoy), { desde: crmDesde, hasta: crmHasta }, {
+      paciente: (l: LineaTarea) => (l.patientId ? patientName(l.patientId) : l.patientName ?? "—"),
+      usuario: (id?: string) => db.users.find((u) => u.id === id)?.name ?? "",
+    });
+    downloadCsv(`tareas-${tipo === "generadas" ? "generadas" : "a-vencer"}_${crmDesde}_${crmHasta}.csv`, filas);
+  };
 
   // Payload compacto para Reportes IA — agregados ya computados, nunca
   // la DB cruda. Nombres en español para que el modelo los entienda.
@@ -418,6 +439,23 @@ export default function ReportsPage() {
               );
             });
           })()}
+          {/* CRM: como Dentalink, las tareas de gestión con su propio rango de fechas. */}
+          <div>
+            <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wide text-clinic-muted">CRM</div>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="w-40"><Field label="Desde"><input type="date" className={inputCls} value={crmDesde} max={crmHasta || undefined} onChange={(e) => setCrmDesde(e.target.value)} /></Field></div>
+              <div className="w-40"><Field label="Hasta"><input type="date" className={inputCls} value={crmHasta} min={crmDesde || undefined} onChange={(e) => setCrmHasta(e.target.value)} /></Field></div>
+            </div>
+            {!crmRangoValido && <p className="mt-1 text-xs font-semibold text-state-err">Elegí un rango válido: «desde» no puede ser posterior a «hasta».</p>}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Btn variant="outline" disabled={!crmRangoValido} onClick={() => descargarTareas("generadas")}>
+                <Download className="h-3.5 w-3.5 shrink-0" /> Tareas de gestión generadas en un período de tiempo
+              </Btn>
+              <Btn variant="outline" disabled={!crmRangoValido} onClick={() => descargarTareas("a_vencer")}>
+                <Download className="h-3.5 w-3.5 shrink-0" /> Tareas de gestión a vencer en un período de tiempo
+              </Btn>
+            </div>
+          </div>
         </div>
       </Card>
       </Reveal>
