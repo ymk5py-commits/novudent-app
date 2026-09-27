@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useStore, fmtGs, fmtDate } from "@/lib/store";
 import { can } from "@/lib/rbac";
+import { useAlcance } from "@/lib/useAlcance";
 import { orthoProgress } from "@/lib/ortho";
 import { PrestacionesList } from "@/components/Prestaciones";
 import { resizeToDataUrl } from "@/lib/image";
@@ -103,6 +104,7 @@ function Info({ k, v }: { k: string; v?: string | null }) {
 /* ---------- Resumen: progreso + seguimiento + última evolución ---------- */
 function OrthoResumen({ patient, canWrite }: { patient: Patient; canWrite: boolean }) {
   const { session, setOrtho, addOrthoControl } = useStore();
+  const verMontos = useAlcance().puede("money.view");
   const [editing, setEditing] = useState(false);
   const [evoOpen, setEvoOpen] = useState(false);
   const o = patient.ortho!;
@@ -116,7 +118,7 @@ function OrthoResumen({ patient, canWrite }: { patient: Patient; canWrite: boole
     ["Configuración elásticos", o.elasticConfig],
     ["Próximo control", o.nextControlDate ? fmtDate(o.nextControlDate) : null],
     ["Curva de higiene", o.hygieneCurve != null ? `${o.hygieneCurve.toFixed(1)} promedio` : null],
-    ["Cuota mensual", o.monthlyFee ? fmtGs(o.monthlyFee) : null],
+    ["Cuota mensual", verMontos && o.monthlyFee ? fmtGs(o.monthlyFee) : null],
   ];
 
   return (
@@ -326,11 +328,12 @@ function OrthoDiagnostico({ patient, canWrite }: { patient: Patient; canWrite: b
 
 /* ---------- Plan de tratamiento (ítems del presupuesto) ---------- */
 function OrthoPlan({ budget }: { budget: Budget }) {
+  const gestiona = useAlcance().puede("budgets.manage");
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="font-extrabold text-clinic-text">Plan de tratamiento</h3>
-        <a href="/app/presupuestos" className="text-xs font-bold text-azure-600 hover:underline">Gestionar →</a>
+        {gestiona && <a href="/app/presupuestos" className="text-xs font-bold text-azure-600 hover:underline">Gestionar →</a>}
       </div>
       <PrestacionesList budget={budget} />
     </div>
@@ -342,7 +345,9 @@ function ActivateModal({ prev, onClose, onSave }: { prev?: OrthoRecord; onClose:
   const [applianceType, setApplianceType] = useState(prev?.applianceType ?? "Brackets metálicos");
   const [diagnosis, setDiagnosis] = useState(prev?.diagnosis ?? "");
   const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [monthlyFee, setMonthlyFee] = useState(prev?.monthlyFee ?? 350000);
+  // Sin money.view la cuota no se ve ni se inventa: queda la que había (o 0) y la carga la caja.
+  const verMontos = useAlcance().puede("money.view");
+  const [monthlyFee, setMonthlyFee] = useState(prev?.monthlyFee ?? (verMontos ? 350000 : 0));
   const [totalMonths, setTotalMonths] = useState(prev?.totalMonths ?? 24);
   return (
     <Modal title="Activar ortodoncia" onClose={onClose}>
@@ -357,10 +362,10 @@ function ActivateModal({ prev, onClose, onSave }: { prev?: OrthoRecord; onClose:
           </select>
         </Field>
         <Field label="Diagnóstico ortodóncico"><textarea rows={2} className={inputCls} value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} placeholder="Clase, apiñamiento, mordida…" /></Field>
-        <div className="grid grid-cols-3 gap-3">
+        <div className={`grid gap-3 ${verMontos ? "grid-cols-3" : "grid-cols-2"}`}>
           <Field label="Inicio"><input type="date" className={inputCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} /></Field>
           <Field label="Duración (meses)"><input type="number" min={1} className={inputCls} value={totalMonths} onChange={(e) => setTotalMonths(Number(e.target.value))} /></Field>
-          <Field label="Cuota (Gs)"><input type="number" min={0} className={inputCls} value={monthlyFee} onChange={(e) => setMonthlyFee(Number(e.target.value))} /></Field>
+          {verMontos && <Field label="Cuota (Gs)"><input type="number" min={0} className={inputCls} value={monthlyFee} onChange={(e) => setMonthlyFee(Number(e.target.value))} /></Field>}
         </div>
         <div className="flex justify-end gap-2">
           <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>

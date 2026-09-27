@@ -42,13 +42,14 @@ export default function CrmPage() {
   if (!session) return null;
   if (!plan.features.includes("crm")) return <PlanLocked feature="crm" />;
 
-  const allowed = can(session.role, "engagement.forms"); // admin + asistente gestionan
+  const allowed = can(session.role, "engagement.forms"); // roles v3: admin, caja y recepción
+  const verMontos = can(session.role, "money.view"); // la recepcionista trabaja el CRM sin ver montos ni deudas
   if (!allowed) {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
         <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
-        <p className="mt-1 text-sm text-clinic-muted">El CRM lo gestionan el <b>Administrador</b> y la <b>Asistente</b>.</p>
+        <p className="mt-1 text-sm text-clinic-muted">El CRM lo gestiona la <b>recepción</b> y el <b>Administrador</b>.</p>
       </Card>
     );
   }
@@ -234,13 +235,13 @@ export default function CrmPage() {
                     <li key={b.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-3">
                       <a href={`/app/pacientes/${b.patientId}`} className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{patientName(b.patientId)}</span>
-                        <span className="font-mono text-xs font-extrabold text-state-warn">{fmtGs(budgetTotal(b))}</span>
-                        <span className="ml-1.5 text-[11px] text-clinic-muted">· {fmtDate(b.createdAt)}</span>
+                        {verMontos && <span className="mr-1.5 font-mono text-xs font-extrabold text-state-warn">{fmtGs(budgetTotal(b))} ·</span>}
+                        <span className="text-[11px] text-clinic-muted">{fmtDate(b.createdAt)}</span>
                       </a>
                       <Btn
                         variant="outline"
                         disabled={inPipeline}
-                        onClick={() => addToPipeline(b.patientId, "presupuesto", `Presupuesto ${fmtGs(budgetTotal(b))} presentado el ${fmtDate(b.createdAt)}`)}
+                        onClick={() => addToPipeline(b.patientId, "presupuesto", `Presupuesto ${verMontos ? `${fmtGs(budgetTotal(b))} ` : ""}presentado el ${fmtDate(b.createdAt)}`)}
                         tip={inPipeline ? "Ya está en el pipeline" : "Crear tarjeta en etapa Presupuesto"}
                       >
                         {inPipeline ? <><Check className="h-3.5 w-3.5" /> En pipeline</> : <><ArrowRight className="h-3.5 w-3.5" /> Pipeline</>}
@@ -340,7 +341,7 @@ export default function CrmPage() {
             <select value={seg.city} onChange={(e) => setSeg({ ...seg, city: e.target.value })} className={inputCls}><option value="">Todas las ciudades</option>{cities.map((c) => <option key={c} value={c}>{c}</option>)}</select>
             <input type="number" min={0} placeholder="Edad mín." value={seg.ageMin} onChange={(e) => setSeg({ ...seg, ageMin: e.target.value })} className={inputCls} />
             <input type="number" min={0} placeholder="Edad máx." value={seg.ageMax} onChange={(e) => setSeg({ ...seg, ageMax: e.target.value })} className={inputCls} />
-            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-clinic-border px-3 text-sm text-clinic-text"><input type="checkbox" checked={seg.deuda} onChange={(e) => setSeg({ ...seg, deuda: e.target.checked })} className="accent-azure-600" /> Con deuda</label>
+            {verMontos && <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-clinic-border px-3 text-sm text-clinic-text"><input type="checkbox" checked={seg.deuda} onChange={(e) => setSeg({ ...seg, deuda: e.target.checked })} className="accent-azure-600" /> Con deuda</label>}
             <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-clinic-border px-3 text-sm text-clinic-text"><input type="checkbox" checked={seg.sinCita} onChange={(e) => setSeg({ ...seg, sinCita: e.target.checked })} className="accent-azure-600" /> Sin cita futura</label>
           </div>
           {segMatches.length === 0 ? (
@@ -444,7 +445,7 @@ export default function CrmPage() {
               {[
                 { t: "Cumpleaños", m: "¡Feliz cumpleaños {paciente}! 🎉 Te saludamos desde {clinica}." },
                 { t: "Reactivación", m: "Hola {paciente} 👋 Hace rato no te vemos en {clinica}. ¿Coordinamos tu próximo control?" },
-                { t: "Cobranza", m: "Hola {paciente}, tenés un saldo pendiente de {saldo} en {clinica}. ¿Coordinamos el pago?" },
+                ...(verMontos ? [{ t: "Cobranza", m: "Hola {paciente}, tenés un saldo pendiente de {saldo} en {clinica}. ¿Coordinamos el pago?" }] : []),
                 { t: "Promoción", m: "Hola {paciente} 👋 Este mes en {clinica} tenemos una promo. ¿Te interesa?" },
               ].map((x) => (
                 <div key={x.t} className="rounded-xl border border-clinic-border p-4">

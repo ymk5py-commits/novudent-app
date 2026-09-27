@@ -68,7 +68,17 @@ export default function LaboratoriosPage() {
   if (!session) return null;
   if (!plan.features.includes("laboratorios")) return <PlanLocked feature="laboratorios" />;
 
-  const canWrite = can(session.role, "engagement.forms");
+  // Roles v3: las órdenes de laboratorio muestran costos: son del Administrador.
+  if (!can(session.role, "labs.manage")) {
+    return (
+      <Card className="p-10 text-center">
+        <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
+        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <p className="mt-1 text-sm text-clinic-muted">Los laboratorios los gestiona el <b>Administrador</b>.</p>
+      </Card>
+    );
+  }
+  const canWrite = can(session.role, "labs.manage");
 
   /* Órdenes más recientes primero */
   const sortedOrders = useMemo(

@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon, MapPin, CalendarClock, ListChecks, Clock, Ban, Power } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
 import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
-import { can, ROLE_LABEL } from "@/lib/rbac";
+import { can, ROLE_LABEL, ROLES, ROLE_DESCRIPCION } from "@/lib/rbac";
+import { planUserLimitError } from "@/lib/plan";
 import { DEFAULT_DEADLINES } from "@/lib/tareas";
 import { anticipacionDe } from "@/lib/reserva-online";
 import type { Role, User, Procedure, BotikaConfig, ConsentTemplate, Branch, TaskDeadline, PaymentMethod } from "@/lib/types";
@@ -202,7 +203,30 @@ export default function ConfigPage() {
                   {db.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               )}
-              <Badge tone={u.role === "admin" ? "info" : u.role === "dentist" ? "ok" : "warn"}>{ROLE_LABEL[u.role]}</Badge>
+              {u.role === "assistant" && (
+                <AsisteA usuario={u} dentistas={db.users.filter((x) => x.role === "dentist" && x.active !== false)} onChange={(asiste) => upsertUser({ ...u, asiste })} />
+              )}
+              {esYo || (ultimoAdmin && activo) ? (
+                <Badge tone={u.role === "admin" ? "info" : u.role === "dentist" ? "ok" : "warn"}>{ROLE_LABEL[u.role]}</Badge>
+              ) : (
+                <select
+                  aria-label={`Rol de ${u.name}`}
+                  title={ROLE_DESCRIPCION[u.role]}
+                  value={u.role}
+                  onChange={(e) => {
+                    const role = e.target.value as Role;
+                    if (role === "dentist") {
+                      // Pasar a dentista cuenta para el límite de profesionales del plan.
+                      const err = planUserLimitError(db.clinics[0], db.users.filter((x) => x.id !== u.id), "dentist");
+                      if (err) { alert(err); return; }
+                    }
+                    upsertUser({ ...u, role, asiste: role === "assistant" ? u.asiste ?? [] : undefined });
+                  }}
+                  className="rounded-lg border border-clinic-border px-2 py-1 text-xs font-semibold text-clinic-text focus:border-azure-400"
+                >
+                  {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                </select>
+              )}
               {!esYo && (
                 <button
                   onClick={toggleBaja}
@@ -673,10 +697,10 @@ function NewUser({
   onClose: () => void;
   onCreate: (d: { name: string; email: string; role: Role; password: string; color: string; phone?: string }) => Promise<void>;
 }) {
-  const [f, setF] = useState({ name: "", email: "", role: "assistant" as Role, password: "", phone: "" });
+  const [f, setF] = useState({ name: "", email: "", role: "receptionist" as Role, password: "", phone: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const COLORS: Record<Role, string> = { admin: "#1769E0", dentist: "#0E9F6E", assistant: "#B45309" };
+  const COLORS: Record<Role, string> = { admin: "#1769E0", cashier: "#7C3AED", receptionist: "#DB2777", dentist: "#0E9F6E", assistant: "#B45309" };
 
   return (
     <Modal title="Agregar usuario" onClose={onClose}>
@@ -716,13 +740,16 @@ function NewUser({
         <Field label="Teléfono (WhatsApp)" hint="Opcional — el dentista recibe alertas del monitor de recuperación post-op en este número.">
           <input type="tel" className={inputCls} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="Ej.: +595981234567" />
         </Field>
-        <Field label="Rol" hint="Define permisos según la matriz RBAC.">
+        <Field label="Rol" hint={ROLE_DESCRIPCION[f.role]}>
           <select className={inputCls} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as Role })}>
-            <option value="admin">Administrador</option>
-            <option value="dentist">Dentista</option>
-            <option value="assistant">Asistente</option>
+            {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
           </select>
         </Field>
+        {f.role === "assistant" && (
+          <p className="rounded-xl bg-clinic-bg p-3 text-xs leading-relaxed text-clinic-muted">
+            Después de crearlo, elegí en la lista a qué doctores asiste: sin doctores asignados no ve agendas ni pacientes.
+          </p>
+        )}
         {error && <p role="alert" className="rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-state-err">{error}</p>}
         <div className="flex justify-end gap-2">
           <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
@@ -810,5 +837,31 @@ function NewProc({ proc, onClose, onSave }: { proc?: Procedure; onClose: () => v
         <div className="flex justify-end gap-2"><Btn variant="outline" onClick={onClose}>Cancelar</Btn><Btn type="submit">{isEdit ? "Guardar" : "Crear servicio"}</Btn></div>
       </form>
     </Modal>
+  );
+}
+
+/** Asistente de doctores: a qué dentistas asiste. Sin ninguno no ve agendas ni pacientes. */
+function AsisteA({ usuario, dentistas, onChange }: { usuario: User; dentistas: User[]; onChange: (asiste: string[]) => void }) {
+  const asiste = usuario.asiste ?? [];
+  return (
+    <div role="group" aria-label={`Doctores a los que asiste ${usuario.name}`} className="flex flex-wrap items-center gap-1">
+      <span className="text-[11px] font-semibold text-clinic-muted">Asiste a:</span>
+      {dentistas.length === 0 && <span className="text-[11px] text-clinic-muted">no hay dentistas activos</span>}
+      {dentistas.map((d) => {
+        const on = asiste.includes(d.id);
+        return (
+          <button
+            key={d.id}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(on ? asiste.filter((x) => x !== d.id) : [...asiste, d.id])}
+            className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-colors ${on ? "border-azure-500 bg-azure-50 text-azure-700" : "border-clinic-border text-clinic-muted hover:border-azure-300"}`}
+          >
+            {d.name}
+          </button>
+        );
+      })}
+      {dentistas.length > 0 && asiste.length === 0 && <Badge tone="warn">Sin doctores</Badge>}
+    </div>
   );
 }

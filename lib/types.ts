@@ -1,7 +1,9 @@
 /* ===== Modelo de datos Novudent (sec. 4 del Documento Maestro) ===== */
 import type { CurrencyCode } from "./currency";
 
-export type Role = "admin" | "dentist" | "assistant";
+/** Roles v3 (27/9/2026): la recepción se separa de la caja, y dentista y asistente
+ *  quedan con lo clínico, sin montos ni datos personales (ver lib/rbac.ts). */
+export type Role = "admin" | "cashier" | "receptionist" | "dentist" | "assistant";
 
 /** Convenio empresarial / aseguradora con descuento pactado */
 export interface Convenio {
@@ -107,6 +109,9 @@ export interface User {
   commissionPct?: number;
   /** Sueldo base del período (contrato salario fijo / mixto) */
   salaryBase?: number;
+  /** Asistente de doctores: ids de los dentistas a los que asiste. Ve su agenda,
+   *  sus planes y sus pacientes; sin doctores asignados no ve agendas. */
+  asiste?: string[];
   /** Especialidad del profesional (Ortodoncia, Endodoncia, …) */
   specialty?: string;
   /** Sucursal asignada (multi-sede) */
@@ -836,6 +841,8 @@ export interface MgmtTask {
   detail?: string;
   budgetId?: string;
   assigneeId?: string;
+  /** Quién la creó (roles v3: dentista y asistente ven las suyas aunque no tengan paciente). */
+  createdBy?: string;
   status: "pendiente" | "en_proceso" | "cerrada";
   resolution?: "acepto" | "contacto_posterior" | "rechazo";
   dueDate?: string;

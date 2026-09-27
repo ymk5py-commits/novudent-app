@@ -25,7 +25,7 @@ export default function InventoryPage() {
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
         <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
-        <p className="mt-1 text-sm text-clinic-muted">El inventario lo gestionan el <b>Administrador</b> y la <b>Asistente</b>.</p>
+        <p className="mt-1 text-sm text-clinic-muted">El inventario lo gestiona el <b>Administrador</b>.</p>
       </Card>
     );
   }

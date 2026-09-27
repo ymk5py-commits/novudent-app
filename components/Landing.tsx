@@ -164,7 +164,7 @@ export const ETAPAS: {
   {
     id: "controlar", n: "05", nombre: "Controlar", bajada: "Ordená la operación",
     titulo: "Sabé qué pasa en cada área de tu clínica",
-    texto: "Tres roles con permisos estrictos: la recepción cobra pero no ve los números del negocio, y el profesional escribe la ficha sin manejar la caja.",
+    texto: "Cinco roles, cada uno con lo suyo: la caja cobra sin ver los números del negocio, la recepción agenda sin ver montos y el profesional trabaja la ficha de sus pacientes sin tocar la plata.",
     funciones: [
       { t: "Roles y permisos", icon: ShieldCheck, plan: "todos" },
       { t: "Control de gastos", icon: TrendingDown, plan: "todos" },

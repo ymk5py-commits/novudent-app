@@ -5,15 +5,18 @@ import { useMemo } from "react";
 import { Braces, AlertTriangle, CalendarX, Baby, Users, UserCheck, Download } from "lucide-react";
 import { useStore, fmtDate } from "@/lib/store";
 import { orthoProgress } from "@/lib/ortho";
+import { useAlcance } from "@/lib/useAlcance";
 import { downloadCsv } from "@/lib/csv";
 import { Card, Empty, Btn } from "@/components/ui";
 
 export function PacientesOrtodoncia() {
   const { db } = useStore();
+  const alcance = useAlcance();
+  const verPersonales = alcance.puede("patients.personal");
 
   const data = useMemo(() => {
     const now = Date.now();
-    const active = db.patients.filter((p) => p.ortho?.active);
+    const active = db.patients.filter((p) => p.ortho?.active && alcance.vePaciente(p.id));
     const ageOf = (bd?: string) => {
       if (!bd) return null;
       const t = Date.parse(bd);
@@ -50,12 +53,13 @@ export function PacientesOrtodoncia() {
       e12: ages.filter((a) => a > 12).length,
     };
     return { rows, kpis };
-  }, [db]);
+  }, [db, alcance]);
 
   const descargar = () => {
     downloadCsv("pacientes-ortodoncia.csv", [
-      ["Nombre", "Apellidos", "Sexo", "Edad", "Tel. móvil", "Inicio tratamiento", "Dr(a) tratante", "Progreso calendario %"],
-      ...data.rows.map((r) => [r.p.firstName, r.p.lastName, r.p.sex ?? r.p.gender ?? "", r.age ?? "", r.p.phone, fmtDate(r.o.startDate), r.dr, r.prog.calendarPct]),
+      // El teléfono es dato personal: solo lo exporta quien lo puede ver.
+      ["Nombre", "Apellidos", "Sexo", "Edad", ...(verPersonales ? ["Tel. móvil"] : []), "Inicio tratamiento", "Dr(a) tratante", "Progreso calendario %"],
+      ...data.rows.map((r) => [r.p.firstName, r.p.lastName, r.p.sex ?? r.p.gender ?? "", r.age ?? "", ...(verPersonales ? [r.p.phone] : []), fmtDate(r.o.startDate), r.dr, r.prog.calendarPct]),
     ]);
   };
 
@@ -84,7 +88,7 @@ export function PacientesOrtodoncia() {
                 <th className="px-4 py-3">Paciente</th>
                 <th className="px-2 py-3">Sexo</th>
                 <th className="px-2 py-3">Edad</th>
-                <th className="px-2 py-3">Tel. móvil</th>
+                {verPersonales && <th className="px-2 py-3">Tel. móvil</th>}
                 <th className="px-2 py-3">Inicio</th>
                 <th className="px-2 py-3">Dr(a) tratante</th>
                 <th className="w-48 px-4 py-3">Progreso calendario</th>
@@ -99,7 +103,7 @@ export function PacientesOrtodoncia() {
                   </td>
                   <td className="px-2 py-2.5 text-clinic-muted">{r.p.sex ?? r.p.gender ?? "—"}</td>
                   <td className="px-2 py-2.5 text-clinic-muted">{r.age ?? "—"}</td>
-                  <td className="px-2 py-2.5 font-mono text-xs text-clinic-muted">{r.p.phone}</td>
+                  {verPersonales && <td className="px-2 py-2.5 font-mono text-xs text-clinic-muted">{r.p.phone}</td>}
                   <td className="px-2 py-2.5 text-clinic-muted">{fmtDate(r.o.startDate)}</td>
                   <td className="px-2 py-2.5 text-clinic-muted">{r.dr}</td>
                   <td className="px-4 py-2.5">

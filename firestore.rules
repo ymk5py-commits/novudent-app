@@ -65,7 +65,7 @@ service cloud.firestore {
     // `active:false` pero su credencial seguía válida, y desde la consola del
     // navegador leía, editaba y borraba toda la historia clínica. `.get(campo,
     // default)` trata como activo a los docs viejos que no tengan el campo.
-    // Pasa de exists() a get() (una lectura), pero isAdmin/isStaff/isClinical
+    // Pasa de exists() a get() (una lectura), pero isAdmin/isCaja/isRecepcion/isClinical
     // ya hacían ese get al mismo path, y dentro de una evaluación se cachea.
     function isMember(cid) {
       return isSignedIn()
@@ -79,11 +79,19 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // "Staff" administrativo (admin o asistente). El dentista NO maneja dinero
-    // (matriz RBAC: payments.manage / expenses.manage = [admin, asistente]).
-    function isStaff(cid) {
+    // Caja: cobra, factura y hace el arqueo (matriz RBAC roles v3: payments.manage =
+    // [admin, cashier]). Ni la recepcionista, ni el dentista, ni el asistente de
+    // doctores manejan dinero.
+    function isCaja(cid) {
       return isMember(cid)
-        && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role in ['admin', 'assistant'];
+        && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role in ['admin', 'cashier'];
+    }
+
+    // Recepción: consentimientos y formularios del paciente (matriz RBAC roles v3:
+    // engagement.forms = [admin, cashier, receptionist]).
+    function isRecepcion(cid) {
+      return isMember(cid)
+        && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role in ['admin', 'cashier', 'receptionist'];
     }
 
     // Rol clínico (admin o dentista). El ASISTENTE no escribe el EMR
@@ -280,8 +288,8 @@ service cloud.firestore {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
         allow write: if canWrite(cid);
       }
-      // billing: lo escriben admin (finaliza), asistente (envía a cobro) y
-      // dentista (finaliza) — todos los roles según la matriz, así que isMember.
+      // billing: lo escriben admin y caja según la matriz; las reglas lo dejan en
+      // isMember (pendiente de la fase 2: enviar a cobro vs. finalizar).
       match /billing/{docId}     {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
         allow write: if canWrite(cid);
@@ -301,7 +309,7 @@ service cloud.firestore {
       // miembro; escritura: solo staff (admin/asistente). Cierra el fraude
       // financiero vía SDK directo saltándose el RBAC de la UI.
       match /payments/{docId}    { allow read: if isMember(cid) || isService() || isDemo(cid);
-                                   allow write: if (isStaff(cid) && subActive(cid)) || isService() || isDemoRW(cid); }
+                                   allow write: if (isCaja(cid) && subActive(cid)) || isService() || isDemoRW(cid); }
       // Gastos = costos del negocio (alquiler, proveedores, sueldos). Solo el
       // dueño, y también en LECTURA: el gating de la UI no alcanza porque el
       // cliente lee Firestore directo y podría sacarlos por SDK.
@@ -353,7 +361,7 @@ service cloud.firestore {
                 /* Consentimientos: los maneja el staff (admin|asistente), no el dentista.
            Y el BORRADO se cierra: una firma electrónica emitida es prueba legal;
            por SDK cualquiera podía eliminarla y en la interfaz eso no existe. */
-        allow create, update: if canWritePremium(cid, ['clinica','cadena']) && (isStaff(cid) || isService() || isDemoRW(cid));
+        allow create, update: if canWritePremium(cid, ['clinica','cadena']) && (isRecepcion(cid) || isService() || isDemoRW(cid));
         allow delete: if isService() || isDemoRW(cid);
       }
       // Módulos de paridad Dentalink (CRM, Laboratorios, Liquidaciones, Box/Sillones)
@@ -391,17 +399,17 @@ service cloud.firestore {
                 /* Boletas y devoluciones: las emite el staff. El dentista podía emitir
            devoluciones y borrar boletas. Un documento fiscal se anula, no se
            borra: el delete queda para el admin. */
-        allow create, update: if (isStaff(cid) && subActive(cid)) || isService() || isDemoRW(cid);
+        allow create, update: if (isCaja(cid) && subActive(cid)) || isService() || isDemoRW(cid);
         allow delete: if isAdmin(cid) || isService() || isDemoRW(cid);
       }
       // Sesiones de caja: apertura/cierre con arqueo
       match /cashSessions/{docId} {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
-                /* isStaff, igual que payments: el dentista no maneja dinero. Podía cerrar
+                /* isCaja, igual que payments: el dentista no maneja dinero. Podía cerrar
            el arqueo de la recepción declarando 0 contado, que es justo el control
            que detecta faltantes. */
         // `caja` es feature de Clínica+ (la UI ya lo bloquea): además de rol, plan.
-        allow write: if (isStaff(cid) && subActive(cid) && effectivePlan(cid) in ['clinica', 'cadena'])
+        allow write: if (isCaja(cid) && subActive(cid) && effectivePlan(cid) in ['clinica', 'cadena'])
                         || isService() || isDemoRW(cid);
       }
       // Ciclos de esterilización de instrumental (cumplimiento)

@@ -10,7 +10,7 @@ import { Card, Btn, Field, inputCls } from "@/components/ui";
 
 export function DatosTab({ patient }: { patient: Patient }) {
   const { session, upsertPatient } = useStore();
-  const canEdit = session ? can(session.role, "engagement.forms") || can(session.role, "emr.write") : false;
+  const canEdit = session ? can(session.role, "patients.personal") : false; // roles v3: recepción, caja y admin
 
   const orig = {
     tipo: patient.tipo ?? "", firstName: patient.firstName, lastName: patient.lastName,

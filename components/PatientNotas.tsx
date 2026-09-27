@@ -12,7 +12,7 @@ const NOUN: Record<PatientNoteKind, string> = { comentario: "comentario", tarea:
 
 export function PatientNotas({ patient, kind }: { patient: Patient; kind: PatientNoteKind }) {
   const { db, session, addPatientNote, updatePatientNote, deletePatientNote } = useStore();
-  const canWrite = session ? can(session.role, "engagement.forms") || can(session.role, "emr.write") : false;
+  const canWrite = session ? can(session.role, "patients.personal") : false; // roles v3: la pestaña es de datos personales
   const notes = db.patientNotes
     .filter((n) => n.patientId === patient.id && n.kind === kind)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));

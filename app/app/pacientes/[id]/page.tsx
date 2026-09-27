@@ -11,6 +11,7 @@ import { useStore, fmtGs, fmtTime, fmtDate, fullName } from "@/lib/store";
 import { recordTotal } from "@/lib/billing";
 import { resizeToDataUrl } from "@/lib/image";
 import { can } from "@/lib/rbac";
+import { useAlcance } from "@/lib/useAlcance";
 import type { EmrNote, PatientForm, Patient } from "@/lib/types";
 import { DEFAULT_ODONTOGRAM_STATUS } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, StatusBadge, Empty } from "@/components/ui";
@@ -75,7 +76,8 @@ export default function PatientProfile() {
   const { id } = useParams<{ id: string }>();
   const { db, session, completeForm, addEmrNote, addPerioSession, setOdontogram, markHistoryUpdate, upsertPatient } = useStore();
   const hasIA = useClinicPlan().features.includes("ia"); // Novudent IA: Plan Clínica+
-  const [tab, setTab] = useState<SubTab>("resumen");
+  const alcance = useAlcance();
+  const [tabElegida, setTab] = useState<SubTab>("resumen");
   const [fillingForm, setFillingForm] = useState<PatientForm | null>(null);
   const [writingNote, setWritingNote] = useState(false);
   const [clipOpen, setClipOpen] = useState(false);
@@ -89,10 +91,40 @@ export default function PatientProfile() {
 
   if (!session) return null;
   if (!p) return <Empty title="Paciente no encontrado" />;
+  // Dentista y asistente de doctores: solo los pacientes con cita o plan con sus doctores.
+  if (!alcance.vePaciente(p.id)) {
+    return <Empty title="Este paciente no está entre tus pacientes" desc="Solo ves los pacientes que tienen una cita o un plan de tratamiento con tus doctores." />;
+  }
+
+  /* Pestañas por rol (roles v3). Datos personales, citas y comentarios: quien ve datos
+   * personales. Formularios y consentimientos: la recepción. Ficha clínica y planes:
+   * lo clínico. Facturación: quien ve montos. Recibir pago: quien cobra. */
+  const verPersonales = alcance.puede("patients.personal");
+  const verMontos = alcance.puede("money.view");
+  const puedeVerPestana = (t: SubTab): boolean => {
+    switch (t) {
+      case "datos": case "citas": case "comentarios": case "tareas": case "emails": return verPersonales;
+      case "formularios": case "consentimientos": return alcance.puede("engagement.forms");
+      case "archivos": return verPersonales || alcance.puede("emr.read");
+      case "planes": return alcance.puede("plans.view");
+      case "facturacion": return verMontos;
+      case "recibir-pago": return alcance.puede("payments.manage");
+      case "copilot": return alcance.puede("emr.write"); // aplica al odontograma y arma planes: no es de lectura
+      default: return alcance.puede("emr.read"); // el resto son pestañas de la ficha clínica
+    }
+  };
+  let grupos = GROUPS.map((g) => ({ ...g, tabs: g.tabs.filter((t) => puedeVerPestana(t.key)) })).filter((g) => g.tabs.length > 0);
+  if (!verPersonales) {
+    // Sin datos personales el grupo quedaría solo con Archivos (las fotos de estudios): va a la ficha clínica.
+    const archivos = grupos.find((g) => g.key === "datos-personales")?.tabs.find((t) => t.key === "archivos");
+    grupos = grupos.filter((g) => g.key !== "datos-personales");
+    if (archivos) grupos = grupos.map((g) => (g.key === "ficha-clinica" ? { ...g, tabs: [...g.tabs, archivos] } : g));
+  }
+  const tab: SubTab = puedeVerPestana(tabElegida) ? tabElegida : (grupos[0]?.tabs[0]?.key ?? "resumen");
 
   const pendingForms = p.forms.filter((f) => f.status === "pendiente");
   const canForms = can(session.role, "engagement.forms");
-  const canEditPatient = canForms || can(session.role, "emr.write");
+  const canEditPatient = verPersonales || can(session.role, "emr.write");
   const age = p.birthDate ? Math.max(0, Math.floor((Date.now() - new Date(p.birthDate).getTime()) / 31557600000)) : null;
   const onPhoto = async (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -107,7 +139,7 @@ export default function PatientProfile() {
   };
   const canWriteEmr = can(session.role, "emr.write");
 
-  const activeGroup = GROUPS.find((g) => g.tabs.some((t) => t.key === tab)) ?? GROUPS[0];
+  const activeGroup = grupos.find((g) => g.tabs.some((t) => t.key === tab)) ?? grupos[0] ?? GROUPS[0];
 
   return (
     <div className="space-y-5">
@@ -141,10 +173,12 @@ export default function PatientProfile() {
 
             {/* Identificación */}
             <div className="min-w-0 flex-1 text-white">
-              <div className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-azure-200">ID {p.document}</div>
+              {verPersonales && <div className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-azure-200">ID {p.document}</div>}
               <h1 className="font-logo text-2xl leading-tight sm:text-3xl">{fullName(p)}</h1>
               <p className="mt-0.5 truncate text-sm text-white/70">
-                CI {p.document}{age != null ? ` · ${age} años` : ""}{p.phone ? ` · ${p.phone}` : ""}{p.insurer ? ` · ${p.insurer}` : ""}
+                {verPersonales
+                  ? <>CI {p.document}{age != null ? ` · ${age} años` : ""}{p.phone ? ` · ${p.phone}` : ""}{p.insurer ? ` · ${p.insurer}` : ""}</>
+                  : <>{age != null ? `${age} años` : "Edad sin cargar"}</>}
               </p>
             </div>
 
@@ -159,7 +193,8 @@ export default function PatientProfile() {
 
         {/* Barra de acciones */}
         <div className="flex flex-wrap items-center justify-end gap-2 px-5 py-3 sm:px-6">
-          {hasIA && <PatientBriefButton
+          {/* El brief de consulta resume la ficha clínica: solo para quien la lee (roles v3). */}
+          {hasIA && alcance.puede("emr.read") && <PatientBriefButton
             patient={p}
             context={{
               appointments: appts.slice(0, 6).map((a) => ({
@@ -171,13 +206,13 @@ export default function PatientProfile() {
                 .map((b) => ({
                   estado: b.status,
                   items: b.items.length,
-                  cuotas: b.installments || null,
+                  cuotas: verMontos ? b.installments || null : null,
                   fecha: b.createdAt?.slice(0, 10),
                 })),
-              billing: bills.slice(0, 6).map((b) => ({ flags: b.flags, total: recordTotal(b) })),
+              billing: verMontos ? bills.slice(0, 6).map((b) => ({ flags: b.flags, total: recordTotal(b) })) : [],
             }}
           />}
-          {pendingForms.length > 0 && (
+          {pendingForms.length > 0 && canForms && (
             <button onClick={() => setTab("formularios")} data-tip="Formularios pendientes — clic para gestionar" className="grid h-9 w-9 place-items-center rounded-xl bg-state-warnbg">
               <FileText className="h-5 w-5 text-state-warn" />
             </button>
@@ -212,7 +247,7 @@ export default function PatientProfile() {
       {/* Navegación 2 niveles estilo Dentalink: grupos (N1) + sub-tabs (N2) */}
       <Reveal delay={0.05} className="space-y-2">
         <div className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
-          {GROUPS.map((g) => {
+          {grupos.map((g) => {
             const active = g.key === activeGroup.key;
             return (
               <button

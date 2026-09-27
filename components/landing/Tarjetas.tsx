@@ -3,7 +3,7 @@
  *  muestra. Cada una lleva la marca «Ejemplo»; la tabla de roles sale de la matriz real
  *  de permisos (lib/rbac.ts). */
 import { Check } from "lucide-react";
-import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
+import { can, ROLES, ROLE_LABEL, type Permission } from "@/lib/rbac";
 import type { Role } from "@/lib/types";
 import { gs } from "@/lib/landing/precios";
 import { ToothGlyph, type ShowcaseToothRecord } from "../OdontogramShowcase";
@@ -123,13 +123,23 @@ export function TarjetaVolver() {
 
 /* La tabla sale de la matriz real de permisos: si cambia lib/rbac.ts, cambia acá. */
 const FILAS_ROLES: [string, Permission][] = [
-  ["Ver y dar turnos", "agenda.create"],
+  ["Ver la agenda de todos los profesionales", "agenda.all"],
+  ["Cargar y editar los datos del paciente", "patients.personal"],
   ["Escribir en la ficha clínica", "emr.write"],
   ["Cobrar y hacer el arqueo de caja", "payments.manage"],
   ["Ver ingresos y liquidaciones", "billing.reports"],
   ["Crear usuarios y configurar la clínica", "users.manage"],
 ];
-const ROLES: Role[] = ["admin", "dentist", "assistant"];
+/* Encabezados cortos: cinco columnas tienen que entrar en un celular de 320 px.
+   En pantallas chicas van en vertical (como en una matriz de permisos) y desde
+   `sm` en horizontal. El nombre completo va para lectores de pantalla y de tooltip. */
+const ROL_CORTO: Record<Role, string> = {
+  admin: "Admin",
+  cashier: "Caja",
+  receptionist: "Recepción",
+  dentist: "Dentista",
+  assistant: "Asistente",
+};
 
 export function TablaRoles() {
   return (
@@ -143,16 +153,19 @@ export function TablaRoles() {
           <tr className="border-b border-lp-rule2">
             <th scope="col" className="py-2 pr-2 font-normal text-lp-muted"><span className="sr-only">Tarea</span></th>
             {ROLES.map((r) => (
-              <th key={r} scope="col" className="px-1 py-2 text-center text-[12px] font-semibold text-lp-ink sm:text-[13px]">{ROLE_LABEL[r]}</th>
+              <th key={r} scope="col" title={ROLE_LABEL[r]} className="w-7 px-0 pb-2 pt-1 text-center align-bottom text-[12px] font-semibold text-lp-ink sm:w-auto sm:px-1 sm:py-2 sm:align-middle">
+                <span aria-hidden="true" className="mx-auto inline-block whitespace-nowrap leading-none [writing-mode:vertical-rl] rotate-180 sm:rotate-0 sm:leading-tight sm:[writing-mode:horizontal-tb]">{ROL_CORTO[r]}</span>
+                <span className="sr-only">{ROLE_LABEL[r]}</span>
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {FILAS_ROLES.map(([t, p]) => (
             <tr key={p} className="border-b border-lp-rule">
-              <th scope="row" className="py-2.5 pr-2 font-normal text-lp-ink">{t}</th>
+              <th scope="row" className="py-2.5 pr-2 text-[13px] font-normal leading-snug text-lp-ink sm:text-[14px]">{t}</th>
               {ROLES.map((r) => (
-                <td key={r} className="px-1 py-2.5 text-center">
+                <td key={r} className="px-0.5 py-2.5 text-center sm:px-1">
                   {can(r, p) ? (
                     <Check className="mx-auto h-4 w-4 text-lp-accentink" strokeWidth={2.25} aria-label="Sí" />
                   ) : (

@@ -10,6 +10,7 @@ import {
 import { buildICS, toICSDate, downloadICS, type ICSEvent } from "@/lib/ical";
 import { newSignToken } from "@/lib/firma";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } from "@/lib/store";
+import { useAlcance } from "@/lib/useAlcance";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { patientBalance } from "@/lib/budgets";
 import type { Appointment, AppointmentStatus } from "@/lib/types";
@@ -113,6 +114,12 @@ function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (
 
 export default function AgendaPage() {
   const { db, session, upsertAppointment, deleteAppointment, setOnboarding, removeWaitlist, addOutboxTask } = useStore();
+  const alcance = useAlcance();
+  // Dentista y asistente de doctores: solo la agenda de sus doctores, en todas las vistas.
+  const citas = useMemo(() => db.appointments.filter((a) => alcance.veDoctor(a.dentistId)), [db.appointments, alcance]);
+  const verMontos = alcance.puede("money.view");
+  const verPersonales = alcance.puede("patients.personal");
+  const enEspera = db.waitlist.filter((w) => alcance.vePaciente(w.patientId)).length;
   const [tab, setTab] = useState<Tab>("diaria");
   const [day, setDay] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
@@ -130,15 +137,15 @@ export default function AgendaPage() {
   useEffect(() => { if (!db.onboarding.tourDone) setOnboarding("tourDone", true); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (tab === "semanal") gridRef.current?.scrollTo({ top: 8 * 56 - 8 }); }, [tab, weekStart]);
 
-  const dentists = db.users.filter((u) => u.role === "dentist");
+  const dentists = db.users.filter((u) => u.role === "dentist" && alcance.veDoctor(u.id));
   const today = new Date();
   const todayKey = dayKeyOf(today);
   const selKey = dayKeyOf(day);
 
   /* — Diaria / Diaria global — */
   const dayAll = useMemo(
-    () => db.appointments.filter((a) => dayKeyOf(a.start) === selKey).sort((a, b) => a.start.localeCompare(b.start)),
-    [db.appointments, selKey]
+    () => citas.filter((a) => dayKeyOf(a.start) === selKey).sort((a, b) => a.start.localeCompare(b.start)),
+    [citas, selKey]
   );
   const mainBranchId = db.branches.find((b) => b.isMain)?.id;
   const dayAllPro = useMemo(
@@ -162,21 +169,21 @@ export default function AgendaPage() {
   /* — Semanal — */
   const weekEnd = addDays(weekStart, 7);
   const weekAppointments = useMemo(
-    () => db.appointments.filter((a) => { const t = new Date(a.start); return t >= weekStart && t < weekEnd; }).sort((a, b) => a.start.localeCompare(b.start)),
-    [db.appointments, weekStart, weekEnd]
+    () => citas.filter((a) => { const t = new Date(a.start); return t >= weekStart && t < weekEnd; }).sort((a, b) => a.start.localeCompare(b.start)),
+    [citas, weekStart, weekEnd]
   );
 
   /* — Reprogramación: canceladas a reagendar — */
   const reprog = useMemo(
-    () => db.appointments.filter((a) => a.status === "cancelada").sort((a, b) => b.start.localeCompare(a.start)),
-    [db.appointments]
+    () => citas.filter((a) => a.status === "cancelada").sort((a, b) => b.start.localeCompare(a.start)),
+    [citas]
   );
 
   /* — Mensual: citas del mes de `day` — */
   const monthAppts = useMemo(() => {
     const y = day.getFullYear(), m = day.getMonth();
-    return db.appointments.filter((a) => { const t = new Date(a.start); return t.getFullYear() === y && t.getMonth() === m; });
-  }, [db.appointments, day]);
+    return citas.filter((a) => { const t = new Date(a.start); return t.getFullYear() === y && t.getMonth() === m; });
+  }, [citas, day]);
 
   const porValidar = dayAllPro.filter((a) => a.source === "online" && a.status === "pendiente").length;
   const headerCount = tab === "semanal" ? weekAppointments.length : tab === "mensual" ? monthAppts.length : tab === "reprog" ? reprog.length : dayAppts.length;
@@ -270,7 +277,7 @@ export default function AgendaPage() {
           <button onClick={exportICS} title="Exportar a tu calendario (Outlook/Apple/Google)" className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-clinic-muted hover:text-clinic-text"><CalendarDays className="h-4 w-4" /> Exportar (.ics)</button>
           <Btn variant="outline" onClick={() => setWaitOpen(true)}>
             <Hourglass className="h-4 w-4" /> Lista de espera
-            {db.waitlist.length > 0 && <span className="rounded-full bg-azure-600 px-1.5 font-mono text-[11px] font-bold text-white">{db.waitlist.length}</span>}
+            {enEspera > 0 && <span className="rounded-full bg-azure-600 px-1.5 font-mono text-[11px] font-bold text-white">{enEspera}</span>}
           </Btn>
         </div>
       </Reveal>
@@ -283,6 +290,11 @@ export default function AgendaPage() {
         </Reveal>
       )}
 
+      {alcance.sinDoctores && (
+        <p role="status" className="rounded-xl bg-state-warnbg px-4 py-3 text-sm font-semibold text-state-warn">
+          Todavía no tenés doctores asignados, así que no ves ninguna agenda. Pedile al administrador que te asigne en Configuración → Usuarios.
+        </p>
+      )}
       {tab === "semanal" ? (
         /* ===== SEMANAL (grilla 24h) ===== */
         <Reveal>
@@ -476,7 +488,7 @@ export default function AgendaPage() {
               <Card className="overflow-x-auto p-0">
                 <table className="w-full min-w-[820px] text-sm">
                   <thead><tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
-                    <th className="px-3 py-3">Hora</th><th className="px-2 py-3">Paciente</th><th className="px-2 py-3">Doctor</th><th className="px-2 py-3">Estado de la cita</th><th className="px-2 py-3">Situación</th><th className="px-2 py-3"></th>
+                    <th className="px-3 py-3">Hora</th><th className="px-2 py-3">Paciente</th><th className="px-2 py-3">Doctor</th><th className="px-2 py-3">Estado de la cita</th>{verMontos && <th className="px-2 py-3">Situación</th>}<th className="px-2 py-3"></th>
                   </tr></thead>
                   <tbody className="divide-y divide-clinic-border">
                     {dayAppts.map((a) => {
@@ -494,14 +506,14 @@ export default function AgendaPage() {
                             {p ? <a href={`/app/pacientes/${p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(p)}</a> : <span className="text-clinic-muted">—</span>}
                             {a.source === "online" && <span className="ml-2 rounded bg-state-infobg px-1.5 text-[11px] font-bold text-state-info">Online</span>}
                             {multi && <span className="ml-2 rounded bg-state-warnbg px-1.5 text-[11px] font-bold text-state-warn">Múltiples citas hoy</span>}
-                            {p?.phone && <div className="mt-0.5 flex items-center gap-1 text-xs text-clinic-muted"><Phone className="h-3 w-3" /> {p.phone}</div>}
+                            {verPersonales && p?.phone && <div className="mt-0.5 flex items-center gap-1 text-xs text-clinic-muted"><Phone className="h-3 w-3" /> {p.phone}</div>}
                           </td>
                           <td className="px-2 py-3 text-clinic-muted">{dent?.name ?? "—"}</td>
                           <td className="px-2 py-3">
                             <EstadoCell appt={a} onSet={(s) => setEstado(a, s)} />
                             {(a.status === "cancelada" || a.status === "ausente") && <div className="mt-0.5 text-[11px] text-clinic-muted">{a.cancelReason || "Sin motivo"}</div>}
                           </td>
-                          <td className="px-2 py-3"><SituacionPill patientId={a.patientId} /></td>
+                          {verMontos && <td className="px-2 py-3"><SituacionPill patientId={a.patientId} /></td>}
                           <td className="relative px-2 py-3 text-right">
                             <button onClick={() => setMenuFor(menuFor === a.id ? null : a.id)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-clinic-bg" aria-label="Acciones"><MoreHorizontal className="h-4 w-4 text-clinic-muted" /></button>
                             {menuFor === a.id && (
@@ -544,7 +556,7 @@ export default function AgendaPage() {
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Paciente</span>{p ? <a className="font-bold text-azure-600 hover:underline" href={`/app/pacientes/${p.id}`}>{fullName(p)}</a> : "—"}</div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Dentista</span><span className="font-semibold">{d?.name ?? "—"}</span></div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Horario</span><span className="font-mono text-xs">{new Date(live.start).toLocaleString("es-PY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} → {fmtTime(live.end)}</span></div>
-                <div className="flex items-center justify-between"><span className="text-clinic-muted">Total a cobrar</span><span className="font-mono font-bold">{fmtGs(live.amount - live.discount)}</span></div>
+                {verMontos && <div className="flex items-center justify-between"><span className="text-clinic-muted">Total a cobrar</span><span className="font-mono font-bold">{fmtGs(live.amount - live.discount)}</span></div>}
                 {live.notes && <p className="rounded-xl bg-clinic-bg p-3 text-clinic-text">{live.notes}</p>}
 
                 {live.telemed && (
@@ -557,7 +569,7 @@ export default function AgendaPage() {
                   </div>
                 )}
 
-                {p && (
+                {p && verPersonales && (
                   <div className="rounded-xl border border-clinic-border p-3">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-clinic-muted"><BellRing className="h-3.5 w-3.5" /> Confirmación de cita</span>
@@ -669,11 +681,14 @@ function SituacionPill({ patientId }: { patientId: string }) {
 /* ===== Lista de espera ===== */
 function WaitlistModal({ onClose, onSchedule }: { onClose: () => void; onSchedule: (e: import("@/lib/types").WaitlistEntry) => void }) {
   const { db, addWaitlist, removeWaitlist } = useStore();
+  // Roles v3: dentista y asistente ven y agregan solo a sus pacientes.
+  const alcance = useAlcance();
+  const pacientes = db.patients.filter((p) => alcance.vePaciente(p.id));
   const [adding, setAdding] = useState(false);
-  const [patientId, setPatientId] = useState(db.patients[0]?.id ?? "");
+  const [patientId, setPatientId] = useState(pacientes[0]?.id ?? "");
   const [reason, setReason] = useState("");
   const [preference, setPreference] = useState("");
-  const list = [...db.waitlist].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const list = db.waitlist.filter((w) => alcance.vePaciente(w.patientId)).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
   return (
     <Modal title="Lista de espera" onClose={onClose} wide>
@@ -686,7 +701,7 @@ function WaitlistModal({ onClose, onSchedule }: { onClose: () => void; onSchedul
         {adding && (
           <div className="grid gap-2 rounded-xl border border-clinic-border p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
             <select className={inputCls} value={patientId} onChange={(e) => setPatientId(e.target.value)}>
-              {db.patients.map((p) => <option key={p.id} value={p.id}>{fullName(p)}</option>)}
+              {pacientes.map((p) => <option key={p.id} value={p.id}>{fullName(p)}</option>)}
             </select>
             <input className={inputCls} placeholder="Motivo" value={reason} onChange={(e) => setReason(e.target.value)} />
             <input className={inputCls} placeholder="Preferencia horaria" value={preference} onChange={(e) => setPreference(e.target.value)} />
@@ -720,6 +735,8 @@ function WaitlistModal({ onClose, onSchedule }: { onClose: () => void; onSchedul
 
 function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () => void; onSave: (a: Appointment) => void }) {
   const { db } = useStore();
+  const alcance = useAlcance();
+  const verMontos = alcance.puede("money.view");
   const [form, setForm] = useState(appt);
   const [conflict, setConflict] = useState<string | null>(null);
   const isNew = !db.appointments.some((x) => x.id === appt.id);
@@ -749,12 +766,12 @@ function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () =>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Paciente">
             <select className={inputCls} value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })}>
-              {db.patients.map((p) => <option key={p.id} value={p.id}>{fullName(p)}</option>)}
+              {db.patients.filter((p) => alcance.vePaciente(p.id) || p.id === form.patientId).map((p) => <option key={p.id} value={p.id}>{fullName(p)}</option>)}
             </select>
           </Field>
           <Field label="Dentista">
             <select className={inputCls} value={form.dentistId} onChange={(e) => setForm({ ...form, dentistId: e.target.value })}>
-              {db.users.filter((u) => u.role === "dentist").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              {db.users.filter((u) => u.role === "dentist" && (alcance.veDoctor(u.id) || u.id === form.dentistId)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
           </Field>
         </div>
@@ -780,13 +797,13 @@ function ApptForm({ appt, onClose, onSave }: { appt: Appointment; onClose: () =>
               <option value="ausente">Ausente</option>
             </select>
           </Field>
-          <Field label="Importe (Gs)"><input type="number" min={0} className={inputCls} value={form.amount} onChange={(e) => setForm({ ...form, amount: +e.target.value })} /></Field>
-          <Field label="Descuento (Gs)"><input type="number" min={0} className={inputCls} value={form.discount} onChange={(e) => setForm({ ...form, discount: +e.target.value })} /></Field>
+          {verMontos && <Field label="Importe (Gs)"><input type="number" min={0} className={inputCls} value={form.amount} onChange={(e) => setForm({ ...form, amount: +e.target.value })} /></Field>}
+          {verMontos && <Field label="Descuento (Gs)"><input type="number" min={0} className={inputCls} value={form.discount} onChange={(e) => setForm({ ...form, discount: +e.target.value })} /></Field>}
         </div>
         <Field label="Notas"><textarea className={inputCls} rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
         {conflict && <p role="alert" className="rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-state-err">⚠ {conflict}</p>}
         <div className="flex items-center justify-between pt-1">
-          <span className="text-xs text-clinic-muted">Total a cobrar: <b className="font-mono text-clinic-text">{fmtGs(form.amount - form.discount)}</b></span>
+          {verMontos ? <span className="text-xs text-clinic-muted">Total a cobrar: <b className="font-mono text-clinic-text">{fmtGs(form.amount - form.discount)}</b></span> : <span />}
           <div className="flex gap-2">
             <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
             <Btn type="submit">{isNew ? "Crear cita" : "Guardar cambios"}</Btn>

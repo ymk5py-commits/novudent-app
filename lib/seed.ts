@@ -136,7 +136,7 @@ const budgets: Budget[] = [
     notes: "Iniciar por pieza 16 (sintomática).",
     history: [
       { at: at(-5, 11), action: "Presupuesto creado", by: "Dra. Sofía Benítez" },
-      { at: at(-4, 9), action: "Presentado al paciente", by: "Paola Asistente" },
+      { at: at(-4, 9), action: "Presentado al paciente", by: "Marta Caja" },
     ],
   },
   {
@@ -149,7 +149,7 @@ const budgets: Budget[] = [
     patientComments: "Tiempo estimado 24 meses (entrega inicial + 12 cuotas). No incluye micro-tornillos ni exodoncias. La pérdida o despegue de brackets por falta de cuidado del paciente tiene costo adicional.",
     history: [
       { at: at(-30, 10), action: "Presupuesto creado", by: "Dra. Sofía Benítez" },
-      { at: at(-30, 11), action: "Aceptado por el paciente", by: "Paola Asistente" },
+      { at: at(-30, 11), action: "Aceptado por el paciente", by: "Marta Caja" },
     ],
   },
   {
@@ -160,7 +160,7 @@ const budgets: Budget[] = [
     ],
     history: [
       { at: at(-10, 9), action: "Presupuesto creado", by: "Dra. Sofía Benítez" },
-      { at: at(-10, 10), action: "Aceptado por el paciente", by: "Paola Asistente" },
+      { at: at(-10, 10), action: "Aceptado por el paciente", by: "Marta Caja" },
       { at: at(-1, 10), action: "Todos los procedimientos realizados — completado", by: "Dra. Sofía Benítez" },
     ],
   },
@@ -177,11 +177,11 @@ const budgets: Budget[] = [
 
 /* ===== Pagos (caja) ===== */
 const payments: Payment[] = [
-  { id: "pay1", clinicId: CLINIC_ID, patientId: "p6", budgetId: "g2", date: at(-30, 11), amount: 1500000, method: "efectivo", concept: "Entrega inicial ortodoncia", receivedBy: "Paola Asistente" },
-  { id: "pay2", clinicId: CLINIC_ID, patientId: "p6", budgetId: "g2", date: at(-2, 10), amount: 375000, method: "transferencia", concept: "Cuota mensual ortodoncia", receivedBy: "Paola Asistente" },
+  { id: "pay1", clinicId: CLINIC_ID, patientId: "p6", budgetId: "g2", date: at(-30, 11), amount: 1500000, method: "efectivo", concept: "Entrega inicial ortodoncia", receivedBy: "Marta Caja" },
+  { id: "pay2", clinicId: CLINIC_ID, patientId: "p6", budgetId: "g2", date: at(-2, 10), amount: 375000, method: "transferencia", concept: "Cuota mensual ortodoncia", receivedBy: "Marta Caja" },
   { id: "pay3", clinicId: CLINIC_ID, patientId: "p4", budgetId: "g3", date: at(-1, 11), amount: 750000, method: "tarjeta", concept: "Exodoncia 28 + consulta", receivedBy: "Carlos Admin", paymentNumber: "3625", receiptNumber: "2875" },
-  { id: "pay4", clinicId: CLINIC_ID, patientId: "p3", date: at(0, 10), amount: 225000, method: "efectivo", concept: "Profilaxis (con descuento)", receivedBy: "Paola Asistente" },
-  { id: "pay5", clinicId: CLINIC_ID, patientId: "p1", budgetId: "g1", date: at(0, 12), amount: 200000, method: "qr", concept: "Anticipo presupuesto resinas", receivedBy: "Paola Asistente" },
+  { id: "pay4", clinicId: CLINIC_ID, patientId: "p3", date: at(0, 10), amount: 225000, method: "efectivo", concept: "Profilaxis (con descuento)", receivedBy: "Marta Caja" },
+  { id: "pay5", clinicId: CLINIC_ID, patientId: "p1", budgetId: "g1", date: at(0, 12), amount: 200000, method: "qr", concept: "Anticipo presupuesto resinas", receivedBy: "Marta Caja" },
   { id: "pay6", clinicId: CLINIC_ID, patientId: "p6", budgetId: "g2", date: at(0, 9), amount: 375000, method: "cheque", concept: "Cuota mensual ortodoncia (cheque)", receivedBy: "Carlos Admin", check: { number: "00456123", bank: "Banco Itaú", cashDate: at(3, 0).slice(0, 10) } },
 ];
 
@@ -248,7 +248,7 @@ const appointments: Appointment[] = [
   { id: "a2", clinicId: CLINIC_ID, patientId: "p2", dentistId: "u2", title: "Primera consulta", start: at(0, 11), end: at(0, 11, 40), status: "pendiente", amount: 150000, discount: 0, source: "online" },
   { id: "a3", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", title: "Profilaxis", start: at(1, 10), end: at(1, 10, 45), status: "completada", amount: 250000, discount: 25000 },
   { id: "a4", clinicId: CLINIC_ID, patientId: "p4", dentistId: "u2", title: "Exodoncia 28", start: at(2, 9, 30), end: at(2, 10, 30), status: "confirmada", amount: 600000, discount: 0 },
-  { id: "a5", clinicId: CLINIC_ID, patientId: "p5", dentistId: "u2", title: "Control + limpieza", start: at(2, 15), end: at(2, 16), status: "pendiente", amount: 250000, discount: 0 },
+  { id: "a5", clinicId: CLINIC_ID, patientId: "p5", dentistId: "u4", title: "Control + limpieza", start: at(2, 15), end: at(2, 16), status: "pendiente", amount: 250000, discount: 0 },
   { id: "a6", clinicId: CLINIC_ID, patientId: "p6", dentistId: "u2", title: "Control ortodoncia", start: at(3, 17), end: at(3, 17, 30), status: "confirmada", amount: 350000, discount: 0, reminderSent: true, confirmedVia: "botika", budgetId: "g2" },
   { id: "a7", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", title: "Blanqueamiento — evaluación", start: at(4, 14), end: at(4, 14, 30), status: "pendiente", amount: 0, discount: 0 },
   { id: "a8", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", title: "Control post-operatorio", start: at(4, 9), end: at(4, 9, 20), status: "cancelada", amount: 0, discount: 0 },
@@ -315,23 +315,26 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
     users: [
       { id: "u1", clinicId: CLINIC_ID, name: "Carlos Admin", email: "admin@novudent.app", role: "admin", color: "#1769E0", active: true },
       { id: "u2", clinicId: CLINIC_ID, name: "Dra. Sofía Benítez", email: "sofia@novudent.app", role: "dentist", color: "#0E9F6E", active: true, commissionPct: 30, specialty: "Ortodoncia" },
-      { id: "u3", clinicId: CLINIC_ID, name: "Paola Asistente", email: "paola@novudent.app", role: "assistant", color: "#B45309", active: true },
+      // Roles v3: la asistente acompaña a la Dra. Sofía y ve solo su agenda y sus pacientes.
+      { id: "u3", clinicId: CLINIC_ID, name: "Paola Asistente", email: "paola@novudent.app", role: "assistant", color: "#B45309", active: true, asiste: ["u2"] },
       { id: "u4", clinicId: CLINIC_ID, name: "Dr. Diego Martínez", email: "diego@novudent.app", role: "dentist", color: "#0D9488", active: true, commissionPct: 25, salaryBase: 2000000, specialty: "Endodoncia" },
+      { id: "u5", clinicId: CLINIC_ID, name: "Laura Recepción", email: "laura@novudent.app", role: "receptionist", color: "#7C3AED", active: true },
+      { id: "u6", clinicId: CLINIC_ID, name: "Marta Caja", email: "marta@novudent.app", role: "cashier", color: "#BE185D", active: true },
     ],
     patients,
     appointments,
     billing: [
       {
         id: "b1", clinicId: CLINIC_ID, patientId: "p3", appointmentId: "a3", cpt: "D1110", dx: "Z01.20", pos: "11", modifier: "",
-        amount: 250000, discount: 25000, claimType: "electronic", flags: ["ATHENA"], history: [{ at: at(-1, 12), action: "Registro creado", by: "Paola Asistente" }],
+        amount: 250000, discount: 25000, claimType: "electronic", flags: ["ATHENA"], history: [{ at: at(-1, 12), action: "Registro creado", by: "Marta Caja" }],
       },
       {
         id: "b2", clinicId: CLINIC_ID, patientId: "p1", appointmentId: "a1", cpt: "D2330", dx: "K02.9", pos: "11", modifier: "",
         amount: 420000, discount: 0, extras: [{ cpt: "D0120", modifier: "25", amount: 150000 }], claimType: "electronic", flags: ["ATHENA", "MBILLED", "HOLD"],
         holdReason: "Retención automática: reclamo electrónico en cola de validación.",
         history: [
-          { at: at(-2, 9), action: "Registro creado", by: "Paola Asistente" },
-          { at: at(-1, 9), action: "Enviado a cobro (MBILLED)", by: "Paola Asistente" },
+          { at: at(-2, 9), action: "Registro creado", by: "Marta Caja" },
+          { at: at(-1, 9), action: "Enviado a cobro (MBILLED)", by: "Marta Caja" },
           { at: at(-1, 9), action: "Retención automática (HOLD)", by: "sistema" },
         ],
       },
@@ -349,8 +352,8 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
         id: "b4", clinicId: CLINIC_ID, patientId: "p6", cpt: "D8080", dx: "M26.4", pos: "11", modifier: "",
         amount: 4500000, discount: 0, claimType: "electronic", flags: ["ATHENA", "MBILLED", "FACTURADO", "ACH"],
         history: [
-          { at: at(-9, 9), action: "Registro creado", by: "Paola Asistente" },
-          { at: at(-8, 9), action: "Enviado a cobro (MBILLED)", by: "Paola Asistente" },
+          { at: at(-9, 9), action: "Registro creado", by: "Marta Caja" },
+          { at: at(-8, 9), action: "Enviado a cobro (MBILLED)", by: "Marta Caja" },
           { at: at(-8, 9), action: "Retención automática (HOLD)", by: "sistema" },
           { at: at(-7, 11), action: "Liberado y facturado (Release from Hold → FACTURADO)", by: "Carlos Admin" },
           { at: at(-6, 8), action: "Pago automático activado (ACH)", by: "Carlos Admin" },
@@ -358,7 +361,7 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
       },
       {
         id: "b5", clinicId: CLINIC_ID, patientId: "p2", appointmentId: "a2", cpt: "D0120", dx: "Z01.20", pos: "11", modifier: "",
-        amount: 150000, discount: 0, claimType: "electronic", flags: [], history: [{ at: at(0, 8), action: "Registro creado", by: "Paola Asistente" }],
+        amount: 150000, discount: 0, claimType: "electronic", flags: [], history: [{ at: at(0, 8), action: "Registro creado", by: "Marta Caja" }],
       },
     ],
     procedures: [
@@ -382,17 +385,17 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
     recoveryMonitors: [],
     radiographs: [],
     patientNotes: [
-      { id: "pn1", clinicId: CLINIC_ID, patientId: "p6", kind: "comentario", text: "Paciente puntual y colaborador. Prefiere turnos a la tarde.", createdAt: at(-10, 9), createdBy: "Paola Asistente" },
+      { id: "pn1", clinicId: CLINIC_ID, patientId: "p6", kind: "comentario", text: "Paciente puntual y colaborador. Prefiere turnos a la tarde.", createdAt: at(-10, 9), createdBy: "Laura Recepción" },
       { id: "pn2", clinicId: CLINIC_ID, patientId: "p6", kind: "tarea", text: "Pedir radiografía panorámica de control a los 6 meses.", dueDate: at(150, 9).slice(0, 10), done: false, createdAt: at(-5, 10), createdBy: "Dra. Sofía Benítez" },
       { id: "pn3", clinicId: CLINIC_ID, patientId: "p6", kind: "email", subject: "Recordatorio de control", text: "Se envió recordatorio del control de ortodoncia por email.", createdAt: at(-3, 16), createdBy: "Sistema" },
     ],
     fiscalDocs: [
-      { id: "fd1", clinicId: CLINIC_ID, patientId: "p6", kind: "boleta", number: "0001-2875", amount: 1500000, date: at(-30, 11), paymentId: "pay1", by: "Paola Asistente" },
+      { id: "fd1", clinicId: CLINIC_ID, patientId: "p6", kind: "boleta", number: "0001-2875", amount: 1500000, date: at(-30, 11), paymentId: "pay1", by: "Marta Caja" },
       { id: "fd2", clinicId: CLINIC_ID, patientId: "p4", kind: "boleta", number: "0001-2870", amount: 750000, date: at(-1, 11), paymentId: "pay3", by: "Carlos Admin" },
     ],
     cashSessions: [
       { id: "cs_today", clinicId: CLINIC_ID, userId: "u1", userName: "Carlos Admin", openedAt: at(0, 8), openingBalance: 200000, status: "abierta" },
-      { id: "cs_prev", clinicId: CLINIC_ID, userId: "u3", userName: "Paola Asistente", openedAt: at(-1, 8), closedAt: at(-1, 19), openingBalance: 200000, countedCash: 980000, status: "cerrada" },
+      { id: "cs_prev", clinicId: CLINIC_ID, userId: "u6", userName: "Marta Caja", openedAt: at(-1, 8), closedAt: at(-1, 19), openingBalance: 200000, countedCash: 980000, status: "cerrada" },
     ],
     sterilizationCycles: [
       { id: "st1", clinicId: CLINIC_ID, date: at(-1, 9), responsibleId: "u3", method: "autoclave", load: "Instrumental de examen (espejos, exploradores, pinzas) ×4 sets", cycleNumber: "A-1042", lot: "L-2026-118", temperature: 134, chemicalIndicator: "ok", biologicalIndicator: "ok" },

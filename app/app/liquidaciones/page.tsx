@@ -81,7 +81,7 @@ export default function LiquidacionesPage() {
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
         <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">
-          Las liquidaciones a profesionales son del <b>Administrador</b> y la <b>Asistente</b>.
+          Las liquidaciones a profesionales son del <b>Administrador</b>.
         </p>
       </Card>
     );
