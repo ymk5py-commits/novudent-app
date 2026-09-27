@@ -21,6 +21,7 @@ import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import AvisoNoGuardado from "@/components/AvisoNoGuardado";
 import AyudaNovum from "@/components/AyudaNovum";
 import { sinLeer } from "@/lib/chat";
+import { Logotipo } from "@/components/Marca";
 
 type NavLeaf = { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature; section?: string };
 type NavTop = { label: string; href?: string; icon?: any; perm?: Permission; feature?: PlanFeature; children?: NavLeaf[] };
@@ -156,7 +157,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       {navOpen && <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setNavOpen(false)} role="presentation" />}
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-white transition-transform duration-200 md:hidden ${navOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between px-5 pt-5">
-          {logo ? <img src={logo} alt={clinicName} className="h-8 w-auto max-w-[150px] object-contain" /> : <span className="font-logo text-xl tracking-[0.16em] text-navy-800">NOVUdent</span>}
+          {logo ? <img src={logo} alt={clinicName} className="h-8 w-auto max-w-[150px] object-contain" /> : <Logotipo className="h-8 w-auto" />}
           <button onClick={() => setNavOpen(false)} aria-label="Cerrar menú" className="grid h-9 w-9 place-items-center rounded-xl text-clinic-muted hover:bg-clinic-bg"><X className="h-5 w-5" /></button>
         </div>
         <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
@@ -185,14 +186,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
       {/* ===== Header 2 filas ===== */}
       <header className="sticky top-0 z-30 border-b border-clinic-border bg-white">
-        {/* Fila 1 — barra celeste estilo Dentalink */}
-        <div className="bg-azure-600">
+        {/* Fila 1 — barra navy de la marca (el diente en color se lee sobre navy) */}
+        <div className="bg-navy-800">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
           <button onClick={() => setNavOpen(true)} aria-label="Abrir menú" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/30 bg-white/10 text-white md:hidden">
             <Menu className="h-5 w-5" />
           </button>
-          <a href="/app" className="flex shrink-0 items-baseline gap-2">
-            {logo ? <img src={logo} alt={clinicName} className="h-8 w-auto max-w-[150px] object-contain" /> : <span className="font-logo text-xl tracking-[0.16em] text-white">NOVUdent</span>}
+          <a href="/app" className="flex shrink-0 items-center gap-2">
+            {logo ? <img src={logo} alt={clinicName} className="h-8 w-auto max-w-[150px] object-contain" /> : <Logotipo tono="blanco" className="h-7 w-auto sm:h-8" />}
             <span data-tip={`Plan ${plan.label}`} className="hidden rounded-full bg-white/20 px-1.5 py-0.5 font-mono text-[11px] font-extrabold uppercase tracking-wide text-white sm:inline">{plan.label}</span>
           </a>
           {/* Patient Finder */}

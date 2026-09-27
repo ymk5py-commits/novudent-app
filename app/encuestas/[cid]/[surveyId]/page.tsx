@@ -3,6 +3,7 @@
  *  vía /api/encuestas y envía la respuesta por el mismo route (usuario de servicio). */
 import { useEffect, useState } from "react";
 import type { Survey } from "@/lib/types";
+import { Isologo } from "@/components/Marca";
 
 export default function PublicSurveyPage({ params }: { params: { cid: string; surveyId: string } }) {
   const { cid, surveyId } = params;
@@ -99,7 +100,7 @@ export default function PublicSurveyPage({ params }: { params: { cid: string; su
             </>
           ) : null}
         </div>
-        <p className="mt-4 text-center text-[11px] text-clinic-muted">Encuesta segura · Novudent</p>
+        <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-clinic-muted"><Isologo className="h-3.5 w-auto" />Encuesta segura · Novudent</p>
       </div>
     </div>
   );

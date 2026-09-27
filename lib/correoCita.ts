@@ -3,6 +3,7 @@
  * ruta no sirve para mandar correos arbitrarios en nombre de la clínica. */
 import { ESTADO_LABEL } from "./estadosCita";
 import type { AppointmentStatus } from "./types";
+import { SITE_URL } from "./site";
 
 export type TipoCorreoCita = "confirmacion" | "estado";
 
@@ -31,6 +32,6 @@ export function correoCita(tipo: TipoCorreoCita, d: DatosCorreoCita): { asunto: 
     ? [`Hola ${d.paciente}:`, `Te esperamos el ${cuando} en ${d.clinica}.`, ...detalle, "Si no podés venir, respondé este correo y te ayudamos a cambiar el horario."]
     : [`Hola ${d.paciente}:`, `Tu cita del ${cuando} en ${d.clinica} quedó como «${ESTADO_LABEL[d.estado]}».`, ...detalle, "Ante cualquier duda, respondé este correo."];
   const texto = cuerpo.join("\n\n");
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#0f1f3d">${cuerpo.map((p) => `<p>${escapar(p)}</p>`).join("")}<p style="color:#6b7a8f;font-size:12px">${escapar(d.clinica)} · enviado con Novudent</p></div>`;
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#051735">${cuerpo.map((p) => `<p>${escapar(p)}</p>`).join("")}<p style="color:#6b7a8f;font-size:12px">${escapar(d.clinica)} · enviado con Novudent</p><img src="${SITE_URL}/marca/novudent-logo.png" alt="Novudent" width="110" height="21" style="display:block;border:0"></div>`;
   return { asunto, texto, html };
 }

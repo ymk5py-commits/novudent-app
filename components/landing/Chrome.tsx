@@ -19,19 +19,17 @@ import { useStore } from "@/lib/store";
 import { abrirPreferencias } from "@/lib/consentimiento";
 import { linkWhatsApp } from "@/lib/site";
 import { RUTAS_LEGALES, RUTAS_PUBLICAS } from "@/lib/landing/rutas";
+import { Logotipo } from "@/components/Marca";
+import type { Tono } from "@/lib/marca";
 
 export { RUTAS_PUBLICAS, RUTAS_LEGALES } from "@/lib/landing/rutas";
 
 /** Las cuatro que entran en la barra; "En acción" queda en el pie. */
 const RUTAS_NAV = RUTAS_PUBLICAS.filter((r) => r.href !== "/en-accion");
 
-/** Logotipo con el punto de acento (el wordmark sigue en Jost, es la marca). */
-export function Marca({ className = "", dot = "text-lp-primary" }: { className?: string; dot?: string }) {
-  return (
-    <span className={`font-logo font-light tracking-[0.14em] ${className}`}>
-      NOVUdent<span className={dot}>.</span>
-    </span>
-  );
+/** Logotipo de la marca (NOVUdent + diente), el mismo del panel. */
+export function Marca({ className = "h-8 w-auto", tono = "color" }: { className?: string; tono?: Tono }) {
+  return <Logotipo tono={tono} className={className} />;
 }
 
 /** Etiqueta en mayúsculas, en el color de acción, arriba de cada título. */
@@ -115,7 +113,7 @@ export function NavLanding() {
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:px-6 lg:h-[72px]">
         <Link href="/" className="mr-auto flex min-h-[44px] items-center lg:mr-8" aria-label="Novudent, inicio">
-          <Marca className="text-[22px] text-lp-ink" />
+          <Marca className="h-8 w-auto" />
         </Link>
 
         <nav className="mr-auto hidden items-center gap-1 lg:flex" aria-label="Secciones">
@@ -188,7 +186,7 @@ export function FooterLanding() {
       <div className="mx-auto max-w-6xl px-4 pb-8 pt-14 sm:px-6">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-4">
-            <Marca className="text-[26px] text-lp-ink" />
+            <Marca className="h-10 w-auto" />
             <p className="mt-4 max-w-xs text-[14px] leading-relaxed text-lp-muted">
               Software de gestión para clínicas dentales. Hecho en Asunción, Paraguay.
             </p>

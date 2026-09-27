@@ -32,7 +32,7 @@ export const ESTADO_COLOR: Record<AppointmentStatus, string> = {
   pendiente: "#94A3B8",
   confirmada: "#0E9F6E",
   completada: "#2E83F5",
-  en_atencion: "#14A6C0",
+  en_atencion: "#04A9F2",
   en_sala: "#7C3AED",
   ausente: "#F59E0B",
   cancelada: "#E24B4A",

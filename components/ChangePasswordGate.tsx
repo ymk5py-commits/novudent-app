@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Lock, Eye, EyeOff, LoaderCircle, ShieldCheck, LogOut } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Field, inputCls } from "@/components/ui";
+import { Logotipo } from "@/components/Marca";
 
 function friendlyError(e: any): string {
   const code = e?.code ?? "";
@@ -44,10 +45,10 @@ export default function ChangePasswordGate() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center p-6" style={{ background: "linear-gradient(160deg,#0F1F3D 0%,#07142C 75%)" }}>
+    <div className="grid min-h-screen place-items-center p-6" style={{ background: "linear-gradient(160deg,#0A2A5E 0%,#051735 55%,#020B20 100%)" }}>
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <div className="font-logo text-3xl tracking-[0.22em] text-white">NOVUdent</div>
+          <Logotipo tono="blanco" className="mx-auto h-12 w-auto" />
           <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-azure-500/20 px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-azure-200">
             <ShieldCheck className="h-3 w-3" /> Seguridad
           </div>

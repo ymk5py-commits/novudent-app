@@ -12,6 +12,7 @@ import {
 import { Field, inputCls } from "@/components/ui";
 import { PLANS, type PlanId } from "@/lib/plan";
 import { Reveal } from "@/components/motion";
+import { Logotipo } from "@/components/Marca";
 
 type Created = {
   clinicId: string;
@@ -85,10 +86,10 @@ export default function SuperAdminPage() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-clinic-bg p-6" style={{ background: "linear-gradient(160deg,#0F1F3D 0%,#07142C 75%)" }}>
+    <div className="grid min-h-screen place-items-center bg-clinic-bg p-6" style={{ background: "linear-gradient(160deg,#0A2A5E 0%,#051735 55%,#020B20 100%)" }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-lg">
         <Reveal y={0} className="mb-6 text-center">
-          <div className="font-logo text-3xl tracking-[0.22em] text-white">NOVUdent</div>
+          <Logotipo tono="blanco" className="mx-auto h-12 w-auto" />
           <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-azure-500/20 px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-azure-200">
             <ShieldCheck className="h-3 w-3" /> Panel del propietario
           </div>

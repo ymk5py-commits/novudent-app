@@ -13,7 +13,7 @@ html, body {
   overflow-x: clip;
 }
 
-::selection { background: #14a6c0; color: #fff; }
+::selection { background: #04A9F2; color: #fff; }
 
 /* Scrollbar discreto */
 ::-webkit-scrollbar { width: 9px; height: 9px; }
@@ -121,9 +121,9 @@ html.motion-fallback [style*="opacity:0"] {
    color difusos encima y grano de película. Se reconstruye con radial-gradients
    + una textura SVG: nada de imágenes, así el hero no agrega peso ni espera. */
 .sv-mesh {
-  background-color: #0A1240;
+  background-color: #051735;
   background-image:
-    radial-gradient(58% 46% at 12% 14%, rgba(47, 227, 174, 0.16) 0%, transparent 62%),
+    radial-gradient(58% 46% at 12% 14%, rgba(54, 210, 255, 0.16) 0%, transparent 62%),
     radial-gradient(52% 44% at 88% 8%, rgba(64, 92, 240, 0.34) 0%, transparent 66%),
     radial-gradient(70% 58% at 78% 92%, rgba(96, 60, 200, 0.30) 0%, transparent 64%),
     radial-gradient(46% 40% at 42% 68%, rgba(23, 118, 178, 0.24) 0%, transparent 68%);
@@ -141,7 +141,7 @@ html.motion-fallback [style*="opacity:0"] {
 }
 
 /* Regla fina bajo los numerales grandes — la firma de la referencia. */
-.sv-rule { height: 3px; background: #2FE3AE; border-radius: 2px; }
+.sv-rule { height: 3px; background: #36D2FF; border-radius: 2px; }
 
 /* ===================================================================
    LANDING — capa de motion (4ª pasada de diseño)
@@ -231,9 +231,9 @@ html.motion-fallback [style*="opacity:0"] {
   background: conic-gradient(
     from var(--beam-mint-angle),
     transparent 0 72%,
-    rgba(47, 227, 174, 0.55) 84%,
-    #2FE3AE 90%,
-    rgba(47, 227, 174, 0.45) 96%,
+    rgba(54, 210, 255, 0.55) 84%,
+    #36D2FF 90%,
+    rgba(54, 210, 255, 0.45) 96%,
     transparent 100%
   );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -255,7 +255,7 @@ html.motion-fallback [style*="opacity:0"] {
   bottom: -1px;
   height: 1px;
   width: 100%;
-  background: #2FE3AE;
+  background: #36D2FF;
   transform: scaleX(0);
   transform-origin: left center;
   transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
@@ -265,7 +265,7 @@ html.motion-fallback [style*="opacity:0"] {
   display: block;
   height: 2px;
   width: 0;
-  background: #2FE3AE;
+  background: #36D2FF;
   border-radius: 2px;
   transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -445,15 +445,15 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
 /* Malla de gradientes para el banner (profundidad sin imágenes) */
 .mesh-hero {
   background:
-    radial-gradient(120% 140% at 0% 0%, #0e6b7e 0%, transparent 55%),
-    radial-gradient(90% 120% at 100% 0%, rgba(20, 166, 192, 0.6) 0%, transparent 60%),
-    radial-gradient(110% 120% at 82% 100%, rgba(14, 159, 110, 0.25) 0%, transparent 55%),
-    linear-gradient(160deg, #0c5566 0%, #073a44 80%);
+    radial-gradient(120% 140% at 0% 0%, #0A3F95 0%, transparent 55%),
+    radial-gradient(90% 120% at 100% 0%, rgba(4, 169, 242, 0.55) 0%, transparent 60%),
+    radial-gradient(110% 120% at 82% 100%, rgba(54, 210, 255, 0.18) 0%, transparent 55%),
+    linear-gradient(160deg, #0A2A5E 0%, #051735 80%);
 }
 .ring-glow {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.1),
-    0 24px 48px -20px rgba(20, 166, 192, 0.45);
+    0 24px 48px -20px rgba(4, 169, 242, 0.45);
 }
 
 /* Ícono con brillo superior (efecto pastilla 3D) */
@@ -478,7 +478,7 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
   white-space: pre-line;
   width: max-content;
   max-width: 260px;
-  background: #0f1f3d;
+  background: #051735;
   color: #fff;
   font-size: 11.5px;
   line-height: 1.45;
@@ -544,26 +544,26 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
   --lp-rule-strong: #B9C6D3;
   --lp-neutral: #6B7A8F;
   --lp-muted: #4B5870;
-  --lp-ink: #0F1F3D;
-  --lp-ink-2: #15294A;
+  --lp-ink: #051735;
+  --lp-ink-2: #0B2A5B;
   --lp-on-ink: #FFFFFF;
   --lp-on-ink-muted: #D6E6F2;
 
-  --lp-primary: #0D8199;       /* botones y enlaces principales (4.6:1 sobre blanco) */
-  --lp-primary-hover: #0B6B80;
-  --lp-primary-wash: #E7F6F9;
-  --lp-primary-soft: #C3E9F0;
-  --lp-band-from: #0B6B80;     /* franjas de color */
-  --lp-band-to: #14A6C0;
+  --lp-primary: #0369C9;       /* botones y enlaces principales (5,4:1 sobre blanco) */
+  --lp-primary-hover: #0550A8;
+  --lp-primary-wash: #EBF6FE;
+  --lp-primary-soft: #D2ECFC;
+  --lp-band-from: #0550A8;     /* franjas de color */
+  --lp-band-to: #04A9F2;
 
-  --lp-accent: #2FE3AE;        /* menta: detalle chico sobre tinta o sobre las franjas */
-  --lp-accent-ink: #0B7A5B;
-  --lp-accent-wash: #E3F8F0;
-  --lp-focus: #0D8199;
+  --lp-accent: #36D2FF;        /* celeste del diente: detalle chico sobre tinta o sobre las franjas */
+  --lp-accent-ink: #0550A8;
+  --lp-accent-wash: #E6F7FE;
+  --lp-focus: #0369C9;
   --lp-alert: #C81E1E;
   --lp-alert-wash: #FDE8E8;
-  --lp-blob-a: #93D6E2;
-  --lp-blob-b: #B9F3DF;
+  --lp-blob-a: #A6D9F8;
+  --lp-blob-b: #BDEBFD;
 
   --lp-space-3xs: 0.125rem; --lp-space-2xs: 0.25rem; --lp-space-xs: 0.5rem; --lp-space-sm: 0.75rem;
   --lp-space-md: 1rem; --lp-space-lg: 1.5rem; --lp-space-xl: 2.5rem; --lp-space-2xl: 4rem;
