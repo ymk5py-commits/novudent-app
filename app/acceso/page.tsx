@@ -18,7 +18,7 @@ export default function AccesoPage() {
     <div className="lp-root min-h-dvh font-lp text-[16px] leading-relaxed">
       <NavLanding />
 
-      <main className="mx-auto grid max-w-6xl gap-10 px-4 pb-20 pt-32 sm:px-6 sm:pt-40 lg:grid-cols-12 lg:gap-12">
+      <main id="contenido" tabIndex={-1} className="mx-auto grid max-w-6xl focus:outline-none gap-10 px-4 pb-20 pt-32 sm:px-6 sm:pt-40 lg:grid-cols-12 lg:gap-12">
         <div className="lg:col-span-5">
           <nav aria-label="Ruta" className="mb-6 flex items-center gap-2 text-[13px] font-medium text-lp-muted">
             <Link href="/" className="transition-colors hover:text-lp-ink">Inicio</Link>

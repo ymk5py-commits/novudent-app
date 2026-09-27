@@ -11,7 +11,7 @@ export function Logotipo({ tono = "color", className = "h-8 w-auto", titulo = "N
   const t = tintaDe(tono);
   const { x, y, escala } = LOGO.iso;
   return (
-    <svg viewBox={LOGO.viewBox} className={className} role="img" aria-label={titulo}>
+    <svg viewBox={LOGO.viewBox} className={className} role="img" aria-label={titulo} focusable="false" {...{ translate: "no" }}>
       <path fill={t} d={PALABRA.novu} />
       <path fill={t} d={PALABRA.dent} />
       <g transform={`translate(${x} ${y}) scale(${escala})`} dangerouslySetInnerHTML={{ __html: isoInterno(tono, `lg${id}`) }} />
@@ -26,6 +26,7 @@ export function Isologo({ tono = "color", className = "h-8 w-auto", titulo }: { 
     <svg
       viewBox={`0 0 ${ISO.ancho} ${ISO.alto}`}
       className={className}
+      focusable="false"
       {...(titulo ? { role: "img", "aria-label": titulo } : { "aria-hidden": true })}
       dangerouslySetInnerHTML={{ __html: isoInterno(tono, `is${id}`) }}
     />

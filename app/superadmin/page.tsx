@@ -116,7 +116,7 @@ export default function SuperAdminPage() {
                 <div className="flex justify-between gap-3"><span className="text-clinic-muted">Agenda online</span><a href={created.bookingUrl} className="truncate font-mono text-xs font-bold text-azure-700 hover:underline">{created.bookingUrl}</a></div>
               </div>
 
-              <button onClick={copySummary} className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-all hover:-translate-y-0.5 hover:bg-azure-700">
+              <button onClick={copySummary} className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700">
                 <span className="inline-flex items-center gap-2">
                   {copied ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   {copied ? "¡Copiado!" : "Copiar mensaje de bienvenida (con contraseña)"}
@@ -141,7 +141,7 @@ export default function SuperAdminPage() {
               <Field label="Tu clave de propietario">
                 <div className="relative">
                   <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-                  <input type="password" required className={`${inputCls} pl-9`} value={ownerKey} onChange={(e) => setOwnerKey(e.target.value)} placeholder="OWNER_PANEL_KEY" autoComplete="off" />
+                  <input type="password" name="owner-key" required spellCheck={false} className={`${inputCls} pl-9`} value={ownerKey} onChange={(e) => setOwnerKey(e.target.value)} placeholder="OWNER_PANEL_KEY" autoComplete="off" />
                 </div>
               </Field>
 
@@ -153,7 +153,7 @@ export default function SuperAdminPage() {
                       type="button"
                       key={p.id}
                       onClick={() => setPlan(p.id)}
-                      className={`rounded-2xl border-2 p-3 text-left transition-all ${
+                      className={`rounded-2xl border-2 p-3 text-left transition-[color,background-color,border-color,box-shadow,transform,opacity] ${
                         plan === p.id
                           ? "border-azure-600 bg-azure-50 shadow-[0_6px_18px_-8px_rgba(46,131,245,0.5)]"
                           : "border-clinic-border hover:border-azure-300"
@@ -180,20 +180,20 @@ export default function SuperAdminPage() {
                   <Field label="Nombre de la clínica">
                     <div className="relative">
                       <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-                      <input required className={`${inputCls} pl-9`} value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder="Clínica Dental Sonrisa" />
+                      <input name="clinic-name" required autoComplete="off" className={`${inputCls} pl-9`} value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder="Clínica Dental Sonrisa" />
                     </div>
                   </Field>
                   <div className="grid gap-3.5 sm:grid-cols-2">
                     <Field label="Teléfono (opcional)">
                       <div className="relative">
                         <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-                        <input className={`${inputCls} pl-9`} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+595 21 ..." />
+                        <input type="tel" name="clinic-phone" inputMode="tel" autoComplete="off" className={`${inputCls} pl-9`} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+595 21 …" />
                       </div>
                     </Field>
                     <Field label="Dirección (opcional)">
                       <div className="relative">
                         <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-                        <input className={`${inputCls} pl-9`} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Asunción" />
+                        <input name="clinic-address" autoComplete="off" className={`${inputCls} pl-9`} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Asunción" />
                       </div>
                     </Field>
                   </div>
@@ -206,19 +206,19 @@ export default function SuperAdminPage() {
                   <Field label="Nombre y apellido">
                     <div className="relative">
                       <UserIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-                      <input required className={`${inputCls} pl-9`} value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="Dra. Ana Pérez" />
+                      <input name="admin-name" required autoComplete="off" className={`${inputCls} pl-9`} value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="Dra. Ana Pérez" />
                     </div>
                   </Field>
                   <Field label="Email de acceso">
                     <div className="relative">
                       <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-                      <input type="email" required className={`${inputCls} pl-9`} value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="ana@clinicasonrisa.com" />
+                      <input type="email" name="admin-email" required autoComplete="off" spellCheck={false} className={`${inputCls} pl-9`} value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="ana@clinicasonrisa.com" />
                     </div>
                   </Field>
                   <Field label="Contraseña inicial (6+ caracteres)">
                     <div className="relative">
                       <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-                      <input type="text" required minLength={6} className={`${inputCls} pl-9 font-mono`} value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="ej. Sonrisa2026" autoComplete="off" />
+                      <input type="text" name="admin-temp-password" required minLength={6} spellCheck={false} className={`${inputCls} pl-9 font-mono`} value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="ej. Sonrisa2026" autoComplete="off" />
                     </div>
                   </Field>
                 </div>
@@ -229,7 +229,7 @@ export default function SuperAdminPage() {
               <button
                 type="submit"
                 disabled={busy}
-                className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-all hover:-translate-y-0.5 hover:bg-azure-700 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted disabled:shadow-none"
+                className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted disabled:shadow-none"
               >
                 {busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <span className="inline-flex items-center gap-2">Crear clínica y cuenta admin <ArrowRight className="h-4 w-4" /></span>}
               </button>

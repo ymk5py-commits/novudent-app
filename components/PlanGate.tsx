@@ -69,7 +69,7 @@ export function PlanLocked({ feature }: { feature: PlanFeature }) {
         </ul>
         <a
           href="/app/suscripcion"
-          className="btn-shine mt-6 inline-flex items-center gap-2 rounded-2xl bg-azure-600 px-5 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-all hover:-translate-y-0.5 hover:bg-azure-700"
+          className="btn-shine mt-6 inline-flex items-center gap-2 rounded-2xl bg-azure-600 px-5 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700"
         >
           <Sparkles className="h-4 w-4" /> Mejorar mi plan <ArrowRight className="h-4 w-4" />
         </a>

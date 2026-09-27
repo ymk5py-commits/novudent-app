@@ -381,7 +381,7 @@ function PrintViewer({ doc, patientName, onClose }: { doc: SignatureDoc; patient
     <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4 print:static print:bg-transparent print:p-0" onClick={onClose} role="presentation">
       <div
         {...dialogProps}
-        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-pop outline-none print:max-h-none print:w-full print:max-w-none print:rounded-none print:shadow-none"
+        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto overscroll-contain rounded-2xl bg-white p-6 shadow-pop outline-none print:max-h-none print:w-full print:max-w-none print:rounded-none print:shadow-none"
       >
         <div className="mb-4 flex items-center justify-between print:hidden">
           <h3 id={titleId} className="text-lg font-extrabold text-clinic-text">Consentimiento firmado</h3>

@@ -3,6 +3,7 @@
  *    app/icon.svg              favicon (diente sobre navy, esquinas redondeadas)
  *    app/apple-icon.png        180 × 180 para iOS
  *    app/opengraph-image.png   1200 × 630 para redes (WhatsApp, Facebook, X)
+ *    app/favicon.ico           16/32/48 px, el que piden solos los navegadores
  *    public/marca/*.svg|png    logotipo e isologo en color, blanco y negro,
  *                              e íconos 192/512 del manifest
  *
@@ -60,3 +61,18 @@ for (const p of pngs) {
 }
 await navegador.close();
 console.log("✓", Object.keys(svgs).length, "SVG en", pub, "+ app/icon.svg");
+
+// favicon.ico: los navegadores lo piden solos en /favicon.ico aunque haya icon.svg.
+// Se arma con 16/32/48 px a partir del ícono; la imagen para X/Twitter es la misma de redes.
+{
+  const { execFileSync } = await import("node:child_process");
+  const { copyFileSync } = await import("node:fs");
+  execFileSync("python3", ["-c", [
+    "from PIL import Image",
+    `im = Image.open('${pub}/icono-512.png').convert('RGBA')`,
+    "im.save('app/favicon.ico', sizes=[(16,16),(32,32),(48,48)])",
+  ].join("\n")]);
+  copyFileSync("app/opengraph-image.png", "app/twitter-image.png");
+  copyFileSync("app/opengraph-image.alt.txt", "app/twitter-image.alt.txt");
+  console.log("✓ app/favicon.ico + app/twitter-image.png");
+}

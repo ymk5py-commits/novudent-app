@@ -63,7 +63,7 @@ export default function ChangePasswordGate() {
             <Field label="Nueva contraseña">
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-                <input type={show ? "text" : "password"} required minLength={6} autoComplete="new-password" className={`${inputCls} pl-9 pr-10`} value={p1} onChange={(e) => setP1(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                <input type={show ? "text" : "password"} name="new-password" required minLength={6} autoComplete="new-password" spellCheck={false} className={`${inputCls} pl-9 pr-10`} value={p1} onChange={(e) => setP1(e.target.value)} placeholder="Mínimo 6 caracteres" />
                 <button type="button" onClick={() => setShow(!show)} aria-label={show ? "Ocultar" : "Mostrar"} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-clinic-muted hover:text-clinic-text">
                   {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -72,14 +72,14 @@ export default function ChangePasswordGate() {
             <Field label="Repetí la contraseña">
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-                <input type={show ? "text" : "password"} required minLength={6} autoComplete="new-password" className={`${inputCls} pl-9`} value={p2} onChange={(e) => setP2(e.target.value)} placeholder="Repetir" />
+                <input type={show ? "text" : "password"} name="confirm-password" required minLength={6} autoComplete="new-password" spellCheck={false} className={`${inputCls} pl-9`} value={p2} onChange={(e) => setP2(e.target.value)} placeholder="Repetir" />
               </div>
             </Field>
             {error && <p role="alert" className="rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-state-err">{error}</p>}
             <button
               type="submit"
               disabled={busy}
-              className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-all hover:-translate-y-0.5 hover:bg-azure-700 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted"
+              className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted"
             >
               {busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : "Guardar y continuar"}
             </button>

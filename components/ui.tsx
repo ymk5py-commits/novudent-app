@@ -40,7 +40,7 @@ export function Btn({
       onClick={onClick}
       disabled={disabled}
       data-tip={tip}
-      className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed ${styles} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 disabled:cursor-not-allowed ${styles} ${className}`}
     >
       {children}
     </button>
@@ -159,7 +159,7 @@ function ModalContent({ title, onClose, children, wide, xl }: { title: string; o
     <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4" onClick={onClose} role="presentation">
       <div
         {...dialogProps}
-        className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl bg-white p-6 shadow-pop outline-none ${xl ? "max-w-6xl" : wide ? "max-w-3xl" : "max-w-lg"}`}
+        className={`max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-2xl bg-white p-6 shadow-pop outline-none ${xl ? "max-w-6xl" : wide ? "max-w-3xl" : "max-w-lg"}`}
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 id={titleId} className="text-lg font-extrabold text-clinic-text">{title}</h3>

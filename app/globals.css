@@ -13,7 +13,18 @@ html, body {
   overflow-x: clip;
 }
 
-::selection { background: #04A9F2; color: #fff; }
+/* Tema claro declarado: los controles nativos (fechas, selects, barras de scroll)
+   no se pintan oscuros si el sistema está en modo oscuro. */
+html { color-scheme: light; }
+
+/* Toques en el celular: sin la demora del doble toque y con un resaltado suave
+   en el azul de la marca, en vez del gris del navegador. */
+a, button, [role="button"], input, select, textarea, label, summary {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(3, 105, 201, 0.12);
+}
+
+::selection { background: #0369C9; color: #fff; }
 
 /* Scrollbar discreto */
 ::-webkit-scrollbar { width: 9px; height: 9px; }

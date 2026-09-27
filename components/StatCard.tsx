@@ -75,7 +75,7 @@ export function StatCard({ label, value, suffix, prefix, icon, tone = "azure", t
       {...(href ? { href } : {})}
       className={cn(
         "group block rounded-2xl border border-clinic-border bg-white p-5 shadow-card",
-        "transition-all duration-300 hover:-translate-y-1 hover:shadow-pop sm:rounded-3xl"
+        "transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-300 hover:-translate-y-1 hover:shadow-pop sm:rounded-3xl"
       )}
     >
       <div className="flex items-start justify-between gap-3">

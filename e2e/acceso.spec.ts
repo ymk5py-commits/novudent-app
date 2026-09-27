@@ -1,4 +1,4 @@
-import { test, expect, entrarDemo, USUARIOS_DEMO } from "./soporte";
+import { test, expect, entrarDemo, cerrarSesion, USUARIOS_DEMO } from "./soporte";
 
 test("el login público no ofrece la demo", async ({ page }) => {
   await page.goto("/login");
@@ -24,7 +24,7 @@ test("sin sesión, /app manda al login", async ({ page }) => {
 
 test("cerrar sesión vuelve al login y borra los datos de pacientes del navegador", async ({ page }) => {
   await entrarDemo(page);
-  await page.getByRole("button", { name: "Cerrar sesión" }).first().click();
+  await cerrarSesion(page);
   await page.waitForURL("**/login**");
   const claves = await page.evaluate(() => Object.keys(localStorage));
   expect(claves).not.toContain("novudent.session.v1");

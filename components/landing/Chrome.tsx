@@ -21,6 +21,7 @@ import { linkWhatsApp } from "@/lib/site";
 import { RUTAS_LEGALES, RUTAS_PUBLICAS } from "@/lib/landing/rutas";
 import { Logotipo } from "@/components/Marca";
 import type { Tono } from "@/lib/marca";
+import { SaltarAlContenido } from "@/components/SaltarAlContenido";
 
 export { RUTAS_PUBLICAS, RUTAS_LEGALES } from "@/lib/landing/rutas";
 
@@ -106,6 +107,8 @@ export function NavLanding() {
   useEffect(() => setAbierto(false), [ruta]);
 
   return (
+    <>
+    <SaltarAlContenido />
     <header
       className={`fixed inset-x-0 top-0 z-[200] bg-[var(--lp-paper-glass)] backdrop-blur-md transition-[box-shadow,border-color] duration-200 ${
         bajo ? "border-b border-lp-rule [box-shadow:var(--lp-shadow-whisper)]" : "border-b border-transparent"
@@ -173,6 +176,7 @@ export function NavLanding() {
         </>
       )}
     </header>
+    </>
   );
 }
 
@@ -268,7 +272,7 @@ export function PaginaSeccion({
         </div>
       </section>
 
-      <main className={ancho ? "" : "mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20"}>
+      <main id="contenido" tabIndex={-1} className={`focus:outline-none ${ancho ? "" : "mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20"}`}>
         {children}
 
         <div className={ancho ? "mx-auto max-w-6xl px-4 pb-4 pt-14 sm:px-6" : "mt-16"}>

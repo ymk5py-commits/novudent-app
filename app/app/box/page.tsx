@@ -387,7 +387,7 @@ function BoxFormModal({
                 type="button"
                 onClick={() => setColor(opt.value)}
                 title={opt.label}
-                className={`h-8 w-8 rounded-full border-2 transition-all ${
+                className={`h-8 w-8 rounded-full border-2 transition-[color,background-color,border-color,box-shadow,transform,opacity] ${
                   color === opt.value
                     ? "border-navy-800 scale-110 shadow-md"
                     : "border-transparent hover:scale-105"
