@@ -47,10 +47,11 @@ describe("recepción: agenda de todos y datos del paciente, sin plata", () => {
     expect(can("receptionist", "engagement.forms")).toBe(true);
   });
 
-  it("la recepcionista no ve montos ni la ficha clínica", () => {
+  it("la recepcionista no ve montos ni la ficha clínica, pero sí los tratamientos (sin montos)", () => {
     for (const p of PLATA) expect(can("receptionist", p)).toBe(false);
     expect(can("receptionist", "emr.read")).toBe(false);
-    expect(can("receptionist", "plans.view")).toBe(false);
+    expect(can("receptionist", "plans.view")).toBe(true);
+    expect(can("receptionist", "plans.create")).toBe(false);
   });
 
   it("«Recepción y caja» es la recepcionista más el cobro y el arqueo", () => {

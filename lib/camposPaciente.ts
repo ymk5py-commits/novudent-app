@@ -3,21 +3,34 @@ import type { FieldConfig, FieldContext, Patient } from "./types";
 /* Campos del paciente por contexto (paridad Dentalink): la clínica decide qué datos
  * se piden y cuáles son obligatorios al crear un paciente desde «Nuevo paciente», al
  * agendar y en la reserva online. La matriz se guarda en clinic.config.patientFields;
- * lo que no está configurado toma POR_DEFECTO, que es lo que la app pedía antes de
- * que existiera la matriz: así nada cambia hasta que el admin la edita. */
+ * lo que no está configurado toma POR_DEFECTO: los datos que pidió Novum en la
+ * revisión del 27/9/2026 (obligatorios: nombre, apellido, CI, teléfono, fecha de
+ * nacimiento, sexo y género; y el responsable si el paciente es menor de edad). */
 
 export type CampoKey =
   | "nombreLegal" | "nombreSocial" | "apellidos" | "documento" | "email" | "convenio"
   | "numeroInterno" | "sexo" | "genero" | "fechaNacimiento" | "ciudad" | "municipio"
   | "direccion" | "telefonoFijo" | "telefonoMovil" | "actividad" | "empleador"
-  | "observaciones" | "apoderado" | "referencia" | "dniRepLegal";
+  | "observaciones" | "apoderado" | "referencia" | "dniRepLegal"
+  | "barrio" | "parentesco" | "ruc" | "razonSocial" | "codigoReferido";
+
+/** Secciones del formulario de alta. */
+export type GrupoCampo = "principal" | "contacto" | "responsable" | "facturacion" | "otros";
+export const GRUPOS: { key: GrupoCampo; label: string }[] = [
+  { key: "principal", label: "Datos principales" },
+  { key: "contacto", label: "Contacto y domicilio" },
+  { key: "responsable", label: "Responsable (paciente menor de edad)" },
+  { key: "facturacion", label: "Facturación y convenio" },
+  { key: "otros", label: "Otros datos" },
+];
 
 export type TipoCampo = "texto" | "email" | "tel" | "fecha" | "sexo" | "genero" | "textoLargo";
 
 type PropPaciente =
   | "firstName" | "socialName" | "lastName" | "document" | "email" | "insurer" | "internalNumber"
   | "sex" | "gender" | "birthDate" | "city" | "municipio" | "address" | "landline" | "phone"
-  | "activity" | "employer" | "observaciones" | "guardian" | "referencia" | "legalRepDoc";
+  | "activity" | "employer" | "observaciones" | "guardian" | "referencia" | "legalRepDoc"
+  | "barrio" | "parentesco" | "ruc" | "razonSocial" | "codigoReferido";
 
 export interface Campo {
   key: CampoKey;
@@ -27,31 +40,38 @@ export interface Campo {
   tipo: TipoCampo;
   /** Largo máximo aceptado (la reserva online lo aplica del lado del servidor). */
   max: number;
+  grupo: GrupoCampo;
 }
 
-/** Los 21 campos de la matriz, en el orden de Dentalink. */
+/** Los campos de la matriz: los 21 de Dentalink más los que pidió Novum (barrio,
+ *  parentesco del responsable, RUC, razón social y código de referido), por sección. */
 export const CAMPOS: Campo[] = [
-  { key: "nombreLegal", label: "Nombre legal", prop: "firstName", tipo: "texto", max: 60 },
-  { key: "nombreSocial", label: "Nombre social", prop: "socialName", tipo: "texto", max: 60 },
-  { key: "apellidos", label: "Apellidos", prop: "lastName", tipo: "texto", max: 60 },
-  { key: "documento", label: "Cédula / DNI", prop: "document", tipo: "texto", max: 20 },
-  { key: "email", label: "Email", prop: "email", tipo: "email", max: 120 },
-  { key: "convenio", label: "Convenio", prop: "insurer", tipo: "texto", max: 80 },
-  { key: "numeroInterno", label: "Número interno", prop: "internalNumber", tipo: "texto", max: 30 },
-  { key: "sexo", label: "Sexo", prop: "sex", tipo: "sexo", max: 1 },
-  { key: "genero", label: "Género", prop: "gender", tipo: "genero", max: 5 },
-  { key: "fechaNacimiento", label: "Fecha de nacimiento", prop: "birthDate", tipo: "fecha", max: 10 },
-  { key: "ciudad", label: "Ciudad", prop: "city", tipo: "texto", max: 80 },
-  { key: "municipio", label: "Municipio / comuna", prop: "municipio", tipo: "texto", max: 80 },
-  { key: "direccion", label: "Dirección", prop: "address", tipo: "texto", max: 160 },
-  { key: "telefonoFijo", label: "Teléfono fijo", prop: "landline", tipo: "tel", max: 25 },
-  { key: "telefonoMovil", label: "Teléfono móvil", prop: "phone", tipo: "tel", max: 25 },
-  { key: "actividad", label: "Actividad o profesión", prop: "activity", tipo: "texto", max: 80 },
-  { key: "empleador", label: "Empleador", prop: "employer", tipo: "texto", max: 80 },
-  { key: "observaciones", label: "Observaciones", prop: "observaciones", tipo: "textoLargo", max: 500 },
-  { key: "apoderado", label: "Apoderado", prop: "guardian", tipo: "texto", max: 80 },
-  { key: "referencia", label: "Referencia (cómo nos conoció)", prop: "referencia", tipo: "texto", max: 80 },
-  { key: "dniRepLegal", label: "DNI representante legal", prop: "legalRepDoc", tipo: "texto", max: 20 },
+  { key: "nombreLegal", label: "Nombre legal", prop: "firstName", tipo: "texto", max: 60, grupo: "principal" },
+  { key: "nombreSocial", label: "Nombre social", prop: "socialName", tipo: "texto", max: 60, grupo: "principal" },
+  { key: "apellidos", label: "Apellidos", prop: "lastName", tipo: "texto", max: 60, grupo: "principal" },
+  { key: "documento", label: "Cédula / DNI", prop: "document", tipo: "texto", max: 20, grupo: "principal" },
+  { key: "fechaNacimiento", label: "Fecha de nacimiento", prop: "birthDate", tipo: "fecha", max: 10, grupo: "principal" },
+  { key: "sexo", label: "Sexo", prop: "sex", tipo: "sexo", max: 1, grupo: "principal" },
+  { key: "genero", label: "Género", prop: "gender", tipo: "genero", max: 5, grupo: "principal" },
+  { key: "telefonoMovil", label: "Teléfono móvil", prop: "phone", tipo: "tel", max: 25, grupo: "contacto" },
+  { key: "telefonoFijo", label: "Teléfono fijo", prop: "landline", tipo: "tel", max: 25, grupo: "contacto" },
+  { key: "email", label: "Email", prop: "email", tipo: "email", max: 120, grupo: "contacto" },
+  { key: "ciudad", label: "Ciudad", prop: "city", tipo: "texto", max: 80, grupo: "contacto" },
+  { key: "municipio", label: "Municipio / comuna", prop: "municipio", tipo: "texto", max: 80, grupo: "contacto" },
+  { key: "barrio", label: "Barrio", prop: "barrio", tipo: "texto", max: 80, grupo: "contacto" },
+  { key: "direccion", label: "Dirección", prop: "address", tipo: "texto", max: 160, grupo: "contacto" },
+  { key: "apoderado", label: "Responsable", prop: "guardian", tipo: "texto", max: 80, grupo: "responsable" },
+  { key: "dniRepLegal", label: "CI del responsable", prop: "legalRepDoc", tipo: "texto", max: 20, grupo: "responsable" },
+  { key: "parentesco", label: "Qué es del paciente", prop: "parentesco", tipo: "texto", max: 40, grupo: "responsable" },
+  { key: "ruc", label: "RUC", prop: "ruc", tipo: "texto", max: 20, grupo: "facturacion" },
+  { key: "razonSocial", label: "Razón social", prop: "razonSocial", tipo: "texto", max: 120, grupo: "facturacion" },
+  { key: "convenio", label: "Convenio", prop: "insurer", tipo: "texto", max: 80, grupo: "facturacion" },
+  { key: "numeroInterno", label: "Número interno", prop: "internalNumber", tipo: "texto", max: 30, grupo: "otros" },
+  { key: "actividad", label: "Actividad o profesión", prop: "activity", tipo: "texto", max: 80, grupo: "otros" },
+  { key: "empleador", label: "Empleador", prop: "employer", tipo: "texto", max: 80, grupo: "otros" },
+  { key: "referencia", label: "Referido por (de quién)", prop: "referencia", tipo: "texto", max: 80, grupo: "otros" },
+  { key: "codigoReferido", label: "Código de referido", prop: "codigoReferido", tipo: "texto", max: 30, grupo: "otros" },
+  { key: "observaciones", label: "Observaciones", prop: "observaciones", tipo: "textoLargo", max: 500, grupo: "otros" },
 ];
 
 /** Contextos que usa la app. El check-in de Dentalink todavía no existe en Novudent:
@@ -78,10 +98,15 @@ const NO_APLICA: Partial<Record<FieldContext, CampoKey[]>> = {
 };
 
 const BASE: { presentes: CampoKey[]; requeridos: CampoKey[] } = {
-  presentes: ["nombreLegal", "apellidos", "documento", "email", "convenio", "telefonoMovil"],
-  requeridos: ["nombreLegal", "apellidos", "documento", "telefonoMovil"],
+  presentes: [
+    "nombreLegal", "apellidos", "documento", "fechaNacimiento", "sexo", "genero",
+    "telefonoMovil", "email", "ciudad", "barrio", "direccion",
+    "apoderado", "dniRepLegal", "parentesco", "ruc", "razonSocial", "convenio",
+    "actividad", "referencia", "codigoReferido",
+  ],
+  requeridos: ["nombreLegal", "apellidos", "documento", "fechaNacimiento", "sexo", "genero", "telefonoMovil"],
 };
-/** Lo que la app pedía antes de la matriz. */
+/** Lo que se pide si la clínica no configuró nada (revisión de Novum, 27/9/2026). */
 const POR_DEFECTO: Record<FieldContext, { presentes: CampoKey[]; requeridos: CampoKey[] }> = {
   nuevo: BASE,
   agenda: BASE,
@@ -120,13 +145,31 @@ export function visibles(config: Record<string, FieldConfig> | undefined, ctx: F
 
 export type ValoresCampos = Partial<Record<CampoKey, string>>;
 
-/** Etiquetas de los campos requeridos que quedaron vacíos. */
+/** Campos del responsable: obligatorios si el paciente es menor de edad. */
+export const CAMPOS_RESPONSABLE: CampoKey[] = ["apoderado", "dniRepLegal", "parentesco"];
+
+/** ¿La fecha de nacimiento cargada es de un menor de 18 años? */
+export function esMenor(valores: ValoresCampos, hoy = Date.now()): boolean {
+  const v = valores.fechaNacimiento ?? "";
+  if (!fechaValida(v)) return false;
+  const n = new Date(`${v}T00:00:00Z`); const h = new Date(hoy);
+  let edad = h.getUTCFullYear() - n.getUTCFullYear();
+  if (h.getUTCMonth() < n.getUTCMonth() || (h.getUTCMonth() === n.getUTCMonth() && h.getUTCDate() < n.getUTCDate())) edad--;
+  return edad < 18;
+}
+
+/** Etiquetas de los campos requeridos que quedaron vacíos. Si el paciente es menor,
+ *  el responsable es obligatorio aunque la clínica no lo haya marcado. */
 export function faltantes(campos: CampoResuelto[], valores: ValoresCampos): string[] {
-  return campos.filter((c) => c.presente && c.requerido && !(valores[c.key] ?? "").trim()).map((c) => c.label);
+  const menor = esMenor(valores);
+  return campos
+    .filter((c) => (c.presente && c.requerido) || (menor && CAMPOS_RESPONSABLE.includes(c.key)))
+    .filter((c) => !(valores[c.key] ?? "").trim())
+    .map((c) => c.label);
 }
 
 const SEXOS = ["F", "M"];
-const GENEROS = ["F", "M", "otro"];
+const GENEROS = ["F", "M", "nd", "otro"];
 
 /** Fecha de nacimiento válida: YYYY-MM-DD, real, no futura y de este siglo o el anterior. */
 function fechaValida(v: string): boolean {
@@ -150,8 +193,9 @@ export function normalizar(campo: Campo, valor: string | undefined): string | un
  *  presentes en el contexto y descarta vacíos y opciones inválidas. */
 export function datosPaciente(campos: CampoResuelto[], valores: ValoresCampos): Partial<Patient> {
   const out: Record<string, string> = {};
+  const menor = esMenor(valores);
   for (const c of campos) {
-    if (!c.presente) continue;
+    if (!c.presente && !(menor && CAMPOS_RESPONSABLE.includes(c.key))) continue;
     const v = normalizar(c, valores[c.key]);
     if (v !== undefined) out[c.prop] = v;
   }
@@ -169,9 +213,10 @@ export function extrasOnline(config: Record<string, FieldConfig> | undefined): {
 
 /** Paciente nuevo con los datos cargados y la anamnesis inicial pendiente, como el
  *  alta de siempre. `document` y `phone` quedan vacíos si la clínica no los pide. */
-export function nuevoPaciente(datos: Partial<Patient>, clinicId: string, ahora = Date.now()): Patient {
+export function nuevoPaciente(datos: Partial<Patient>, clinicId: string, ahora = Date.now(), code?: number): Patient {
   return {
     ...datos,
+    ...(code != null ? { code } : {}),
     id: `p_${ahora}`,
     clinicId,
     firstName: datos.firstName ?? "",
@@ -184,4 +229,23 @@ export function nuevoPaciente(datos: Partial<Patient>, clinicId: string, ahora =
     historyUpdatePending: false,
     emr: [],
   };
+}
+
+/** Siguiente código interno correlativo de la clínica. */
+export function siguienteCodigo(pacientes: Pick<Patient, "code">[]): number {
+  return pacientes.reduce((max, p) => Math.max(max, p.code ?? 0), 0) + 1;
+}
+
+/** El número que lleva el id («p3», «p_1790529600178»): define el orden de alta. */
+const numeroDe = (id: string) => Number(id.replace(/\D/g, "")) || 0;
+
+/** Códigos para los pacientes que todavía no tienen (cargados antes de que existiera):
+ *  en orden de alta (el id lleva la fecha) a continuación del mayor ya asignado. Es
+ *  determinista, así dos pantallas abiertas a la vez asignan lo mismo. */
+export function codigosFaltantes(pacientes: Pick<Patient, "id" | "code">[]): { id: string; code: number }[] {
+  let siguiente = siguienteCodigo(pacientes);
+  return pacientes
+    .filter((p) => p.code == null)
+    .sort((a, b) => numeroDe(a.id) - numeroDe(b.id) || a.id.localeCompare(b.id))
+    .map((p) => ({ id: p.id, code: siguiente++ }));
 }

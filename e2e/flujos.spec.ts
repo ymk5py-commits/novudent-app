@@ -30,16 +30,20 @@ test("pacientes: dar de alta un paciente y encontrarlo por su CI", async ({ page
   const ci = String(9_000_000 + Math.floor(Math.random() * 999_999));
   await page.goto("/app/pacientes");
   await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  const dialogo = page.getByRole("dialog");
-  await campo(page, /^nombre/i).fill("Prueba");
-  await campo(page, /^apellido/i).fill("Automática");
-  await campo(page, /^c[eé]dula/i).fill(ci);
-  await campo(page, /tel[eé]fono/i).fill("+595 981 000 000");
-  await dialogo.getByRole("button", { name: "Crear paciente" }).click();
-  await expect(dialogo).toBeHidden();
+  await page.waitForURL("**/app/pacientes/nuevo");
+  const m = page.locator("main");
+  await m.getByLabel("Nombre legal *").fill("Prueba");
+  await m.getByLabel("Apellidos *").fill("Automática");
+  await m.getByLabel("Cédula / DNI *").fill(ci);
+  await m.getByLabel("Fecha de nacimiento *").fill("1985-01-15");
+  await m.getByLabel("Sexo *").selectOption("M");
+  await m.getByLabel("Género *").selectOption("M");
+  await m.getByLabel("Teléfono móvil *").fill("+595 981 000 000");
+  await m.getByRole("button", { name: "Crear paciente" }).click();
+  await page.waitForURL(/\/app\/pacientes\/p_/);
   await page.goto("/app/pacientes");
   await page.getByPlaceholder(/Buscar por nombre, CI/).fill(ci);
-  await expect(page.locator("main").getByRole("row", { name: /Abrir la ficha de Prueba Automática/ })).toBeVisible();
+  await expect(page.locator("main").getByRole("link", { name: "Abrir la ficha de Prueba Automática" })).toBeVisible();
 });
 
 test("presupuestos: presentar el borrador y aceptarlo", async ({ page }) => {

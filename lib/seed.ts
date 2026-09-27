@@ -20,7 +20,7 @@ const CLINIC_ID = "cl_demo";
 
 const patients: Patient[] = [
   {
-    id: "p1", clinicId: CLINIC_ID, firstName: "María", lastName: "González", document: "3.456.789",
+    id: "p1", clinicId: CLINIC_ID, code: 1, firstName: "María", lastName: "González", document: "3.456.789",
     phone: "+595 981 111 111", email: "maria@example.com", birthDate: "1988-04-12", insurer: "Asismed", sex: "F", gender: "F", city: "Asunción", municipio: "Asunción",
     forms: [
       { id: "f1", templateName: "Anamnesis inicial", status: "pendiente", fields: [{ label: "Alergias", value: "" }, { label: "Medicación actual", value: "" }, { label: "Antecedentes", value: "" }] },
@@ -57,14 +57,14 @@ const patients: Patient[] = [
     nps: { score: 7, at: at(-20, 9) },
   },
   {
-    id: "p2", clinicId: CLINIC_ID, firstName: "Juan", lastName: "Ríos", document: "4.567.890",
+    id: "p2", clinicId: CLINIC_ID, code: 2, firstName: "Juan", lastName: "Ríos", document: "4.567.890",
     phone: "+595 982 222 222", birthDate: "1995-09-03", sex: "M", gender: "M", city: "Lambaré", municipio: "Lambaré",
     forms: [{ id: "f3", templateName: "Anamnesis inicial", status: "pendiente", fields: [{ label: "Alergias", value: "" }, { label: "Medicación actual", value: "" }] }],
     historyUpdatePending: false,
     emr: [],
   },
   {
-    id: "p3", clinicId: CLINIC_ID, firstName: "Camila", lastName: "Ortega", document: "5.678.901",
+    id: "p3", clinicId: CLINIC_ID, code: 3, firstName: "Camila", lastName: "Ortega", document: "5.678.901",
     phone: "+595 983 333 333", email: "cami@example.com", birthDate: "2001-01-26", insurer: "OSDE PY", sex: "F", gender: "F", city: "San Lorenzo", municipio: "San Lorenzo",
     forms: [],
     historyUpdatePending: false,
@@ -72,7 +72,7 @@ const patients: Patient[] = [
     nps: { score: 10, comment: "Excelente todo 😊", at: at(-13, 11) },
   },
   {
-    id: "p4", clinicId: CLINIC_ID, firstName: "Andrés", lastName: "Mejía", document: "2.345.678",
+    id: "p4", clinicId: CLINIC_ID, code: 4, firstName: "Andrés", lastName: "Mejía", document: "2.345.678",
     phone: "+595 984 444 444", birthDate: "1979-11-30", sex: "M", gender: "M", city: "Asunción", municipio: "Asunción",
     forms: [{ id: "f4", templateName: "Historia médica (actualización)", status: "pendiente", fields: [{ label: "Cambios de salud", value: "" }, { label: "Nueva medicación", value: "" }] }],
     historyUpdatePending: true,
@@ -91,12 +91,12 @@ const patients: Patient[] = [
     nps: { score: 9, comment: "Muy buena atención de la doctora, la exodoncia fue rápida.", at: at(-1, 13) },
   },
   {
-    id: "p5", clinicId: CLINIC_ID, firstName: "Lucía", lastName: "Ferreira", document: "6.789.012",
+    id: "p5", clinicId: CLINIC_ID, code: 5, firstName: "Lucía", lastName: "Ferreira", document: "6.789.012",
     phone: "+595 985 555 555", birthDate: `1992-${at(3, 12).slice(5, 10)}`, insurer: "Asismed", sex: "F", gender: "F", city: "Luque", municipio: "Luque",
     forms: [], historyUpdatePending: false, emr: [],
   },
   {
-    id: "p6", clinicId: CLINIC_ID, firstName: "Marco", lastName: "Giménez", document: "1.234.567",
+    id: "p6", clinicId: CLINIC_ID, code: 6, firstName: "Marco", lastName: "Giménez", document: "1.234.567",
     phone: "+595 986 666 666", birthDate: "1985-02-08", sex: "M", gender: "M", city: "Fernando de la Mora", municipio: "Fernando de la Mora",
     forms: [], historyUpdatePending: false,
     emr: [{ id: "n5", authorId: "u2", authorName: "Dra. Sofía Benítez", createdAt: at(-1, 16), kind: "plan", text: "Inicio de ortodoncia (D8080). Estudio cefalométrico solicitado." }],
