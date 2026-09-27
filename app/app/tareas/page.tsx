@@ -9,6 +9,8 @@
 import { useMemo, useState } from "react";
 import { useStore, fmtDate, fmtGs, fullName, waLink } from "@/lib/store";
 import { can } from "@/lib/rbac";
+import { useAlcance } from "@/lib/useAlcance";
+import { tiposDeTareaVisibles, veTarea } from "@/lib/alcance";
 import { derivarTareas, fusionarTareas, clasificarTareas, detalleTarea, type TaskRow } from "@/lib/tareas";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
@@ -25,7 +27,14 @@ const hoyISO = () => new Date().toISOString().slice(0, 10);
 export default function TareasPage() {
   const { db, session, addMgmtTask, updateMgmtTask, deleteMgmtTask } = useStore();
   const cid = db.clinics[0]?.id ?? "";
-  const canManage = session ? can(session.role, "engagement.forms") : false;
+  const canManage = session ? can(session.role, "tasks.use") : false;
+  // Roles v3: todos usan la bandeja, pero cada uno ve lo suyo. Sin plata no hay
+  // cobranza ni cheques ni montos; sin datos personales no hay WhatsApp; con
+  // alcance (dentista, asistente) solo sus tareas y las de sus pacientes.
+  const alcance = useAlcance();
+  const verMontos = alcance.puede("money.view");
+  const verPersonales = alcance.puede("patients.personal");
+  const tipos = useMemo(() => (session ? tiposDeTareaVisibles(session.role) : []), [session]);
   const [vista, setVista] = useState<"dia" | "atrasadas" | "todas">("dia");
   const [typeFilter, setTypeFilter] = useState<"todas" | MgmtTaskType>("todas");
   const [soloMias, setSoloMias] = useState(false);
@@ -43,10 +52,11 @@ export default function TareasPage() {
       appointments: db.appointments,
       deadlines: db.clinics[0]?.config?.taskDeadlines,
     }, hoy);
-    const fusionadas = fusionarTareas(derivadas, db.mgmtTasks, hoy, showClosed);
+    const fusionadas = fusionarTareas(derivadas, db.mgmtTasks, hoy, showClosed)
+      .filter((t) => tipos.includes(t.type) && veTarea(t, session?.userId ?? "", alcance.pacientes));
     const c = clasificarTareas(fusionadas, hoy);
     return { delDia: c.delDia, atrasadas: c.atrasadas, todas: fusionadas };
-  }, [db.patients, db.budgets, db.payments, db.appointments, db.mgmtTasks, db.clinics, hoy, showClosed]);
+  }, [db.patients, db.budgets, db.payments, db.appointments, db.mgmtTasks, db.clinics, hoy, showClosed, tipos, alcance.pacientes, session?.userId]);
 
   const tasks = useMemo(() => {
     const base = vista === "dia" ? delDia : vista === "atrasadas" ? atrasadas : todas;
@@ -66,7 +76,7 @@ export default function TareasPage() {
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
         <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
-        <p className="mt-1 text-sm text-clinic-muted">La bandeja de tareas la gestionan el <b>Administrador</b> y la <b>Asistente</b>.</p>
+        <p className="mt-1 text-sm text-clinic-muted">Tu rol no tiene acceso a la bandeja de tareas.</p>
       </Card>
     );
   }
@@ -112,8 +122,8 @@ export default function TareasPage() {
    *  formatea acá con `fmtGs`, que resuelve por la moneda activa de la clínica.
    *  amount y detail pueden coexistir (la regla cheque setea los dos) — por eso
    *  se concatenan en vez de elegir uno, ver detalleTarea en lib/tareas.ts. */
-  const detalle = (t: TaskRow) => detalleTarea(t, fmtGs);
-  const FILTERS: ("todas" | MgmtTaskType)[] = ["todas", "captura", "control", "cobranza", "cheque", "cita", "personalizada"];
+  const detalle = (t: TaskRow) => detalleTarea(t, verMontos ? fmtGs : undefined);
+  const FILTERS: ("todas" | MgmtTaskType)[] = ["todas", ...tipos];
 
   return (
     <Reveal className="space-y-5">
@@ -154,7 +164,7 @@ export default function TareasPage() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-2">
           {tasks.length === 0 ? (
-            <Empty title="Nada pendiente" desc="Cuando haya un saldo sin cobrar, un presupuesto sin aceptar o una cita sin confirmar, la tarea aparece acá sola." />
+            <Empty title="Nada pendiente" desc={verMontos ? "Cuando haya un saldo sin cobrar, un presupuesto sin aceptar o una cita sin confirmar, la tarea aparece acá sola." : "Cuando haya una cita sin confirmar o un control por agendar, la tarea aparece acá sola."} />
           ) : tasks.map((t) => (
             <button key={t.id} onClick={() => setSelId(t.id)}
               className={`w-full rounded-xl border p-3 text-left transition-colors ${selId === t.id ? "border-azure-400 bg-azure-50" : "border-clinic-border bg-white hover:border-azure-300"}`}>
@@ -210,7 +220,7 @@ export default function TareasPage() {
                       <button onClick={() => { cerrar(sel, "rechazo"); setSelId(null); }} className="rounded-lg border border-state-err/40 bg-state-errbg px-2 py-1 text-[11px] font-bold text-state-err hover:brightness-95">Rechazó</button>
                     </div>
                   </div>
-                  {pPhone(sel) && (
+                  {verPersonales && pPhone(sel) && (
                     <a href={waLink(pPhone(sel)!, `Hola ${pName(sel)}, te contactamos de la clínica.`)} target="_blank" rel="noopener noreferrer"
                       className="flex items-center justify-center gap-1.5 rounded-lg border border-clinic-border py-2 text-xs font-bold text-state-ok hover:bg-state-okbg">
                       <MessageCircle className="h-3.5 w-3.5" /> Escribir por WhatsApp
@@ -235,7 +245,8 @@ export default function TareasPage() {
       {showForm && (
         <TaskForm
           clinicId={cid}
-          patients={db.patients.map((p) => ({ id: p.id, name: fullName(p) }))}
+          patients={db.patients.filter((p) => alcance.vePaciente(p.id)).map((p) => ({ id: p.id, name: fullName(p) }))}
+          createdBy={session.userId}
           users={db.users.filter((u) => u.active).map((u) => ({ id: u.id, name: u.name }))}
           onClose={() => setShowForm(false)}
           onSave={(t) => { addMgmtTask(t); setShowForm(false); }}
@@ -245,8 +256,9 @@ export default function TareasPage() {
   );
 }
 
-function TaskForm({ clinicId, patients, users, onClose, onSave }: {
+function TaskForm({ clinicId, patients, users, createdBy, onClose, onSave }: {
   clinicId: string;
+  createdBy: string;
   patients: { id: string; name: string }[];
   users: { id: string; name: string }[];
   onClose: () => void;
@@ -269,6 +281,7 @@ function TaskForm({ clinicId, patients, users, onClose, onSave }: {
       title: title.trim(),
       detail: detail.trim() || undefined,
       assigneeId: assigneeId || undefined,
+      createdBy,
       status: "pendiente",
       dueDate: dueDate || undefined,
       createdAt: new Date().toISOString(),

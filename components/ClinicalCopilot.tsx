@@ -5,6 +5,7 @@
  *  Es APOYO, no diagnóstico definitivo. */
 import { useState } from "react";
 import { useStore, fmtGs } from "@/lib/store";
+import { useAlcance } from "@/lib/useAlcance";
 import { currentIdToken } from "@/lib/firebase";
 import { resizeToDataUrl } from "@/lib/image";
 import { Card, Btn, Badge, Empty } from "@/components/ui";
@@ -20,6 +21,8 @@ const sevTone = (s: string): "err" | "warn" | "info" | "muted" => (s === "severo
 
 export function ClinicalCopilot({ patient }: { patient: Patient }) {
   const { db, session, mergeOdontogramTooth, upsertBudget } = useStore();
+  const alcance = useAlcance();
+  const verMontos = alcance.puede("money.view"); // roles v3: el dentista ve el plan sin precios
   const [img, setImg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +91,7 @@ export function ClinicalCopilot({ patient }: { patient: Patient }) {
           <h3 className="font-extrabold text-clinic-text">Clinical Copilot</h3>
           <Badge tone="info">IA</Badge>
         </div>
-        <p className="mb-3 flex items-start gap-1.5 text-[11px] text-clinic-muted"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" /> Subí una radiografía: la IA propone diagnóstico, odontograma y plan con precios del arancel. Es <b className="mx-0.5">apoyo</b> — revisá y aprobá antes de aplicar.</p>
+        <p className="mb-3 flex items-start gap-1.5 text-[11px] text-clinic-muted"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" /> Subí una radiografía: la IA propone diagnóstico, odontograma y plan{verMontos ? " con precios del arancel" : " de tratamiento"}. Es <b className="mx-0.5">apoyo</b> — revisá y aprobá antes de aplicar.</p>
 
         <div className="flex flex-wrap items-center gap-2">
           <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-text hover:border-azure-300 hover:text-azure-700">
@@ -130,7 +133,7 @@ export function ClinicalCopilot({ patient }: { patient: Patient }) {
           <Card className="p-4">
             <div className="mb-2 flex items-center justify-between">
               <h4 className="font-extrabold text-clinic-text">Plan de tratamiento sugerido</h4>
-              <Btn variant="outline" onClick={crearPlan} disabled={pSel.size === 0}><FileSpreadsheet className="h-3.5 w-3.5" /> Crear plan (borrador)</Btn>
+              {alcance.puede("plans.create") && <Btn variant="outline" onClick={crearPlan} disabled={pSel.size === 0}><FileSpreadsheet className="h-3.5 w-3.5" /> Crear plan (borrador)</Btn>}
             </div>
             {res.plan.length === 0 ? <Empty title="Sin plan" desc="La IA no sugirió procedimientos." /> : (
               <>
@@ -141,14 +144,16 @@ export function ClinicalCopilot({ patient }: { patient: Patient }) {
                       {p.tooth && <span className="font-mono font-bold text-clinic-text">{p.tooth}</span>}
                       <span className="min-w-0 flex-1 truncate text-clinic-text">{p.description}</span>
                       {p.priority === 1 && <Badge tone="err">Urgente</Badge>}
-                      <span className="font-mono font-bold text-clinic-text">{fmtGs(p.price)}</span>
+                      {verMontos && <span className="font-mono font-bold text-clinic-text">{fmtGs(p.price)}</span>}
                     </li>
                   ))}
                 </ul>
-                <div className="mt-2 flex items-center justify-between border-t border-clinic-border pt-2 text-sm">
-                  <span className="font-bold text-clinic-muted">Total seleccionado</span>
-                  <span className="font-mono text-base font-extrabold text-azure-700">{fmtGs(planTotal)}</span>
-                </div>
+                {verMontos && (
+                  <div className="mt-2 flex items-center justify-between border-t border-clinic-border pt-2 text-sm">
+                    <span className="font-bold text-clinic-muted">Total seleccionado</span>
+                    <span className="font-mono text-base font-extrabold text-azure-700">{fmtGs(planTotal)}</span>
+                  </div>
+                )}
               </>
             )}
           </Card>

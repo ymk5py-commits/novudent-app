@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Printer, Calendar, Activity, Receipt, ClipboardList, Stethoscope } from "lucide-react";
 import { useStore, fmtGs } from "@/lib/store";
 import { buildHistorial, type HistorialKind, type HistorialEntry } from "@/lib/historial";
+import { useAlcance } from "@/lib/useAlcance";
 import type { Patient } from "@/lib/types";
 import { Card, Badge, Empty } from "@/components/ui";
 
@@ -18,6 +19,8 @@ const KIND_META: Record<HistorialKind, { color: string; icon: any }> = {
 
 export function HistorialTimeline({ patient }: { patient: Patient }) {
   const { db } = useStore();
+  // Los pagos son plata: sin money.view (roles v3) no entran al historial.
+  const verMontos = useAlcance().puede("money.view");
   const [tipo, setTipo] = useState<"todos" | HistorialKind>("todos");
   const [mes, setMes] = useState("todos");
 
@@ -27,10 +30,10 @@ export function HistorialTimeline({ patient }: { patient: Patient }) {
         appointments: db.appointments.filter((a) => a.patientId === patient.id),
         ortho: patient.ortho,
         budgets: db.budgets.filter((b) => b.patientId === patient.id),
-        payments: db.payments.filter((p) => p.patientId === patient.id),
+        payments: verMontos ? db.payments.filter((p) => p.patientId === patient.id) : [],
         emr: patient.emr,
       }),
-    [db, patient],
+    [db, patient, verMontos],
   );
 
   const meses = useMemo(() => [...new Set(all.map((e) => e.at.slice(0, 7)))].sort().reverse(), [all]);
@@ -58,7 +61,7 @@ export function HistorialTimeline({ patient }: { patient: Patient }) {
           <option value="cita">Citas</option>
           <option value="evolucion">Evoluciones</option>
           <option value="prestacion">Prestaciones</option>
-          <option value="pago">Pagos</option>
+          {verMontos && <option value="pago">Pagos</option>}
           <option value="nota">Notas</option>
         </select>
         <select className="rounded-xl border border-clinic-border bg-white px-3 py-1.5 text-sm" value={mes} onChange={(e) => setMes(e.target.value)}>

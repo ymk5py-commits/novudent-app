@@ -11,34 +11,40 @@ import { Reveal } from "@/components/motion";
 import { AnalisisConversion } from "@/components/AnalisisConversion";
 import { PacientesOrtodoncia } from "@/components/PacientesOrtodoncia";
 import { ConfiguracionCampos } from "@/components/ConfiguracionCampos";
+import { useAlcance } from "@/lib/useAlcance";
 
 export default function PatientsPage() {
   const { db, session, upsertPatient } = useStore();
+  const alcance = useAlcance();
+  const verMontos = alcance.puede("money.view");
+  const verPersonales = alcance.puede("patients.personal");
   const [q, setQ] = useState("");
   const [creating, setCreating] = useState(false);
   const [tab, setTab] = useState<"lista" | "analisis" | "ortodoncia" | "configuracion">("lista");
 
   const list = useMemo(() => {
     const t = q.trim().toLowerCase();
+    const propios = db.patients.filter((p) => alcance.vePaciente(p.id));
     const xs = !t
-      ? db.patients
-      : db.patients.filter((p) => fullName(p).toLowerCase().includes(t) || p.document.includes(t) || p.phone.includes(t));
+      ? propios
+      : propios.filter((p) => fullName(p).toLowerCase().includes(t) || (verPersonales && (p.document.includes(t) || p.phone.includes(t))));
     return [...xs].sort((a, b) => fullName(a).localeCompare(fullName(b)));
-  }, [db.patients, q]);
+  }, [db.patients, q, alcance, verPersonales]);
 
-  const orthoCount = db.patients.filter((p) => p.ortho?.active).length;
-  const TABS = [
+  const orthoCount = db.patients.filter((p) => p.ortho?.active && alcance.vePaciente(p.id)).length;
+  // Análisis muestra cobros y presupuestos (números del negocio, igual que en Reportes).
+  const TABS = ([
     { k: "lista", label: "Pacientes" },
-    { k: "analisis", label: "Análisis" },
+    ...(alcance.puede("billing.reports") ? [{ k: "analisis", label: "Análisis" }] : []),
     { k: "ortodoncia", label: `Pacientes de Ortodoncia (${orthoCount})` },
     { k: "configuracion", label: "Configuración" },
-  ] as const;
+  ] as const) as readonly { k: "lista" | "analisis" | "ortodoncia" | "configuracion"; label: string }[];
 
   return (
     <div className="space-y-5">
       <Reveal y={0} className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-extrabold text-clinic-text">Pacientes</h1>
-        <Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Nuevo paciente</Btn>
+        {verPersonales && <Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Nuevo paciente</Btn>}
       </Reveal>
 
       <Reveal delay={0.05} className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
@@ -53,7 +59,7 @@ export default function PatientsPage() {
         ))}
       </Reveal>
 
-      {tab === "analisis" && <Reveal><AnalisisConversion /></Reveal>}
+      {tab === "analisis" && alcance.puede("billing.reports") && <Reveal><AnalisisConversion /></Reveal>}
       {tab === "ortodoncia" && <Reveal><PacientesOrtodoncia /></Reveal>}
       {tab === "configuracion" && <Reveal><ConfiguracionCampos /></Reveal>}
 
@@ -64,13 +70,16 @@ export default function PatientsPage() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar por nombre, CI o teléfono…"
+              placeholder={verPersonales ? "Buscar por nombre, CI o teléfono…" : "Buscar por nombre…"}
               className="w-full rounded-xl border border-clinic-border bg-white py-2.5 pl-9 pr-3 text-sm focus:border-azure-600"
             />
           </div>
 
           {list.length === 0 ? (
-            <Empty title="Sin resultados" desc="Probá con otro nombre o número de documento." />
+            <Empty
+              title={alcance.sinDoctores ? "Todavía no tenés doctores asignados" : "Sin resultados"}
+              desc={alcance.sinDoctores ? "Pedile al administrador que te asigne en Configuración → Usuarios." : verPersonales ? "Probá con otro nombre o número de documento." : "Probá con otro nombre."}
+            />
           ) : (
             <Card className="overflow-x-auto p-0">
               <table className="w-full min-w-[680px] text-sm">
@@ -79,14 +88,14 @@ export default function PatientsPage() {
                     <th className="px-4 py-3">Nombre</th>
                     <th className="px-2 py-3">Apellidos</th>
                     <th className="px-2 py-3">Tratamientos</th>
-                    <th className="px-2 py-3">Deudas</th>
+                    {verMontos && <th className="px-2 py-3">Deudas</th>}
                     <th className="px-2 py-3"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-clinic-border">
                   {list.map((p) => {
                     const trats = db.budgets.filter((b) => b.patientId === p.id).length;
-                    const debt = patientBalance(p.id, db.budgets, db.payments) > 0;
+                    const debt = verMontos && patientBalance(p.id, db.budgets, db.payments) > 0;
                     const pendingForms = p.forms.filter((f) => f.status === "pendiente").length;
                     return (
                       <tr key={p.id} className="hover:bg-clinic-bg/60">
@@ -102,7 +111,7 @@ export default function PatientsPage() {
                         </td>
                         <td className="px-2 py-2.5 text-clinic-text">{p.lastName}</td>
                         <td className="px-2 py-2.5 text-clinic-muted">{trats}</td>
-                        <td className="px-2 py-2.5">{debt ? <Badge tone="err">Con deuda</Badge> : <span className="text-clinic-muted">No tiene</span>}</td>
+                        {verMontos && <td className="px-2 py-2.5">{debt ? <Badge tone="err">Con deuda</Badge> : <span className="text-clinic-muted">No tiene</span>}</td>}
                         <td className="px-2 py-2.5">
                           <span className="flex items-center justify-end gap-1.5">
                             {pendingForms > 0 && (

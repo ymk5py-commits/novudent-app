@@ -17,6 +17,8 @@ import { PatientBriefButton } from "@/components/NovudentIA";
 import Odontogram from "@/components/Odontogram";
 import { OrtodonciaPanel } from "@/components/Ortodoncia";
 import { PrestacionesList } from "@/components/Prestaciones";
+import { BudgetForm } from "@/components/BudgetForm";
+import { useAlcance } from "@/lib/useAlcance";
 
 function planProgress(budget: Budget, patient: Patient): number {
   if (budget.planType === "ortodoncia" && patient.ortho?.active) return orthoProgress(patient.ortho).calendarPct;
@@ -26,17 +28,42 @@ function planProgress(budget: Budget, patient: Patient): number {
 }
 
 export function PlanTratamiento({ patient }: { patient: Patient }) {
-  const { db } = useStore();
-  const budgets = db.budgets.filter((b) => b.patientId === patient.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const { db, session, upsertBudget } = useStore();
+  const alcance = useAlcance();
+  // Dentista y asistente: solo los planes de sus doctores.
+  const budgets = db.budgets.filter((b) => b.patientId === patient.id && alcance.veDoctor(b.dentistId)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const [selId, setSelId] = useState<string | null>(null);
+  const [creando, setCreando] = useState(false);
+  // Caja y administración arman presupuestos en Presupuestos; el dentista arma el plan acá, sin montos.
+  const armaDesdeFicha = !alcance.puede("budgets.manage") && alcance.puede("plans.create");
+  const nuevo = armaDesdeFicha && creando && session ? (
+    <BudgetForm
+      budget={null}
+      sinMontos={!alcance.puede("money.view")}
+      paciente={patient.id}
+      profesional={session.role === "dentist" ? session.userId : undefined}
+      onClose={() => setCreando(false)}
+      onSave={(b) => { upsertBudget(b); setCreando(false); setSelId(b.id); }}
+    />
+  ) : null;
+  const onNuevo = alcance.puede("budgets.manage") ? "presupuestos" as const : armaDesdeFicha ? () => setCreando(true) : null;
 
   if (!budgets.length) {
-    return <Empty title="Sin planes de tratamiento" desc="Creá un presupuesto en la sección Presupuestos para iniciar un plan." />;
+    return (
+      <>
+        <Empty
+          title="Sin planes de tratamiento"
+          desc={armaDesdeFicha ? "Armá el primero con las prestaciones que necesita el paciente." : alcance.puede("budgets.manage") ? "Creá un presupuesto en la sección Presupuestos para iniciar un plan." : "Todavía no hay planes con tus doctores."}
+        />
+        {armaDesdeFicha && <div className="flex justify-center"><Btn onClick={() => setCreando(true)}><Plus className="h-4 w-4" /> Nuevo plan de tratamiento</Btn></div>}
+        {nuevo}
+      </>
+    );
   }
   if (selId && budgets.some((b) => b.id === selId)) {
     return <PlanDetalle patient={patient} budgets={budgets} selId={selId} onSelect={setSelId} onBack={() => setSelId(null)} />;
   }
-  return <PlanLista patient={patient} budgets={budgets} onOpen={setSelId} />;
+  return <>{<PlanLista patient={patient} budgets={budgets} onOpen={setSelId} onNuevo={onNuevo} />}{nuevo}</>;
 }
 
 /* ---------- LISTA de planes (En ejecución / Otros) ---------- */
@@ -55,8 +82,9 @@ function MiniRing({ pct }: { pct: number }) {
   );
 }
 
-function PlanLista({ patient, budgets, onOpen }: { patient: Patient; budgets: Budget[]; onOpen: (id: string) => void }) {
+function PlanLista({ patient, budgets, onOpen, onNuevo }: { patient: Patient; budgets: Budget[]; onOpen: (id: string) => void; onNuevo: "presupuestos" | (() => void) | null }) {
   const { db } = useStore();
+  const verMontos = useAlcance().puede("money.view");
   const [filtro, setFiltro] = useState<"activos" | "todos">("activos");
   const visibles = filtro === "activos" ? budgets.filter((b) => b.status !== "anulado" && b.status !== "completado") : budgets;
   const enEjecucion = visibles.filter((b) => b.status === "aceptado");
@@ -78,7 +106,7 @@ function PlanLista({ patient, budgets, onOpen }: { patient: Patient; budgets: Bu
           <span className="text-sm font-bold text-azure-700 hover:underline">#{b.id}: {b.name ?? esp}</span>
           <Pencil className="h-3.5 w-3.5 text-clinic-muted" />
         </div>
-        <div className="grid grid-cols-2 items-start gap-y-3 sm:grid-cols-5 sm:items-center">
+        <div className={`grid grid-cols-2 items-start gap-y-3 ${verMontos ? "sm:grid-cols-5" : "sm:grid-cols-4"} sm:items-center`}>
           <Col label="Profesional"><span className="flex items-center gap-1 text-clinic-text"><UserRound className="h-3.5 w-3.5 shrink-0 text-clinic-muted" /> {prof}</span></Col>
           <Col label="Especialidad"><span className="text-clinic-text">{esp}</span></Col>
           <Col label="Última cita">
@@ -90,7 +118,7 @@ function PlanLista({ patient, budgets, onOpen }: { patient: Patient; budgets: Bu
             ) : <span className="text-clinic-muted">—</span>}
           </Col>
           <Col label="Progreso"><MiniRing pct={planProgress(b, patient)} /></Col>
-          <Col label="Estado financiero"><span className={`text-sm font-bold ${finCls}`}>{finIcon} {fin.label}</span></Col>
+          {verMontos && <Col label="Estado financiero"><span className={`text-sm font-bold ${finCls}`}>{finIcon} {fin.label}</span></Col>}
         </div>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-clinic-muted">
           {lastActivity && <span>⏱ Última actividad: {fmtDate(lastActivity)}</span>}
@@ -109,7 +137,8 @@ function PlanLista({ patient, budgets, onOpen }: { patient: Patient; budgets: Bu
             <option value="activos">Tratamientos activos</option>
             <option value="todos">Todos los tratamientos</option>
           </select>
-          <a href="/app/presupuestos"><Btn><Plus className="h-4 w-4" /> Nuevo plan de tratamiento</Btn></a>
+          {onNuevo === "presupuestos" && <a href="/app/presupuestos"><Btn><Plus className="h-4 w-4" /> Nuevo plan de tratamiento</Btn></a>}
+          {typeof onNuevo === "function" && <Btn onClick={onNuevo}><Plus className="h-4 w-4" /> Nuevo plan de tratamiento</Btn>}
         </div>
       </div>
       {enEjecucion.length > 0 && (
@@ -181,6 +210,7 @@ function PlanFinanciero({
   budget, payments, citas, professional, hasIA, patient,
 }: { budget: Budget; payments: Payment[]; citas: Appointment[]; professional?: string; hasIA: boolean; patient: Patient }) {
   const [copied, setCopied] = useState(false);
+  const verMontos = useAlcance().puede("money.view");
   const total = budgetTotal(budget);
   const realizado = budgetRealizado(budget);
   const abonado = budgetPaid(budget.id, payments);
@@ -204,12 +234,22 @@ function PlanFinanciero({
         <PlanNameEdit budget={budget} />
         {hasIA && (
           <div className="mt-3">
-            <PatientBriefButton patient={patient} context={{ budgets: [{ estado: budget.status, items: budget.items.length, total }] }} />
+            <PatientBriefButton patient={patient} context={{ budgets: [{ estado: budget.status, items: budget.items.length, ...(verMontos ? { total } : {}) }] }} />
           </div>
         )}
       </div>
 
       <div className="p-5">
+        {!verMontos && (
+          <div className="text-center">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Avance del plan</div>
+            <div className="mt-1 font-mono text-3xl font-extrabold text-azure-600">
+              {budget.items.filter((i) => i.status === "realizado").length} / {budget.items.length}
+            </div>
+            <div className="text-xs text-clinic-muted">prestaciones realizadas</div>
+          </div>
+        )}
+        {verMontos && <>
         <div className="text-center">
           <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Presupuesto total</div>
           <div className="mt-1 font-mono text-3xl font-extrabold text-azure-600">{fmtGs(total)}</div>
@@ -240,6 +280,7 @@ function PlanFinanciero({
             </>
           )}
         </div>
+        </>}
 
         <div className="mt-3 flex justify-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
@@ -400,7 +441,10 @@ function RipsBanner({ budget }: { budget: Budget }) {
   const { session, upsertBudget } = useStore();
   const canWrite = session ? can(session.role, "emr.write") : false;
   const [open, setOpen] = useState<null | "rips" | "eps">(null);
+  // RIPS lleva documento y EPS del paciente: datos personales (roles v3).
+  const verPersonales = useAlcance().puede("patients.personal");
   const completo = budget.rips?.completo ?? false;
+  if (!verPersonales) return null;
   return (
     <Card className="p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">

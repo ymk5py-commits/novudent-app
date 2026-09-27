@@ -62,6 +62,9 @@ before(async () => {
     await setDoc(doc(db, "clinics/clA/users/adminA"), { id: "adminA", role: "admin", active: true, clinicId: "clA", email: "admin@a.com" });
     await setDoc(doc(db, "clinics/clA/users/dentA"), { id: "dentA", role: "dentist", active: true, clinicId: "clA", email: "dent@a.com", mustChangePassword: true, commissionPct: 25, salaryBase: 2000000 });
     await setDoc(doc(db, "clinics/clA/users/asisA"), { id: "asisA", role: "assistant", active: true, clinicId: "clA", email: "asis@a.com" });
+    // Roles v3: la recepción se separa de la caja.
+    await setDoc(doc(db, "clinics/clA/users/cajaA"), { id: "cajaA", role: "cashier", active: true, clinicId: "clA", email: "caja@a.com" });
+    await setDoc(doc(db, "clinics/clA/users/recepA"), { id: "recepA", role: "receptionist", active: true, clinicId: "clA", email: "recep@a.com" });
     await setDoc(doc(db, "clinics/clA/patients/p1"), { id: "p1", firstName: "Ana" });
     await setDoc(doc(db, "subscriptions/clA"), { clinicId: "clA", plan: "clinica", status: "active" });
 
@@ -224,9 +227,24 @@ test("dinero: un DENTISTA NO escribe payments/expenses (no maneja dinero)", asyn
   await assertFails(setDoc(doc(authed("dentA"), "clinics/clA/expenses/expX"), { id: "expX", amount: 1 }));
 });
 
-test("dinero: el STAFF (admin/asistente) SÍ escribe payments/expenses", async () => {
-  await assertSucceeds(setDoc(doc(authed("asisA"), "clinics/clA/payments/payY"), { id: "payY", amount: 1 }));
+test("dinero: la CAJA (admin / Recepción y caja) SÍ escribe payments; gastos solo el admin", async () => {
+  await assertSucceeds(setDoc(doc(authed("cajaA"), "clinics/clA/payments/payY"), { id: "payY", amount: 1 }));
   await assertSucceeds(setDoc(doc(authed("adminA"), "clinics/clA/expenses/expY"), { id: "expY", amount: 1 }));
+});
+
+test("roles v3: ni la RECEPCIONISTA ni el ASISTENTE DE DOCTORES escriben dinero", async () => {
+  for (const quien of ["recepA", "asisA"]) {
+    await assertFails(setDoc(doc(authed(quien), "clinics/clA/payments/payNo"), { id: "payNo", amount: 1 }));
+    await assertFails(setDoc(doc(authed(quien), "clinics/clA/cashSessions/csNo"), { id: "csNo", openedAt: "x" }));
+    await assertFails(setDoc(doc(authed(quien), "clinics/clA/fiscalDocs/fdNo"), { id: "fdNo", total: 1 }));
+    await assertFails(setDoc(doc(authed(quien), "clinics/clA/expenses/expNo"), { id: "expNo", amount: 1 }));
+  }
+});
+
+test("roles v3: los consentimientos los firma la recepción, no el asistente de doctores", async () => {
+  await assertSucceeds(setDoc(doc(authed("recepA"), "clinics/clA/signatures/sigRecep"), { id: "sigRecep", patientId: "pEmr" }));
+  await assertSucceeds(setDoc(doc(authed("cajaA"), "clinics/clA/signatures/sigCaja"), { id: "sigCaja", patientId: "pEmr" }));
+  await assertFails(setDoc(doc(authed("asisA"), "clinics/clA/signatures/sigAsis"), { id: "sigAsis", patientId: "pEmr" }));
 });
 
 test("dinero: el dentista SÍ puede LEER payments/expenses (solo no escribir)", async () => {
@@ -259,7 +277,7 @@ test("EMR: un ASISTENTE NO puede escribir evoluciones/recetas/perio del paciente
 });
 
 test("EMR: el ASISTENTE SÍ puede editar demografía del paciente (no clínico)", async () => {
-  await assertSucceeds(updateDoc(doc(authed("asisA"), "clinics/clA/patients/p1"), { phone: "0991", city: "Asunción" }));
+  await assertSucceeds(updateDoc(doc(authed("recepA"), "clinics/clA/patients/p1"), { phone: "0991", city: "Asunción" }));
 });
 
 test("EMR: un DENTISTA SÍ puede escribir el odontograma/EMR del paciente", async () => {
@@ -431,11 +449,11 @@ test("SALARIOS: nadie salvo el admin lee las liquidaciones", async () => {
   await assertSucceeds(getDoc(doc(authed("adminA"), "clinics/clA/settlements/liq1")));
 });
 
-test("OPERACIÓN INTACTA: la recepción sigue cobrando (caja) y viendo pagos", async () => {
+test("OPERACIÓN INTACTA: «Recepción y caja» sigue cobrando y viendo pagos", async () => {
   // El corte es "números del negocio", NO la operación de mostrador: si esto
   // fallara, recepción no podría cobrarle a un paciente.
-  await assertSucceeds(getDoc(doc(authed("asisA"), "clinics/clA/payments/pay1")));
-  await assertSucceeds(setDoc(doc(authed("asisA"), "clinics/clA/payments/payNuevo"), { id: "payNuevo", amount: 50000 }));
+  await assertSucceeds(getDoc(doc(authed("cajaA"), "clinics/clA/payments/pay1")));
+  await assertSucceeds(setDoc(doc(authed("cajaA"), "clinics/clA/payments/payNuevo"), { id: "payNuevo", amount: 50000 }));
 });
 
 // =============================================================================
@@ -488,7 +506,7 @@ test("CERRADO · el ASISTENTE no crea pacientes con odontograma/EMR fabricado, p
   }));
   /* La recepción TIENE que poder dar de alta un paciente: es su trabajo. Lo que
      no puede es traer campos clínicos en el alta. */
-  await assertSucceeds(setDoc(doc(authed("asisA"), "clinics/clA/patients/pRecepcion"), {
+  await assertSucceeds(setDoc(doc(authed("recepA"), "clinics/clA/patients/pRecepcion"), {
     id: "pRecepcion", firstName: "Alta", lastName: "de mostrador", phone: "0981",
   }));
 });
@@ -511,7 +529,7 @@ test("CERRADO · el DENTISTA no escribe consentimientos y NADIE los borra", asyn
      admin incluido. Se anula cambiando su estado, no se elimina. */
   await assertFails(deleteDoc(doc(authed("asisA"), "clinics/clA/signatures/sig1")));
   await assertFails(deleteDoc(doc(authed("adminA"), "clinics/clA/signatures/sig1")));
-  await assertSucceeds(setDoc(doc(authed("asisA"), "clinics/clA/signatures/sigOk"), { id: "sigOk", patientId: "pEmr" }));
+  await assertSucceeds(setDoc(doc(authed("recepA"), "clinics/clA/signatures/sigOk"), { id: "sigOk", patientId: "pEmr" }));
 });
 
 /* ---- ALTO · ESCRITURA: caja / arqueo (payments.manage) ------------------ */
@@ -522,7 +540,7 @@ test("CERRADO · el DENTISTA ya no abre caja ni cierra el arqueo ajeno", async (
   await assertFails(updateDoc(doc(authed("dentA"), "clinics/clA/cashSessions/cs1"),
     { status: "cerrada", countedCash: 0, note: "arqueo forjado" }));
   // La recepción, que es quien hace el arqueo, sigue pudiendo.
-  await assertSucceeds(updateDoc(doc(authed("asisA"), "clinics/clA/cashSessions/cs1"),
+  await assertSucceeds(updateDoc(doc(authed("cajaA"), "clinics/clA/cashSessions/cs1"),
     { status: "cerrada", countedCash: 200000 }));
 });
 
@@ -533,7 +551,7 @@ test("CERRADO · el DENTISTA ya no emite devoluciones ni borra boletas", async (
     { id: "fdFake", kind: "devolucion", amount: 5000000, patientId: "pEmr" }));
   await assertFails(deleteDoc(doc(authed("dentA"), "clinics/clA/fiscalDocs/fd1")));
   // El staff emite; solo el admin puede borrar un documento fiscal.
-  await assertSucceeds(setDoc(doc(authed("asisA"), "clinics/clA/fiscalDocs/fdOk"),
+  await assertSucceeds(setDoc(doc(authed("cajaA"), "clinics/clA/fiscalDocs/fdOk"),
     { id: "fdOk", kind: "boleta", amount: 500000 }));
   await assertSucceeds(deleteDoc(doc(authed("adminA"), "clinics/clA/fiscalDocs/fd1")));
 });

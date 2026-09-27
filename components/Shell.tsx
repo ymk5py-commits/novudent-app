@@ -9,6 +9,7 @@ import {
   FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown, Banknote, Handshake, Image as ImageIcon,
   Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star, ListChecks, Leaf, Video, MapPin,
 } from "lucide-react";
+import { useAlcance } from "@/lib/useAlcance";
 import { useStore, fullName } from "@/lib/store";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
 import { planOf, type PlanFeature } from "@/lib/plan";
@@ -29,7 +30,7 @@ const NAV: NavTop[] = [
   { href: "/app/caja", label: "Cajas", icon: Wallet, perm: "payments.manage", feature: "caja" },
   {
     label: "Cobranza", icon: Receipt, children: [
-      { href: "/app/facturacion", label: "Facturación", icon: Receipt },
+      { href: "/app/facturacion", label: "Facturación", icon: Receipt, perm: "money.view" },
       { href: "/app/presupuestos", label: "Presupuestos", icon: FileSpreadsheet, perm: "budgets.manage" },
       { href: "/app/caja", label: "Cuentas por cobrar", icon: Wallet, perm: "payments.manage", feature: "caja" },
       { href: "/app/liquidaciones", label: "Liquidaciones", icon: Coins, perm: "billing.reports", feature: "liquidaciones" },
@@ -40,7 +41,7 @@ const NAV: NavTop[] = [
     label: "Administración", icon: Settings, children: [
       { href: "/app/gastos", label: "Gastos", icon: Banknote, perm: "expenses.manage", section: "Gestión" },
       { href: "/app/inventario", label: "Inventario", icon: Package, perm: "inventory.manage", feature: "inventario", section: "Gestión" },
-      { href: "/app/laboratorios", label: "Laboratorios", icon: FlaskConical, feature: "laboratorios", section: "Gestión" },
+      { href: "/app/laboratorios", label: "Laboratorios", icon: FlaskConical, perm: "labs.manage", feature: "laboratorios", section: "Gestión" },
       { href: "/app/liquidaciones", label: "Liquidaciones", icon: Coins, perm: "billing.reports", feature: "liquidaciones", section: "Gestión" },
       { href: "/app/box", label: "Box / Sillones", icon: Armchair, perm: "practice.config", feature: "boxes", section: "Gestión" },
       { href: "/app/esterilizacion", label: "Esterilización", icon: ShieldCheck, perm: "practice.config", section: "Gestión" },
@@ -67,8 +68,8 @@ const NAV: NavTop[] = [
       { href: "/app/reportes#excel", label: "Reportes Excel", icon: FileSpreadsheet, perm: "billing.reports", feature: "reportes" },
     ],
   },
-  { href: "/app/tareas", label: "Tareas", icon: ListChecks, perm: "engagement.forms" },
-  { href: "/app/crm", label: "CRM", icon: Megaphone },
+  { href: "/app/tareas", label: "Tareas", icon: ListChecks, perm: "tasks.use" },
+  { href: "/app/crm", label: "CRM", icon: Megaphone, perm: "engagement.forms" },
   { href: "/app/chat", label: "Chat", icon: MessageCircle },
 ];
 
@@ -78,6 +79,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [q, setQ] = useState("");
   const [navOpen, setNavOpen] = useState(false); // drawer móvil
+  const alcance = useAlcance();
   useEffect(() => { setNavOpen(false); }, [pathname]);
 
   useEffect(() => {
@@ -87,14 +89,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const results = useMemo(() => {
     if (q.trim().length < 2) return [];
     const t = q.toLowerCase();
-    return db.patients.filter((p) => fullName(p).toLowerCase().includes(t) || p.document.includes(t)).slice(0, 6);
-  }, [q, db.patients]);
+    // Dentista y asistente buscan solo entre sus pacientes, y por nombre: el documento es dato personal.
+    return db.patients
+      .filter((p) => alcance.vePaciente(p.id))
+      .filter((p) => fullName(p).toLowerCase().includes(t) || (alcance.puede("patients.personal") && p.document.includes(t)))
+      .slice(0, 6);
+  }, [q, db.patients, alcance]);
 
   const pendings = useMemo(() => {
-    const forms = db.patients.filter((p) => p.forms.some((f) => f.status === "pendiente")).length;
-    const hold = db.billing.filter((b) => b.flags.includes("HOLD") || b.flags.includes("MGRHOLD")).length;
+    // Formularios pendientes: los gestiona la recepción. Retenciones de facturación: quien ve montos.
+    const forms = alcance.puede("engagement.forms") ? db.patients.filter((p) => p.forms.some((f) => f.status === "pendiente")).length : 0;
+    const hold = alcance.puede("money.view") ? db.billing.filter((b) => b.flags.includes("HOLD") || b.flags.includes("MGRHOLD")).length : 0;
     return forms + hold;
-  }, [db]);
+  }, [db, alcance]);
 
   if (!ready || !session) {
     return (
@@ -187,7 +194,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     <span className="flex items-center gap-2 text-clinic-muted">
                       {p.forms.some((f) => f.status === "pendiente") && <FileText className="h-3.5 w-3.5 text-state-warn" />}
                       {p.historyUpdatePending && <ClipboardList className="h-3.5 w-3.5 text-state-info" />}
-                      CI {p.document}
+                      {alcance.puede("patients.personal") && <>CI {p.document}</>}
                     </span>
                   </a>
                 ))}

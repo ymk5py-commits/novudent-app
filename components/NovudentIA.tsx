@@ -17,6 +17,7 @@ import { Mic, Square, Sparkles, Loader2, X, Copy, Check, Send, ShieldCheck, Refr
 import type { EmrNote, Patient } from "@/lib/types";
 import { Btn, Modal, Field, inputCls, Card } from "@/components/ui";
 import { currentIdToken } from "@/lib/firebase";
+import { useAlcance } from "@/lib/useAlcance";
 
 /** POST a una ruta /api/ia/* con el Firebase ID token (cierra el proxy abierto). */
 async function iaFetch(url: string, payload: unknown): Promise<Response> {
@@ -281,6 +282,7 @@ export function PatientBriefButton({
   patient: Patient;
   context: { appointments?: unknown[]; budgets?: unknown[]; billing?: unknown[] };
 }) {
+  const alcance = useAlcance();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
@@ -293,14 +295,16 @@ export function PatientBriefButton({
     setLoading(true);
     setError(null);
     try {
-      // Subset compacto — solo lo que el brief necesita.
+      // Subset compacto — solo lo que el brief necesita. Sin datos personales
+      // (roles v3) va la edad en vez de la fecha de nacimiento y no va el convenio.
+      const personales = alcance.puede("patients.personal");
+      const edad = patient.birthDate ? Math.max(0, Math.floor((Date.now() - new Date(patient.birthDate).getTime()) / 31557600000)) : null;
       const slim = {
         nombre: `${patient.firstName} ${patient.lastName}`,
-        nacimiento: patient.birthDate || null,
-        aseguradora: patient.insurer || null,
+        ...(personales ? { nacimiento: patient.birthDate || null, aseguradora: patient.insurer || null } : { edad }),
         nps: patient.nps || null,
         historialDesactualizado: patient.historyUpdatePending || false,
-        formulariosPendientes: patient.forms.filter((f) => f.status === "pendiente").length,
+        ...(alcance.puede("engagement.forms") ? { formulariosPendientes: patient.forms.filter((f) => f.status === "pendiente").length } : {}),
         evoluciones: (patient.emr || []).slice(0, 8).map((n) => ({
           fecha: n.createdAt.slice(0, 10),
           tipo: n.kind,

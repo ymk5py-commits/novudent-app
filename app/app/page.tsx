@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import { useStore, fmtTime, fmtGs, fullName } from "@/lib/store";
 import { patientBalance } from "@/lib/budgets";
-import { can } from "@/lib/rbac";
+import { can, ROLE_DESCRIPCION } from "@/lib/rbac";
+import { useAlcance } from "@/lib/useAlcance";
 import { Card, Badge, StatusBadge } from "@/components/ui";
 import { ToothGlyph } from "@/components/OdontogramShowcase";
 import { ContralorCard } from "@/components/NovudentIA";
@@ -58,14 +59,21 @@ function SpikeStat({
 /* Las gráficas (barras semanales y donut de estados) viven en
  * components/Charts.tsx — Recharts con tooltips interactivos. */
 
+/** Primer nombre para el saludo; con título («Dra. Sofía Benítez») va el título y el nombre. */
+function saludo(nombre: string): string {
+  const [primero, segundo] = nombre.trim().split(/\s+/);
+  return /^dra?\.?$/i.test(primero) && segundo ? `${primero} ${segundo}` : primero;
+}
+
 export default function Dashboard() {
   const { db, session, setOnboarding, resetDemo } = useStore();
   const plan = useClinicPlan();
+  const alcance = useAlcance();
   if (!session) return null;
 
   const today = new Date();
   const isToday = (iso: string) => new Date(iso).toDateString() === today.toDateString();
-  const todays = db.appointments.filter((a) => isToday(a.start) && a.status !== "cancelada").sort((a, b) => a.start.localeCompare(b.start));
+  const todays = db.appointments.filter((a) => isToday(a.start) && a.status !== "cancelada" && alcance.veDoctor(a.dentistId)).sort((a, b) => a.start.localeCompare(b.start));
   const pendingForms = db.patients.filter((p) => p.forms.some((f) => f.status === "pendiente")).length;
   const onHold = db.billing.filter((b) => b.flags.includes("HOLD") || b.flags.includes("MGRHOLD")).length;
 
@@ -74,6 +82,7 @@ export default function Dashboard() {
   mon.setHours(0, 0, 0, 0);
   mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
   const week = db.appointments.filter((a) => {
+    if (!alcance.veDoctor(a.dentistId)) return false;
     const t = new Date(a.start);
     const end = new Date(mon); end.setDate(mon.getDate() + 7);
     return t >= mon && t < end;
@@ -125,7 +134,7 @@ export default function Dashboard() {
       hint: lowStock.map((s) => s.name.split(" ").slice(0, 2).join(" ")).join(", "), href: "/app/inventario",
     },
     ...db.recoveryMonitors
-      .filter((m) => m.status === "escalado" && !m.resolvedAt)
+      .filter((m) => m.status === "escalado" && !m.resolvedAt && alcance.vePaciente(m.patientId))
       .map((m) => {
         const p = db.patients.find((x) => x.id === m.patientId);
         return {
@@ -158,9 +167,11 @@ export default function Dashboard() {
 
   // Snapshot de pendientes para el Contralor IA — los mismos flujos
   // del panel de tareas críticas, con el detalle que el digest necesita.
+  // Roles v3: cada rol le pasa a la IA solo lo que puede ver (sus citas, y
+  // presupuestos, formularios o stock únicamente si tiene esos permisos).
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
   const tomorrowUnconfirmed = db.appointments.filter(
-    (a) => new Date(a.start).toDateString() === tomorrow.toDateString() && a.status === "pendiente"
+    (a) => new Date(a.start).toDateString() === tomorrow.toDateString() && a.status === "pendiente" && alcance.veDoctor(a.dentistId)
   );
   const contralorPendientes = {
     fecha: today.toISOString().slice(0, 10),
@@ -169,7 +180,7 @@ export default function Dashboard() {
       paciente: (() => { const p = db.patients.find((x) => x.id === a.patientId); return p ? `${p.firstName} ${p.lastName}` : "—"; })(),
       titulo: a.title,
     })),
-    presupuestosSinRespuesta: captureBudgets.slice(0, 10).map((b) => ({
+    presupuestosSinRespuesta: (can(session.role, "budgets.manage") ? captureBudgets : []).slice(0, 10).map((b) => ({
       paciente: (() => { const p = db.patients.find((x) => x.id === b.patientId); return p ? `${p.firstName} ${p.lastName}` : "—"; })(),
       presentadoEl: b.createdAt?.slice(0, 10),
     })),
@@ -180,12 +191,12 @@ export default function Dashboard() {
           .sort((a, b) => b.saldoGs - a.saldoGs)
           .slice(0, 8)
       : [],
-    formulariosPendientes: db.patients
+    formulariosPendientes: (can(session.role, "engagement.forms") ? db.patients : [])
       .filter((p) => p.forms.some((f) => f.status === "pendiente"))
       .slice(0, 10)
       .map((p) => `${p.firstName} ${p.lastName}`),
     canceladasEstaSemana: cancelledWeek.length,
-    stockBajo: lowStock.map((s) => ({ insumo: s.name, stock: s.stock, minimo: s.minStock })),
+    stockBajo: can(session.role, "inventory.manage") ? lowStock.map((s) => ({ insumo: s.name, stock: s.stock, minimo: s.minStock })) : [],
   };
 
   return (
@@ -205,7 +216,7 @@ export default function Dashboard() {
             <Sparkles className="h-3.5 w-3.5" />
             {today.toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" })}
           </div>
-          <h1 className="mt-2 font-logo text-3xl sm:text-4xl">Hola, {session.name.split(" ")[0]}</h1>
+          <h1 className="mt-2 font-logo text-3xl sm:text-4xl">Hola, {saludo(session.name)}</h1>
           <p className="mt-1.5 max-w-md text-sm text-white/65">
             {todays.length > 0
               ? <>Tenés <b className="text-white">{todays.length} cita{todays.length > 1 ? "s" : ""}</b> hoy{canReports && <> · producción semanal <b className="text-white">{fmtGs(weekRevenue)}</b></>}.</>
@@ -228,9 +239,9 @@ export default function Dashboard() {
       {/* ===== Stats pastel (cascadean al entrar) ===== */}
       <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StaggerItem><SpikeStat label="Citas de hoy" value={todays.length} icon={CalendarDays} tone="azure" href="/app/agenda" /></StaggerItem>
-        <StaggerItem><SpikeStat label="Pacientes activos" value={db.patients.length} icon={Users} tone="green" href="/app/pacientes" /></StaggerItem>
-        <StaggerItem><SpikeStat label="Formularios pendientes" value={pendingForms} icon={FileText} tone={pendingForms > 0 ? "amber" : "green"} href="/app/pacientes" /></StaggerItem>
-        <StaggerItem><SpikeStat label="Reclamos en retención" value={onHold} icon={PauseCircle} tone={onHold > 0 ? "red" : "green"} href="/app/facturacion" /></StaggerItem>
+        <StaggerItem><SpikeStat label={alcance.pacientes ? "Mis pacientes" : "Pacientes activos"} value={alcance.pacientes ? alcance.pacientes.size : db.patients.length} icon={Users} tone="green" href="/app/pacientes" /></StaggerItem>
+        {alcance.puede("engagement.forms") && <StaggerItem><SpikeStat label="Formularios pendientes" value={pendingForms} icon={FileText} tone={pendingForms > 0 ? "amber" : "green"} href="/app/pacientes" /></StaggerItem>}
+        {alcance.puede("money.view") && <StaggerItem><SpikeStat label="Reclamos en retención" value={onHold} icon={PauseCircle} tone={onHold > 0 ? "red" : "green"} href="/app/facturacion" /></StaggerItem>}
       </Stagger>
 
       {/* ===== Contralor IA — parte del día ===== */}
@@ -329,7 +340,7 @@ export default function Dashboard() {
                       <span className="block text-sm font-bold text-clinic-text">{p ? fullName(p) : "—"}</span>
                       <span className="block text-xs text-clinic-muted">{a.title}</span>
                     </span>
-                    <span className="hidden text-xs font-semibold text-clinic-muted sm:block">{fmtGs(a.amount - a.discount)}</span>
+                    {alcance.puede("money.view") && <span className="hidden text-xs font-semibold text-clinic-muted sm:block">{fmtGs(a.amount - a.discount)}</span>}
                     <StatusBadge status={a.status} />
                   </a>
                 );
@@ -358,9 +369,8 @@ export default function Dashboard() {
           <div className="mt-4 flex items-start gap-2 rounded-xl bg-azure-50 p-3 text-xs leading-relaxed text-azure-700">
             <Badge tone="info">RBAC</Badge>
             <span>
-              {session.role === "dentist" && <>Como dentista escribís el historial clínico, pero no enviás a cobro ni gestionás formularios.</>}
-              {session.role === "assistant" && <>Como asistente gestionás agenda, formularios y facturación; el historial es solo lectura.</>}
-              {session.role === "admin" && <>Acceso completo, incluida la configuración de la práctica.</>}
+              {ROLE_DESCRIPCION[session.role]}
+              {alcance.sinDoctores && <> Todavía no tenés doctores asignados: pedile al administrador que te asigne en Usuarios.</>}
             </span>
           </div>
         </Card>

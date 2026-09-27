@@ -1,13 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Stethoscope, Headset, Mail, Lock, Eye, EyeOff, LoaderCircle, ArrowLeft, Sparkles, RotateCcw, KeyRound, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Stethoscope, Headset, Wallet, ClipboardList, Mail, Lock, Eye, EyeOff, LoaderCircle, ArrowLeft, Sparkles, RotateCcw, KeyRound, CheckCircle2 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ROLE_LABEL } from "@/lib/rbac";
 import { Field, inputCls } from "@/components/ui";
 import { sendPasswordReset } from "@/lib/firebase";
 
-const ICON = { admin: ShieldCheck, dentist: Stethoscope, assistant: Headset } as const;
+const ICON = { admin: ShieldCheck, cashier: Wallet, receptionist: ClipboardList, dentist: Stethoscope, assistant: Headset } as const;
 
 function friendlyAuthError(e: any): string {
   const code = e?.code ?? "";

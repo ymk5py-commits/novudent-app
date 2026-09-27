@@ -1,7 +1,7 @@
 "use client";
 /** Módulo de Facturación (sec. 3.3): flags de estado, transiciones y validación de códigos. */
 import { useMemo, useState } from "react";
-import { Send, Unlock, Plus, AlertTriangle, History, Banknote, Lock, Flag } from "lucide-react";
+import { Send, Unlock, Plus, AlertTriangle, History, Banknote, Lock, Flag, ShieldAlert } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { validatePairings, validateExtras, recordTotal, canSubmit, canRelease, CPT_DX, CPT_POS, CPT_MOD } from "@/lib/billing";
@@ -18,7 +18,7 @@ export default function BillingPage() {
   const [historyFor, setHistoryFor] = useState<BillingRecord | null>(null);
 
   if (!session) return null;
-  /* Matriz v2: Enviar a Cobro / pagos = admin+asistente · Finalizar (Release) = admin+dentista */
+  /* Roles v3: Enviar a Cobro / pagos = admin + caja · Finalizar (Release) = admin */
   const allowed = can(session.role, "billing.submit");
   const canFinalize = can(session.role, "billing.finalize");
 
@@ -30,6 +30,18 @@ export default function BillingPage() {
       return true;
     });
   }, [db.billing, filter]);
+
+  // Guard de RUTA (va después de los hooks): la facturación es plata y solo la ven
+  // quienes tienen money.view, aunque escriban la URL a mano.
+  if (!can(session.role, "money.view")) {
+    return (
+      <Card className="p-10 text-center">
+        <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
+        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <p className="mt-1 text-sm text-clinic-muted">La facturación la ven el <b>Administrador</b> y <b>Recepción y caja</b>.</p>
+      </Card>
+    );
+  }
 
   const FILTERS: { key: Filter; label: string }[] = [
     { key: "todos", label: "Todos" },
@@ -55,7 +67,7 @@ export default function BillingPage() {
             <Unlock className="mr-1 inline h-3 w-3" /> Rol: finalización de facturas
           </Badge>
         ) : (
-          <Badge tone="muted" tip="Permiso de Administrador/Asistente"><Lock className="mr-1 inline h-3 w-3" /> Solo lectura para tu rol</Badge>
+          <Badge tone="muted" tip="Permiso de Administrador y Recepción y caja"><Lock className="mr-1 inline h-3 w-3" /> Solo lectura para tu rol</Badge>
         )}
       </div>
       </Reveal>
