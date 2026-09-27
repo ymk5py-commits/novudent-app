@@ -1,7 +1,9 @@
 "use client";
-/** Videoconsulta embebida con Jitsi Meet (telemedicina — spec 9.3). Sin API key
- *  ni costo: usa la IFrame API pública de meet.jit.si. Si el embed no carga,
- *  hay link de respaldo para abrir la sala en una pestaña nueva. */
+/** Videoconsulta embebida con Jitsi Meet (telemedicina — spec 9.3), por la IFrame API.
+ *  OJO: hoy no se usa. En meet.jit.si las llamadas embebidas se cortan a los 5 minutos
+ *  desde el 18/5/2023, así que la página del paciente abre la sala a página completa.
+ *  Queda para cuando se pase a JaaS (8x8), que usa esta misma API con otro dominio y
+ *  un JWT firmado en el servidor. */
 import { useEffect, useRef } from "react";
 
 declare global {
