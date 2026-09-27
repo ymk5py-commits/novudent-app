@@ -259,7 +259,7 @@ function ToothEditor({
                 <button
                   key={k}
                   onClick={() => setCondition(k)}
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all ${
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-[color,background-color,border-color,box-shadow,transform,opacity] ${
                     active ? `${c.chip} border-transparent ring-2 ring-azure-300` : "border-clinic-border hover:border-azure-300"
                   }`}
                 >

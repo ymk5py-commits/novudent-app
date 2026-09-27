@@ -173,7 +173,7 @@ export default function IntegrationsPage() {
                 key={a.key}
                 disabled={!botika.connected}
                 onClick={() => setBotika({ automations: { ...botika.automations, [a.key]: !botika.automations[a.key] } })}
-                className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition-all ${
+                className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition-[color,background-color,border-color,box-shadow,transform,opacity] ${
                   on ? "border-azure-300 bg-azure-50/60" : "border-clinic-border bg-white opacity-80"
                 } ${botika.connected ? "hover:-translate-y-0.5 hover:shadow-card" : "cursor-not-allowed"}`}
               >

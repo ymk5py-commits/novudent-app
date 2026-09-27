@@ -21,6 +21,8 @@ import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import AvisoNoGuardado from "@/components/AvisoNoGuardado";
 import AyudaNovum from "@/components/AyudaNovum";
 import { sinLeer } from "@/lib/chat";
+import { Isologo, Logotipo } from "@/components/Marca";
+import { SaltarAlContenido } from "@/components/SaltarAlContenido";
 
 type NavLeaf = { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature; section?: string };
 type NavTop = { label: string; href?: string; icon?: any; perm?: Permission; feature?: PlanFeature; children?: NavLeaf[] };
@@ -149,17 +151,20 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const sinLeerChat = sinLeer(db.directMessages, session.userId);
   const badgeDe = (href: string) => (href === "/app/chat" ? sinLeerChat : 0);
   const abrirAyuda = () => { setNavOpen(false); setAyuda(true); };
+  const salir = () => { logout(); router.replace("/login"); };
 
   return (
     <div className="min-h-screen bg-clinic-bg">
+      <SaltarAlContenido />
       {/* ===== Drawer móvil ===== */}
       {navOpen && <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setNavOpen(false)} role="presentation" />}
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-white transition-transform duration-200 md:hidden ${navOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}>
+      {/* `inert` cerrado: fuera de pantalla, sus enlaces no deben recibir el foco con Tab. */}
+      <aside inert={!navOpen} aria-label="Menú" className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-white transition-transform duration-200 md:hidden ${navOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between px-5 pt-5">
-          {logo ? <img src={logo} alt={clinicName} className="h-8 w-auto max-w-[150px] object-contain" /> : <span className="font-logo text-xl tracking-[0.16em] text-navy-800">NOVUdent</span>}
+          {logo ? <img src={logo} alt={clinicName} width={150} height={32} className="h-8 w-auto max-w-[150px] object-contain" /> : <Logotipo className="h-8 w-auto" />}
           <button onClick={() => setNavOpen(false)} aria-label="Cerrar menú" className="grid h-9 w-9 place-items-center rounded-xl text-clinic-muted hover:bg-clinic-bg"><X className="h-5 w-5" /></button>
         </div>
-        <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4">
           {nav.map((e) => e.children ? (
             <div key={e.label}>
               <div className="px-3 pb-1.5 text-[11px] font-extrabold uppercase tracking-[0.18em] text-clinic-muted/80">{e.label}</div>
@@ -180,19 +185,27 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <button type="button" onClick={abrirAyuda} aria-haspopup="dialog" className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-2 text-sm font-bold text-azure-700 transition-colors hover:bg-azure-50">
             <Headset className="h-4 w-4" aria-hidden /> Ayuda
           </button>
+          <button type="button" onClick={salir} aria-label="Cerrar sesión" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-clinic-border text-clinic-muted transition-colors hover:bg-clinic-bg hover:text-clinic-text">
+            <LogOut className="h-4 w-4" aria-hidden />
+          </button>
         </div>
       </aside>
 
       {/* ===== Header 2 filas ===== */}
       <header className="sticky top-0 z-30 border-b border-clinic-border bg-white">
-        {/* Fila 1 — barra celeste estilo Dentalink */}
-        <div className="bg-azure-600">
-        <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
+        {/* Fila 1 — barra navy de la marca (el diente en color se lee sobre navy) */}
+        <div className="bg-navy-800">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 sm:gap-3 sm:px-6">
           <button onClick={() => setNavOpen(true)} aria-label="Abrir menú" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/30 bg-white/10 text-white md:hidden">
             <Menu className="h-5 w-5" />
           </button>
-          <a href="/app" className="flex shrink-0 items-baseline gap-2">
-            {logo ? <img src={logo} alt={clinicName} className="h-8 w-auto max-w-[150px] object-contain" /> : <span className="font-logo text-xl tracking-[0.16em] text-white">NOVUdent</span>}
+          <a href="/app" aria-label={`${logo ? clinicName : "Novudent"}, inicio`} className="flex shrink-0 items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
+            {/* En el celular va solo el diente: el logotipo entero le comía el lugar al
+                buscador (quedaba la lupa encima de la campana). */}
+            {logo ? <img src={logo} alt={clinicName} width={150} height={32} className="h-8 w-auto max-w-[110px] object-contain sm:max-w-[150px]" /> : <>
+              <Isologo className="h-8 w-auto sm:hidden" />
+              <Logotipo tono="blanco" className="hidden h-8 w-auto sm:block" />
+            </>}
             <span data-tip={`Plan ${plan.label}`} className="hidden rounded-full bg-white/20 px-1.5 py-0.5 font-mono text-[11px] font-extrabold uppercase tracking-wide text-white sm:inline">{plan.label}</span>
           </a>
           {/* Patient Finder */}
@@ -225,7 +238,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <span
               data-tip={backend === "firebase" ? "Datos guardados en la nube" : "Sin conexión — datos solo en este navegador"}
               data-tip-pos="down"
-              className={`hidden items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wide sm:inline-flex ${backend === "firebase" ? "bg-state-okbg text-state-ok" : "bg-state-warnbg text-state-warn"}`}
+              className={`hidden items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wide sm:inline-flex ${backend === "firebase" ? "bg-state-okbg text-state-ok" : "bg-state-warnbg text-state-warn"}`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${backend === "firebase" ? "bg-state-ok" : "bg-state-warn"}`} />
               {backend === "firebase" ? "En línea" : "Sin conexión"}
@@ -263,8 +276,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <span className="block text-xs font-bold leading-tight text-white">{session.name}</span>
               <span className="block text-[11px] leading-tight text-white/75">{ROLE_LABEL[session.role]}</span>
             </span>
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white ring-2 ring-white/40" style={{ background: me?.color ?? "#0E8AA3" }}>{initials}</span>
-            <button onClick={() => { logout(); router.replace("/login"); }} aria-label="Cerrar sesión" data-tip="Cerrar sesión" data-tip-pos="down-left" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white/80 transition-colors hover:bg-white/15 hover:text-white">
+            <span className="hidden h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white ring-2 ring-white/40 sm:grid" style={{ background: me?.color ?? "#0369C9" }} aria-hidden>{initials}</span>
+            <button onClick={salir} aria-label="Cerrar sesión" data-tip="Cerrar sesión" data-tip-pos="down-left" className="hidden h-9 w-9 shrink-0 place-items-center rounded-xl text-white/80 transition-colors hover:bg-white/15 hover:text-white sm:grid">
               <LogOut className="h-4 w-4" />
             </button>
           </div>
@@ -282,7 +295,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-7">
+      <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 scroll-mt-32 px-4 py-6 focus:outline-none sm:px-6 sm:py-7">
         <SubscriptionBanner />
         <PageTransition>{children}</PageTransition>
       </main>

@@ -126,7 +126,7 @@ export function Desplegable({
         aria-label={etiqueta}
         onClick={() => setAbierto((v) => !v)}
         className={primario
-          ? "btn-shine inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-3.5 py-2 text-sm font-semibold text-white shadow-[0_6px_18px_-6px_rgba(16,185,129,0.5)] transition-all hover:from-emerald-600 hover:to-emerald-700"
+          ? "btn-shine inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-3.5 py-2 text-sm font-semibold text-white shadow-[0_6px_18px_-6px_rgba(16,185,129,0.5)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:from-emerald-600 hover:to-emerald-700"
           : "inline-flex max-w-full items-center gap-1.5 rounded-lg border border-clinic-border bg-white px-2.5 py-1.5 text-xs font-bold text-clinic-text transition-colors hover:border-azure-300 hover:text-azure-700"}
       >
         {boton}

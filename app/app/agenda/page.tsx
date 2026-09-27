@@ -388,7 +388,7 @@ export default function AgendaPage() {
                         const dent = db.users.find((x) => x.id === a.dentistId);
                         return (
                           <div key={a.id} style={{ top, height }} className="absolute left-1 right-1 hover:z-10">
-                            <button onClick={(ev) => { ev.stopPropagation(); setViewing(a); }} className={`h-full w-full overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] font-semibold shadow-card transition-all duration-150 hover:-translate-y-px hover:shadow-pop ${STATUS_BG[a.status]} ${a.notes ? "pr-6" : ""}`}>
+                            <button onClick={(ev) => { ev.stopPropagation(); setViewing(a); }} className={`h-full w-full overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] font-semibold shadow-card transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 hover:-translate-y-px hover:shadow-pop ${STATUS_BG[a.status]} ${a.notes ? "pr-6" : ""}`}>
                               <div className="flex items-center gap-1 truncate">
                                 {dent && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: dent.color }} title={dent.name} />}
                                 <span className="truncate">{fmtTime(a.start)} · {a.title || "Cita"}</span>

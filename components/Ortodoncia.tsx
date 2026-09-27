@@ -82,7 +82,7 @@ function Donut({ pct, label, hint }: { pct: number; label: string; hint: string 
       <div className="relative h-[88px] w-[88px]">
         <svg viewBox="0 0 80 80" className="h-[88px] w-[88px] -rotate-90">
           <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" stroke="currentColor" className="text-clinic-border" />
-          <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" strokeLinecap="round" stroke="currentColor" strokeDasharray={circ} strokeDashoffset={off} className="text-azure-500 transition-all duration-700" />
+          <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" strokeLinecap="round" stroke="currentColor" strokeDasharray={circ} strokeDashoffset={off} className="text-azure-500 transition-[stroke-dashoffset] duration-700" />
         </svg>
         <span className="absolute inset-0 grid place-items-center text-base font-extrabold text-clinic-text">{pct}%</span>
       </div>

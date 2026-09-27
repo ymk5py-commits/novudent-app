@@ -381,9 +381,9 @@ export default function ReportsPage() {
             <div>
               {/* barra apilada */}
               <div className="flex h-4 overflow-hidden rounded-full bg-clinic-bg">
-                {data.prom > 0 && <div className="bg-state-ok transition-all duration-700" style={{ width: `${(data.prom / data.surveys.length) * 100}%` }} title={`Promotores: ${data.prom}`} />}
-                {data.pasv > 0 && <div className="bg-state-warn transition-all duration-700" style={{ width: `${(data.pasv / data.surveys.length) * 100}%` }} title={`Pasivos: ${data.pasv}`} />}
-                {data.detr > 0 && <div className="bg-state-err transition-all duration-700" style={{ width: `${(data.detr / data.surveys.length) * 100}%` }} title={`Detractores: ${data.detr}`} />}
+                {data.prom > 0 && <div className="bg-state-ok transition-[width] duration-700" style={{ width: `${(data.prom / data.surveys.length) * 100}%` }} title={`Promotores: ${data.prom}`} />}
+                {data.pasv > 0 && <div className="bg-state-warn transition-[width] duration-700" style={{ width: `${(data.pasv / data.surveys.length) * 100}%` }} title={`Pasivos: ${data.pasv}`} />}
+                {data.detr > 0 && <div className="bg-state-err transition-[width] duration-700" style={{ width: `${(data.detr / data.surveys.length) * 100}%` }} title={`Detractores: ${data.detr}`} />}
               </div>
               <div className="mt-2 flex flex-wrap gap-4 text-xs text-clinic-muted">
                 <span><span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-state-ok" />Promotores (9-10): <b>{data.prom}</b></span>

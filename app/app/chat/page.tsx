@@ -88,7 +88,7 @@ export default function ChatPage() {
             <ItemConversacion
               activa={activa.tipo === "equipo"}
               onClick={() => setVista({ tipo: "equipo" })}
-              avatar={<Avatar color="#0D8199" icono={<Users className="h-4 w-4" />} />}
+              avatar={<Avatar color="#0369C9" icono={<Users className="h-4 w-4" />} />}
               titulo="Equipo"
               subtitulo="Lo ve toda la clínica"
               vistaPrevia={ultimoEquipo ? `${ultimoEquipo.userId === yo ? "Vos" : nombreDe(ultimoEquipo.userId, ultimoEquipo.userName)}: ${ultimoEquipo.text}` : "Sin mensajes todavía"}
@@ -98,7 +98,7 @@ export default function ChatPage() {
               <ItemConversacion
                 activa={activa.tipo === "difusion"}
                 onClick={() => setVista({ tipo: "difusion" })}
-                avatar={<Avatar color="#0F1F3D" icono={<Megaphone className="h-4 w-4" />} />}
+                avatar={<Avatar color="#051735" icono={<Megaphone className="h-4 w-4" />} />}
                 titulo="Difusión general"
                 subtitulo="Un mensaje a cada persona"
                 vistaPrevia={enviadas[0] ? `${enviadas[0].fromId === yo ? "Vos" : nombreDe(enviadas[0].fromId, enviadas[0].fromName)}: ${enviadas[0].text}` : "Nadie ve a quién más le llegó"}
@@ -124,7 +124,7 @@ export default function ChatPage() {
         <div className={`${vista ? "flex" : "hidden md:flex"} min-w-0 flex-1 flex-col`}>
           {activa.tipo === "equipo" && (
             <section aria-label="Conversación del equipo" className="flex min-h-0 flex-1 flex-col">
-              <CabeceraHilo onVolver={volver} avatar={<Avatar color="#0D8199" icono={<Users className="h-4 w-4" />} />} titulo="Equipo" subtitulo={`Todo el equipo · ${db.users.filter((u) => u.active !== false).length} personas`} />
+              <CabeceraHilo onVolver={volver} avatar={<Avatar color="#0369C9" icono={<Users className="h-4 w-4" />} />} titulo="Equipo" subtitulo={`Todo el equipo · ${db.users.filter((u) => u.active !== false).length} personas`} />
               <ListaMensajes
                 vacio="Todavía no hay mensajes. Escribí el primero para todo el equipo."
                 items={equipo.map((m) => ({
@@ -352,7 +352,7 @@ function PanelDifusion({ destinatarios, enviadas, nombreDe, onVolver, onEnviar }
   };
   return (
     <section aria-label="Difusión general" className="flex min-h-0 flex-1 flex-col">
-      <CabeceraHilo onVolver={onVolver} avatar={<Avatar color="#0F1F3D" icono={<Megaphone className="h-4 w-4" />} />} titulo="Difusión general" subtitulo="Solo el administrador la manda" />
+      <CabeceraHilo onVolver={onVolver} avatar={<Avatar color="#051735" icono={<Megaphone className="h-4 w-4" />} />} titulo="Difusión general" subtitulo="Solo el administrador la manda" />
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
         <p className="flex gap-2 rounded-xl bg-azure-50 p-3 text-xs leading-relaxed text-azure-700">
           <Info className="mt-px h-4 w-4 shrink-0" aria-hidden />

@@ -17,9 +17,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import {
-  CheckCircle2, Loader2, PenLine, ShieldAlert, FileSignature,
+  CheckCircle2, Loader2, PenLine, ShieldAlert,
 } from "lucide-react";
 import SignaturePad, { type SignaturePadHandle } from "@/components/SignaturePad";
+import { Isologo } from "@/components/Marca";
 
 type DocData = {
   title: string;
@@ -111,7 +112,7 @@ export default function FirmarConsentimiento() {
       <header className="bg-navy-800 px-5 py-6 text-white">
         <div className="mx-auto max-w-xl">
           <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-azure-200">
-            <FileSignature className="h-3.5 w-3.5" /> Novudent · Firma electrónica
+            <Isologo className="h-4 w-auto" /> Novudent · Firma electrónica
           </p>
           <h1 className="mt-1 text-2xl font-extrabold">
             {doc?.title || "Consentimiento informado"}

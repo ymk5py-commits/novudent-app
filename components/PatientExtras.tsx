@@ -10,6 +10,7 @@ import { can } from "@/lib/rbac";
 import { budgetTotal, budgetPaid, patientBalance, BUDGET_STATUS_INFO } from "@/lib/budgets";
 import type { Patient, Prescription, PrescriptionItem, PatientFileRec, OrthoRecord } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
+import { Logotipo } from "@/components/Marca";
 
 /* ===================== PRESUPUESTOS ===================== */
 export function BudgetsTab({ patient }: { patient: Patient }) {
@@ -190,7 +191,7 @@ function RxPrint({ rx, patient, onClose }: { rx: Prescription; patient: Patient;
     <Modal title="Receta" onClose={onClose}>
       <div className="print-area space-y-5">
         <div className="border-b border-clinic-border pb-3">
-          <div className="font-logo text-lg tracking-[0.16em] text-navy-800">NOVUdent</div>
+          <Logotipo className="h-9 w-auto" />
           <div className="text-xs text-clinic-muted">{clinic.name} · {clinic.config.address} · {clinic.config.phone}</div>
         </div>
         <div className="text-sm">

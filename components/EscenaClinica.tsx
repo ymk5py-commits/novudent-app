@@ -20,6 +20,7 @@
  * odontograma en vez de inventar otro dibujo.
  */
 import { ToothGlyph } from "./OdontogramShowcase";
+import { Logotipo } from "@/components/Marca";
 
 /* ---------- escena SVG del consultorio ---------- */
 
@@ -132,9 +133,7 @@ function MockupApp() {
 
       {/* encabezado */}
       <div className="flex items-center justify-between border-b border-sv-line/70 pb-3">
-        <span className="font-logo text-[15px] font-light tracking-[0.14em] text-sv-ink">
-          NOVUdent<span className="text-sv-mintInk">.</span>
-        </span>
+        <Logotipo className="h-6 w-auto" />
         <span className="text-[10.5px] uppercase tracking-[0.18em] text-sv-muted">Agenda · hoy</span>
       </div>
 

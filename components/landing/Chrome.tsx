@@ -19,19 +19,18 @@ import { useStore } from "@/lib/store";
 import { abrirPreferencias } from "@/lib/consentimiento";
 import { linkWhatsApp } from "@/lib/site";
 import { RUTAS_LEGALES, RUTAS_PUBLICAS } from "@/lib/landing/rutas";
+import { Logotipo } from "@/components/Marca";
+import type { Tono } from "@/lib/marca";
+import { SaltarAlContenido } from "@/components/SaltarAlContenido";
 
 export { RUTAS_PUBLICAS, RUTAS_LEGALES } from "@/lib/landing/rutas";
 
 /** Las cuatro que entran en la barra; "En acción" queda en el pie. */
 const RUTAS_NAV = RUTAS_PUBLICAS.filter((r) => r.href !== "/en-accion");
 
-/** Logotipo con el punto de acento (el wordmark sigue en Jost, es la marca). */
-export function Marca({ className = "", dot = "text-lp-primary" }: { className?: string; dot?: string }) {
-  return (
-    <span className={`font-logo font-light tracking-[0.14em] ${className}`}>
-      NOVUdent<span className={dot}>.</span>
-    </span>
-  );
+/** Logotipo de la marca (NOVUdent + diente), el mismo del panel. */
+export function Marca({ className = "h-8 w-auto", tono = "color" }: { className?: string; tono?: Tono }) {
+  return <Logotipo tono={tono} className={className} />;
 }
 
 /** Etiqueta en mayúsculas, en el color de acción, arriba de cada título. */
@@ -108,6 +107,8 @@ export function NavLanding() {
   useEffect(() => setAbierto(false), [ruta]);
 
   return (
+    <>
+    <SaltarAlContenido />
     <header
       className={`fixed inset-x-0 top-0 z-[200] bg-[var(--lp-paper-glass)] backdrop-blur-md transition-[box-shadow,border-color] duration-200 ${
         bajo ? "border-b border-lp-rule [box-shadow:var(--lp-shadow-whisper)]" : "border-b border-transparent"
@@ -115,7 +116,7 @@ export function NavLanding() {
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:px-6 lg:h-[72px]">
         <Link href="/" className="mr-auto flex min-h-[44px] items-center lg:mr-8" aria-label="Novudent, inicio">
-          <Marca className="text-[22px] text-lp-ink" />
+          <Marca className="h-8 w-auto" />
         </Link>
 
         <nav className="mr-auto hidden items-center gap-1 lg:flex" aria-label="Secciones">
@@ -175,6 +176,7 @@ export function NavLanding() {
         </>
       )}
     </header>
+    </>
   );
 }
 
@@ -188,7 +190,7 @@ export function FooterLanding() {
       <div className="mx-auto max-w-6xl px-4 pb-8 pt-14 sm:px-6">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-4">
-            <Marca className="text-[26px] text-lp-ink" />
+            <Marca className="h-10 w-auto" />
             <p className="mt-4 max-w-xs text-[14px] leading-relaxed text-lp-muted">
               Software de gestión para clínicas dentales. Hecho en Asunción, Paraguay.
             </p>
@@ -270,7 +272,7 @@ export function PaginaSeccion({
         </div>
       </section>
 
-      <main className={ancho ? "" : "mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20"}>
+      <main id="contenido" tabIndex={-1} className={`focus:outline-none ${ancho ? "" : "mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20"}`}>
         {children}
 
         <div className={ancho ? "mx-auto max-w-6xl px-4 pb-4 pt-14 sm:px-6" : "mt-16"}>

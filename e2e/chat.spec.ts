@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, entrarDemo, leerDB, USUARIOS_DEMO } from "./soporte";
+import { test, expect, entrarDemo, cerrarSesion, leerDB, USUARIOS_DEMO } from "./soporte";
 
 /* Chat interno: directos de persona a persona y la difusión general del admin.
  *
@@ -41,7 +41,7 @@ async function mandar(conv: Locator, texto: string) {
  *  anterior —con Firestore quedaría en el servidor— y se entra con otro usuario. */
 async function entrarComo(page: Page, usuario: string) {
   const db = await leerDB(page);
-  await page.getByRole("button", { name: "Cerrar sesión" }).first().click();
+  await cerrarSesion(page);
   await page.waitForURL("**/login**");
   await page.evaluate((d) => localStorage.setItem("novudent.db.v4", JSON.stringify(d)), db);
   await entrarDemo(page, usuario);

@@ -5,22 +5,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Marca NOVUM (sidebar, acentos)
+        // Navy de la marca Novudent (identidad del 27/9/2026, ver lib/marca.ts)
         navy: {
-          700: "#15294A",
-          800: "#0F1F3D",
-          900: "#0B1D3D",
-          950: "#07142C",
+          700: "#0B2A5B",
+          800: "#051735",
+          900: "#041230",
+          950: "#020B20",
         },
-        // Acento cyan/teal (acercado a Dentalink, manteniendo identidad Novudent)
+        // Azul de la marca: el del diente del isologo. 600 = botones y links (5,4:1 sobre blanco)
         azure: {
-          50: "#E7F6F9",
-          100: "#C3E9F0",
-          200: "#93D6E2",
-          300: "#4FBED2",
-          500: "#14A6C0",
-          600: "#0D8199",
-          700: "#0B6B80",
+          50: "#EBF6FE",
+          100: "#D2ECFC",
+          200: "#A6D9F8",
+          300: "#5CBDF2",
+          500: "#04A9F2",
+          600: "#0369C9",
+          700: "#0550A8",
         },
         // Superficie clínica clara
         clinic: {
@@ -35,11 +35,11 @@ const config: Config = {
          * usa navy/azure/clinic — si se reescribieran esos tokens, el panel
          * cambiaría de color con él. Estos solo los usa la web pública. */
         sv: {
-          ink: "#0A1240",     // navy profundo: hero, píldoras, titulares
-          ink2: "#131C55",    // navy un punto más claro, para degradés
-          mint: "#2FE3AE",    // acento. SOLO sobre navy o en trazos/áreas grandes:
+          ink: "#051735",     // navy profundo: hero, píldoras, titulares
+          ink2: "#0A2A5E",    // navy un punto más claro, para degradés
+          mint: "#36D2FF",    // celeste del diente (antes menta). SOLO sobre navy o en trazos/áreas grandes:
                               // sobre blanco no llega a 4.5:1, no sirve para texto chico
-          mintInk: "#0B7A5B", // el menta legible: texto y links sobre claro (~5:1)
+          mintInk: "#0550A8", // el menta legible: texto y links sobre claro (~5:1)
           paper: "#E9E9E9",   // fondo de página: gris cálido, NO blanco (clave del look)
           paper2: "#F1F1F1",  // bandas alternas
           line: "#D5D5D8",    // reglas finas y bordes de tarjeta
@@ -62,7 +62,7 @@ const config: Config = {
           err: "#C81E1E",
           errbg: "#FDE8E8",
           info: "#0C7A91",
-          infobg: "#E7F6F9",
+          infobg: "#EBF6FE",
           hold: "#92400E",
           holdbg: "#FFEDD5",
         },

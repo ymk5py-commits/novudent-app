@@ -16,6 +16,7 @@ import { useClinicPlan } from "@/components/PlanGate";
 import DentalinkImport from "@/components/DentalinkImport";
 import { resizeToDataUrl } from "@/lib/image";
 import { Reveal } from "@/components/motion";
+import { Logotipo } from "@/components/Marca";
 
 const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> = {
   diasGatillo: 5,
@@ -415,7 +416,7 @@ export default function ConfigPage() {
         <p className="mb-3 text-xs text-clinic-muted">Se usa en la cabecera de la app y en los documentos impresos (presupuestos).</p>
         <div className="flex flex-wrap items-center gap-4">
           <div className="grid h-16 w-40 place-items-center rounded-xl border border-clinic-border bg-clinic-bg">
-            {clinic.config.logo ? <img src={clinic.config.logo} alt="Logo" className="max-h-14 max-w-[150px] object-contain" /> : <span className="font-logo text-lg text-navy-800">NOVUdent</span>}
+            {clinic.config.logo ? <img src={clinic.config.logo} alt="Logo de la clínica" width={150} height={56} className="max-h-14 max-w-[150px] object-contain" /> : <Logotipo className="h-8 w-auto" />}
           </div>
           <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-clinic-muted hover:text-clinic-text">
             <UploadCloud className="h-4 w-4" /> Subir logo

@@ -500,7 +500,7 @@ function RadiografiasInner({ patient, canEdit }: { patient: Patient; canEdit: bo
               <button
                 key={r.id}
                 onClick={() => openStudy(r)}
-                className="group overflow-hidden rounded-2xl border border-clinic-border bg-white text-left shadow-card transition-all hover:-translate-y-0.5 hover:border-azure-300"
+                className="group overflow-hidden rounded-2xl border border-clinic-border bg-white text-left shadow-card transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:border-azure-300"
               >
                 <div className="relative aspect-video w-full overflow-hidden bg-navy-950">
                   {/* eslint-disable-next-line @next/next/no-img-element */}

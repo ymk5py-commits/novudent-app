@@ -55,6 +55,13 @@ export async function entrarDemo(page: Page, usuario: string = USUARIOS_DEMO.adm
   await page.waitForURL("**/app");
 }
 
+/** Cierra la sesión. En el celular el botón vive en el menú lateral. */
+export async function cerrarSesion(page: Page) {
+  const abrir = page.getByRole("button", { name: "Abrir menú" });
+  if (await abrir.isVisible()) await abrir.click();
+  await page.getByRole("button", { name: "Cerrar sesión" }).filter({ visible: true }).first().click();
+}
+
 /** Ninguna página tiene que obligar a scrollear de costado (sobre todo en el celular). */
 export async function sinScrollHorizontal(page: Page) {
   const { doc, vista } = await page.evaluate(() => ({ doc: document.documentElement.scrollWidth, vista: innerWidth }));

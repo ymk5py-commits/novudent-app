@@ -6,6 +6,7 @@ import { useStore } from "@/lib/store";
 import { ROLE_LABEL } from "@/lib/rbac";
 import { Field, inputCls } from "@/components/ui";
 import { sendPasswordReset } from "@/lib/firebase";
+import { Logotipo } from "@/components/Marca";
 
 const ICON = { admin: ShieldCheck, cashier: Wallet, receptionist: ClipboardList, dentist: Stethoscope, assistant: Headset } as const;
 
@@ -114,7 +115,7 @@ export default function Login() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Panel de marca */}
-      <div className="relative hidden overflow-hidden bg-navy-900 lg:block" style={{ background: "linear-gradient(160deg,#0F1F3D 0%,#07142C 75%)" }}>
+      <div className="relative hidden overflow-hidden bg-navy-900 lg:block" style={{ background: "linear-gradient(160deg,#0A2A5E 0%,#051735 55%,#020B20 100%)" }}>
         <div className="absolute -left-24 -top-24 h-96 w-96 rounded-full bg-azure-500/25 blur-[100px]" />
         <div className="absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full bg-azure-700/20 blur-[110px]" />
         <div className="relative flex h-full flex-col justify-between p-12">
@@ -122,7 +123,7 @@ export default function Login() {
             <ArrowLeft className="h-4 w-4" /> Volver al sitio
           </a>
           <div>
-            <div className="font-logo text-5xl tracking-[0.22em] text-white">NOVUdent</div>
+            <Logotipo tono="blanco" className="h-16 w-auto" titulo="Novudent" />
             <p className="mt-4 max-w-sm text-white/60">
               Agenda, odontograma, ficha clínica y facturación con estados.
               La clínica completa, en una sola plataforma.
@@ -147,7 +148,7 @@ export default function Login() {
             la puerta de entrada a la app. No vale medio segundo de fundido. */}
         <div className="w-full max-w-md">
           <div className="mb-6 text-center lg:hidden">
-            <div className="font-logo text-3xl tracking-[0.22em] text-navy-800">NOVUdent</div>
+            <Logotipo className="mx-auto h-12 w-auto" />
           </div>
 
           <div className="rounded-3xl border border-clinic-border bg-white p-7 shadow-pop">
@@ -158,7 +159,7 @@ export default function Login() {
                 <button
                   key={k}
                   onClick={() => { setTab(k); setError(null); }}
-                  className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition-all ${tab === k ? "bg-white text-navy-800 shadow-card" : "text-clinic-muted hover:text-clinic-text"}`}
+                  className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition-[color,background-color,border-color,box-shadow,transform,opacity] ${tab === k ? "bg-white text-navy-800 shadow-card" : "text-clinic-muted hover:text-clinic-text"}`}
                 >
                   {l}
                 </button>
@@ -207,14 +208,14 @@ export default function Login() {
                   <Field label="Email">
                     <div className="relative">
                       <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-                      <input type="email" required autoComplete="email" className={`${inputCls} pl-9`} value={recEmail} onChange={(e) => setRecEmail(e.target.value)} placeholder="vos@tuclinica.com" />
+                      <input type="email" name="email" required autoComplete="email" spellCheck={false} className={`${inputCls} pl-9`} value={recEmail} onChange={(e) => setRecEmail(e.target.value)} placeholder="vos@tuclinica.com" />
                     </div>
                   </Field>
                   {recError && <p role="alert" className="rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-state-err">{recError}</p>}
                   <button
                     type="submit"
                     disabled={recBusy}
-                    className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-all hover:-translate-y-0.5 hover:bg-azure-700 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted disabled:shadow-none"
+                    className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted disabled:shadow-none"
                   >
                     {recBusy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : "Enviar instrucciones"}
                   </button>
@@ -231,13 +232,13 @@ export default function Login() {
                 <Field label="Email">
                   <div className="relative">
                     <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-                    <input type="email" required autoComplete="email" className={`${inputCls} pl-9`} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vos@tuclinica.com" />
+                    <input type="email" name="email" required autoComplete="email" spellCheck={false} className={`${inputCls} pl-9`} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vos@tuclinica.com" />
                   </div>
                 </Field>
                 <Field label="Contraseña">
                   <div className="relative">
                     <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
-                    <input type={show ? "text" : "password"} required autoComplete="current-password" className={`${inputCls} pl-9 pr-10`} value={pass} onChange={(e) => setPass(e.target.value)} placeholder="••••••••" />
+                    <input type={show ? "text" : "password"} name="password" required autoComplete="current-password" spellCheck={false} className={`${inputCls} pl-9 pr-10`} value={pass} onChange={(e) => setPass(e.target.value)} placeholder="••••••••" />
                     <button type="button" onClick={() => setShow(!show)} aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-clinic-muted hover:text-clinic-text">
                       {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -256,7 +257,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={busy || !ready}
-                  className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-all hover:-translate-y-0.5 hover:bg-azure-700 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted disabled:shadow-none"
+                  className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted disabled:shadow-none"
                 >
                   {busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : "Entrar"}
                 </button>
@@ -284,7 +285,7 @@ export default function Login() {
                         try { await seedDemo(); } finally { setSeeding(false); }
                       }}
                       disabled={seeding}
-                      className="mt-3 inline-flex items-center gap-2 rounded-xl bg-azure-600 px-4 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-azure-700 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted"
+                      className="mt-3 inline-flex items-center gap-2 rounded-xl bg-azure-600 px-4 py-2.5 text-sm font-bold text-white transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted"
                     >
                       {seeding ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
                       Restaurar datos de demo
@@ -298,7 +299,7 @@ export default function Login() {
                       <button
                         key={u.id}
                         onClick={async () => { await login(u.id); router.replace("/app"); }}
-                        className="flex w-full items-center gap-3 rounded-2xl border border-clinic-border p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-azure-300 hover:bg-azure-50 hover:shadow-card"
+                        className="flex w-full items-center gap-3 rounded-2xl border border-clinic-border p-3.5 text-left transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:border-azure-300 hover:bg-azure-50 hover:shadow-card"
                       >
                         <span className="grid h-10 w-10 place-items-center rounded-xl text-white" style={{ background: u.color }}>
                           <Icon className="h-5 w-5" />

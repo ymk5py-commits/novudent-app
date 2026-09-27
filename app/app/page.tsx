@@ -223,7 +223,7 @@ export default function Dashboard() {
               : <>Sin citas para hoy{canReports && <> · producción semanal <b className="text-white">{fmtGs(weekRevenue)}</b></>}.</>}
           </p>
           <div className="mt-5 flex flex-wrap gap-2.5">
-            <a href="/app/agenda" className="btn-shine inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-navy-800 transition-all hover:-translate-y-0.5">
+            <a href="/app/agenda" className="btn-shine inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-navy-800 transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5">
               Ir a la agenda <ArrowRight className="h-4 w-4" />
             </a>
             {session.clinicId === "cl_demo" && (
@@ -258,7 +258,7 @@ export default function Dashboard() {
           </div>
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
             {criticalTasks.map((t) => (
-              <a key={t.label} href={t.href} className="group flex items-center gap-3 rounded-xl border border-clinic-border p-3 transition-all hover:-translate-y-0.5 hover:border-azure-200 hover:shadow-card">
+              <a key={t.label} href={t.href} className="group flex items-center gap-3 rounded-xl border border-clinic-border p-3 transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:border-azure-200 hover:shadow-card">
                 <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${t.tone}`}><t.icon className="h-4 w-4" /></span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-bold text-clinic-text">{t.label}</span>

@@ -109,7 +109,7 @@ export function PacientesOrtodoncia() {
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-clinic-bg">
-                        <div className="h-full rounded-full bg-azure-500 transition-all" style={{ width: `${r.prog.calendarPct}%` }} />
+                        <div className="h-full rounded-full bg-azure-500 transition-[width]" style={{ width: `${r.prog.calendarPct}%` }} />
                       </div>
                       <span className="w-9 text-right font-mono text-xs font-bold text-clinic-text">{r.prog.calendarPct}%</span>
                     </div>

@@ -22,7 +22,7 @@ export interface StatCardProps {
 }
 
 const tones: Record<Tone, { chip: string; stroke: string }> = {
-  azure: { chip: "bg-gradient-to-br from-azure-50 to-white text-azure-600", stroke: "#14A6C0" },
+  azure: { chip: "bg-gradient-to-br from-azure-50 to-white text-azure-600", stroke: "#04A9F2" },
   green: { chip: "bg-gradient-to-br from-state-okbg to-white text-state-ok", stroke: "#0E9F6E" },
   amber: { chip: "bg-gradient-to-br from-state-warnbg to-white text-state-warn", stroke: "#B45309" },
 };
@@ -75,7 +75,7 @@ export function StatCard({ label, value, suffix, prefix, icon, tone = "azure", t
       {...(href ? { href } : {})}
       className={cn(
         "group block rounded-2xl border border-clinic-border bg-white p-5 shadow-card",
-        "transition-all duration-300 hover:-translate-y-1 hover:shadow-pop sm:rounded-3xl"
+        "transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-300 hover:-translate-y-1 hover:shadow-pop sm:rounded-3xl"
       )}
     >
       <div className="flex items-start justify-between gap-3">

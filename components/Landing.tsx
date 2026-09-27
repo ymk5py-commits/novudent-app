@@ -640,7 +640,7 @@ export default function Landing() {
     <div className="lp-root pb-24 font-lp text-[16px] leading-relaxed md:pb-0">
       <NavLanding />
 
-      <main>
+      <main id="contenido" tabIndex={-1} className="focus:outline-none">
         {/* ===== PORTADA ===== */}
         <section className="pb-14 pt-24 sm:pb-20 sm:pt-32">
           <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-12">

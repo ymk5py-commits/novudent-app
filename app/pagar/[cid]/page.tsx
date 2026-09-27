@@ -4,6 +4,7 @@
  *  (link de SU pasarela), transferencia, o avisar por WhatsApp. Sin sesión. */
 import { use, useEffect, useState } from "react";
 import { formatMoney, type CurrencyCode } from "@/lib/currency";
+import { Isologo } from "@/components/Marca";
 
 type Info = { clinicName: string; checkoutUrl?: string; bankInfo?: string; phone?: string; currency: CurrencyCode };
 
@@ -62,7 +63,7 @@ export default function PagarPublic({ params }: { params: Promise<{ cid: string 
             </>
           ) : null}
         </div>
-        <p className="mt-4 text-center text-[11px] text-clinic-muted">Pago seguro · Novudent</p>
+        <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-clinic-muted"><Isologo className="h-3.5 w-auto" />Pago seguro · Novudent</p>
       </div>
     </div>
   );

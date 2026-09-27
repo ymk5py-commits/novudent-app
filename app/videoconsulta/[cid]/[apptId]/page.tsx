@@ -11,6 +11,7 @@
  *  videoconsulta embebida y sin esas condiciones hace falta JaaS u otro proveedor. */
 import { use, useEffect, useState } from "react";
 import { Video, Mic, Clock } from "lucide-react";
+import { Logotipo } from "@/components/Marca";
 
 /* En Next 15+ `params` es una Promise: se desenvuelve con React.use(). */
 export default function VideoConsultaPublic({ params }: { params: Promise<{ cid: string; apptId: string }> }) {
@@ -25,7 +26,7 @@ export default function VideoConsultaPublic({ params }: { params: Promise<{ cid:
   return (
     <div className="flex min-h-screen flex-col bg-clinic-bg">
       <header className="flex items-center gap-2 border-b border-clinic-border bg-white px-4 py-3">
-        <span className="font-logo text-lg font-extrabold text-azure-600">Novudent</span>
+        <Logotipo className="h-7 w-auto" />
         <span className="text-sm text-clinic-muted">· Videoconsulta</span>
       </header>
       <main className="flex flex-1 items-start justify-center p-4 sm:p-8">
