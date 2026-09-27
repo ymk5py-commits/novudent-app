@@ -13,3 +13,10 @@ for (const ruta of PAGINAS) {
     await expect(page.locator("body")).not.toBeEmpty();
   });
 }
+
+test("videoconsulta: abre la sala a página completa (embebida, meet.jit.si la corta a los 5 minutos)", async ({ page }) => {
+  await page.goto("/videoconsulta/cl_demo/a1?t=abc123");
+  const entrar = page.getByRole("link", { name: "Entrar a la videoconsulta" });
+  await expect(entrar).toHaveAttribute("href", /^https:\/\/meet\.jit\.si\/nvd-abc123/);
+  await expect(page.locator("iframe")).toHaveCount(0);
+});
