@@ -30,7 +30,7 @@ const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: "em_1" }),
 beforeEach(() => {
   ROL = "receptionist";
   process.env.RESEND_API_KEY = "re_test";
-  process.env.RESEND_FROM = "Clínica Demo <avisos@ejemplo.com>";
+  process.env.EMAIL_FROM = "Clínica Demo <avisos@ejemplo.com>";
   Object.assign(DOCS, {
     "clinics/cl_1": { name: "Clínica Demo", config: { timezone: "America/Asuncion" } },
     "clinics/cl_1/appointments/a1": { patientId: "p1", dentistId: "u2", start: "2026-10-06T13:00:00.000Z", status: "pendiente" },
@@ -40,7 +40,7 @@ beforeEach(() => {
   fetchMock.mockClear();
   vi.stubGlobal("fetch", fetchMock);
 });
-afterEach(() => { vi.unstubAllGlobals(); delete process.env.RESEND_API_KEY; delete process.env.RESEND_FROM; });
+afterEach(() => { vi.unstubAllGlobals(); delete process.env.RESEND_API_KEY; delete process.env.EMAIL_FROM; });
 
 describe("POST /api/notificaciones/cita", () => {
   it("sin Resend configurado responde 503 y no manda nada", async () => {
