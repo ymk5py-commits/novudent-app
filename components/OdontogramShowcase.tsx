@@ -11,7 +11,7 @@ export const LOWER = ["48", "47", "46", "45", "44", "43", "42", "41", "31", "32"
 
 /* rojo = pendiente/patología · azul = realizado */
 const RED = "#DC2626";
-const BLUE = "#0E8AA3";
+const BLUE = "#0369C9";
 
 export const CONDITIONS: Record<ShowcaseToothCondition, { label: string; group: "rojo" | "azul" | "neutro"; chip: string; dot: string }> = {
   caries:     { label: "Caries",              group: "rojo",   chip: "bg-red-100 text-red-700",     dot: "bg-red-500" },
@@ -144,7 +144,7 @@ export function Occlusal({
 
   return (
     <svg viewBox="0 0 36 36" className={`${dim} ${ghost ? "opacity-40" : ""}`} aria-hidden={!interactive}>
-      <circle cx="18" cy="18" r="14" fill={base} strokeDasharray={ghost ? "3 2.5" : undefined} stroke={ghost ? "#94a3b8" : c === "corona" ? "#0E8AA3" : "#15233B"} strokeWidth="1.2" />
+      <circle cx="18" cy="18" r="14" fill={base} strokeDasharray={ghost ? "3 2.5" : undefined} stroke={ghost ? "#94a3b8" : c === "corona" ? "#0369C9" : "#15233B"} strokeWidth="1.2" />
       {(Object.keys(SEG) as Exclude<ShowcaseToothSurface, "O">[]).map((s) => (
         <path
           key={s}

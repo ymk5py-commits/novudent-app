@@ -37,7 +37,7 @@ export function WeekBarsChart({ data, money, name }: { data: { d: string; v: num
           <defs>
             <linearGradient id="nv-bar" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#04A9F2" />
-              <stop offset="100%" stopColor="#0E8AA3" />
+              <stop offset="100%" stopColor="#0369C9" />
             </linearGradient>
             <linearGradient id="nv-bar-soft" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#BFDBFE" />
@@ -51,7 +51,7 @@ export function WeekBarsChart({ data, money, name }: { data: { d: string; v: num
             tick={AXIS}
             tickFormatter={(v: number) => (money ? (v >= 1_000_000 ? `${(v / 1_000_000).toLocaleString("es-PY", { maximumFractionDigits: 1 })}M` : `${Math.round(v / 1000)}k`) : String(v))}
           />
-          <Tooltip cursor={{ fill: "rgba(46,131,245,0.07)" }} content={<CardTooltip money={money} />} />
+          <Tooltip cursor={{ fill: "rgba(4,169,242,0.08)" }} content={<CardTooltip money={money} />} />
           <Bar dataKey="v" name={name} radius={[7, 7, 0, 0]} animationDuration={900} animationEasing="ease-out" maxBarSize={38}>
             {data.map((x) => (
               <Cell key={x.d} fill={x.v === max && x.v > 0 ? "url(#nv-bar)" : "url(#nv-bar-soft)"} />
@@ -123,8 +123,8 @@ export function ProductionBarsChart({ data }: { data: { name: string; v: number;
             type="number" axisLine={false} tickLine={false} tick={AXIS}
             tickFormatter={(v: number) => (v >= 1_000_000 ? `${(v / 1_000_000).toLocaleString("es-PY", { maximumFractionDigits: 1 })}M` : `${Math.round(v / 1000)}k`)}
           />
-          <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={120} tick={{ ...AXIS, fontSize: 11, fill: "#13233F" }} />
-          <Tooltip cursor={{ fill: "rgba(46,131,245,0.07)" }} content={<CardTooltip money />} />
+          <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={120} tick={{ ...AXIS, fontSize: 11, fill: "#102747" }} />
+          <Tooltip cursor={{ fill: "rgba(4,169,242,0.08)" }} content={<CardTooltip money />} />
           <Bar dataKey="v" name="Cobrado 30d" radius={[0, 7, 7, 0]} animationDuration={900} animationEasing="ease-out" maxBarSize={22}>
             {data.map((x) => (
               <Cell key={x.name} fill={x.color} />

@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Stethoscope, Headset, Wallet, ClipboardList, Mail, Lock, Eye, EyeOff, LoaderCircle, ArrowLeft, Sparkles, RotateCcw, KeyRound, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Stethoscope, Headset, Wallet, ClipboardList, Mail, Lock, Eye, EyeOff, LoaderCircle, ArrowLeft, RotateCcw, KeyRound, CheckCircle2 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ROLE_LABEL } from "@/lib/rbac";
 import { Field, inputCls } from "@/components/ui";
 import { sendPasswordReset } from "@/lib/firebase";
-import { Logotipo } from "@/components/Marca";
+import { Isologo, Logotipo } from "@/components/Marca";
 
 const ICON = { admin: ShieldCheck, cashier: Wallet, receptionist: ClipboardList, dentist: Stethoscope, assistant: Headset } as const;
 
@@ -115,23 +115,24 @@ export default function Login() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Panel de marca */}
-      <div className="relative hidden overflow-hidden bg-navy-900 lg:block" style={{ background: "linear-gradient(160deg,#0A2A5E 0%,#051735 55%,#020B20 100%)" }}>
-        <div className="absolute -left-24 -top-24 h-96 w-96 rounded-full bg-azure-500/25 blur-[100px]" />
-        <div className="absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full bg-azure-700/20 blur-[110px]" />
+      <div className="login-brand-panel relative hidden overflow-hidden lg:block">
+        <Isologo className="pointer-events-none absolute -right-20 bottom-12 h-[440px] w-auto opacity-[0.14]" />
         <div className="relative flex h-full flex-col justify-between p-12">
           <a href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-white/60 transition-colors hover:text-white">
             <ArrowLeft className="h-4 w-4" /> Volver al sitio
           </a>
           <div>
             <Logotipo tono="blanco" className="h-16 w-auto" titulo="Novudent" />
-            <p className="mt-4 max-w-sm text-white/60">
-              Agenda, odontograma, ficha clínica y facturación con estados.
-              La clínica completa, en una sola plataforma.
+            <h2 className="mt-9 max-w-md font-logo text-[clamp(2.1rem,3.2vw,3.5rem)] font-semibold leading-[1.08] tracking-[-0.035em] text-white">
+              Tu clínica, en orden y a la vista.
+            </h2>
+            <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-white/70">
+              Agenda, odontograma, ficha clínica y cobros conectados en un mismo lugar.
             </p>
-            <div className="mt-8 space-y-3">
+            <div className="mt-8 space-y-3 border-t border-white/15 pt-6">
               {["Odontograma FDI con morfología real", "Recordatorios por WhatsApp", "Facturación con validación de códigos", "Roles y permisos por usuario"].map((t) => (
                 <div key={t} className="flex items-center gap-2.5 text-sm text-white/80">
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-azure-500/25 text-azure-200"><Sparkles className="h-3 w-3" /></span>
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-azure-300" aria-hidden />
                   {t}
                 </div>
               ))}
@@ -142,7 +143,7 @@ export default function Login() {
       </div>
 
       {/* Formulario */}
-      <div className="grid place-items-center bg-clinic-bg p-6">
+      <div className="grid place-items-center bg-clinic-bg p-4 sm:p-6">
         {/* Sin animación de entrada: framer serializa el opacity:0 en el HTML del
             servidor. Si no hidrata, el formulario de login queda invisible — y es
             la puerta de entrada a la app. No vale medio segundo de fundido. */}
@@ -151,7 +152,7 @@ export default function Login() {
             <Logotipo className="mx-auto h-12 w-auto" />
           </div>
 
-          <div className="rounded-3xl border border-clinic-border bg-white p-7 shadow-pop">
+          <div className="rounded-[22px] border border-clinic-border bg-white p-6 shadow-pop sm:p-8">
             {/* Tabs */}
             {demoHabilitada && (
             <div className="mb-6 flex rounded-2xl bg-clinic-bg p-1">
@@ -257,7 +258,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={busy || !ready}
-                  className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted disabled:shadow-none"
+                  className="grid min-h-12 w-full place-items-center rounded-[10px] bg-azure-600 py-3 text-sm font-bold text-white shadow-[0_8px_22px_-10px_rgba(3,105,201,0.55)] transition-[color,background-color,box-shadow] hover:bg-azure-700 hover:shadow-[0_10px_24px_-10px_rgba(3,105,201,0.48)] disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted disabled:shadow-none"
                 >
                   {busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : "Entrar"}
                 </button>

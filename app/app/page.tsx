@@ -4,7 +4,7 @@
 import { useEffect, useRef } from "react";
 import { useInView, useMotionValue, animate } from "framer-motion";
 import {
-  CalendarDays, Users, FileText, PauseCircle, ArrowRight, RotateCcw, CheckCircle2, Circle, MoreHorizontal, Sparkles,
+  CalendarDays, Users, FileText, PauseCircle, ArrowRight, RotateCcw, CheckCircle2, Circle, MoreHorizontal,
   AlertTriangle, FileSpreadsheet, Wallet, Package, CalendarX,
 } from "lucide-react";
 import { useStore, fmtTime, fmtGs, fullName } from "@/lib/store";
@@ -12,7 +12,7 @@ import { patientBalance } from "@/lib/budgets";
 import { can, ROLE_DESCRIPCION } from "@/lib/rbac";
 import { useAlcance } from "@/lib/useAlcance";
 import { Card, Badge, StatusBadge } from "@/components/ui";
-import { ToothGlyph } from "@/components/OdontogramShowcase";
+import { Isologo } from "@/components/Marca";
 import { ContralorCard } from "@/components/NovudentIA";
 import { WeekBarsChart, StatusDonutChart } from "@/components/Charts";
 import { useClinicPlan } from "@/components/PlanGate";
@@ -35,22 +35,22 @@ function Count({ value }: { value: number }) {
   return <span ref={ref}>0</span>;
 }
 
-/* ---- stat pastel (Spike) ---- */
+/* ---- Indicador clínico ---- */
 function SpikeStat({
   label, value, icon: Icon, tone, href,
 }: { label: string; value: number; icon: any; tone: "azure" | "green" | "amber" | "red"; href: string }) {
   const tones = {
-    azure: "bg-azure-50 text-azure-600",
-    green: "bg-state-okbg text-state-ok",
-    amber: "bg-state-warnbg text-state-warn",
-    red: "bg-state-errbg text-state-err",
+    azure: { icon: "bg-azure-50 text-azure-700", edge: "border-t-azure-500" },
+    green: { icon: "bg-state-okbg text-state-ok", edge: "border-t-state-ok" },
+    amber: { icon: "bg-state-warnbg text-state-warn", edge: "border-t-state-warn" },
+    red: { icon: "bg-state-errbg text-state-err", edge: "border-t-state-err" },
   }[tone];
   return (
-    <a href={href} className="card-3d group block h-full rounded-2xl border border-clinic-border bg-white p-5 shadow-card">
-      <span className={`icon-3d grid h-12 w-12 place-items-center rounded-2xl transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 ${tones}`}>
+    <a href={href} className={`group block h-full rounded-[18px] border border-t-[3px] border-clinic-border bg-white p-5 shadow-card transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-azure-200 hover:shadow-pop ${tones.edge}`}>
+      <span className={`grid h-10 w-10 place-items-center rounded-[10px] ${tones.icon}`}>
         <Icon className="h-5 w-5" strokeWidth={2} />
       </span>
-      <p className="mt-4 text-3xl font-extrabold tabular-nums text-clinic-text"><Count value={value} /></p>
+      <p className="mt-4 font-logo text-[32px] font-semibold leading-none tabular-nums text-clinic-text"><Count value={value} /></p>
       <p className="mt-0.5 text-sm font-medium text-clinic-muted">{label}</p>
     </a>
   );
@@ -201,33 +201,27 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* ===== Banner de bienvenida (malla de gradientes + glow 3D) ===== */}
+      {/* ===== Bienvenida con la identidad del producto ===== */}
       <Reveal y={0}>
-      <div className="mesh-hero ring-glow relative overflow-hidden rounded-3xl p-7 text-white sm:p-8">
-        <div className="absolute -right-8 -top-12 h-56 w-56 rounded-full bg-azure-500/30 blur-3xl" />
-        <div className="absolute -bottom-16 left-1/3 h-44 w-72 rounded-full bg-azure-400/15 blur-3xl" />
-        <div className="absolute bottom-0 right-6 hidden gap-3 opacity-30 drop-shadow-[0_10px_12px_rgba(0,0,0,0.45)] sm:flex">
-          {["16", "11", "26"].map((n) => (
-            <span key={n} className="[&_*]:!stroke-white/70 [&_svg]:h-20 [&_svg]:w-12"><ToothGlyph n={n} upper /></span>
-          ))}
-        </div>
-        <div className="relative">
-          <div className="glass-dark inline-flex items-center gap-2 rounded-full px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-azure-200">
-            <Sparkles className="h-3.5 w-3.5" />
+      <div className="dashboard-hero relative overflow-hidden rounded-[22px] px-6 py-7 text-white sm:px-8 sm:py-9">
+        <Isologo className="pointer-events-none absolute -right-6 -top-20 h-[300px] w-auto opacity-[0.12] sm:right-8 sm:-top-16 sm:h-[350px]" />
+        <div className="relative max-w-2xl">
+          <div className="inline-flex items-center gap-2 border-b border-azure-300/40 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-azure-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-azure-300" />
             {today.toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" })}
           </div>
-          <h1 className="mt-2 font-logo text-3xl sm:text-4xl">Hola, {saludo(session.name)}</h1>
+          <h1 className="mt-4 font-logo text-3xl font-semibold sm:text-4xl">Hola, {saludo(session.name)}</h1>
           <p className="mt-1.5 max-w-md text-sm text-white/65">
             {todays.length > 0
               ? <>Tenés <b className="text-white">{todays.length} cita{todays.length > 1 ? "s" : ""}</b> hoy{canReports && <> · producción semanal <b className="text-white">{fmtGs(weekRevenue)}</b></>}.</>
               : <>Sin citas para hoy{canReports && <> · producción semanal <b className="text-white">{fmtGs(weekRevenue)}</b></>}.</>}
           </p>
           <div className="mt-5 flex flex-wrap gap-2.5">
-            <a href="/app/agenda" className="btn-shine inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-navy-800 transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5">
+            <a href="/app/agenda" className="inline-flex min-h-10 items-center gap-2 rounded-[10px] bg-white px-4 py-2.5 text-sm font-bold text-navy-800 transition-colors hover:bg-azure-50">
               Ir a la agenda <ArrowRight className="h-4 w-4" />
             </a>
             {session.clinicId === "cl_demo" && (
-              <button onClick={resetDemo} className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white">
+              <button onClick={resetDemo} className="inline-flex min-h-10 items-center gap-2 rounded-[10px] border border-white/25 px-4 py-2.5 text-sm font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white">
                 <RotateCcw className="h-3.5 w-3.5" /> Reiniciar demo
               </button>
             )}
@@ -236,7 +230,7 @@ export default function Dashboard() {
       </div>
       </Reveal>
 
-      {/* ===== Stats pastel (cascadean al entrar) ===== */}
+      {/* ===== Indicadores ===== */}
       <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StaggerItem><SpikeStat label="Citas de hoy" value={todays.length} icon={CalendarDays} tone="azure" href="/app/agenda" /></StaggerItem>
         <StaggerItem><SpikeStat label={alcance.pacientes ? "Mis pacientes" : "Pacientes activos"} value={alcance.pacientes ? alcance.pacientes.size : db.patients.length} icon={Users} tone="green" href="/app/pacientes" /></StaggerItem>
@@ -311,7 +305,7 @@ export default function Dashboard() {
             parts={[
               { label: "Confirmadas", v: statusCount.ok, color: "#0E9F6E" },
               { label: "Pendientes", v: statusCount.warn, color: "#D97706" },
-              { label: "Completadas", v: statusCount.done, color: "#1769E0" },
+              { label: "Completadas", v: statusCount.done, color: "#0369C9" },
               { label: "Canceladas", v: statusCount.err, color: "#DC2626" },
             ]}
           />

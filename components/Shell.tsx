@@ -154,15 +154,22 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const salir = () => { logout(); router.replace("/login"); };
 
   return (
-    <div className="min-h-screen bg-clinic-bg">
+    <div className="app-workspace min-h-screen bg-clinic-bg">
       <SaltarAlContenido />
       {/* ===== Drawer móvil ===== */}
-      {navOpen && <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setNavOpen(false)} role="presentation" />}
+      {navOpen && <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setNavOpen(false)} role="presentation" />}
       {/* `inert` cerrado: fuera de pantalla, sus enlaces no deben recibir el foco con Tab. */}
-      <aside inert={!navOpen} aria-label="Menú" className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-white transition-transform duration-200 md:hidden ${navOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}>
-        <div className="flex items-center justify-between px-5 pt-5">
-          {logo ? <img src={logo} alt={clinicName} width={150} height={32} className="h-8 w-auto max-w-[150px] object-contain" /> : <Logotipo className="h-8 w-auto" />}
-          <button onClick={() => setNavOpen(false)} aria-label="Cerrar menú" className="grid h-9 w-9 place-items-center rounded-xl text-clinic-muted hover:bg-clinic-bg"><X className="h-5 w-5" /></button>
+      <aside inert={!navOpen} aria-label="Menú" className={`fixed inset-y-0 left-0 z-50 flex w-[min(19rem,88vw)] flex-col bg-white transition-transform duration-200 lg:hidden ${navOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}>
+        <div className="border-b border-white/10 bg-navy-800 px-5 pb-4 pt-5">
+          <div className="flex items-center justify-between">
+            <Logotipo tono="blanco" className="h-8 w-auto" />
+            <button onClick={() => setNavOpen(false)} aria-label="Cerrar menú" className="grid h-9 w-9 place-items-center rounded-[10px] text-white/80 hover:bg-white/10 hover:text-white"><X className="h-5 w-5" /></button>
+          </div>
+          <div className="mt-4 flex items-center gap-2.5 border-t border-white/10 pt-3">
+            {logo && <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white p-1"><img src={logo} alt="" width={28} height={28} className="max-h-7 max-w-7 object-contain" /></span>}
+            <span className="min-w-0 truncate text-xs font-semibold text-white/80">{clinicName}</span>
+            <span className="ml-auto shrink-0 text-[10px] font-semibold uppercase tracking-wider text-azure-200">{plan.label}</span>
+          </div>
         </div>
         <nav className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4">
           {nav.map((e) => e.children ? (
@@ -192,21 +199,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* ===== Header 2 filas ===== */}
-      <header className="sticky top-0 z-30 border-b border-clinic-border bg-white">
+      <header className="sticky top-0 z-30 border-b border-clinic-border bg-white shadow-[0_2px_12px_-8px_rgba(5,23,53,0.2)]">
         {/* Fila 1 — barra navy de la marca (el diente en color se lee sobre navy) */}
-        <div className="bg-navy-800">
-        <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 sm:gap-3 sm:px-6">
-          <button onClick={() => setNavOpen(true)} aria-label="Abrir menú" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/30 bg-white/10 text-white md:hidden">
+        <div className="app-topbar bg-navy-800">
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-2 px-4 sm:gap-3 sm:px-6">
+          <button onClick={() => setNavOpen(true)} aria-label="Abrir menú" className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] border border-white/20 bg-white/10 text-white lg:hidden">
             <Menu className="h-5 w-5" />
           </button>
-          <a href="/app" aria-label={`${logo ? clinicName : "Novudent"}, inicio`} className="flex shrink-0 items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
+          <a href="/app" aria-label="Novudent, inicio" className="flex shrink-0 items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
             {/* En el celular va solo el diente: el logotipo entero le comía el lugar al
                 buscador (quedaba la lupa encima de la campana). */}
-            {logo ? <img src={logo} alt={clinicName} width={150} height={32} className="h-8 w-auto max-w-[110px] object-contain sm:max-w-[150px]" /> : <>
-              <Isologo className="h-8 w-auto sm:hidden" />
-              <Logotipo tono="blanco" className="hidden h-8 w-auto sm:block" />
-            </>}
-            <span data-tip={`Plan ${plan.label}`} className="hidden rounded-full bg-white/20 px-1.5 py-0.5 font-mono text-[11px] font-extrabold uppercase tracking-wide text-white sm:inline">{plan.label}</span>
+            <Isologo className="h-8 w-auto sm:hidden" />
+            <Logotipo tono="blanco" className="hidden h-8 w-auto sm:block" />
+            <span data-tip={`Plan ${plan.label}`} className="hidden rounded-md border border-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-azure-200 2xl:inline">{plan.label}</span>
           </a>
           {/* Patient Finder */}
           <div className="relative ml-1 min-w-0 w-full max-w-sm">
@@ -215,7 +220,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar paciente…"
-              className="w-full rounded-xl border border-white/25 bg-white/15 py-2.5 pl-9 pr-3 text-sm text-white transition-colors placeholder:text-white/65 focus:border-white focus:bg-white focus:text-clinic-text focus:placeholder:text-clinic-muted"
+              className="w-full rounded-[10px] border border-white/20 bg-white/10 py-2.5 pl-9 pr-3 text-sm text-white transition-[background-color,border-color,box-shadow] placeholder:text-white/60 focus:border-azure-300 focus:bg-white/15 focus:ring-2 focus:ring-azure-300/20"
             />
             {results.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-clinic-border bg-white shadow-pop">
@@ -234,13 +239,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden max-w-[180px] truncate text-sm font-bold text-white lg:block">{clinicName}</span>
+            <span className="hidden max-w-[210px] items-center gap-2 truncate rounded-[10px] border border-white/15 bg-white/[0.06] px-2.5 py-1.5 text-xs font-semibold text-white xl:inline-flex">
+              {logo && <span className="grid h-6 w-6 shrink-0 place-items-center rounded bg-white p-0.5"><img src={logo} alt="" width={22} height={22} className="max-h-[22px] max-w-[22px] object-contain" /></span>}
+              <span className="truncate">{clinicName}</span>
+            </span>
             <span
               data-tip={backend === "firebase" ? "Datos guardados en la nube" : "Sin conexión — datos solo en este navegador"}
               data-tip-pos="down"
-              className={`hidden items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wide sm:inline-flex ${backend === "firebase" ? "bg-state-okbg text-state-ok" : "bg-state-warnbg text-state-warn"}`}
+              className={`hidden items-center gap-1.5 whitespace-nowrap rounded-md border border-white/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider xl:inline-flex ${backend === "firebase" ? "text-emerald-200" : "text-amber-200"}`}
             >
-              <span className={`h-1.5 w-1.5 rounded-full ${backend === "firebase" ? "bg-state-ok" : "bg-state-warn"}`} />
+              <span className={`h-1.5 w-1.5 rounded-full ${backend === "firebase" ? "bg-emerald-300" : "bg-amber-300"}`} />
               {backend === "firebase" ? "En línea" : "Sin conexión"}
             </span>
             {/* Campana de pendientes. El aria-label pisa el contenido del link, así que
@@ -268,11 +276,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               aria-label="Ayuda"
               data-tip="Hablá con Novum: WhatsApp, correo y horario"
               data-tip-pos="down-left"
-              className="hidden h-10 shrink-0 items-center gap-1.5 rounded-xl border border-white/30 bg-white/10 px-2.5 text-sm font-bold text-white transition-colors hover:bg-white/20 md:inline-flex lg:px-3"
+              className="hidden h-10 shrink-0 items-center gap-1.5 rounded-[10px] border border-white/20 bg-white/10 px-2.5 text-sm font-bold text-white transition-colors hover:bg-white/20 lg:inline-flex lg:px-3"
             >
               <Headset className="h-4 w-4" aria-hidden /> <span className="hidden lg:inline">Ayuda</span>
             </button>
-            <span className="hidden text-right sm:block md:whitespace-nowrap">
+            <span className="hidden text-right xl:block xl:whitespace-nowrap">
               <span className="block text-xs font-bold leading-tight text-white">{session.name}</span>
               <span className="block text-[11px] leading-tight text-white/75">{ROLE_LABEL[session.role]}</span>
             </span>
@@ -285,8 +293,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Fila 2: nav horizontal (desktop) */}
-        <div className="hidden border-t border-clinic-border bg-white md:block">
-          <nav className="mx-auto flex max-w-6xl items-center gap-0.5 px-3 sm:px-5">
+        <div className="hidden border-t border-white/10 bg-white lg:block">
+          <nav className="mx-auto flex max-w-[1440px] items-center gap-1 px-4 py-1.5 sm:px-6">
             {nav.map((e) => e.children
               ? <NavDropdown key={e.label} label={e.label} icon={e.icon} items={e.children} pathname={pathname} />
               : <NavLink key={e.href} href={e.href!} label={e.label} icon={e.icon} active={isActive(e.href!)} badge={badgeDe(e.href!)} />
@@ -295,7 +303,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 scroll-mt-32 px-4 py-6 focus:outline-none sm:px-6 sm:py-7">
+      <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-[1440px] flex-1 scroll-mt-36 px-4 py-6 focus:outline-none sm:px-6 sm:py-8">
         <SubscriptionBanner />
         <PageTransition>{children}</PageTransition>
       </main>
@@ -325,11 +333,10 @@ function NavLink({ href, label, icon: Icon, active, badge = 0 }: { href: string;
   return (
     <a
       href={href}
-      className={`relative flex items-center gap-1.5 px-3.5 py-3 text-sm font-bold transition-colors ${active ? "text-azure-700" : "text-clinic-muted hover:text-clinic-text"}`}
+      className={`relative flex items-center gap-1.5 rounded-[9px] px-3.5 py-2.5 font-logo text-[14px] font-semibold transition-colors ${active ? "bg-azure-50 text-azure-700" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
     >
       <Icon className="h-4 w-4" /> {label}
       <Contador n={badge} />
-      {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-azure-600" />}
     </a>
   );
 }
@@ -349,11 +356,10 @@ function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; ic
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-1.5 px-3.5 py-3 text-sm font-bold transition-colors ${active || open ? "text-azure-700" : "text-clinic-muted hover:text-clinic-text"}`}
+        className={`flex items-center gap-1.5 rounded-[9px] px-3.5 py-2.5 font-logo text-[14px] font-semibold transition-colors ${active || open ? "bg-azure-50 text-azure-700" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
       >
         <Icon className="h-4 w-4" /> {label}
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
-        {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-azure-600" />}
       </button>
       {open && (() => {
         const renderItem = (it: NavLeaf) => {

@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 html, body {
-  background: #f5f7fb;
-  color: #13233f;
+  background: #f3f6fb;
+  color: #102747;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "tnum" on;
   /* `clip`, NO `hidden`: hidden crearía un contenedor de scroll y rompería
@@ -32,7 +32,41 @@ a, button, [role="button"], input, select, textarea, label, summary {
 ::-webkit-scrollbar-thumb { background: #cdd6e4; border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: #aebbd0; }
 
-:focus-visible { outline: 2px solid #2e83f5; outline-offset: 2px; border-radius: 6px; }
+:focus-visible { outline: 2px solid #0369c9; outline-offset: 2px; border-radius: 6px; }
+
+/* El panel sigue la tinta navy y el azul del isologo; la tipografía de títulos
+   conecta sus módulos sin cambiar la densidad de formularios y tablas. */
+.app-workspace {
+  background: radial-gradient(80% 300px at 50% 0, rgba(4,169,242,.055), transparent 100%), #f3f6fb;
+}
+.app-workspace :is(h1, h2, h3) {
+  font-family: var(--font-jost), ui-sans-serif, system-ui;
+  letter-spacing: -.025em;
+  font-style: normal;
+}
+.app-topbar {
+  background: linear-gradient(115deg, #051735 58%, #0a2a5e 100%);
+  box-shadow: inset 0 -2px 0 rgba(4,169,242,.55);
+}
+.dashboard-hero {
+  background-color: #051735;
+  background-image: linear-gradient(125deg, transparent 52%, rgba(4,169,242,.12) 100%), radial-gradient(100% 120% at 100% 0, rgba(4,169,242,.14), transparent 65%);
+  box-shadow: 0 18px 44px -30px rgba(5,23,53,.62);
+}
+.login-brand-panel {
+  background-color: #051735;
+  background-image: linear-gradient(135deg, rgba(4,169,242,.13), transparent 44%), linear-gradient(160deg, #0a2a5e 0%, #051735 55%, #020b20 100%);
+}
+.login-brand-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .28;
+  background-image: linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, transparent, #000 42%, #000 78%, transparent);
+}
 
 /* ===================================================================
    RED DE SEGURIDAD CONTRA LA PÁGINA EN BLANCO
@@ -103,9 +137,9 @@ html.motion-fallback [style*="opacity:0"] {
   background: conic-gradient(
     from var(--beam-angle),
     transparent 0 64%,
-    rgba(46, 131, 245, 0.45) 76%,
-    #2e83f5 84%,
-    rgba(46, 131, 245, 0.45) 92%,
+    rgba(4, 169, 242, 0.45) 76%,
+    #04a9f2 84%,
+    rgba(4, 169, 242, 0.45) 92%,
     transparent 100%
   );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -441,7 +475,7 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
   transform: translateY(-4px);
   box-shadow:
     0 18px 40px -18px rgba(15, 31, 61, 0.28),
-    0 8px 18px -10px rgba(46, 131, 245, 0.22);
+    0 8px 18px -10px rgba(4, 169, 242, 0.22);
 }
 
 /* Variante oscura — paneles flotando sobre el hero navy del PANEL */
@@ -453,13 +487,10 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
-/* Malla de gradientes para el banner (profundidad sin imágenes) */
+/* Cabeceras clínicas de ficha y plan: misma profundidad sobria del dashboard. */
 .mesh-hero {
-  background:
-    radial-gradient(120% 140% at 0% 0%, #0A3F95 0%, transparent 55%),
-    radial-gradient(90% 120% at 100% 0%, rgba(4, 169, 242, 0.55) 0%, transparent 60%),
-    radial-gradient(110% 120% at 82% 100%, rgba(54, 210, 255, 0.18) 0%, transparent 55%),
-    linear-gradient(160deg, #0A2A5E 0%, #051735 80%);
+  background-color: #051735;
+  background-image: linear-gradient(125deg, transparent 52%, rgba(4,169,242,.12) 100%), radial-gradient(100% 120% at 100% 0, rgba(4,169,242,.14), transparent 65%);
 }
 .ring-glow {
   box-shadow:
@@ -476,7 +507,7 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
 }
 
 /* Halo suave bajo las gráficas */
-.chart-glow { filter: drop-shadow(0 12px 20px rgba(46, 131, 245, 0.16)); }
+.chart-glow { filter: drop-shadow(0 12px 20px rgba(4, 169, 242, 0.16)); }
 
 /* Tooltip simple por data-attr */
 [data-tip] { position: relative; }

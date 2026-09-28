@@ -24,11 +24,11 @@ const config: Config = {
         },
         // Superficie clínica clara
         clinic: {
-          bg: "#F5F7FB",
+          bg: "#F3F6FB",
           card: "#FFFFFF",
-          border: "#E3E8F0",
-          text: "#13233F",
-          muted: "#5B6B85",
+          border: "#DDE5F0",
+          text: "#102747",
+          muted: "#586A82",
         },
         /* Identidad de la LANDING (referencia: la propuesta de several.).
          * Va aparte a propósito: el panel `/app/*` es el clon 1:1 de Dentalink y
@@ -61,7 +61,7 @@ const config: Config = {
           warnbg: "#FEF3C7",
           err: "#C81E1E",
           errbg: "#FDE8E8",
-          info: "#0C7A91",
+          info: "#0550A8",
           infobg: "#EBF6FE",
           hold: "#92400E",
           holdbg: "#FFEDD5",
@@ -77,8 +77,8 @@ const config: Config = {
         lp: ["var(--font-inter)", "ui-sans-serif", "system-ui"],
       },
       boxShadow: {
-        card: "0 1px 2px rgba(16,24,40,0.05), 0 1px 3px rgba(16,24,40,0.06)",
-        pop: "0 8px 24px -8px rgba(16,24,40,0.18)",
+        card: "0 1px 2px rgba(5,23,53,0.035), 0 8px 24px -18px rgba(5,23,53,0.18)",
+        pop: "0 20px 48px -24px rgba(5,23,53,0.28), 0 4px 16px -8px rgba(5,23,53,0.1)",
       },
     },
   },

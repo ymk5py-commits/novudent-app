@@ -7,7 +7,7 @@ import type { BillingFlag, AppointmentStatus } from "@/lib/types";
 import { FLAG_INFO } from "@/lib/billing";
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-clinic-border bg-white shadow-card ${className}`}>{children}</div>;
+  return <div className={`rounded-[18px] border border-clinic-border bg-white shadow-card ${className}`}>{children}</div>;
 }
 
 export function Btn({
@@ -29,9 +29,9 @@ export function Btn({
 }) {
   const styles = {
     primary:
-      "btn-shine bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-[0_6px_18px_-6px_rgba(16,185,129,0.5)] hover:from-emerald-600 hover:to-emerald-700 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:from-clinic-border disabled:to-clinic-border disabled:text-clinic-muted disabled:shadow-none disabled:translate-y-0",
+      "bg-azure-600 text-white shadow-[0_6px_16px_-8px_rgba(3,105,201,0.55)] hover:bg-azure-700 hover:shadow-[0_8px_18px_-8px_rgba(3,105,201,0.42)] active:scale-[0.98] disabled:bg-clinic-border disabled:text-clinic-muted disabled:shadow-none",
     ghost: "text-clinic-text hover:bg-clinic-bg active:scale-[0.98]",
-    outline: "border border-clinic-border text-clinic-text hover:border-azure-300 hover:text-azure-700 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-white",
+    outline: "border border-clinic-border bg-white text-clinic-text hover:border-azure-300 hover:bg-azure-50 hover:text-azure-700 active:scale-[0.98]",
     danger: "bg-state-errbg text-state-err hover:bg-red-100 active:scale-[0.98]",
   }[variant];
   return (
@@ -40,7 +40,7 @@ export function Btn({
       onClick={onClick}
       disabled={disabled}
       data-tip={tip}
-      className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 disabled:cursor-not-allowed ${styles} ${className}`}
+      className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[10px] px-4 py-2 text-sm font-semibold transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 disabled:cursor-not-allowed ${styles} ${className}`}
     >
       {children}
     </button>
@@ -159,10 +159,10 @@ function ModalContent({ title, onClose, children, wide, xl }: { title: string; o
     <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4" onClick={onClose} role="presentation">
       <div
         {...dialogProps}
-        className={`max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-2xl bg-white p-6 shadow-pop outline-none ${xl ? "max-w-6xl" : wide ? "max-w-3xl" : "max-w-lg"}`}
+        className={`max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-[20px] border border-clinic-border bg-white p-6 shadow-pop outline-none ${xl ? "max-w-6xl" : wide ? "max-w-3xl" : "max-w-lg"}`}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 id={titleId} className="text-lg font-extrabold text-clinic-text">{title}</h3>
+          <h3 id={titleId} className="font-logo text-xl font-semibold text-clinic-text">{title}</h3>
           <button onClick={onClose} aria-label="Cerrar" className="grid h-8 w-8 place-items-center rounded-full hover:bg-clinic-bg">
             <X className="h-4 w-4 text-clinic-muted" />
           </button>
@@ -193,7 +193,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 export const inputCls =
-  "w-full rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm text-clinic-text placeholder:text-clinic-muted/60 focus:border-azure-600";
+  "w-full min-h-10 rounded-[10px] border border-clinic-border bg-white px-3 py-2 text-sm text-clinic-text placeholder:text-clinic-muted/60 transition-[border-color,box-shadow] focus:border-azure-600 focus:ring-2 focus:ring-azure-100";
 
 export function Empty({ title, desc }: { title: string; desc?: string }) {
   return (
