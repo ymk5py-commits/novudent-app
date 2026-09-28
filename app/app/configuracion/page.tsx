@@ -600,7 +600,7 @@ export default function ConfigPage() {
 
       {addingUser && (
         <NewUser
-          firebase={backend === "firebase"}
+          firebase={backend === "firebase" && session?.clinicId !== "cl_demo"}
           onClose={() => setAddingUser(false)}
           onCreate={async (data) => {
             await createTeamUser(data);
@@ -701,10 +701,10 @@ function NewUser({
         <p className="rounded-xl bg-azure-50 p-3 text-xs leading-relaxed text-azure-700">
           {firebase
             ? "Se crea una cuenta real en Firebase Auth. Compartile el email y la contraseña provisional a tu colaborador — ingresa desde la pantalla de inicio de sesión."
-            : "⚠ Estás en modo local: el usuario se guarda solo en este navegador. Conectá Firebase para crear cuentas reales."}
+            : "El alta de cuentas está disponible al ingresar como administrador de una clínica con conexión."}
         </p>
         <Field label="Nombre completo"><input required className={inputCls} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Email"><input type="email" required autoComplete="off" className={inputCls} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
           <Field label="Contraseña provisional" hint="Mínimo 6 caracteres.">
             <input type="text" required minLength={6} autoComplete="new-password" className={inputCls} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder="Ej.: Clinica2026" />
@@ -726,7 +726,7 @@ function NewUser({
         {error && <p role="alert" className="rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-state-err">{error}</p>}
         <div className="flex justify-end gap-2">
           <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
-          <Btn type="submit" disabled={busy}>{busy ? "Creando…" : "Crear usuario"}</Btn>
+          <Btn type="submit" disabled={busy || !firebase}>{busy ? "Creando…" : "Crear usuario"}</Btn>
         </div>
       </form>
     </Modal>

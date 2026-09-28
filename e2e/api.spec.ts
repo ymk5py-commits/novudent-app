@@ -37,7 +37,7 @@ test.describe("/api/contacto (pedido de acceso de la landing)", () => {
 test.describe("Rutas que necesitan configuración o sesión", () => {
   const CASOS: [string, string][] = [
     ["/api/ia/copilot", "IA"], ["/api/ia/radiografia", "IA"], ["/api/email", "email"], ["/api/suscripcion/checkout", "cobro"],
-    ["/api/change-password", "contraseña"], ["/api/webhooks/lemonsqueezy", "webhook de cobro"], ["/api/reservas", "reservas"], ["/api/firmar", "firma"],
+    ["/api/change-password", "contraseña"], ["/api/team-users", "usuarios del equipo"], ["/api/webhooks/lemonsqueezy", "webhook de cobro"], ["/api/reservas", "reservas"], ["/api/firmar", "firma"],
   ];
   for (const [ruta, que] of CASOS) {
     test(`${ruta} (${que}) sin credenciales: rechaza con un mensaje, no con un error crudo`, async ({ request }) => {

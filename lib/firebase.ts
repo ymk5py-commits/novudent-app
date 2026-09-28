@@ -43,37 +43,6 @@ if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_APPCHECK_SITE_KEY) 
     .catch(() => {});
 }
 
-/** Crea una cuenta en Firebase Auth SIN tocar la sesión actual del admin
- *  (usa una app secundaria temporal). Devuelve el uid. */
-export async function createAuthUser(email: string, password: string): Promise<string> {
-  const { initializeApp, deleteApp } = await import("firebase/app");
-  const { getAuth, createUserWithEmailAndPassword, signOut, setPersistence, inMemoryPersistence } =
-    await import("firebase/auth");
-  const temp = initializeApp((app.options as object) as Record<string, string>, `creator-${Date.now()}`);
-  try {
-    const authTemp = getAuth(temp);
-    /* PERSISTENCIA EN MEMORIA — es lo que evita que crear un usuario eche al
-     * admin de la aplicación.
-     *
-     * `createUserWithEmailAndPassword` INICIA SESIÓN como el usuario recién
-     * creado. Por eso se hace en una app secundaria: para no pisar la sesión del
-     * admin. Pero la app secundaria nacía con la persistencia por defecto
-     * (`browserLocalPersistence`), que guarda en el MISMO IndexedDB del
-     * navegador que usa la app principal. Entre esa escritura y el `signOut` de
-     * abajo, la sesión del admin quedaba pisada o borrada: se cerraba sesión
-     * sola y volvía a la pantalla de ingreso, justo después de crear al usuario.
-     *
-     * Con `inMemoryPersistence` la sesión temporal vive solo en memoria y muere
-     * con la app: no toca el almacenamiento compartido y el admin no se entera. */
-    await setPersistence(authTemp, inMemoryPersistence);
-    const cred = await createUserWithEmailAndPassword(authTemp, email, password);
-    await signOut(authTemp).catch(() => {});
-    return cred.user.uid;
-  } finally {
-    await deleteApp(temp).catch(() => {});
-  }
-}
-
 /** Inicia sesión real con email/contraseña. Devuelve el uid. */
 export async function signInEmail(email: string, password: string): Promise<string> {
   const { getAuth, signInWithEmailAndPassword } = await import("firebase/auth");

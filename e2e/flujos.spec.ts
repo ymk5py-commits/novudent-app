@@ -26,7 +26,7 @@ test("agenda: dar una cita y que siga ahí al recargar", async ({ page }) => {
   expect(nueva(await leerDB(page))).toBeTruthy();
 });
 
-test("pacientes: dar de alta un paciente y encontrarlo por su CI", async ({ page }) => {
+test("pacientes: dar de alta un paciente y encontrarlo por su CI", async ({ page, isMobile }) => {
   const ci = String(9_000_000 + Math.floor(Math.random() * 999_999));
   await page.goto("/app/pacientes");
   await page.getByRole("button", { name: "Nuevo paciente" }).click();
@@ -43,7 +43,7 @@ test("pacientes: dar de alta un paciente y encontrarlo por su CI", async ({ page
   await page.waitForURL(/\/app\/pacientes\/p_/);
   await page.goto("/app/pacientes");
   await page.getByPlaceholder(/Buscar por nombre, CI/).fill(ci);
-  await expect(page.locator("main").getByRole("link", { name: "Abrir la ficha de Prueba Automática" })).toBeVisible();
+  await expect(page.locator("main").getByRole("link", { name: isMobile ? "Prueba Automática" : "Abrir la ficha de Prueba Automática" })).toBeVisible();
 });
 
 test("presupuestos: presentar el borrador y aceptarlo", async ({ page }) => {

@@ -11,11 +11,18 @@ const menuDe = (page: Page, nombre: string) => page.getByRole("menu", { name: `A
 test.describe("recepcionista", () => {
   test.beforeEach(async ({ page }) => { await entrarDemo(page, USUARIOS_DEMO.recepcionista); await page.goto("/app/pacientes"); });
 
-  test("ve código, CI, nombre, apellido y tratamientos, sin deudas ni íconos sueltos", async ({ page }) => {
-    const encabezados = main(page).locator("thead th");
-    await expect(encabezados).toContainText(["Código", "CI o RUC", "Nombre", "Apellido", "Tratamientos"]);
-    await expect(main(page).locator("thead")).not.toContainText("Deudas");
-    await expect(main(page).getByRole("row", { name: /María/ }).first()).toContainText("3.456.789");
+  test("ve código, CI, nombre, apellido y tratamientos, sin deudas ni íconos sueltos", async ({ page, isMobile }) => {
+    if (isMobile) {
+      await expect(main(page).getByRole("link", { name: "María González" })).toBeVisible();
+      await expect(main(page)).toContainText("3.456.789");
+      await expect(main(page)).toContainText("Tratamientos");
+    } else {
+      const encabezados = main(page).locator("thead th");
+      await expect(encabezados).toContainText(["Código", "CI o RUC", "Nombre", "Apellido", "Tratamientos"]);
+      await expect(main(page).locator("thead")).not.toContainText("Deudas");
+      await expect(main(page).getByRole("row", { name: /María/ }).first()).toContainText("3.456.789");
+    }
+    await expect(main(page)).not.toContainText("Deudas");
     await expect(main(page).locator("[data-tip*='formulario']")).toHaveCount(0);
   });
 
@@ -31,14 +38,17 @@ test.describe("recepcionista", () => {
     await expect(main(page).getByText("Datos requeridos")).toBeVisible();
   });
 
-  test("deshabilitar saca al paciente de la lista y aparece en «Deshabilitados»", async ({ page }) => {
+  test("deshabilitar saca al paciente de la lista y aparece en «Deshabilitados»", async ({ page, isMobile }) => {
+    const ficha = isMobile
+      ? main(page).getByRole("link", { name: "Lucía Ferreira" })
+      : main(page).getByRole("link", { name: "Abrir la ficha de Lucía Ferreira" });
     page.on("dialog", (d) => d.accept());
     await main(page).getByRole("button", { name: "Acciones de Lucía Ferreira" }).click();
     await menuDe(page, "Lucía Ferreira").getByRole("menuitem", { name: "Deshabilitar paciente" }).click();
-    await expect(main(page).getByRole("link", { name: "Abrir la ficha de Lucía Ferreira" })).toHaveCount(0);
+    await expect(ficha).toHaveCount(0);
     expect((await leerDB(page)).patients.find((p: { id: string }) => p.id === "p5")?.disabled).toBe(true);
     await main(page).getByLabel("Mostrar pacientes").selectOption("deshabilitados");
-    await expect(main(page).getByRole("link", { name: "Abrir la ficha de Lucía Ferreira" })).toBeVisible();
+    await expect(ficha).toBeVisible();
     await expect(main(page)).toContainText("Deshabilitado");
   });
 });

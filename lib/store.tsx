@@ -10,7 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, onSnapshot, query, where, type Query,
 } from "firebase/firestore";
-import { app, fsdb, createAuthUser, signInEmail, currentIdToken, signOutUser, currentAuthUid, signInAnonymousIfNeeded } from "./firebase";
+import { app, fsdb, signInEmail, currentIdToken, signOutUser, currentAuthUid, signInAnonymousIfNeeded } from "./firebase";
 
 /** Espera a que Firebase Auth termine de restaurar la sesión guardada.
  *
@@ -53,7 +53,6 @@ import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
 import { can } from "./rbac";
 import { submitToBilling, releaseFromHold } from "./billing";
-import { planUserLimitError } from "./plan";
 import { worstSeverity } from "./recovery";
 import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
 import { registrarFallo, resolverFallo, clasificarError } from "./write-errors";
@@ -933,21 +932,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(SES_KEY, JSON.stringify(s));
       },
       createTeamUser: async ({ name, email, role, password, color, phone }) => {
-        // límite del plan contratado (profesionales / usuarios activos)
-        const limitErr = planUserLimitError(db.clinics[0], db.users, role);
-        if (limitErr) throw new Error(limitErr);
-        const cid = clinicIdRef.current; // clínica del admin que crea (la cargada)
-        const uid = await createAuthUser(email, password); // cuenta real en Firebase Auth
-        const u: User = { id: uid, authUid: uid, clinicId: cid, name, email, role, color, active: true, mustChangePassword: true, ...(phone?.trim() ? { phone: phone.trim() } : {}) };
-        // Escribir el doc del usuario Y el directorio ANTES de declarar éxito:
-        // si el write falla (reglas/red), el alta NO se reporta como exitosa
-        // (no queda una cuenta de Auth sin doc). El directorio requiere que el
-        // users/{uid} ya exista (regla), por eso va después y secuencial.
-        if (backendRef.current === "firebase") {
-          await setDoc(doc(fsdb, "clinics", cid, "users", u.id), clean(u));
-          await setDoc(doc(fsdb, "directory", uid), { clinicId: cid, email });
+        // El servidor aplica el plan efectivo desde subscriptions/{cid}; el
+        // campo plan del caché local puede quedar viejo tras una mejora de plan.
+        const cid = clinicIdRef.current;
+        if (cid === DEMO_CLINIC_ID) throw new Error("La demo no crea cuentas reales. Ingresá a una clínica para agregar usuarios.");
+        if (backendRef.current !== "firebase") throw new Error("No hay conexión con la clínica. Reconectá antes de crear usuarios.");
+        if (!session || session.clinicId !== cid || !can(session.role, "users.manage")) {
+          throw new Error("Tu sesión no tiene permiso para crear usuarios en esta clínica.");
         }
-        persist((prev) => ({ ...prev, users: [...prev.users, u] }));
+        const token = await currentIdToken();
+        if (!token) throw new Error("Tu sesión expiró. Volvé a iniciar sesión.");
+        const res = await fetch("/api/team-users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ name, email, role, password, color, phone }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok || !data.user) throw new Error(data.error || "No se pudo crear el usuario.");
+        const u = data.user as User;
+        if (u.clinicId !== cid) throw new Error("La respuesta del servidor corresponde a otra clínica. Recargá la página.");
+        persist((prev) => ({ ...prev, users: [...prev.users.filter((x) => x.id !== u.id), u] }));
       },
       changeMyPassword: async (newPassword) => {
         // El cambio ocurre EN EL SERVIDOR: rota la contraseña en Firebase Auth y

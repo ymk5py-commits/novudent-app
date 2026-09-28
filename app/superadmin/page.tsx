@@ -116,6 +116,16 @@ export default function SuperAdminPage() {
                 <div className="flex justify-between gap-3"><span className="text-clinic-muted">Agenda online</span><a href={created.bookingUrl} className="truncate font-mono text-xs font-bold text-azure-700 hover:underline">{created.bookingUrl}</a></div>
               </div>
 
+              <div className="rounded-2xl border border-azure-200 bg-azure-50 p-4">
+                <p className="text-sm font-extrabold text-navy-800">Siguiente paso: cargar el equipo</p>
+                <p className="mt-1 text-xs leading-relaxed text-clinic-muted">
+                  Entrá con el email de administrador y la contraseña temporal que acabás de crear. Después de cambiarla, abrí Configuración → Usuarios del equipo para agregar a cada persona.
+                </p>
+                <a href="/login" className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-azure-600 px-4 text-center text-sm font-bold text-white hover:bg-azure-700">
+                  Ingresar como administrador <ArrowRight className="h-4 w-4" />
+                </a>
+              </div>
+
               <button onClick={copySummary} className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700">
                 <span className="inline-flex items-center gap-2">
                   {copied ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}

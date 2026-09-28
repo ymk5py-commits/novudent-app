@@ -23,6 +23,7 @@ test.describe("Dentista", () => {
   });
 
   test("no maneja plata: sin caja, facturación, informes, laboratorios ni configuración", async ({ page }) => {
+    test.setTimeout(90_000); // cinco cargas completas; con Firestore bloqueado cada una espera el fallback
     await expect(menu(page)).not.toContainText("Cajas");
     await expect(menu(page)).not.toContainText("Facturación");
     await denegadas(page, ["/app/caja", "/app/facturacion", "/app/reportes", "/app/laboratorios", "/app/configuracion"]);
@@ -55,6 +56,7 @@ test.describe("Asistente de doctores", () => {
   });
 
   test("no cobra ni ve plata", async ({ page }) => {
+    test.setTimeout(90_000); // cuatro cargas completas y la vista de Gastos
     await expect(menu(page)).not.toContainText("Cajas");
     await denegadas(page, ["/app/caja", "/app/facturacion", "/app/reportes", "/app/configuracion"]);
     await page.goto("/app/gastos");
