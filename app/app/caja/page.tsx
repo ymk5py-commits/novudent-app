@@ -126,7 +126,7 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
       </Reveal>
 
       <Reveal className="grid gap-4 lg:grid-cols-5">
-        <Card className="p-5 lg:col-span-3">
+        <Card className="min-w-0 p-5 lg:col-span-3">
           <div className="flex items-center justify-between"><h2 className="font-extrabold text-clinic-text">Movimientos de la caja</h2><Btn variant="outline" onClick={onPay}><Plus className="h-3.5 w-3.5" /> Pago</Btn></div>
           {t.pays.length === 0 && t.exps.length === 0 ? (
             <p className="py-8 text-center text-sm text-clinic-muted">Sin movimientos en esta caja todavía.</p>
@@ -136,32 +136,32 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
                 const patient = db.patients.find((x) => x.id === p.patientId);
                 const Icon = METHOD_ICON[p.method];
                 return (
-                  <li key={p.id} className="flex items-center gap-3 py-2.5">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-state-okbg text-state-ok"><Icon className="h-4 w-4" /></span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-clinic-text">{patient ? fullName(patient) : "—"} · {p.concept}</span>
-                      <span className="text-[11px] text-clinic-muted">{fmtTime(p.date)} · {PAYMENT_METHOD_LABEL[p.method]} · {p.receivedBy}</span>
+                  <li key={p.id} className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-3 sm:flex sm:gap-3">
+                    <span className="row-span-2 grid h-8 w-8 shrink-0 place-items-center self-start rounded-lg bg-state-okbg text-state-ok sm:self-auto"><Icon className="h-4 w-4" /></span>
+                    <span className="col-span-2 min-w-0 sm:flex-1">
+                      <span className="block break-words text-sm font-semibold text-clinic-text">{patient ? fullName(patient) : "—"} · {p.concept}</span>
+                      <span className="block text-[11px] leading-4 text-clinic-muted">{fmtTime(p.date)} · {PAYMENT_METHOD_LABEL[p.method]} · {p.receivedBy}</span>
                     </span>
-                    <span className="font-mono text-sm font-extrabold text-state-ok">+ {fmtGs(p.amount)}</span>
-                    {isAdmin && <button onClick={() => store.deletePayment(p.id)} className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err" title="Eliminar pago"><Trash2 className="h-3.5 w-3.5" /></button>}
+                    <span className="col-start-2 shrink-0 font-mono text-sm font-extrabold text-state-ok">+ {fmtGs(p.amount)}</span>
+                    {isAdmin && <button onClick={() => store.deletePayment(p.id)} className="col-start-3 grid h-10 w-10 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err sm:h-8 sm:w-8" title="Eliminar pago"><Trash2 className="h-3.5 w-3.5" /></button>}
                   </li>
                 );
               })}
               {[...t.exps].sort((a, b) => b.date.localeCompare(a.date)).map((e) => (
-                <li key={e.id} className="flex items-center gap-3 py-2.5">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-state-errbg text-state-err"><TrendingDown className="h-4 w-4" /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-clinic-text">{e.description}</span>
-                    <span className="text-[11px] text-clinic-muted">{e.category}{e.supplier ? ` · ${e.supplier}` : ""} · {e.registeredBy}</span>
+                <li key={e.id} className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-3 sm:flex sm:gap-3">
+                  <span className="row-span-2 grid h-8 w-8 shrink-0 place-items-center self-start rounded-lg bg-state-errbg text-state-err sm:self-auto"><TrendingDown className="h-4 w-4" /></span>
+                  <span className="col-span-2 min-w-0 sm:flex-1">
+                    <span className="block break-words text-sm font-semibold text-clinic-text">{e.description}</span>
+                    <span className="block text-[11px] leading-4 text-clinic-muted">{e.category}{e.supplier ? ` · ${e.supplier}` : ""} · {e.registeredBy}</span>
                   </span>
-                  <span className="font-mono text-sm font-extrabold text-state-err">− {fmtGs(e.amount)}</span>
+                  <span className="col-start-2 shrink-0 font-mono text-sm font-extrabold text-state-err">− {fmtGs(e.amount)}</span>
                 </li>
               ))}
             </ul>
           )}
         </Card>
 
-        <Card className="p-5 lg:col-span-2">
+        <Card className="min-w-0 p-5 lg:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="font-extrabold text-clinic-text">Cuentas por cobrar</h2>
             <Badge tone={debtors.length > 0 ? "warn" : "ok"} tip="Pacientes con saldo pendiente">{debtors.length} paciente{debtors.length !== 1 && "s"}</Badge>

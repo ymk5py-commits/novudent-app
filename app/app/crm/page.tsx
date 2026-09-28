@@ -148,7 +148,7 @@ export default function CrmPage() {
       {tab === "reportes" && (<>
       {/* ===== Pipeline (Kanban) ===== */}
       <Reveal>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
           {STAGES.map((st) => {
             const cards = byStage[st.id];
             return (

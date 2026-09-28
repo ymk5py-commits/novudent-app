@@ -64,8 +64,35 @@ export default function InventoryPage() {
       </Stagger>
 
       <Reveal className="grid gap-5 lg:grid-cols-3">
-        <Card className="overflow-x-auto lg:col-span-2">
-          <table className="w-full text-sm">
+        <Card className="min-w-0 p-3 sm:overflow-x-auto sm:p-0 lg:col-span-2">
+          <div className="grid gap-3 sm:hidden">
+            {db.stock.map((s) => {
+              const lvl = stockLevel(s);
+              const li = LEVEL[lvl];
+              return (
+                <div key={s.id} className="min-w-0 rounded-xl border border-clinic-border p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-clinic-text">{s.name}</p>
+                      <p className="mt-0.5 text-xs text-clinic-muted">{s.category} · {s.unit}{s.supplier ? ` · ${s.supplier}` : ""}</p>
+                    </div>
+                    <Badge tone={li.tone}>{li.label}</Badge>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 border-t border-clinic-border pt-3 text-xs">
+                    <div><span className="block text-clinic-muted">Stock</span><strong className="font-mono text-sm text-clinic-text">{s.stock}</strong></div>
+                    <div><span className="block text-clinic-muted">Mín / ópt.</span><strong className="font-mono text-sm text-clinic-text">{s.minStock}{s.optimalStock != null ? ` / ${s.optimalStock}` : ""}</strong></div>
+                    <div><span className="block text-clinic-muted">Costo unit.</span><strong className="font-mono text-sm text-clinic-text">{fmtGs(s.cost)}</strong></div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button onClick={() => setMoving({ item: s, type: "entrada" })} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-state-okbg px-3 text-xs font-bold text-state-ok"><PackagePlus className="h-4 w-4" /> Entrada</button>
+                    <button onClick={() => setMoving({ item: s, type: "salida" })} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-state-errbg px-3 text-xs font-bold text-state-err"><PackageMinus className="h-4 w-4" /> Salida</button>
+                    <button onClick={() => setEditing(s)} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-clinic-border px-3 text-xs font-bold text-clinic-text"><Pencil className="h-4 w-4" /> Editar</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <table className="hidden w-full text-sm sm:table">
             <thead>
               <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
                 <th className="px-5 py-3">Ítem</th>

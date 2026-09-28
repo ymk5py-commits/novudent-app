@@ -177,7 +177,9 @@ export default function LiquidacionesPage() {
           {rows.length === 0 ? (
             <p className="py-8 text-center text-sm text-clinic-muted">No hay profesionales activos para liquidar.</p>
           ) : (
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-semibold text-azure-700 sm:hidden">Deslizá para ver y editar toda la liquidación →</p>
+              <div className="scroll-hint-shown min-w-0 max-w-full overflow-x-auto overscroll-x-contain">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-clinic-border text-left text-[11px] font-semibold uppercase tracking-wide text-clinic-muted">
@@ -246,6 +248,7 @@ export default function LiquidacionesPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </Card>
@@ -265,7 +268,9 @@ export default function LiquidacionesPage() {
               <Empty title="Aún no hay liquidaciones" desc="Liquidá la producción de un profesional para que aparezca acá." />
             </div>
           ) : (
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-semibold text-azure-700 sm:hidden">Deslizá para ver el historial completo →</p>
+              <div className="scroll-hint-shown min-w-0 max-w-full overflow-x-auto overscroll-x-contain">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-clinic-border text-left text-[11px] font-semibold uppercase tracking-wide text-clinic-muted">
@@ -309,6 +314,7 @@ export default function LiquidacionesPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </Card>

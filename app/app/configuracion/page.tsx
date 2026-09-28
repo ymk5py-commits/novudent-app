@@ -93,7 +93,7 @@ export default function ConfigPage() {
       {/* Sucursales (multi-sede) */}
       <Reveal>
       <Card className="p-5">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Sucursales</h2></div>
           <Btn onClick={() => setEditBranch({ id: "", clinicId: db.clinics[0]?.id ?? "", name: "", active: true })}><Plus className="h-4 w-4" /> Agregar sucursal</Btn>
         </div>
@@ -147,8 +147,8 @@ export default function ConfigPage() {
       {/* Usuarios */}
       <Reveal>
       <Card className="p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2"><UserCog className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Usuarios del equipo</h2><span data-tip={`Tu Plan ${plan.label} incluye hasta ${plan.maxUsers === Infinity ? "usuarios ilimitados" : `${plan.maxUsers} usuarios`} y ${plan.maxDentists === Infinity ? "profesionales ilimitados" : `${plan.maxDentists} profesional${plan.maxDentists > 1 ? "es" : ""}`}`} className="rounded-full bg-clinic-bg px-2 py-0.5 font-mono text-[11px] font-bold text-clinic-muted">{db.users.filter((u) => u.active).length}{plan.maxUsers === Infinity ? "" : ` / ${plan.maxUsers}`}</span></div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2"><UserCog className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Usuarios del equipo</h2><span data-tip={`Tu Plan ${plan.label} incluye hasta ${plan.maxUsers === Infinity ? "usuarios ilimitados" : `${plan.maxUsers} usuarios`} y ${plan.maxDentists === Infinity ? "profesionales ilimitados" : `${plan.maxDentists} profesional${plan.maxDentists > 1 ? "es" : ""}`}`} className="rounded-full bg-clinic-bg px-2 py-0.5 font-mono text-[11px] font-bold text-clinic-muted">{db.users.filter((u) => u.active).length}{plan.maxUsers === Infinity ? "" : ` / ${plan.maxUsers}`}</span></div>
           <Btn onClick={() => setAddingUser(true)}><Plus className="h-4 w-4" /> Agregar usuario</Btn>
         </div>
         <datalist id="especialidades-list">
@@ -170,13 +170,13 @@ export default function ConfigPage() {
               if (confirm(msg)) upsertUser({ ...u, active: !activo });
             };
             return (
-            <div key={u.id} className={`flex items-center gap-3 py-3 ${activo ? "" : "opacity-55"}`}>
-              <span className="grid h-9 w-9 place-items-center rounded-xl text-sm font-bold text-white" style={{ background: u.color }}>
+            <div key={u.id} className={`flex min-w-0 flex-wrap items-center gap-3 py-3 ${activo ? "" : "opacity-55"}`}>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-bold text-white" style={{ background: u.color }}>
                 {u.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
               </span>
-              <span className="flex-1">
-                <span className="flex items-center gap-2 text-sm font-bold text-clinic-text">{u.name}{!activo && <Badge tone="warn">Inactivo</Badge>}</span>
-                <span className="block text-xs text-clinic-muted">{u.email}{u.phone ? ` · ${u.phone}` : ""}{u.specialty ? ` · ${u.specialty}` : ""}</span>
+              <span className="min-w-0 flex-1 basis-[calc(100%-3rem)] sm:basis-auto">
+                <span className="flex flex-wrap items-center gap-2 text-sm font-bold text-clinic-text">{u.name}{!activo && <Badge tone="warn">Inactivo</Badge>}</span>
+                <span className="block break-all text-xs text-clinic-muted">{u.email}{u.phone ? ` · ${u.phone}` : ""}{u.specialty ? ` · ${u.specialty}` : ""}</span>
               </span>
               {u.role === "dentist" && (
                 <input
@@ -446,14 +446,16 @@ export default function ConfigPage() {
 
       <Reveal>
       <Card className="p-5">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div id="arancel" className="flex scroll-mt-24 items-center gap-2"><Stethoscope className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Servicios y aranceles</h2></div>
           <Btn onClick={() => setAddingProc(true)}><Plus className="h-4 w-4" /> Agregar servicio</Btn>
         </div>
         {db.procedures.length === 0 ? (
           <Empty title="Sin servicios" />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <p className="mb-2 text-xs font-semibold text-azure-700 sm:hidden">Deslizá la tabla para ver todos los aranceles →</p>
+          <div className="scroll-hint-shown min-w-0 max-w-full overflow-x-auto overscroll-x-contain">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
@@ -477,6 +479,7 @@ export default function ConfigPage() {
             </tbody>
           </table>
           </div>
+          </>
         )}
       </Card>
       </Reveal>

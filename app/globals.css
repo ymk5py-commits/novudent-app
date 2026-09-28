@@ -718,3 +718,18 @@ html[data-cookies="pendiente"] .lp-barra-movil { display: none; }
   radial-gradient(35% 55% at 100% 0%, var(--lp-blob-a), transparent 70%),
   linear-gradient(180deg, var(--lp-primary-wash), var(--lp-paper-2)); }
 .lp-franja { background: linear-gradient(120deg, var(--lp-band-from), var(--lp-band-to)); }
+/* Indicar que las tablas de detalle siguen hacia la derecha en pantallas angostas. */
+@media (max-width: 639px) {
+  .app-workspace .overflow-x-auto:has(> table):not(.scroll-hint-shown)::before {
+    content: "Deslizá para ver todas las columnas →";
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    padding: 10px 14px 6px;
+    color: #075caa;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+}

@@ -112,7 +112,33 @@ export default function PatientsPage() {
               desc={alcance.sinDoctores ? "Pedile al administrador que te asigne en Configuración → Usuarios." : verPersonales ? "Probá con otro nombre o número de documento." : "Probá con otro nombre."}
             />
           ) : (
-            <Card className="overflow-x-auto p-0">
+            <>
+            <div className="grid gap-3 sm:hidden">
+              {list.map((p) => {
+                const trats = db.budgets.filter((b) => b.patientId === p.id).length;
+                const debt = verMontos && patientBalance(p.id, db.budgets, db.payments) > 0;
+                return (
+                  <Card key={p.id} className={`min-w-0 p-4 ${p.disabled ? "opacity-60" : ""}`}>
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <a href={`/app/pacientes/${p.id}`} className="block text-base font-bold text-clinic-text hover:text-azure-700">{fullName(p)}</a>
+                        <p className="mt-1 font-mono text-xs text-clinic-muted">{p.code ?? "Sin código"}{verPersonales && <> · {p.document || p.ruc || "Sin documento"}</>}</p>
+                      </div>
+                      <AccionesPaciente paciente={p} onDeshabilitar={verPersonales ? () => {
+                        const accion = p.disabled ? "habilitar" : "deshabilitar";
+                        if (window.confirm(`¿Seguro que querés ${accion} a ${fullName(p)}?`)) upsertPatient({ ...p, disabled: !p.disabled || undefined });
+                      } : undefined} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-clinic-border pt-3 text-xs text-clinic-muted">
+                      <span>{trats} tratamiento{trats !== 1 ? "s" : ""}</span>
+                      {verMontos && (debt ? <Badge tone="err">Con deuda</Badge> : <span>Sin deuda</span>)}
+                      {p.disabled && <Badge tone="muted">Deshabilitado</Badge>}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+            <Card className="hidden min-w-0 overflow-x-auto p-0 sm:block">
               <table className="w-full min-w-[680px] text-sm">
                 <thead>
                   <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
@@ -156,6 +182,7 @@ export default function PatientsPage() {
                 </tbody>
               </table>
             </Card>
+            </>
           )}
         </Reveal>
       )}
@@ -174,7 +201,7 @@ function AccionesPaciente({ paciente, onDeshabilitar }: { paciente: Patient; onD
   const ir = (tab: string) => { window.location.href = `/app/pacientes/${paciente.id}?tab=${tab}`; };
   return (
     <>
-      <button ref={ref} type="button" aria-haspopup="menu" aria-expanded={open} aria-label={`Acciones de ${fullName(paciente)}`} onClick={() => setOpen((o) => !o)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-clinic-bg">
+      <button ref={ref} type="button" aria-haspopup="menu" aria-expanded={open} aria-label={`Acciones de ${fullName(paciente)}`} onClick={() => setOpen((o) => !o)} className="grid h-10 w-10 shrink-0 place-items-center rounded-lg hover:bg-clinic-bg">
         <MoreVertical className="h-4 w-4 text-clinic-muted" />
       </button>
       <Desplegable ancla={ref} abierto={open} onCerrar={() => setOpen(false)} ancho={220} alinear="derecha" etiqueta={`Acciones de ${fullName(paciente)}`}>
