@@ -389,6 +389,8 @@ select:focus{
 .fade-toggle.is-hidden{
   opacity:0;
   pointer-events:none;
+  visibility:hidden;
+  overflow:hidden;
   max-width:0;
   padding-left:0;
   padding-right:0;
@@ -463,6 +465,14 @@ select:focus{
 .card-subtitle{font-weight:700; margin:6px 0}
 .hint{font-size:12px;color:var(--muted); margin:6px 0 10px}
 .row{display:flex; gap:10px; align-items:center; font-size:13px; padding:6px 2px}
+/* Los selectores conservan 220px cuando hay espacio y se achican dentro de la
+   tarjeta en pantallas angostas. El mínimo global de select impedía el flex-shrink. */
+.odontogram-root .panel-body .card .row > select{
+  flex:0 1 220px;
+  min-width:0;
+  max-width:100%;
+  text-overflow:ellipsis;
+}
 .contact-row{margin-bottom:6px}
 .bruxism-row{margin-top:6px; gap:8px}
 .wear-stack{ display:flex; flex-direction:column; gap:6px; }
