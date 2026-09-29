@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Alta de paciente en página completa (revisión de Novum, 27/9/2026: «que el registro
  *  no sea un pop up sea tamaño layout formulario a cargar y poder subir foto del
  *  paciente»). Los campos y cuáles son obligatorios salen de Pacientes → Configuración
@@ -54,7 +55,7 @@ export default function NuevoPacientePage() {
   return (
     <form className="space-y-5" onSubmit={guardar}>
       <div className="flex flex-wrap items-center gap-3">
-        <a href="/app/pacientes" className="inline-flex items-center gap-1 text-sm font-bold text-azure-700 hover:underline"><ChevronLeft className="h-4 w-4" /> Pacientes</a>
+        <Link href="/app/pacientes" className="inline-flex items-center gap-1 text-sm font-bold text-azure-700 hover:underline"><ChevronLeft className="h-4 w-4" /> Pacientes</Link>
         <h1 className="text-2xl font-extrabold text-clinic-text">Nuevo paciente</h1>
         <span className="ml-auto text-xs text-clinic-muted">Código interno: <b className="font-mono text-clinic-text">{siguienteCodigo(db.patients)}</b> (se asigna al guardar)</span>
       </div>

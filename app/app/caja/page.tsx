@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Cajas estilo Dentalink: libro de caja con apertura/cierre por usuario.
  *  Mi caja (sesión abierta + movimientos + arqueo) · Cajas abiertas · Cajas cerradas.
  *  Cuentas por cobrar (morosidad) con recordatorio WhatsApp/Botika. */
@@ -172,10 +173,10 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
             <ul className="mt-3 space-y-2">
               {debtors.map(({ p, balance }) => (
                 <li key={p.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-3">
-                  <a href={`/app/pacientes/${p.id}`} className="min-w-0 flex-1">
+                  <Link href={`/app/pacientes/${p.id}`} className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{fullName(p)}</span>
                     <span className="font-mono text-xs font-extrabold text-state-err">{fmtGs(balance)}</span>
-                  </a>
+                  </Link>
                   {botikaEnabled(db, "cobranza") && (
                     <button disabled={queued.includes(p.id)} onClick={() => { store.addOutboxTask(makeOutboxTask({ db, type: "cobranza", patient: p, by: session!.name, message: botikaMessage(db, "cobranza", { paciente: p.firstName, clinica: db.clinics[0].name, saldo: fmtGs(balance) }) })); setQueued((q) => [...q, p.id]); }} className="inline-flex items-center gap-1.5 rounded-xl bg-navy-800 px-3 py-2 text-xs font-bold text-azure-200 transition-colors hover:bg-navy-700 disabled:opacity-60" title="Botika gestiona el cobro">
                       {queued.includes(p.id) ? <><Check className="h-3.5 w-3.5" /> Encolado</> : <><Bot className="h-3.5 w-3.5" /> Botika</>}
@@ -421,7 +422,7 @@ function ChequesPanel() {
                 return (
                   <tr key={p.id} className="hover:bg-clinic-bg/60">
                     <td className="px-4 py-2.5">
-                      {patient ? <a href={`/app/pacientes/${patient.id}`} className="font-semibold text-clinic-text hover:text-azure-700">{fullName(patient)}</a> : "—"}
+                      {patient ? <Link href={`/app/pacientes/${patient.id}`} className="font-semibold text-clinic-text hover:text-azure-700">{fullName(patient)}</Link> : "—"}
                     </td>
                     <td className="px-2 py-2.5 font-mono text-clinic-muted">{p.check.number}</td>
                     <td className="px-2 py-2.5 text-clinic-muted">{p.check.bank}</td>

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Tabs adicionales de la ficha del paciente:
  *  Presupuestos · Recetas (plantillas + impresión) · Archivos (imágenes/documentos) · Ortodoncia */
 import { useRef, useState } from "react";
@@ -25,7 +26,7 @@ export function BudgetsTab({ patient }: { patient: Patient }) {
           <span className="text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Saldo del paciente</span>
           <div className={`font-mono text-xl font-extrabold ${balance > 0 ? "text-state-err" : "text-state-ok"}`}>{fmtGs(Math.max(0, balance))}</div>
         </div>
-        <a href="/app/presupuestos"><Btn variant="outline"><FileSpreadsheet className="h-4 w-4" /> Gestionar presupuestos</Btn></a>
+        <Link href="/app/presupuestos"><Btn variant="outline"><FileSpreadsheet className="h-4 w-4" /> Gestionar presupuestos</Btn></Link>
       </div>
       {budgets.length === 0 ? (
         <Empty title="Sin presupuestos" desc="Creá uno desde la sección Presupuestos." />

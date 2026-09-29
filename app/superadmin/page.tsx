@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Field, inputCls } from "@/components/ui";
 import { PLANS, type PlanId } from "@/lib/plan";
+import { gs } from "@/lib/landing/precios";
 import { Reveal } from "@/components/motion";
 import { Logotipo } from "@/components/Marca";
 
@@ -60,7 +61,7 @@ export default function SuperAdminPage() {
     if (!created) return;
     const text = [
       `¡Bienvenido a Novudent, ${created.clinicName}! 🦷`,
-      `Tu plan: Plan ${PLANS[created.plan]?.label ?? "Clínica"}${PLANS[created.plan]?.priceUsd ? ` (USD ${PLANS[created.plan].priceUsd}/mes)` : ""}`,
+      `Tu plan: Plan ${PLANS[created.plan]?.label ?? "Clínica"} (${gs(PLANS[created.plan]?.priceGs ?? PLANS.clinica.priceGs)}/mes)`,
       ``,
       `Tu acceso de administrador:`,
       `• Entrá en: ${location.origin}/login`,
@@ -108,7 +109,7 @@ export default function SuperAdminPage() {
 
               <div className="space-y-2.5 rounded-2xl bg-clinic-bg p-4 text-sm">
                 <div className="flex justify-between gap-3"><span className="text-clinic-muted">Clínica</span><b className="text-clinic-text">{created.clinicName}</b></div>
-                <div className="flex justify-between gap-3"><span className="text-clinic-muted">Plan</span><b className="text-azure-700">Plan {PLANS[created.plan]?.label ?? "Clínica"}{PLANS[created.plan]?.priceUsd ? ` · $${PLANS[created.plan].priceUsd}/mes` : ""}</b></div>
+                <div className="flex justify-between gap-3"><span className="text-clinic-muted">Plan</span><b className="text-azure-700">Plan {PLANS[created.plan]?.label ?? "Clínica"} · {gs(PLANS[created.plan]?.priceGs ?? PLANS.clinica.priceGs)}/mes</b></div>
                 <div className="flex justify-between gap-3"><span className="text-clinic-muted">ID interno</span><span className="font-mono text-xs font-bold text-clinic-text">{created.clinicId}</span></div>
                 <div className="flex justify-between gap-3"><span className="text-clinic-muted">Admin</span><b className="text-clinic-text">{created.admin.name}</b></div>
                 <div className="flex justify-between gap-3"><span className="text-clinic-muted">Email de acceso</span><span className="font-mono text-xs font-bold text-clinic-text">{created.admin.email}</span></div>
@@ -171,10 +172,10 @@ export default function SuperAdminPage() {
                     >
                       <span className={`block text-sm font-extrabold ${plan === p.id ? "text-azure-700" : "text-clinic-text"}`}>{p.label}</span>
                       <span className="block font-mono text-[11px] font-bold text-clinic-muted">
-                        {p.priceUsd ? `$${p.priceUsd}/mes` : "A medida"}
+                        {gs(p.priceGs)}/mes
                       </span>
                       <span className="mt-1 block text-[11px] leading-snug text-clinic-muted">
-                        {p.id === "solo" ? "1 profesional" : p.id === "clinica" ? "Hasta 5 prof. · todo incluido" : "Multi-sucursal · ilimitado"}
+                        {p.tagline}
                       </span>
                     </button>
                   ))}

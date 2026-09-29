@@ -10,6 +10,8 @@
  * nunca tocan Novudent.
  *
  * Env (Vercel): LS_CHECKOUT_SOLO, LS_CHECKOUT_CLINICA, LS_CHECKOUT_CADENA.
+ * El checkout legado en USD queda desactivado por defecto mientras se migra
+ * el cobro a los precios en guaraníes publicados en la landing.
  */
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
@@ -78,6 +80,13 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { ok: false, error: "Solo un administrador de la clínica puede contratar o cambiar el plan." },
       { status: 403 },
+    );
+  }
+
+  if (process.env.LS_LEGACY_CHECKOUT_ENABLED !== "true") {
+    return NextResponse.json(
+      { ok: false, error: "El cobro online en guaraníes está en preparación. Solicitá el plan desde la pantalla de Suscripción." },
+      { status: 503 },
     );
   }
 

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Vista "Plan de tratamiento" estilo Dentalink: LISTA de planes (En ejecución / Otros)
  *  → DETALLE de 2 columnas (panel financiero + seguimiento) + prestaciones + comentarios. */
 import { ReactNode, useState } from "react";
@@ -137,7 +138,7 @@ function PlanLista({ patient, budgets, onOpen, onNuevo }: { patient: Patient; bu
             <option value="activos">Tratamientos activos</option>
             <option value="todos">Todos los tratamientos</option>
           </select>
-          {onNuevo === "presupuestos" && <a href="/app/presupuestos"><Btn><Plus className="h-4 w-4" /> Nuevo plan de tratamiento</Btn></a>}
+          {onNuevo === "presupuestos" && <Link href="/app/presupuestos"><Btn><Plus className="h-4 w-4" /> Nuevo plan de tratamiento</Btn></Link>}
           {typeof onNuevo === "function" && <Btn onClick={onNuevo}><Plus className="h-4 w-4" /> Nuevo plan de tratamiento</Btn>}
         </div>
       </div>

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Módulo de Facturación (sec. 3.3): flags de estado, transiciones y validación de códigos. */
 import { useMemo, useState } from "react";
 import { Send, Unlock, Plus, AlertTriangle, History, Banknote, Lock, Flag, ShieldAlert } from "lucide-react";
@@ -103,7 +104,7 @@ export default function BillingPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-sm font-extrabold text-clinic-text">{b.cpt}</span>
                       <span className="text-sm text-clinic-muted">{proc?.description ?? "Procedimiento"}</span>
-                      {p && <a href={`/app/pacientes/${p.id}`} className="text-sm font-bold text-azure-600 hover:underline">{fullName(p)}</a>}
+                      {p && <Link href={`/app/pacientes/${p.id}`} className="text-sm font-bold text-azure-600 hover:underline">{fullName(p)}</Link>}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-clinic-muted">
                       <span data-tip="Diagnóstico (DX)">DX {b.dx}</span>

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** CRM / embudo de pacientes (paridad Dentalink).
  *  Pipeline kanban por etapa + oportunidades derivadas de presupuestos
  *  presentados + pacientes a reactivar (sin cita futura) + log de campañas.
@@ -164,9 +165,9 @@ export default function CrmPage() {
                     cards.map((c) => (
                       <Card key={c.id} className="p-3">
                         <div className="flex items-start justify-between gap-1.5">
-                          <a href={`/app/pacientes/${c.patientId}`} className="min-w-0 flex-1 truncate text-sm font-bold text-clinic-text hover:text-azure-700">
+                          <Link href={`/app/pacientes/${c.patientId}`} className="min-w-0 flex-1 truncate text-sm font-bold text-clinic-text hover:text-azure-700">
                             {patientName(c.patientId)}
-                          </a>
+                          </Link>
                           <button
                             onClick={() => store.deleteCrmCard(c.id)}
                             className="grid h-6 w-6 shrink-0 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err"
@@ -233,11 +234,11 @@ export default function CrmPage() {
                   const inPipeline = db.crmCards.some((c) => c.patientId === b.patientId && c.stage === "presupuesto");
                   return (
                     <li key={b.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-3">
-                      <a href={`/app/pacientes/${b.patientId}`} className="min-w-0 flex-1">
+                      <Link href={`/app/pacientes/${b.patientId}`} className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{patientName(b.patientId)}</span>
                         {verMontos && <span className="mr-1.5 font-mono text-xs font-extrabold text-state-warn">{fmtGs(budgetTotal(b))} ·</span>}
                         <span className="text-[11px] text-clinic-muted">{fmtDate(b.createdAt)}</span>
-                      </a>
+                      </Link>
                       <Btn
                         variant="outline"
                         disabled={inPipeline}
@@ -273,10 +274,10 @@ export default function CrmPage() {
                   const inPipeline = db.crmCards.some((c) => c.patientId === p.id);
                   return (
                     <li key={p.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-3">
-                      <a href={`/app/pacientes/${p.id}`} className="min-w-0 flex-1">
+                      <Link href={`/app/pacientes/${p.id}`} className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{fullName(p)}</span>
                         {p.phone && <span className="font-mono text-[11px] text-clinic-muted">{p.phone}</span>}
-                      </a>
+                      </Link>
                       <Btn
                         variant="outline"
                         disabled={inPipeline}
@@ -312,10 +313,10 @@ export default function CrmPage() {
               {birthdays.map(({ p, inDays, turns }) => (
                 <li key={p.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-3">
                   <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${inDays === 0 ? "bg-state-warn text-white" : "bg-white text-state-warn"}`}><Cake className="h-4 w-4" /></span>
-                  <a href={`/app/pacientes/${p.id}`} className="min-w-0 flex-1">
+                  <Link href={`/app/pacientes/${p.id}`} className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{fullName(p)}</span>
                     <span className="text-[11px] text-clinic-muted">{inDays === 0 ? "¡Hoy!" : inDays === 1 ? "Mañana" : `En ${inDays} días`} · cumple {turns}</span>
-                  </a>
+                  </Link>
                   {p.phone && (
                     <a href={waLink(p.phone, `¡Feliz cumpleaños ${p.firstName}! 🎉 Te saludamos desde ${db.clinics[0].name}. ¡Que tengas un gran día!`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366]/10 px-3 py-2 text-xs font-bold text-[#128C7E] transition-colors hover:bg-[#25D366]/20" title="Saludar por WhatsApp">
                       <MessageCircle className="h-3.5 w-3.5" /> Saludar
@@ -350,10 +351,10 @@ export default function CrmPage() {
             <ul className="mt-3 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
               {segMatches.slice(0, 30).map((p) => (
                 <li key={p.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-2.5">
-                  <a href={`/app/pacientes/${p.id}`} className="min-w-0 flex-1">
+                  <Link href={`/app/pacientes/${p.id}`} className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{fullName(p)}</span>
                     <span className="text-[11px] text-clinic-muted">{[p.city, p.gender].filter(Boolean).join(" · ") || "—"}</span>
-                  </a>
+                  </Link>
                   {p.phone && <a href={waLink(p.phone, `Hola ${p.firstName} 👋 Te escribimos de ${db.clinics[0].name}.`)} target="_blank" rel="noopener noreferrer" className="grid h-8 w-8 place-items-center rounded-lg bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366]/20" title="WhatsApp" aria-label={`Escribir por WhatsApp a ${p.firstName}`}><MessageCircle className="h-4 w-4" /></a>}
                 </li>
               ))}
@@ -440,7 +441,7 @@ export default function CrmPage() {
         <Reveal>
           <Card className="p-5">
             <div className="mb-3 flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-100 text-azure-700"><Mail className="h-4 w-4" /></span><h2 className="font-extrabold text-clinic-text">Plantillas de mensaje</h2></div>
-            <p className="mb-3 text-xs text-clinic-muted">Mensajes reutilizables para campañas y saludos. Los recordatorios automáticos se editan en <a href="/app/integraciones" className="font-bold text-azure-700 hover:underline">Integraciones</a>.</p>
+            <p className="mb-3 text-xs text-clinic-muted">Mensajes reutilizables para campañas y saludos. Los recordatorios automáticos se editan en <Link href="/app/integraciones" className="font-bold text-azure-700 hover:underline">Integraciones</Link>.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {[
                 { t: "Cumpleaños", m: "¡Feliz cumpleaños {paciente}! 🎉 Te saludamos desde {clinica}." },

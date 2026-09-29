@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Perfil del paciente: Resumen · Odontograma · Historial (EMR) · Presupuestos · Recetas ·
  *  Archivos · Ortodoncia · Formularios (pencil-flow) · Facturación. */
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
@@ -252,7 +253,7 @@ export default function PatientProfile() {
                 <ClipboardList className="h-5 w-5 text-state-info" />
               </span>
             ))}
-          <a href="/app/agenda"><Btn variant="outline"><CalendarDays className="h-4 w-4" /> Ver agenda</Btn></a>
+          <Link href="/app/agenda"><Btn variant="outline"><CalendarDays className="h-4 w-4" /> Ver agenda</Btn></Link>
         </div>
       </Card>
       </Reveal>

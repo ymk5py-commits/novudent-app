@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Migración desde Dentalink (u otro software) sin fricción:
  *  pegás el export (CSV o copiado de Excel), Novudent detecta separador y columnas,
  *  mapea automáticamente por nombre de encabezado, deduplica por CI e importa.
@@ -162,8 +163,8 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
             {done.debts > 0 && <> · <b className="text-clinic-text">{done.debts}</b> saldo{done.debts > 1 && "s"} pendiente{done.debts > 1 && "s"} cargado{done.debts > 1 && "s"} en Cuentas por cobrar</>}.
           </p>
           <div className="flex justify-center gap-2">
-            <a href="/app/pacientes"><Btn>Ver pacientes</Btn></a>
-            {done.debts > 0 && <a href="/app/caja"><Btn variant="outline">Ver cuentas por cobrar</Btn></a>}
+            <Link href="/app/pacientes"><Btn>Ver pacientes</Btn></Link>
+            {done.debts > 0 && <Link href="/app/caja"><Btn variant="outline">Ver cuentas por cobrar</Btn></Link>}
           </div>
         </div>
       ) : (

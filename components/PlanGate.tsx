@@ -1,9 +1,11 @@
 "use client";
+import Link from "next/link";
 /** Bloqueo por plan: tarjeta de upsell cuando el módulo no está incluido
  *  en el plan contratado por la clínica. */
 import { Lock, Check, ArrowRight, Sparkles } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { planOf, PLANS, type PlanFeature } from "@/lib/plan";
+import { gs } from "@/lib/landing/precios";
 import { subscriptionPlanId, accessMode, subscriptionNotice } from "@/lib/subscription";
 import { Card } from "@/components/ui";
 
@@ -44,7 +46,7 @@ export function useSubscriptionNotice() {
 
 export function PlanLocked({ feature }: { feature: PlanFeature }) {
   const { db } = useStore();
-  const current = planOf(db.clinics[0]);
+  const current = planOf(subscriptionPlanId(db.subscription, db.clinics[0]));
   // el upgrade natural: solo → clinica; clinica → cadena
   const target = current.id === "solo" ? PLANS.clinica : PLANS.cadena;
   return (
@@ -58,7 +60,7 @@ export function PlanLocked({ feature }: { feature: PlanFeature }) {
         <p className="mt-1.5 text-sm leading-relaxed text-clinic-muted">
           Este módulo no está incluido en tu <b>Plan {current.label}</b>.
           Desbloquealo pasándote al <b>Plan {target.label}</b>
-          {target.priceUsd ? <> (USD {target.priceUsd}/mes)</> : <> (a medida)</>}.
+          {` (${gs(target.priceGs)}/mes)`}.
         </p>
         <ul className="mx-auto mt-5 grid max-w-sm gap-2 text-left sm:grid-cols-2">
           {target.bullets.slice(0, 6).map((b) => (
@@ -67,12 +69,12 @@ export function PlanLocked({ feature }: { feature: PlanFeature }) {
             </li>
           ))}
         </ul>
-        <a
+        <Link
           href="/app/suscripcion"
           className="btn-shine mt-6 inline-flex items-center gap-2 rounded-2xl bg-azure-600 px-5 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700"
         >
           <Sparkles className="h-4 w-4" /> Mejorar mi plan <ArrowRight className="h-4 w-4" />
-        </a>
+        </Link>
         <p className="mt-3 text-[11px] text-clinic-muted">Sin contratos largos · migración de datos incluida</p>
       </div>
     </Card>

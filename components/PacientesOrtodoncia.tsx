@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Reporte "Pacientes de Ortodoncia" (paridad Dentalink): KPIs + tabla con
  *  progreso calendario. Reusa orthoProgress (lib/ortho.ts). */
 import { useMemo } from "react";
@@ -98,7 +99,7 @@ export function PacientesOrtodoncia() {
               {data.rows.map((r) => (
                 <tr key={r.p.id} className="hover:bg-clinic-bg/60">
                   <td className="px-4 py-2.5">
-                    <a href={`/app/pacientes/${r.p.id}`} className="font-semibold text-clinic-text hover:text-azure-700">{r.p.firstName} {r.p.lastName}</a>
+                    <Link href={`/app/pacientes/${r.p.id}`} className="font-semibold text-clinic-text hover:text-azure-700">{r.p.firstName} {r.p.lastName}</Link>
                     {r.overdue && <span className="ml-2 rounded-full bg-state-errbg px-1.5 text-[11px] font-bold text-state-err">ATRASADO</span>}
                   </td>
                   <td className="px-2 py-2.5 text-clinic-muted">{r.p.sex ?? r.p.gender ?? "—"}</td>

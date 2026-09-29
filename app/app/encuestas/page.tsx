@@ -160,6 +160,7 @@ function SurveyForm({ survey, clinicId, onClose, onSave }: {
   const [title, setTitle] = useState(survey?.title ?? "");
   const [kind, setKind] = useState<SurveyKind>(survey?.kind ?? "satisfaccion");
   const [active, setActive] = useState(survey?.active ?? true);
+  const [error, setError] = useState("");
   const [questions, setQuestions] = useState<SurveyQuestion[]>(
     survey?.questions ?? [
       { id: "q1", text: "Atención del personal", type: "rating" },
@@ -167,12 +168,14 @@ function SurveyForm({ survey, clinicId, onClose, onSave }: {
     ],
   );
 
-  const setQ = (i: number, patch: Partial<SurveyQuestion>) => setQuestions((qs) => qs.map((q, j) => (j === i ? { ...q, ...patch } : q)));
-  const addQ = (type: SurveyQuestion["type"]) => setQuestions((qs) => [...qs, { id: `q_${Date.now()}`, text: type === "nps" ? "¿Qué tan probable es que nos recomiendes?" : type === "text" ? "Comentarios" : "Pregunta", type }]);
+  const setQ = (i: number, patch: Partial<SurveyQuestion>) => { setError(""); setQuestions((qs) => qs.map((q, j) => (j === i ? { ...q, ...patch } : q))); };
+  const addQ = (type: SurveyQuestion["type"]) => { setError(""); setQuestions((qs) => [...qs, { id: `q_${crypto.randomUUID()}`, text: type === "nps" ? "¿Qué tan probable es que nos recomiendes?" : "", type }]); };
   const delQ = (i: number) => setQuestions((qs) => qs.filter((_, j) => j !== i));
 
   const guardar = () => {
-    if (!title.trim()) return;
+    if (!title.trim()) { setError("Escribí un título para la encuesta."); return; }
+    if (questions.length === 0) { setError("Agregá al menos una pregunta."); return; }
+    if (questions.some((q) => !q.text.trim())) { setError("Escribí el texto de todas las preguntas."); return; }
     // En NPS aseguramos que exista al menos una pregunta nps
     let qs = questions;
     if (kind === "nps" && !qs.some((q) => q.type === "nps")) qs = [{ id: "nps", text: "¿Qué tan probable es que nos recomiendes?", type: "nps" }, ...qs];
@@ -182,7 +185,7 @@ function SurveyForm({ survey, clinicId, onClose, onSave }: {
       title: title.trim(),
       kind,
       active,
-      questions: qs,
+      questions: qs.map((q) => ({ ...q, text: q.text.trim() })),
       createdAt: survey?.createdAt ?? new Date().toISOString(),
     });
   };
@@ -193,7 +196,7 @@ function SurveyForm({ survey, clinicId, onClose, onSave }: {
     <Modal title={survey ? "Editar encuesta" : "Nueva encuesta"} onClose={onClose} wide>
       <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-          <Field label="Título"><input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} placeholder="Ej. Encuesta de satisfacción" /></Field>
+          <Field label="Título"><input value={title} onChange={(e) => { setTitle(e.target.value); setError(""); }} className={inputCls} placeholder="Ej. Encuesta de satisfacción" /></Field>
           <Field label="Tipo">
             <select value={kind} onChange={(e) => setKind(e.target.value as SurveyKind)} className={inputCls}>
               <option value="satisfaccion">Satisfacción</option>
@@ -208,28 +211,39 @@ function SurveyForm({ survey, clinicId, onClose, onSave }: {
         </div>
 
         <div>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm font-bold text-clinic-text">Preguntas</span>
-            <div className="flex gap-1.5">
-              <button onClick={() => addQ("rating")} className="rounded-lg border border-clinic-border px-2 py-1 text-[11px] font-bold text-clinic-muted hover:text-azure-700">+ Puntaje</button>
-              <button onClick={() => addQ("nps")} className="rounded-lg border border-clinic-border px-2 py-1 text-[11px] font-bold text-clinic-muted hover:text-azure-700">+ NPS</button>
-              <button onClick={() => addQ("text")} className="rounded-lg border border-clinic-border px-2 py-1 text-[11px] font-bold text-clinic-muted hover:text-azure-700">+ Texto</button>
+            <div className="flex flex-wrap gap-1.5">
+              <button onClick={() => addQ("rating")} className="min-h-9 rounded-lg border border-clinic-border px-2 py-1 text-[11px] font-bold text-clinic-muted hover:text-azure-700">+ Puntaje</button>
+              <button onClick={() => addQ("nps")} className="min-h-9 rounded-lg border border-clinic-border px-2 py-1 text-[11px] font-bold text-clinic-muted hover:text-azure-700">+ NPS</button>
+              <button onClick={() => addQ("text")} className="min-h-9 rounded-lg border border-clinic-border px-2 py-1 text-[11px] font-bold text-clinic-muted hover:text-azure-700">+ Texto</button>
             </div>
           </div>
+          <p className="mb-3 text-xs text-clinic-muted">Escribí lo que verá el paciente y elegí cómo podrá responder.</p>
           <div className="space-y-2">
             {questions.map((q, i) => (
-              <div key={q.id} className="flex items-center gap-2">
-                <input value={q.text} onChange={(e) => setQ(i, { text: e.target.value })} className={`${inputCls} flex-1`} />
-                <select value={q.type} onChange={(e) => setQ(i, { type: e.target.value as SurveyQuestion["type"] })} className={`${inputCls} w-36`}>
-                  {(["rating", "nps", "text"] as const).map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
-                </select>
-                <button onClick={() => delQ(i)} className="rounded-lg p-2 text-clinic-muted hover:bg-clinic-bg hover:text-state-err" title="Quitar"><Trash2 className="h-3.5 w-3.5" /></button>
+              <div key={q.id} className="rounded-xl border border-clinic-border bg-clinic-bg/30 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-clinic-text">Pregunta {i + 1}</span>
+                  <button onClick={() => delQ(i)} className="grid h-9 w-9 place-items-center rounded-lg text-clinic-muted hover:bg-white hover:text-state-err" aria-label={`Quitar pregunta ${i + 1}`} title="Quitar pregunta"><Trash2 className="h-4 w-4" /></button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px]">
+                  <Field label="Texto de la pregunta">
+                    <input value={q.text} onChange={(e) => setQ(i, { text: e.target.value })} className={inputCls} placeholder="Ej. ¿Cómo calificarías la atención?" />
+                  </Field>
+                  <Field label="Tipo de respuesta">
+                    <select value={q.type} onChange={(e) => setQ(i, { type: e.target.value as SurveyQuestion["type"] })} className={inputCls}>
+                      {(["rating", "nps", "text"] as const).map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
+                    </select>
+                  </Field>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
+        {error && <p role="alert" className="text-sm font-semibold text-state-err">{error}</p>}
+        <div className="flex flex-wrap justify-end gap-2">
           <button onClick={onClose} className="rounded-xl border border-clinic-border px-4 py-2 text-sm font-bold text-clinic-muted hover:text-clinic-text">Cancelar</button>
           <Btn onClick={guardar}>Guardar encuesta</Btn>
         </div>

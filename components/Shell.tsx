@@ -5,6 +5,7 @@
  *  siempre visible (paridad Dentalink). */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, Bell, CreditCard,
   FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown, Banknote, Handshake, Image as ImageIcon,
@@ -206,13 +207,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <button onClick={() => setNavOpen(true)} aria-label="Abrir menú" className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] border border-white/20 bg-white/10 text-white lg:hidden">
             <Menu className="h-5 w-5" />
           </button>
-          <a href="/app" aria-label="Novudent, inicio" className="flex shrink-0 items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
+          <Link href="/app" aria-label="Novudent, inicio" className="flex shrink-0 items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
             {/* En el celular va solo el diente: el logotipo entero le comía el lugar al
                 buscador (quedaba la lupa encima de la campana). */}
             <Isologo className="h-8 w-auto sm:hidden" />
             <Logotipo tono="blanco" className="hidden h-8 w-auto sm:block" />
             <span data-tip={`Plan ${plan.label}`} className="hidden rounded-md border border-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-azure-200 2xl:inline">{plan.label}</span>
-          </a>
+          </Link>
           {/* Patient Finder */}
           <div className="relative ml-1 min-w-0 w-full max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70" />
@@ -225,14 +226,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             {results.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-clinic-border bg-white shadow-pop">
                 {results.map((p) => (
-                  <a key={p.id} href={`/app/pacientes/${p.id}`} onClick={() => setQ("")} className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-clinic-bg">
+                  <Link key={p.id} href={`/app/pacientes/${p.id}`} onClick={() => setQ("")} className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-clinic-bg">
                     <span className="font-semibold text-clinic-text">{fullName(p)}</span>
                     <span className="flex items-center gap-2 text-clinic-muted">
                       {p.forms.some((f) => f.status === "pendiente") && <FileText className="h-3.5 w-3.5 text-state-warn" />}
                       {p.historyUpdatePending && <ClipboardList className="h-3.5 w-3.5 text-state-info" />}
                       {alcance.puede("patients.personal") && <>CI {p.document}</>}
                     </span>
-                  </a>
+                  </Link>
                 ))}
               </div>
             )}
@@ -256,7 +257,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 "Notificaciones" sin saber cuántos hay. Va el conteo en la etiqueta, y
                 dice "Ver pendientes" porque lleva a la lista de pacientes, no a un
                 panel de notificaciones. */}
-            <a
+            <Link
               href={pendings > 0 ? "/app/pacientes" : "#"}
               data-tip={pendings > 0 ? `${pendings} pendiente(s): formularios y retenciones` : "Sin pendientes"}
               data-tip-pos="down-left"
@@ -265,7 +266,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             >
               <Bell className="h-[18px] w-[18px]" />
               {pendings > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 font-mono text-[11px] font-bold text-white">{pendings}</span>}
-            </a>
+            </Link>
             {/* Ayuda de Novum («call center»): al lado del nombre. Desde md, que es donde
                 entra en la barra (el texto, desde lg); en el celular está en el menú,
                 junto al nombre. */}
@@ -331,13 +332,13 @@ function Contador({ n }: { n: number }) {
 /* — Link de nav (nivel superior, desktop) — */
 function NavLink({ href, label, icon: Icon, active, badge = 0 }: { href: string; label: string; icon: any; active: boolean; badge?: number }) {
   return (
-    <a
+    <Link
       href={href}
       className={`relative flex items-center gap-1.5 rounded-[9px] px-3.5 py-2.5 font-logo text-[14px] font-semibold transition-colors ${active ? "bg-azure-50 text-azure-700" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
     >
       <Icon className="h-4 w-4" /> {label}
       <Contador n={badge} />
-    </a>
+    </Link>
   );
 }
 
@@ -365,9 +366,9 @@ function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; ic
         const renderItem = (it: NavLeaf) => {
           const a = pathname.startsWith(it.href.split(/[?#]/)[0]);
           return (
-            <a key={it.href} href={it.href} onClick={() => setOpen(false)} className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${a ? "bg-azure-50 text-azure-700" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
+            <Link key={it.href} href={it.href} onClick={() => setOpen(false)} className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${a ? "bg-azure-50 text-azure-700" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
               <it.icon className="h-4 w-4 shrink-0" /> {it.label}
-            </a>
+            </Link>
           );
         };
         const grouped: [string, NavLeaf[]][] = [];
@@ -394,12 +395,12 @@ function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; ic
 /* — Link del drawer móvil — */
 function DrawerLink({ href, label, icon: Icon, active, badge = 0 }: { href: string; label: string; icon: any; active: boolean; badge?: number }) {
   return (
-    <a
+    <Link
       href={href}
       className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${active ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
     >
       <Icon className="h-[18px] w-[18px]" strokeWidth={2} /> {label}
       <Contador n={badge} />
-    </a>
+    </Link>
   );
 }

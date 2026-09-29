@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Panel de seguimiento de Ortodoncia dentro del Plan de tratamiento (estilo Dentalink):
  *  Resumen (progreso + evoluciones) · Plantilla Fotográfica · Diagnóstico · Plan · Rx y CF.
  *  Lee/escribe `patient.ortho` (OrthoRecord) vía setOrtho/addOrthoControl. */
@@ -333,7 +334,7 @@ function OrthoPlan({ budget }: { budget: Budget }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="font-extrabold text-clinic-text">Plan de tratamiento</h3>
-        {gestiona && <a href="/app/presupuestos" className="text-xs font-bold text-azure-600 hover:underline">Gestionar →</a>}
+        {gestiona && <Link href="/app/presupuestos" className="text-xs font-bold text-azure-600 hover:underline">Gestionar →</Link>}
       </div>
       <PrestacionesList budget={budget} />
     </div>

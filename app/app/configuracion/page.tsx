@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useEffect, useState } from "react";
@@ -242,7 +243,7 @@ export default function ConfigPage() {
             );
           })}
         </div>
-        <p className="mt-2 text-[11px] text-clinic-muted">El % de comisión de cada dentista alimenta el cálculo de pago en <a href="/app/reportes" className="font-bold text-azure-700">Reportes</a>.</p>
+        <p className="mt-2 text-[11px] text-clinic-muted">El % de comisión de cada dentista alimenta el cálculo de pago en <Link href="/app/reportes" className="font-bold text-azure-700">Reportes</Link>.</p>
       </Card>
       </Reveal>
 

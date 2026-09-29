@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** «Análisis de estudios específicos» (antes «Pacientes de Ortodoncia», revisión de Novum
  *  del 27/9/2026): pacientes por tipo de tratamiento — vista general, ortodoncia,
  *  rehabilitación oral u odontología estética. Ortodoncia conserva su reporte propio
@@ -97,7 +98,7 @@ function TablaEstudio({ vista }: { vista: Exclude<Vista, "ortodoncia"> }) {
             <tbody className="divide-y divide-clinic-border">
               {filas.map((f) => (
                 <tr key={f.p.id} className="hover:bg-clinic-bg/60">
-                  <td className="px-4 py-2.5"><a href={`/app/pacientes/${f.p.id}`} className="font-semibold text-clinic-text hover:text-azure-700">{fullName(f.p)}</a></td>
+                  <td className="px-4 py-2.5"><Link href={`/app/pacientes/${f.p.id}`} className="font-semibold text-clinic-text hover:text-azure-700">{fullName(f.p)}</Link></td>
                   {verPersonales && <td className="px-2 py-2.5 font-mono text-xs">{f.p.document || "—"}</td>}
                   <td className="px-2 py-2.5 text-clinic-muted">{f.profesional ?? "—"}</td>
                   <td className="px-2 py-2.5 text-clinic-muted">{f.ultima ? fmtDate(f.ultima.start) : "—"}</td>

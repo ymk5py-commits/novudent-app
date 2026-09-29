@@ -1,18 +1,16 @@
 "use client";
 /** Suscripción de la plataforma (solo Administrador).
- *
- *  Cobro con Lemon Squeezy (Merchant of Record): el checkout es hospedado, así
- *  que los datos de tarjeta nunca pasan por Novudent. El estado real sale de
- *  `subscriptions/{cid}` — colección que el cliente solo LEE; la escribe el
- *  webhook (app/api/webhooks/lemonsqueezy). Por eso acá no hay ningún botón que
- *  "active" un plan: la única fuente de verdad es el pago confirmado. */
+ *  La oferta comercial sale de la misma fuente que la landing. Hasta que el
+ *  cobro en guaraníes esté configurado, un cambio de plan se solicita al equipo;
+ *  solo una suscripción confirmada por el servidor modifica el acceso. */
 import { useState } from "react";
-import { ShieldAlert, CreditCard, Check, ExternalLink, Loader2, Sparkles, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { ShieldAlert, Check, ExternalLink, ArrowRight, AlertTriangle } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { currentIdToken } from "@/lib/firebase";
 import { can } from "@/lib/rbac";
 import { Card, Badge, Btn } from "@/components/ui";
-import { PLANS, planOf, type PlanId } from "@/lib/plan";
+import { PLANS, planOf, publicPlanId, type PlanId } from "@/lib/plan";
+import { PLANES, CONDICIONES, gs } from "@/lib/landing/precios";
 import { subscriptionPlanId, isSubscriptionActive, subscriptionNotice } from "@/lib/subscription";
 import type { SubscriptionStatus } from "@/lib/types";
 import { Reveal } from "@/components/motion";
@@ -30,8 +28,7 @@ const fmtFecha = (ms?: number) =>
 
 export default function SubscriptionPage() {
   const { session, db } = useStore();
-  const [busy, setBusy] = useState<PlanId | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [anual, setAnual] = useState(false);
 
   const sub = db.subscription ?? null;
   const planActual = planOf(subscriptionPlanId(sub, db.clinics[0]));
@@ -48,22 +45,6 @@ export default function SubscriptionPage() {
       </Card>
     );
   }
-
-  const contratar = async (plan: PlanId) => {
-    setBusy(plan); setError(null);
-    try {
-      const token = await currentIdToken();
-      const r = await fetch("/api/suscripcion/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ plan }),
-      });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok || !data.ok) throw new Error(data.error || "No se pudo abrir el checkout.");
-      // Checkout hospedado de LS — pestaña nueva, la suscripción se activa por webhook.
-      window.open(data.url, "_blank", "noopener,noreferrer");
-    } catch (e: any) { setError(e.message); } finally { setBusy(null); }
-  };
 
   return (
     <div className="space-y-6">
@@ -94,8 +75,8 @@ export default function SubscriptionPage() {
         <Card className="p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-extrabold text-clinic-text">Plan {planActual.label}</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="whitespace-nowrap text-lg font-extrabold text-clinic-text">Plan {planActual.label}</h2>
                 {sub ? <Badge tone={ESTADO[sub.status].tone}>{ESTADO[sub.status].label}</Badge>
                      : <Badge tone="info">Cuenta anterior al cobro</Badge>}
               </div>
@@ -111,22 +92,29 @@ export default function SubscriptionPage() {
                 </p>
               )}
             </div>
-            <div className="text-right">
-              <div className="font-mono text-3xl font-extrabold text-clinic-text">
-                {planActual.priceUsd != null ? `USD ${planActual.priceUsd}` : "A medida"}
-              </div>
-              {planActual.priceUsd != null && <div className="text-xs font-semibold text-clinic-muted">por mes</div>}
+            <div className="min-w-0 text-left sm:text-right">
+              <div className="text-xs font-semibold text-clinic-muted">Precio publicado</div>
+              <div className="font-mono text-2xl font-extrabold text-clinic-text">{gs(planActual.priceGs)}<span className="ml-1 text-xs font-semibold text-clinic-muted">/ mes</span></div>
             </div>
           </div>
         </Card>
       </Reveal>
 
-      {error && <p className="rounded-xl bg-state-errbg px-4 py-3 text-sm font-semibold text-state-err">{error}</p>}
-
       {/* Planes */}
       <Reveal>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-extrabold text-clinic-text">Planes Novudent</h2>
+            <p className="text-sm text-clinic-muted">Los mismos planes y precios que mostramos en la web.</p>
+          </div>
+          <div role="group" aria-label="Período de pago" className="inline-flex rounded-xl border border-clinic-border bg-white p-1 text-sm font-semibold">
+            <button type="button" onClick={() => setAnual(false)} aria-pressed={!anual} className={`min-h-9 rounded-lg px-3 ${!anual ? "bg-azure-600 text-white" : "text-clinic-muted"}`}>Mensual</button>
+            <button type="button" onClick={() => setAnual(true)} aria-pressed={anual} className={`min-h-9 rounded-lg px-3 ${anual ? "bg-azure-600 text-white" : "text-clinic-muted"}`}>Anual</button>
+          </div>
+        </div>
         <div className="grid gap-4 lg:grid-cols-3">
-          {(Object.keys(PLANS) as PlanId[]).map((id) => {
+          {PLANES.map((oferta) => {
+            const id: PlanId = oferta.id === "multi" ? "cadena" : oferta.id;
             const p = PLANS[id];
             const esActual = p.id === planActual.id && activa;
             return (
@@ -135,12 +123,13 @@ export default function SubscriptionPage() {
                   <h3 className="font-extrabold text-clinic-text">Plan {p.label}</h3>
                   {esActual && <Badge tone="ok">Tu plan</Badge>}
                 </div>
-                <div className="mt-3 font-mono text-2xl font-extrabold text-clinic-text">
-                  {p.priceUsd != null ? `USD ${p.priceUsd}` : "A medida"}
-                  {p.priceUsd != null && <span className="ml-1 text-xs font-semibold text-clinic-muted">/mes</span>}
+                <p className="mt-1 text-xs text-clinic-muted">{oferta.para} · {oferta.profesionales}</p>
+                <div className="mt-4 font-mono text-2xl font-extrabold text-clinic-text">
+                  {gs(anual ? p.annualGs : p.priceGs)}
+                  <span className="ml-1 text-xs font-semibold text-clinic-muted">/ {anual ? "año" : "mes"}</span>
                 </div>
-                <p className="mt-2 min-h-[40px] text-xs leading-relaxed text-clinic-muted">{p.tagline}</p>
-                <ul className="mt-4 flex-1 space-y-2">
+                <p className="mt-1 text-xs text-clinic-muted">{anual ? `Equivale a ${gs(Math.round(p.annualGs / 12))} por mes` : `Pagando el año: ${gs(p.annualGs)}`}</p>
+                <ul className="mt-5 flex-1 space-y-2 border-t border-clinic-border pt-4">
                   {p.bullets.map((b) => (
                     <li key={b} className="flex items-start gap-2 text-xs font-semibold text-clinic-text">
                       <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-azure-600" strokeWidth={2.5} /> {b}
@@ -150,13 +139,7 @@ export default function SubscriptionPage() {
                 <div className="mt-5">
                   {esActual ? (
                     <Btn variant="outline" disabled className="w-full justify-center">Plan actual</Btn>
-                  ) : (
-                    <Btn onClick={() => contratar(id)} disabled={busy !== null} className="w-full justify-center">
-                      {busy === id
-                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Abriendo…</>
-                        : <><CreditCard className="h-4 w-4" /> {p.priceUsd != null ? "Contratar" : "Hablemos"}</>}
-                    </Btn>
-                  )}
+                  ) : <Link href={`/acceso?plan=${publicPlanId(id)}`} className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-[10px] bg-azure-600 px-4 py-2 text-sm font-semibold text-white hover:bg-azure-700">Solicitar Plan {p.label} <ArrowRight className="h-4 w-4" /></Link>}
                 </div>
               </Card>
             );
@@ -164,11 +147,12 @@ export default function SubscriptionPage() {
         </div>
       </Reveal>
 
-      <p className="flex items-start gap-1.5 text-[11px] text-clinic-muted">
-        <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-azure-500" />
-        El pago se procesa en Lemon Squeezy, que actúa como vendedor registrado y emite tu factura.
-        Los datos de tu tarjeta nunca pasan por Novudent. El plan se activa solo cuando el pago se confirma.
-      </p>
+      <div className="grid gap-3 rounded-2xl border border-clinic-border bg-white p-5 text-xs text-clinic-muted sm:grid-cols-3">
+        <p><b className="block text-clinic-text">Puesta en marcha</b>{gs(CONDICIONES.setupGs)}, pago único. Incluye configuración, migración y capacitación.</p>
+        <p><b className="block text-clinic-text">Profesional adicional</b>{gs(CONDICIONES.profesionalExtraGs)} por mes, previa habilitación del equipo.</p>
+        <p><b className="block text-clinic-text">Pago anual</b>Descuento frente a 12 mensualidades: {CONDICIONES.mesesGratisAnual} meses sin cargo en Solo y Clínica; más descuento en Multi.</p>
+      </div>
+      <p className="text-xs text-clinic-muted">Los importes publicados no modifican automáticamente una suscripción existente. Para conocer o cambiar tu cobro actual, usá “Gestionar pago y facturas” si aparece arriba, o solicitá el plan.</p>
     </div>
   );
 }

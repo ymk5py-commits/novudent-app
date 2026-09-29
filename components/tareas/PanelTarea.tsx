@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Panel derecho de la bandeja (paridad Dentalink): datos del paciente, el
  *  botón "Finalizar ▾" y las pestañas Comentarios · Presupuestos · Citas.
  *
@@ -69,7 +70,7 @@ export function PanelTarea({
           <User aria-hidden className="mt-1 h-4 w-4 shrink-0 text-clinic-muted" />
           <h2 className="min-w-0 flex-1 text-lg font-extrabold leading-tight text-clinic-text">
             {p && alcance.vePaciente(p.id) ? (
-              <a href={`/app/pacientes/${p.id}`} className="hover:text-azure-700 hover:underline">{nombre}</a>
+              <Link href={`/app/pacientes/${p.id}`} className="hover:text-azure-700 hover:underline">{nombre}</Link>
             ) : nombre}
           </h2>
         </div>
@@ -109,7 +110,7 @@ export function PanelTarea({
           {detalle && <Linea icono={MessageSquare} etiqueta="Detalle"><span className="font-semibold text-clinic-text">{detalle}</span></Linea>}
           {referencia && (
             <Linea icono={ClipboardList} etiqueta="Presupuesto de referencia">
-              <a href={`/app/pacientes/${referencia.patientId}#planes`} className="text-azure-700 hover:underline">Plan #{referencia.id}{referencia.name ? ` · ${referencia.name}` : ""}</a>
+              <Link href={`/app/pacientes/${referencia.patientId}#planes`} className="text-azure-700 hover:underline">Plan #{referencia.id}{referencia.name ? ` · ${referencia.name}` : ""}</Link>
             </Linea>
           )}
           {fila.estado === "pendiente" && fila.fecha > hoy && (
@@ -366,9 +367,9 @@ function Presupuestos({ paciente }: { paciente: Patient }) {
                 {ESTADO_PLAN[b.status] ?? BUDGET_STATUS_INFO[b.status].label}
               </span>
               <span className="text-clinic-muted">Presupuesto generado el {new Date(b.createdAt).toLocaleDateString("es-PY", { day: "numeric", month: "long", year: "numeric" })}</span>
-              <a href={`/app/pacientes/${paciente.id}#planes`} className="ml-auto inline-flex items-center gap-1 font-bold text-azure-700 hover:underline">
+              <Link href={`/app/pacientes/${paciente.id}#planes`} className="ml-auto inline-flex items-center gap-1 font-bold text-azure-700 hover:underline">
                 Ir al tratamiento <ExternalLink aria-hidden className="h-3 w-3" />
-              </a>
+              </Link>
             </div>
             {ultima?.status === "ausente" && (
               <p className="mt-2 flex items-center gap-1.5 rounded-lg bg-state-err px-2 py-1 text-[11px] font-bold text-white">
@@ -409,9 +410,9 @@ function Citas({ paciente }: { paciente: Patient }) {
           <div className="mt-2 flex items-center gap-2">
             <StatusBadge status={a.status} />
             {a.budgetId && (
-              <a href={`/app/pacientes/${paciente.id}#planes`} className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-azure-700 hover:underline">
+              <Link href={`/app/pacientes/${paciente.id}#planes`} className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-azure-700 hover:underline">
                 Ir al tratamiento <ExternalLink aria-hidden className="h-3 w-3" />
-              </a>
+              </Link>
             )}
           </div>
         </li>

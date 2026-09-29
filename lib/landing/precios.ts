@@ -1,10 +1,9 @@
 /**
  * Precios PÚBLICOS de la landing, en guaraníes (definidos por el dueño el 2026-09-25).
  *
- * ⚠️ Todavía NO coinciden con lo que cobra la app (`lib/plan.ts`: precios en USD, plan
- * "Cadena" en vez de "Multi", Clínica con 5 profesionales en vez de 4). Alinear la app es una
- * decisión aparte porque cambia lo que pagan las clínicas; hasta entonces, esto es solo la
- * vidriera. Qué incluye cada plan sí sale del gating real de `lib/plan.ts`.
+ * La app toma de acá nombres, precios, beneficios y límites de profesionales.
+ * El identificador interno del tercer plan sigue siendo `cadena` para conservar
+ * las suscripciones existentes; su nombre comercial es Multi.
  */
 export type PlanPublicoId = "solo" | "clinica" | "multi";
 
@@ -13,6 +12,7 @@ export interface PlanPublico {
   nombre: string;
   para: string;              // a quién le sirve, en una línea
   profesionales: string;     // el límite, como lo lee un dueño
+  maxProfesionales: number;
   mensualGs: number;
   anualGs: number;           // con 2 meses gratis (Multi: descuento propio, decidido a propósito)
   recomendado?: boolean;
@@ -25,6 +25,7 @@ export const PLANES: PlanPublico[] = [
     nombre: "Solo",
     para: "Consultorio individual",
     profesionales: "1 profesional",
+    maxProfesionales: 1,
     mensualGs: 330_000,
     anualGs: 3_300_000,
     incluye: ["Agenda y lista de espera", "Reservas online para pacientes", "Ficha clínica y odontograma por superficies", "Presupuestos"],
@@ -34,6 +35,7 @@ export const PLANES: PlanPublico[] = [
     nombre: "Clínica",
     para: "El plan de la mayoría",
     profesionales: "Hasta 4 profesionales",
+    maxProfesionales: 4,
     mensualGs: 620_000,
     anualGs: 6_200_000,
     recomendado: true,
@@ -51,6 +53,7 @@ export const PLANES: PlanPublico[] = [
     nombre: "Multi",
     para: "Varias sillas o sucursales",
     profesionales: "Hasta 10 profesionales",
+    maxProfesionales: 10,
     mensualGs: 980_000,
     anualGs: 9_000_000,
     incluye: ["Todo lo del plan Clínica", "Varios boxes y sucursales", "CRM de pacientes", "Reportes por profesional y sucursal"],

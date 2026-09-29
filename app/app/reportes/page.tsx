@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Informes de gestión: KPIs de 30 días, producción y comisiones por profesional,
  *  tasa de aceptación de presupuestos, morosidad y reportes descargables (Excel/CSV). */
 import { useEffect, useMemo, useState } from "react";
@@ -344,14 +345,14 @@ export default function ReportsPage() {
             <ul className="mt-3 divide-y divide-clinic-border">
               {data.debtors.map(({ p, balance }) => (
                 <li key={p.id} className="flex items-center justify-between py-2.5">
-                  <a href={`/app/pacientes/${p.id}`} className="text-sm font-semibold text-clinic-text hover:text-azure-700">{fullName(p)}</a>
+                  <Link href={`/app/pacientes/${p.id}`} className="text-sm font-semibold text-clinic-text hover:text-azure-700">{fullName(p)}</Link>
                   <span className="font-mono text-sm font-extrabold text-state-err">{fmtGs(balance)}</span>
                 </li>
               ))}
             </ul>
           )}
           <p className="mt-3 rounded-xl bg-clinic-bg p-3 text-[11px] text-clinic-muted">
-            Las tareas de cobro con recordatorio por WhatsApp están en <a className="font-bold text-azure-700" href="/app/caja">Caja → Cuentas por cobrar</a>.
+            Las tareas de cobro con recordatorio por WhatsApp están en <Link className="font-bold text-azure-700" href="/app/caja">Caja → Cuentas por cobrar</Link>.
           </p>
         </Card>
       </Reveal>
@@ -367,7 +368,7 @@ export default function ReportsPage() {
               <span className="inline-flex items-center gap-1"><Bot className="h-3 w-3" /> vía Botika</span>
             </Badge>
           </div>
-          <a href="/app/integraciones" className="text-xs font-bold text-azure-700 hover:underline">Configurar →</a>
+          <Link href="/app/integraciones" className="text-xs font-bold text-azure-700 hover:underline">Configurar →</Link>
         </div>
         {data.npsScore === null ? (
           <p className="py-6 text-center text-sm text-clinic-muted">Aún no hay encuestas respondidas. Botika las envía automáticamente al completar tratamientos.</p>
@@ -398,7 +399,7 @@ export default function ReportsPage() {
                   .slice(0, 3)
                   .map((s) => (
                     <p key={s.p.id} className="rounded-xl bg-clinic-bg px-3 py-2 text-xs text-clinic-muted">
-                      <b className="font-mono text-clinic-text">{s.score}/10</b> — “{s.comment}” · <a href={`/app/pacientes/${s.p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(s.p)}</a>
+                      <b className="font-mono text-clinic-text">{s.score}/10</b> — “{s.comment}” · <Link href={`/app/pacientes/${s.p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(s.p)}</Link>
                     </p>
                   ))}
               </div>

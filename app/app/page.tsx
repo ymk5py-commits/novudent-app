@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Dashboard estilo "Spike admin" adaptado a Novudent: banner de bienvenida,
  *  stats pastel, ingresos de la semana (barras), donut de estados y agenda. */
 import { useEffect, useRef } from "react";
@@ -46,13 +47,13 @@ function SpikeStat({
     red: { icon: "bg-state-errbg text-state-err", edge: "border-t-state-err" },
   }[tone];
   return (
-    <a href={href} className={`group block h-full rounded-[18px] border border-t-[3px] border-clinic-border bg-white p-5 shadow-card transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-azure-200 hover:shadow-pop ${tones.edge}`}>
+    <Link href={href} className={`group block h-full rounded-[18px] border border-t-[3px] border-clinic-border bg-white p-5 shadow-card transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-azure-200 hover:shadow-pop ${tones.edge}`}>
       <span className={`grid h-10 w-10 place-items-center rounded-[10px] ${tones.icon}`}>
         <Icon className="h-5 w-5" strokeWidth={2} />
       </span>
       <p className="mt-4 font-logo text-[32px] font-semibold leading-none tabular-nums text-clinic-text"><Count value={value} /></p>
       <p className="mt-0.5 text-sm font-medium text-clinic-muted">{label}</p>
-    </a>
+    </Link>
   );
 }
 
@@ -217,9 +218,9 @@ export default function Dashboard() {
               : <>Sin citas para hoy{canReports && <> · producción semanal <b className="text-white">{fmtGs(weekRevenue)}</b></>}.</>}
           </p>
           <div className="mt-5 flex flex-wrap gap-2.5">
-            <a href="/app/agenda" className="inline-flex min-h-10 items-center gap-2 rounded-[10px] bg-white px-4 py-2.5 text-sm font-bold text-navy-800 transition-colors hover:bg-azure-50">
+            <Link href="/app/agenda" className="inline-flex min-h-10 items-center gap-2 rounded-[10px] bg-white px-4 py-2.5 text-sm font-bold text-navy-800 transition-colors hover:bg-azure-50">
               Ir a la agenda <ArrowRight className="h-4 w-4" />
-            </a>
+            </Link>
             {session.clinicId === "cl_demo" && (
               <button onClick={resetDemo} className="inline-flex min-h-10 items-center gap-2 rounded-[10px] border border-white/25 px-4 py-2.5 text-sm font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white">
                 <RotateCcw className="h-3.5 w-3.5" /> Reiniciar demo
@@ -252,14 +253,14 @@ export default function Dashboard() {
           </div>
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
             {criticalTasks.map((t) => (
-              <a key={t.label} href={t.href} className="group flex items-center gap-3 rounded-xl border border-clinic-border p-3 transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:border-azure-200 hover:shadow-card">
+              <Link key={t.label} href={t.href} className="group flex items-center gap-3 rounded-xl border border-clinic-border p-3 transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:border-azure-200 hover:shadow-card">
                 <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${t.tone}`}><t.icon className="h-4 w-4" /></span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-bold text-clinic-text">{t.label}</span>
                   <span className="block truncate text-[11px] text-clinic-muted">{t.hint}</span>
                 </span>
                 <ArrowRight className="h-4 w-4 shrink-0 text-clinic-muted transition-transform group-hover:translate-x-0.5 group-hover:text-azure-600" />
-              </a>
+              </Link>
             ))}
           </div>
         </Card>
@@ -317,9 +318,9 @@ export default function Dashboard() {
         <Card className="p-6 lg:col-span-3">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-extrabold text-clinic-text">Agenda de hoy</h2>
-            <a href="/app/agenda" className="inline-flex items-center gap-1 text-xs font-bold text-azure-600 hover:text-azure-700">
+            <Link href="/app/agenda" className="inline-flex items-center gap-1 text-xs font-bold text-azure-600 hover:text-azure-700">
               Ver completa <ArrowRight className="h-3.5 w-3.5" />
-            </a>
+            </Link>
           </div>
           {todays.length === 0 ? (
             <p className="py-8 text-center text-sm text-clinic-muted">Sin citas para hoy.</p>
@@ -328,7 +329,7 @@ export default function Dashboard() {
               {todays.map((a) => {
                 const p = db.patients.find((x) => x.id === a.patientId);
                 return (
-                  <a key={a.id} href={`/app/pacientes/${a.patientId}`} className="-mx-2 flex items-center gap-4 rounded-lg px-2 py-3 hover:bg-clinic-bg">
+                  <Link key={a.id} href={`/app/pacientes/${a.patientId}`} className="-mx-2 flex items-center gap-4 rounded-lg px-2 py-3 hover:bg-clinic-bg">
                     <span className="w-12 font-mono text-sm font-bold text-clinic-text">{fmtTime(a.start)}</span>
                     <span className="flex-1">
                       <span className="block text-sm font-bold text-clinic-text">{p ? fullName(p) : "—"}</span>
@@ -336,7 +337,7 @@ export default function Dashboard() {
                     </span>
                     {alcance.puede("money.view") && <span className="hidden text-xs font-semibold text-clinic-muted sm:block">{fmtGs(a.amount - a.discount)}</span>}
                     <StatusBadge status={a.status} />
-                  </a>
+                  </Link>
                 );
               })}
             </div>
@@ -354,9 +355,9 @@ export default function Dashboard() {
                 <button onClick={() => can(session.role, "practice.config") && setOnboarding(c.key, !c.done)} aria-label={c.done ? "Marcar pendiente" : "Marcar hecho"}>
                   {c.done ? <CheckCircle2 className="h-5 w-5 text-state-ok" /> : <Circle className="h-5 w-5 text-clinic-border" />}
                 </button>
-                <a href={c.href} className={`flex-1 text-sm font-semibold ${c.done ? "text-clinic-muted line-through" : "text-clinic-text hover:text-azure-700"}`}>
+                <Link href={c.href} className={`flex-1 text-sm font-semibold ${c.done ? "text-clinic-muted line-through" : "text-clinic-text hover:text-azure-700"}`}>
                   {c.label}
-                </a>
+                </Link>
               </div>
             ))}
           </div>

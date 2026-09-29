@@ -608,7 +608,7 @@ select:focus{
 .radio-list label{display:flex; gap:10px; align-items:center; font-size:13px; padding:6px 8px; border-radius:12px; border:1px solid var(--line); background: rgba(0,0,0,.02)}
 .radio-list label:hover{background: rgba(59,123,255,.06)}
 .divider{height:1px;background:var(--line); margin:10px 0}
-.hidden{display:none !important}
+.odontogram-root .hidden{display:none !important}
 
 /* (Acá vivía `@media (max-width:1100px){.layout{grid-template-columns:1fr}}`.
    Lo reemplaza el flex-wrap de .layout: el panel baja cuando no entra AL LADO

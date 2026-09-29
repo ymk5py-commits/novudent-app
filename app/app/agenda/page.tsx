@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Módulo de Agenda estilo Dentalink: vista Diaria (sidebar fecha + profesional +
  *  leyenda de estados; tabla Hora/Paciente/Doctor/Estado/Situación) · Diaria global ·
  *  Semanal (grilla 24h) · Reprogramación. Modales VER/Lista de espera/Crear-editar. */
@@ -426,7 +427,7 @@ export default function AgendaPage() {
                     return (
                       <tr key={a.id} className="hover:bg-clinic-bg/60">
                         <td className="px-4 py-2.5"><div className="flex items-center gap-1 font-semibold text-clinic-text">{a.title || "Cita"}<ComentarioCita texto={a.notes} className="print:hidden" /></div><div className="text-xs text-clinic-muted">{new Date(a.start).toLocaleDateString("es-PY", { day: "2-digit", month: "short", year: "numeric" })} · {fmtTime(a.start)}</div></td>
-                        <td className="px-2 py-2.5">{p ? <a href={`/app/pacientes/${p.id}`} className="font-semibold text-azure-700 hover:underline">{fullName(p)}</a> : "—"}</td>
+                        <td className="px-2 py-2.5">{p ? <Link href={`/app/pacientes/${p.id}`} className="font-semibold text-azure-700 hover:underline">{fullName(p)}</Link> : "—"}</td>
                         <td className="px-2 py-2.5 text-clinic-muted">{dent?.name ?? "—"}</td>
                         <td className="px-2 py-2.5 text-right print:hidden">{puedeAgendar && <Btn variant="outline" onClick={() => reagendar(a)}><CalendarDays className="h-3.5 w-3.5" /> Reagendar</Btn>}</td>
                       </tr>
@@ -543,7 +544,7 @@ export default function AgendaPage() {
                             </div>
                           </td>
                           <td className="px-2 py-3">
-                            {p ? <a href={`/app/pacientes/${p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(p)}</a> : <span className="text-clinic-muted">—</span>}
+                            {p ? <Link href={`/app/pacientes/${p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(p)}</Link> : <span className="text-clinic-muted">—</span>}
                             {a.source === "online" && <span className="ml-2 rounded bg-state-infobg px-1.5 text-[11px] font-bold text-state-info">Online</span>}
                             {multi && <span className="ml-2 rounded bg-state-warnbg px-1.5 text-[11px] font-bold text-state-warn">Múltiples citas hoy</span>}
                             <ComentarioCita texto={a.notes} className="ml-1 align-middle print:hidden" />
@@ -590,7 +591,7 @@ export default function AgendaPage() {
             return (
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Estado</span><StatusBadge status={live.status} /></div>
-                <div className="flex items-center justify-between"><span className="text-clinic-muted">Paciente</span>{p ? <a className="font-bold text-azure-600 hover:underline" href={`/app/pacientes/${p.id}`}>{fullName(p)}</a> : "—"}</div>
+                <div className="flex items-center justify-between"><span className="text-clinic-muted">Paciente</span>{p ? <Link className="font-bold text-azure-600 hover:underline" href={`/app/pacientes/${p.id}`}>{fullName(p)}</Link> : "—"}</div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Dentista</span><span className="font-semibold">{d?.name ?? "—"}</span></div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Horario</span><span className="font-mono text-xs">{new Date(live.start).toLocaleString("es-PY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} → {fmtTime(live.end)}</span></div>
                 {verMontos && <div className="flex items-center justify-between"><span className="text-clinic-muted">Total a cobrar</span><span className="font-mono font-bold">{fmtGs(live.amount - live.discount)}</span></div>}

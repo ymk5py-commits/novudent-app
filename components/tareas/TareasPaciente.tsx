@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 /** Ficha del paciente → Datos personales → "Tareas de gestión" (paridad
  *  Dentalink): las tareas de ESE paciente —automáticas y personalizadas—, con
  *  "Ver tareas completadas" y "+ Nueva tarea personalizada", que es donde más
@@ -86,12 +87,12 @@ function Fila({ f, hoy, responsable }: { f: FilaTarea; hoy: string; responsable:
       </span>
       <span className={`font-mono text-xs ${atrasada ? "font-bold text-state-err" : "text-clinic-muted"}`}>{fechaCorta(f.fecha, hoy)}</span>
       <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-bold ${atrasada ? "bg-state-errbg text-state-err" : f.estado === "pendiente" ? "bg-azure-50 text-azure-700" : "bg-clinic-bg text-clinic-muted"}`}>{estado}</span>
-      <a
+      <Link
         href={`/app/tareas?fecha=${f.fecha}&tarea=${encodeURIComponent(f.id)}`}
         className="inline-flex items-center gap-0.5 text-xs font-bold text-azure-700 hover:underline"
       >
         Ver en la bandeja <ArrowUpRight aria-hidden className="h-3.5 w-3.5" />
-      </a>
+      </Link>
     </li>
   );
 }
