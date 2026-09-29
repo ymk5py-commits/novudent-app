@@ -22,13 +22,15 @@ import {
   Copy, Check, Loader2, QrCode,
 } from "lucide-react";
 import QRCode from "qrcode";
-import type { Patient, SignatureDoc, SignatureStatus } from "@/lib/types";
+import type { Clinic, Patient, SignatureDoc, SignatureStatus } from "@/lib/types";
 import { Card, Btn, Badge, Field, inputCls, Empty, useDialogA11y } from "@/components/ui";
 import { useStore, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { useClinicPlan, PlanLocked } from "@/components/PlanGate";
 import { newSignToken } from "@/lib/firma";
 import SignaturePad, { type SignaturePadHandle } from "@/components/SignaturePad";
+import { PrintLetterhead } from "@/components/PrintDocument";
+import { ConsentPrintDocument } from "@/components/ConsentPrintDocument";
 
 /* ===== Constantes de presentación ===== */
 
@@ -244,7 +246,7 @@ function ConsentimientosInner({ patient, canManage }: { patient: Patient; canMan
       </div>
 
       {/* Visor del documento firmado (imprimible) */}
-      {viewing && <PrintViewer doc={viewing} patientName={patientName} onClose={() => setViewing(null)} />}
+      {viewing && <PrintViewer doc={viewing} clinic={db.clinics[0]} patientName={patientName} onClose={() => setViewing(null)} />}
     </div>
   );
 }
@@ -374,7 +376,7 @@ function ShareInline({ url, onClose }: { url: string; onClose: () => void }) {
 /*  Visor imprimible del documento firmado                        */
 /* ============================================================== */
 
-function PrintViewer({ doc, patientName, onClose }: { doc: SignatureDoc; patientName: string; onClose: () => void }) {
+function PrintViewer({ doc, clinic, patientName, onClose }: { doc: SignatureDoc; clinic: Clinic; patientName: string; onClose: () => void }) {
   // Mismo comportamiento accesible que <Modal>, conservando los estilos print:
   const { titleId, dialogProps } = useDialogA11y(onClose);
   return (
@@ -395,8 +397,9 @@ function PrintViewer({ doc, patientName, onClose }: { doc: SignatureDoc; patient
           </div>
         </div>
 
-        {/* Área imprimible */}
-        <div className="print-area">
+        {/* Vista previa del documento con el mismo membrete del PDF. */}
+        <div>
+          <PrintLetterhead clinic={clinic} label="CONSENTIMIENTO INFORMADO" />
           <h1 className="text-xl font-extrabold text-clinic-text">{doc.title}</h1>
           <p className="mt-1 text-xs text-clinic-muted">Paciente: {patientName}</p>
 
@@ -420,6 +423,7 @@ function PrintViewer({ doc, patientName, onClose }: { doc: SignatureDoc; patient
           <p className="mt-6 text-[11px] text-clinic-muted">{LEGAL_NOTE}</p>
         </div>
       </div>
+      <ConsentPrintDocument clinic={clinic} doc={doc} patientName={patientName} />
     </div>
   );
 }

@@ -20,6 +20,7 @@ import { OrtodonciaPanel } from "@/components/Ortodoncia";
 import { PrestacionesList } from "@/components/Prestaciones";
 import { BudgetForm } from "@/components/BudgetForm";
 import { useAlcance } from "@/lib/useAlcance";
+import { PlanPrintDocument } from "@/components/PlanPrintDocument";
 
 function planProgress(budget: Budget, patient: Patient): number {
   if (budget.planType === "ortodoncia" && patient.ortho?.active) return orthoProgress(patient.ortho).calendarPct;
@@ -173,6 +174,7 @@ function PlanDetalle({
   patient, budgets, selId, onSelect, onBack,
 }: { patient: Patient; budgets: Budget[]; selId: string; onSelect: (id: string) => void; onBack: () => void }) {
   const { db } = useStore();
+  const alcance = useAlcance();
   const hasIA = useClinicPlan().features.includes("ia");
   const budget = budgets.find((b) => b.id === selId) ?? budgets[0];
   const isOrtho = budget.planType === "ortodoncia";
@@ -196,12 +198,23 @@ function PlanDetalle({
         ))}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[330px_1fr]">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[330px_minmax(0,1fr)]">
         <PlanFinanciero budget={budget} payments={db.payments} citas={citas} professional={professional ? professional.name + (professional.specialty ? ` · ${professional.specialty}` : "") : undefined} hasIA={hasIA} patient={patient} />
         <PlanClinico key={budget.id} budget={budget} patient={patient} isOrtho={isOrtho} />
       </div>
 
       <ComentariosPaciente key={budget.id} budget={budget} />
+      {db.clinics[0] && (
+        <PlanPrintDocument
+          budget={budget}
+          clinic={db.clinics[0]}
+          patient={patient}
+          professional={professional?.name}
+          payments={db.payments}
+          showFinancials={alcance.puede("money.view")}
+          showPersonal={alcance.puede("patients.personal")}
+        />
+      )}
     </div>
   );
 }
@@ -224,7 +237,7 @@ function PlanFinanciero({
   };
 
   return (
-    <Card className="h-fit overflow-hidden p-0">
+    <Card className="h-fit min-w-0 overflow-hidden p-0">
       <div className="mesh-hero px-5 py-4 text-white">
         <div className="flex items-center justify-between">
           <span className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-azure-200">Plan de tratamiento</span>
@@ -289,7 +302,7 @@ function PlanFinanciero({
           </span>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 border-t border-clinic-border pt-3 text-sm">
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-clinic-border pt-3 text-sm">
           <UserRound className="h-4 w-4 text-azure-600" />
           <span className="text-clinic-muted">Profesional a cargo:</span>
           <span className="font-bold text-clinic-text">{professional ?? "—"}</span>
@@ -404,7 +417,7 @@ function PlanClinico({ budget, patient, isOrtho }: { budget: Budget; patient: Pa
   const [tab, setTab] = useState<"esp" | "plan" | "odo" | "facial">(isOrtho ? "esp" : "plan");
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <RipsBanner budget={budget} />
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1 rounded-xl border border-clinic-border bg-white p-1">
@@ -417,7 +430,7 @@ function PlanClinico({ budget, patient, isOrtho }: { budget: Budget; patient: Pa
           <TabBtn active={tab === "facial"} onClick={() => setTab("facial")} icon={Camera} label="Estética facial" />
         </div>
         <div className="ml-auto flex items-center gap-1">
-          <button onClick={() => window.print()} title="Imprimir" className="rounded-lg border border-clinic-border p-2 text-clinic-muted transition-colors hover:border-azure-300 hover:text-azure-700">
+          <button type="button" onClick={() => window.print()} title="Imprimir plan de tratamiento" aria-label="Imprimir plan de tratamiento" className="rounded-lg border border-clinic-border p-2 text-clinic-muted transition-colors hover:border-azure-300 hover:text-azure-700">
             <Printer className="h-4 w-4" />
           </button>
         </div>

@@ -565,6 +565,84 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
   .print-area [style*="opacity"] { opacity: 1 !important; transform: none !important; }
 }
 
+/* El plan se imprime desde un portal directo en <body>. Así el documento no
+   hereda la grilla, el recorte ni las animaciones de la ficha del paciente. */
+.plan-print-root { display: none; }
+@media print {
+  @page { size: A4; margin: 15mm 14mm; }
+  html, body { overflow: visible !important; background: #fff !important; }
+  body.plan-print-active > :not(.plan-print-root) { display: none !important; }
+  .plan-print-root { display: block !important; position: static; width: 100%; background: #fff; }
+  .plan-print-root, .plan-print-root * { visibility: visible !important; }
+  .plan-print-sheet {
+    color: #102747;
+    font-family: var(--font-open-sans), Arial, sans-serif;
+    font-size: 10pt;
+    line-height: 1.45;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .plan-print-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20mm; min-height: 20mm; }
+  .plan-print-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 3mm; }
+  .plan-print-logo { display: block; height: 12mm; width: auto; max-width: 65mm; }
+  .plan-print-brand > span, .plan-print-eyebrow, .plan-print-finance-label > span {
+    color: #0369c9; font-size: 7.5pt; font-weight: 800; letter-spacing: .14em;
+  }
+  .plan-print-clinic { display: flex; flex-direction: column; align-items: flex-end; max-width: 75mm; text-align: right; color: #5b6d84; font-size: 8pt; }
+  .plan-print-clinic strong { color: #102747; font-size: 10pt; }
+  .plan-print-clinic-logo { display: block; width: auto; height: 10mm; max-width: 35mm; object-fit: contain; margin-bottom: 2mm; }
+  .plan-print-accent { height: 1.2mm; margin: 4mm 0 7mm; background: #0369c9; }
+  .plan-print-intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 8mm; }
+  .plan-print-intro h1 { margin: 2mm 0 1.5mm; color: #051735; font-family: var(--font-jost), Arial, sans-serif; font-size: 22pt; font-weight: 700; line-height: 1.12; letter-spacing: -.03em; }
+  .plan-print-intro p { margin: 0; color: #687a90; font-size: 9pt; }
+  .plan-print-status { flex: none; border: 1px solid #c7dff1; border-radius: 3mm; padding: 1.5mm 3mm; color: #0550a8; font-size: 8pt; font-weight: 700; }
+  .plan-print-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3.5mm 9mm; margin: 7mm 0; padding: 4.5mm; border: 1px solid #dce7f0; border-radius: 3mm; background: #f5f9fc; }
+  .plan-print-details > div { display: flex; flex-direction: column; min-width: 0; }
+  .plan-print-details span { color: #697d94; font-size: 7pt; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .plan-print-details strong { margin-top: 1mm; overflow-wrap: anywhere; color: #102747; font-size: 10pt; }
+  .plan-print-services, .plan-print-finance, .plan-print-comments { break-inside: auto; }
+  .plan-print-section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 5mm; margin-bottom: 3mm; }
+  .plan-print-section-title h2, .plan-print-comments h2 { margin: 0; color: #051735; font-family: var(--font-jost), Arial, sans-serif; font-size: 13pt; font-weight: 700; }
+  .plan-print-section-title span { color: #697d94; font-size: 8pt; }
+  .plan-print-services table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .plan-print-services thead { display: table-header-group; }
+  .plan-print-services th { padding: 2.5mm 3mm; background: #0b2a5b; color: #fff; font-size: 7.5pt; font-weight: 700; letter-spacing: .07em; text-align: left; text-transform: uppercase; }
+  .plan-print-services th:first-child, .plan-print-services td:first-child { width: 69%; }
+  .plan-print-services th:nth-child(2), .plan-print-services td:nth-child(2) { width: 12%; }
+  .plan-print-services .plan-print-no-money th:first-child, .plan-print-services .plan-print-no-money td:first-child { width: 85%; }
+  .plan-print-services .plan-print-no-money th:nth-child(2), .plan-print-services .plan-print-no-money td:nth-child(2) { width: 15%; }
+  .plan-print-services td { padding: 2mm 3mm; border-bottom: 1px solid #e4ebf2; vertical-align: top; overflow-wrap: anywhere; }
+  .plan-print-services tr { break-inside: avoid; }
+  .plan-print-services td strong { font-weight: 600; }
+  .plan-print-code { display: block; margin-top: 1mm; color: #687a90; font-size: 7.5pt; }
+  .plan-print-group td { width: auto !important; padding: 2mm 3mm; background: #ecf4fb; color: #0b2a5b; font-size: 7.5pt; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .plan-print-services .plan-print-money { width: 19%; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .plan-print-empty { color: #697d94; }
+  .plan-print-finance { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 5mm; margin-top: 6mm; padding: 5mm; border: 1px solid #dce7f0; border-radius: 3mm; background: #f5f9fc; break-inside: avoid; }
+  .plan-print-finance-label p { max-width: 48mm; margin: 2mm 0 0; color: #697d94; font-size: 8pt; }
+  .plan-print-totals { display: flex; flex-direction: column; gap: 1.5mm; }
+  .plan-print-totals > div { display: flex; justify-content: space-between; gap: 5mm; font-size: 9pt; }
+  .plan-print-totals strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .plan-print-grand-total { margin: 2mm 0; padding: 2.5mm 0; border-top: 1.5px solid #0369c9; border-bottom: 1px solid #c7dff1; color: #051735; font-size: 12pt !important; font-weight: 800; }
+  .plan-print-comments { margin-top: 9mm; padding: 0 0 0 4mm; border-left: 1.2mm solid #04a9f2; break-inside: avoid; }
+  .plan-print-comments p { margin: 2mm 0 0; color: #344a65; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .plan-print-footer { display: flex; justify-content: space-between; gap: 5mm; margin-top: 8mm; padding-top: 3mm; border-top: 1px solid #dce7f0; color: #687a90; font-size: 7.5pt; break-inside: avoid; overflow-wrap: anywhere; }
+  .consent-print-intro { margin-top: 6mm; }
+  .consent-print-intro h1 { max-width: 155mm; margin: 2mm 0 6mm; color: #051735; font-family: var(--font-jost), Arial, sans-serif; font-size: 21pt; font-weight: 700; line-height: 1.16; overflow-wrap: anywhere; }
+  .consent-print-meta { display: flex; flex-wrap: wrap; gap: 5mm 14mm; padding: 4mm 0; border-top: 1px solid #dce7f0; border-bottom: 1px solid #dce7f0; }
+  .consent-print-meta > div { display: flex; flex-direction: column; min-width: 50mm; }
+  .consent-print-meta span { color: #697d94; font-size: 7pt; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .consent-print-meta strong { margin-top: 1mm; color: #102747; font-size: 9pt; }
+  .consent-print-body { margin-top: 7mm; color: #223954; font-size: 9pt; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .consent-print-ending { break-inside: avoid; }
+  .consent-print-signature { margin-top: 7mm; padding-top: 4mm; border-top: 1px solid #dce7f0; break-inside: avoid; }
+  .consent-print-signature > div { display: flex; flex-direction: column; align-items: flex-start; }
+  .consent-print-signature img { display: block; max-width: 65mm; max-height: 28mm; width: auto; height: auto; margin: 4mm 0 2mm; object-fit: contain; }
+  .consent-print-signature strong { margin-top: 2mm; color: #102747; font-size: 10pt; }
+  .consent-print-signature span:last-child { color: #697d94; font-size: 8pt; }
+  .consent-print-ending .plan-print-footer { margin-top: 3mm; }
+}
+
 /* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V3
  * Hallmark · genre: modern-minimal (blanco clínico, estructura de la referencia pedida por el dueño) · macrostructure: Narrative Workflow · tone: clínico y preciso
  * theme: studied-DNA (estructura de una landing pública del rubro, 2026-09-25) + marca Novudent (navy + menta)
