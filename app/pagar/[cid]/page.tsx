@@ -4,7 +4,7 @@
  *  (link de SU pasarela), transferencia, o avisar por WhatsApp. Sin sesión. */
 import { use, useEffect, useState } from "react";
 import { formatMoney, type CurrencyCode } from "@/lib/currency";
-import { Isologo } from "@/components/Marca";
+import { Isologo, Logotipo } from "@/components/Marca";
 
 type Info = { clinicName: string; checkoutUrl?: string; bankInfo?: string; phone?: string; currency: CurrencyCode };
 
@@ -31,6 +31,7 @@ export default function PagarPublic({ params }: { params: Promise<{ cid: string 
   return (
     <div className="min-h-screen bg-gradient-to-b from-clinic-bg to-white px-4 py-10">
       <div className="mx-auto max-w-md">
+        <Logotipo className="mx-auto mb-6 h-10 w-auto" />
         <div className="rounded-3xl border border-clinic-border bg-white p-6 shadow-card sm:p-8">
           {loading ? (
             <p className="py-12 text-center text-sm text-clinic-muted">Cargando…</p>

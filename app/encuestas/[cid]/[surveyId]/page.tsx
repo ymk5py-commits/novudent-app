@@ -3,7 +3,7 @@
  *  vía /api/encuestas y envía la respuesta por el mismo route (usuario de servicio). */
 import { useEffect, useState } from "react";
 import type { Survey } from "@/lib/types";
-import { Isologo } from "@/components/Marca";
+import { Isologo, Logotipo } from "@/components/Marca";
 
 export default function PublicSurveyPage({ params }: { params: { cid: string; surveyId: string } }) {
   const { cid, surveyId } = params;
@@ -50,6 +50,7 @@ export default function PublicSurveyPage({ params }: { params: { cid: string; su
   return (
     <div className="min-h-screen bg-gradient-to-b from-clinic-bg to-white px-4 py-10">
       <div className="mx-auto max-w-lg">
+        <Logotipo className="mx-auto mb-6 h-10 w-auto" />
         <div className="rounded-3xl border border-clinic-border bg-white p-6 shadow-card sm:p-8">
           {loading ? (
             <p className="py-12 text-center text-sm text-clinic-muted">Cargando…</p>

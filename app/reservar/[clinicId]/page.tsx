@@ -19,6 +19,7 @@ import {
   CalendarDays, ChevronLeft, ChevronRight, Clock, User, CheckCircle2,
   Loader2, Stethoscope, MessageCircle,
 } from "lucide-react";
+import { Logotipo } from "@/components/Marca";
 
 type Step = "fecha" | "horario" | "datos" | "listo";
 
@@ -121,7 +122,8 @@ export default function ReservaOnline() {
     <main className="min-h-dvh bg-clinic-bg">
       {/* Header público */}
       <header className="bg-navy-800 px-5 py-6 text-white">
-        <div>
+        <div className="mx-auto max-w-xl">
+          <Logotipo tono="blanco" className="mb-5 h-9 w-auto" />
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-azure-200">
             Reserva online
           </p>

@@ -7,6 +7,7 @@ for (const ruta of PUBLICAS) {
     const r = await page.goto(ruta);
     expect(r?.status()).toBe(200);
     await expect(page.getByRole("heading").first()).toBeVisible();
+    await expect(page.getByRole("img", { name: "Novudent" }).first()).toBeVisible();
     await sinScrollHorizontal(page);
   });
 }
@@ -14,6 +15,7 @@ for (const ruta of PUBLICAS) {
 test("una ruta que no existe devuelve 404", async ({ page }) => {
   const r = await page.goto("/esta-pagina-no-existe");
   expect(r?.status()).toBe(404);
+  await expect(page.getByRole("img", { name: "Novudent" })).toBeVisible();
 });
 
 test("robots.txt y sitemap.xml responden", async ({ request }) => {

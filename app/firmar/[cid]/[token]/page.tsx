@@ -20,7 +20,7 @@ import {
   CheckCircle2, Loader2, PenLine, ShieldAlert,
 } from "lucide-react";
 import SignaturePad, { type SignaturePadHandle } from "@/components/SignaturePad";
-import { Isologo } from "@/components/Marca";
+import { Logotipo } from "@/components/Marca";
 
 type DocData = {
   title: string;
@@ -111,8 +111,9 @@ export default function FirmarConsentimiento() {
       {/* Header público con marca Novudent */}
       <header className="bg-navy-800 px-5 py-6 text-white">
         <div className="mx-auto max-w-xl">
-          <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-azure-200">
-            <Isologo className="h-4 w-auto" /> Novudent · Firma electrónica
+          <Logotipo tono="blanco" className="mb-5 h-9 w-auto" />
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-azure-200">
+            Firma electrónica
           </p>
           <h1 className="mt-1 text-2xl font-extrabold">
             {doc?.title || "Consentimiento informado"}

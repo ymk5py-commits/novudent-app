@@ -23,6 +23,7 @@ const svgs = {
   "novudent-isologo.svg": svgIsologo("color"),
   "novudent-isologo-negro.svg": svgIsologo("negro"),
   "novudent-icono.svg": svgIcono({ redondo: true }),
+  "novudent-icono-blanco.svg": svgIcono({ redondo: true, fondo: "blanco" }),
 };
 for (const [nombre, svg] of Object.entries(svgs)) writeFileSync(`${pub}/${nombre}`, svg);
 writeFileSync("app/icon.svg", svgIcono({ lado: 64, redondo: true }));
@@ -42,9 +43,11 @@ const pngs = [
   { archivo: "app/apple-icon.png", lado: 180, html: svgIcono({ lado: 180 }) },
   { archivo: `${pub}/icono-192.png`, lado: 192, html: svgIcono({ lado: 192 }) },
   { archivo: `${pub}/icono-512.png`, lado: 512, html: svgIcono({ lado: 512 }) },
+  { archivo: `${pub}/icono-blanco-512.png`, lado: 512, html: svgIcono({ lado: 512, redondo: true, fondo: "blanco" }) },
   // Para correos: los clientes de mail no muestran SVG.
   { archivo: `${pub}/novudent-logo.png`, ancho: 600, alto: 114, html: svgLogotipo("color") },
   { archivo: `${pub}/novudent-logo-blanco.png`, ancho: 600, alto: 114, html: svgLogotipo("blanco") },
+  { archivo: `${pub}/novudent-logo-negro.png`, ancho: 600, alto: 114, html: svgLogotipo("negro") },
   { archivo: "app/opengraph-image.png", ancho: 1200, alto: 630, pagina: og },
 ];
 

@@ -22,7 +22,7 @@ import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import AvisoNoGuardado from "@/components/AvisoNoGuardado";
 import AyudaNovum from "@/components/AyudaNovum";
 import { sinLeer } from "@/lib/chat";
-import { Isologo, Logotipo } from "@/components/Marca";
+import { Logotipo } from "@/components/Marca";
 import { SaltarAlContenido } from "@/components/SaltarAlContenido";
 
 type NavLeaf = { href: string; label: string; icon: any; perm?: Permission; feature?: PlanFeature; section?: string };
@@ -203,19 +203,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-clinic-border bg-white shadow-[0_2px_12px_-8px_rgba(5,23,53,0.2)]">
         {/* Fila 1 — barra navy de la marca (el diente en color se lee sobre navy) */}
         <div className="app-topbar bg-navy-800">
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-2 px-4 sm:gap-3 sm:px-6">
+        <div className="mx-auto flex min-h-16 max-w-[1440px] flex-wrap items-center gap-2 px-4 py-2 sm:h-16 sm:flex-nowrap sm:gap-3 sm:px-6 sm:py-0">
           <button onClick={() => setNavOpen(true)} aria-label="Abrir menú" className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] border border-white/20 bg-white/10 text-white lg:hidden">
             <Menu className="h-5 w-5" />
           </button>
           <Link href="/app" aria-label="Novudent, inicio" className="flex shrink-0 items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
-            {/* En el celular va solo el diente: el logotipo entero le comía el lugar al
-                buscador (quedaba la lupa encima de la campana). */}
-            <Isologo className="h-8 w-auto sm:hidden" />
-            <Logotipo tono="blanco" className="hidden h-8 w-auto sm:block" />
+            <Logotipo tono="blanco" className="h-8 w-auto" />
             <span data-tip={`Plan ${plan.label}`} className="hidden rounded-md border border-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-azure-200 2xl:inline">{plan.label}</span>
           </Link>
-          {/* Patient Finder */}
-          <div className="relative ml-1 min-w-0 w-full max-w-sm">
+          {/* En celular el buscador ocupa una segunda línea para que el logo no se comprima. */}
+          <div className="relative order-last w-full sm:order-none sm:ml-1 sm:min-w-0 sm:max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70" />
             <input
               value={q}

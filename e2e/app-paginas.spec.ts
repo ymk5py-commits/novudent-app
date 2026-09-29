@@ -19,6 +19,7 @@ test.describe("Pantallas de la app (demo, administrador)", () => {
       await expect(page).toHaveURL(new RegExp(`${ruta}$`));
       await expect(page.getByText(/Application error|Unhandled Runtime Error|Algo salió mal/i)).toHaveCount(0);
       await expect(page.locator("h1").first()).toBeVisible();
+      await expect(page.locator("header").getByRole("img", { name: "Novudent" })).toBeVisible();
       if (texto) await expect(page.locator("main").getByText(texto).first()).toBeVisible(); // el menú lateral repite los nombres
       await sinScrollHorizontal(page); // en el celular también
     });

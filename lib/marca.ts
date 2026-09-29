@@ -38,14 +38,14 @@ const DEGRADES: Record<"color" | "negro", { cuerpo: [number, string][]; arco: [n
   },
 };
 
-/** Diente en una caja de 100 × 110. El arco blanco es parte del dibujo (no un
- *  hueco): sobre navy tiene que seguir viéndose blanco, como en la pieza. */
+/** Diente en una caja de 100 × 110. La silueta y los dos arcos cierran en
+ *  punta; el espacio entre las raíces deja ver el fondo. */
 export const ISO = {
   ancho: 100,
   alto: 110,
-  cuerpo: "M27.5 104 C19 90 9 70 7.5 48 C6 30 10 13 26 10 C35 8.5 42 13 49 17 C58 11 67 7 78 9 C92 12 95 27 93 44 C91 65 76 88 67 104 Z",
-  hueco: "M27.5 104.4 C27.5 72 33.5 45 46.5 45 C60 45 66.5 72 67 104.4 Z",
-  arco: "M34 104.4 C33.5 78 38 57 46.5 57 C55 57 59.5 78 59.5 104.4 L53.5 104.4 C53.5 84 51 71 46.5 71 C42 71 40 84 40 104.4 Z",
+  cuerpo: "M27.5 104 C19 90 9 70 7.5 48 C6 30 10 13 26 10 C35 8.5 42 13 49 17 C58 11 67 7 78 9 C92 12 95 27 93 44 C91 65 76 88 67 104 C64 75 59 48 46.5 48 C34 48 29 75 27.5 104 Z",
+  hueco: "M27.5 104 C27.5 72 33.5 45 46.5 45 C60 45 66.5 72 67 104 C62 81 56 60 46.5 60 C37 60 32 81 27.5 104 Z",
+  arco: "M34 104 C33.5 80 38 62 46.5 62 C55 62 60 80 59.5 104 C56 86 52.5 73 46.5 73 C40.5 73 37 86 34 104 Z",
 } as const;
 
 /** Logotipo en unidades donde la altura de mayúscula de «NOVU» = 100 y la línea
@@ -59,9 +59,10 @@ export const PALABRA = {
  *  2,19 mayúsculas y cae media mayúscula por debajo de la base. */
 const ESCALA_ISO = 1.99;
 export const LOGO = {
-  viewBox: "8 -170 1114 212",
+  // El diente necesita aire debajo de las raíces; antes tocaba el borde del SVG.
+  viewBox: "8 -170 1114 230",
   ancho: 1114,
-  alto: 212,
+  alto: 230,
   iso: { x: 929, y: -168, escala: ESCALA_ISO },
 } as const;
 

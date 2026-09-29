@@ -11,6 +11,7 @@ for (const ruta of PAGINAS) {
     expect(r?.status(), "la página tiene que responder").toBeLessThan(500);
     await expect(page.getByText(/Application error|Unhandled Runtime Error/i)).toHaveCount(0);
     await expect(page.locator("body")).not.toBeEmpty();
+    await expect(page.getByRole("img", { name: "Novudent" })).toBeVisible();
   });
 }
 
