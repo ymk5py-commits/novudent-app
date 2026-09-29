@@ -12,6 +12,7 @@ import {
 import { useStore, fmtDate, fmtGs, fullName, waLink } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, patientBalance } from "@/lib/budgets";
+import { campaignEmailRecipients, campaignMailto, MAX_CAMPAIGN_EMAILS } from "@/lib/campaign-mail";
 import type { CrmCard, CrmStage, Campaign, Patient } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
@@ -36,6 +37,7 @@ export default function CrmPage() {
   const [newCard, setNewCard] = useState(false);
   const [editing, setEditing] = useState<CrmCard | null>(null);
   const [newCampaign, setNewCampaign] = useState(false);
+  const [selectingCampaign, setSelectingCampaign] = useState<Campaign | null>(null);
   const [seg, setSeg] = useState({ gender: "", city: "", ageMin: "", ageMax: "", deuda: false, sinCita: false });
   const [tab, setTab] = useState<"reportes" | "campanas" | "plantillas" | "config">("reportes");
 
@@ -378,13 +380,16 @@ export default function CrmPage() {
             <Btn variant="outline" onClick={() => setNewCampaign(true)}><Plus className="h-4 w-4" /> Nueva campaña</Btn>
           </div>
           <p className="mt-1 text-xs text-clinic-muted">
-            <Bot className="mb-0.5 mr-1 inline h-3.5 w-3.5" /> El envío se hace por WhatsApp/Botika. Acá registrás el mensaje y la audiencia.
+            <Bot className="mb-0.5 mr-1 inline h-3.5 w-3.5" /> Prepará el mensaje y elegí destinatarios. Los correos se abren como borrador en tu aplicación de email; WhatsApp requiere una integración activa.
           </p>
           {db.campaigns.length === 0 ? (
             <div className="mt-3"><Empty title="Sin campañas registradas" desc="Creá una campaña para dejar registro del mensaje y la audiencia objetivo." /></div>
           ) : (
             <Stagger className="mt-3 grid gap-3 sm:grid-cols-2">
-              {[...db.campaigns].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((c) => (
+              {[...db.campaigns].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((c) => {
+                const recipients = campaignEmailRecipients(c, db.patients);
+                const draftHref = campaignMailto(c, recipients);
+                return (
                 <StaggerItem key={c.id} className="h-full">
                   <div className="flex h-full flex-col rounded-xl border border-clinic-border p-4">
                     <div className="flex items-start justify-between gap-2">
@@ -409,28 +414,26 @@ export default function CrmPage() {
                     <div className="mt-auto pt-2 text-[11px] text-clinic-muted">
                       <span className="font-semibold uppercase tracking-wide">Audiencia:</span> {c.audience || "—"}
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-clinic-border pt-2">
+                    {c.channel === "email" && <p className="mt-1 text-[11px] text-clinic-muted">{recipients.length} destinatario{recipients.length === 1 ? "" : "s"} seleccionado{recipients.length === 1 ? "" : "s"}</p>}
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-clinic-border pt-2">
                       {c.sentAt ? (
-                        <span className="text-[11px] font-bold text-state-ok">✓ Enviado a {c.sentCount ?? 0} · {fmtDate(c.sentAt)}</span>
-                      ) : <span className="text-[11px] text-clinic-muted">Sin enviar</span>}
+                        <span className="text-[11px] font-bold text-state-ok">✓ Envío declarado: {c.sentCount ?? 0} · {fmtDate(c.sentAt)}</span>
+                      ) : <span className="text-[11px] text-clinic-muted">Borrador · sin envío confirmado</span>}
                       {c.channel === "email" && (
-                        <button
-                          onClick={() => {
-                            const dest = db.patients.map((p) => p.email).filter(Boolean) as string[];
-                            if (dest.length === 0) { alert("No hay pacientes con email cargado."); return; }
-                            window.open(`mailto:?bcc=${encodeURIComponent(dest.join(","))}&subject=${encodeURIComponent(c.name)}&body=${encodeURIComponent(c.message)}`);
-                            store.updateCampaign({ ...c, sentAt: new Date().toISOString(), sentCount: dest.length });
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-azure-600 px-2.5 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-azure-700"
-                          title="Abre tu correo con la lista en CCO"
-                        >
-                          <Mail className="h-3.5 w-3.5" /> Enviar
-                        </button>
+                        <span className="flex flex-wrap items-center gap-2">
+                          <button type="button" onClick={() => setSelectingCampaign(c)} className="text-[11px] font-bold text-azure-700 hover:underline">Elegir destinatarios</button>
+                          {draftHref && <a href={draftHref} className="inline-flex items-center gap-1.5 rounded-lg bg-azure-600 px-2.5 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-azure-700" title="Abre un borrador en tu aplicación de correo; no lo envía Novudent"><Mail className="h-3.5 w-3.5" /> Abrir borrador</a>}
+                          {!c.sentAt && recipients.length > 0 && <button type="button" onClick={() => {
+                            if (confirm("¿Ya enviaste este correo desde tu aplicación de email? Novudent no puede comprobar ese envío.")) {
+                              store.updateCampaign({ ...c, sentAt: new Date().toISOString(), sentCount: recipients.length });
+                            }
+                          }} className="text-[11px] font-bold text-clinic-muted hover:text-azure-700">Registrar envío externo</button>}
+                        </span>
                       )}
                     </div>
                   </div>
                 </StaggerItem>
-              ))}
+              ); })}
             </Stagger>
           )}
         </Card>
@@ -480,6 +483,7 @@ export default function CrmPage() {
       {newCard && <CardForm onClose={() => setNewCard(false)} />}
       {editing && <CardForm card={editing} onClose={() => setEditing(null)} />}
       {newCampaign && <CampaignForm onClose={() => setNewCampaign(false)} />}
+      {selectingCampaign && <CampaignRecipientsModal campaign={db.campaigns.find((c) => c.id === selectingCampaign.id) ?? selectingCampaign} onClose={() => setSelectingCampaign(null)} />}
     </div>
   );
 }
@@ -554,10 +558,10 @@ function CampaignForm({ onClose }: { onClose: () => void }) {
             </select>
           </Field>
         </div>
-        <Field label="Audiencia" hint="A quién apunta — texto libre (ej: pacientes sin cita en 6 meses)">
+        <Field label="Audiencia" hint="Descripción interna. Para un correo elegí los destinatarios concretos después de guardar la campaña.">
           <input className={inputCls} value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="Ej: Pacientes inactivos, convenio Asismed…" />
         </Field>
-        <Field label="Mensaje" hint="El envío real se hace por WhatsApp/Botika — esto es solo el registro.">
+        <Field label="Mensaje" hint="Novudent guarda el texto. Los correos se preparan como borrador; WhatsApp requiere una integración activa.">
           <textarea className={inputCls} rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Hola {paciente} 👋 Te invitamos a tu control semestral…" />
         </Field>
         <div className="flex justify-end gap-2">
@@ -579,6 +583,46 @@ function CampaignForm({ onClose }: { onClose: () => void }) {
           >
             Guardar campaña
           </Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function CampaignRecipientsModal({ campaign, onClose }: { campaign: Campaign; onClose: () => void }) {
+  const store = useStore();
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(campaign.recipientIds ?? []));
+  const [search, setSearch] = useState("");
+  const eligible = store.db.patients.filter((p) => p.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim()));
+  const visible = eligible.filter((p) => `${fullName(p)} ${p.email}`.toLowerCase().includes(search.trim().toLowerCase()));
+
+  const toggle = (id: string) => setSelected((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id);
+    else if (next.size < MAX_CAMPAIGN_EMAILS) next.add(id);
+    return next;
+  });
+
+  return (
+    <Modal title={`Destinatarios · ${campaign.name}`} onClose={onClose}>
+      <div className="space-y-3">
+        <p className="text-sm text-clinic-muted">Elegí hasta {MAX_CAMPAIGN_EMAILS} pacientes para preparar un borrador en tu correo. Nadie recibe nada al guardar esta selección.</p>
+        <input className={inputCls} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar paciente o email" aria-label="Buscar destinatario" />
+        <p className="text-xs font-semibold text-clinic-muted">{selected.size} seleccionado{selected.size === 1 ? "" : "s"}</p>
+        <div className="max-h-64 space-y-1 overflow-y-auto rounded-xl border border-clinic-border p-2">
+          {visible.length === 0 ? <p className="p-2 text-sm text-clinic-muted">No hay pacientes con email que coincidan.</p> : visible.map((p) => (
+            <label key={p.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-clinic-bg">
+              <input type="checkbox" checked={selected.has(p.id)} disabled={!selected.has(p.id) && selected.size >= MAX_CAMPAIGN_EMAILS} onChange={() => toggle(p.id)} className="h-4 w-4 accent-azure-600" />
+              <span className="min-w-0"><strong className="block truncate text-sm text-clinic-text">{fullName(p)}</strong><span className="block truncate text-xs text-clinic-muted">{p.email}</span></span>
+            </label>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
+          <Btn disabled={selected.size > MAX_CAMPAIGN_EMAILS} onClick={() => {
+            store.updateCampaign({ ...campaign, recipientIds: [...selected] });
+            onClose();
+          }}>Guardar destinatarios</Btn>
         </div>
       </div>
     </Modal>

@@ -109,12 +109,15 @@ export default function IntegrationsPage() {
   const tasks = [...db.outbox].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const pending = tasks.filter((t) => t.status === "pendiente");
   const responded = tasks.filter((t) => t.status === "respondido");
+  const isDemo = session.clinicId === "cl_demo";
+  const hasWorkerActivity = tasks.some((t) => t.status === "enviado" || t.status === "respondido");
 
   const setBotika = (patch: Partial<BotikaConfig>) =>
     store.updateClinicConfig({ botika: { ...botika, ...patch, automations: { ...botika.automations, ...(patch.automations ?? {}) } } });
 
-  /** Demo: simula la respuesta que escribiría el worker real de Botika */
+  /** La simulación solo puede modificar los datos públicos de la clínica demo. */
   const simulate = (t: OutboxTask) => {
+    if (!isDemo) return;
     setBusy(t.id);
     setTimeout(() => {
       const now = new Date().toISOString();
@@ -147,12 +150,15 @@ export default function IntegrationsPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-lg font-extrabold text-clinic-text">Contact Center IA</h2>
                 <Badge tone="info">Botika · by NOVUM</Badge>
-                {botika.connected ? <Badge tone="ok" tip="Outbox activo — esperando credenciales del worker para mensajería real">Conectado · modo demo</Badge> : <Badge tone="muted">Desconectado</Badge>}
+                {botika.connected ? (
+                  isDemo ? <Badge tone="info">Modo demo</Badge>
+                    : hasWorkerActivity ? <Badge tone="ok">Actividad de Botika recibida</Badge>
+                    : <Badge tone="warn">Cola activa · sin envíos confirmados</Badge>
+                ) : <Badge tone="muted">Cola desactivada</Badge>}
               </div>
               <p className="mt-1 max-w-xl text-sm text-clinic-muted">
-                Tu asistente de WhatsApp con IA, 24/7: responde a tus pacientes conversando como
-                una persona, confirma citas, hace encuestas de satisfacción y recuerda pagos
-                pendientes. Vos atendés pacientes; él atiende el teléfono.
+                Botika puede confirmar citas, recoger respuestas de encuestas y recordar pagos por WhatsApp
+                cuando el servicio de mensajería esté configurado para tu clínica.
               </p>
               <a href="https://botika.lat" target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-azure-700 hover:underline">
                 botika.lat <ExternalLink className="h-3 w-3" />
@@ -160,7 +166,7 @@ export default function IntegrationsPage() {
             </div>
           </div>
           <Btn variant={botika.connected ? "outline" : "primary"} onClick={() => setBotika({ connected: !botika.connected })}>
-            <Zap className="h-4 w-4" /> {botika.connected ? "Desconectar" : "Conectar Botika"}
+            <Zap className="h-4 w-4" /> {botika.connected ? "Pausar cola" : "Activar cola de Botika"}
           </Btn>
         </div>
 
@@ -195,9 +201,9 @@ export default function IntegrationsPage() {
         </div>
 
         <p className="relative mt-4 rounded-xl bg-clinic-bg p-3 text-[11px] leading-relaxed text-clinic-muted">
-          <b>Cómo funciona:</b> activá las automatizaciones que quieras y Botika se encarga del resto:
-          le escribe a tus pacientes por WhatsApp, conversa con ellos como una persona y el resultado
-          aparece solo en tu agenda y en las fichas — <b>en vivo, sin recargar</b>. No tenés que hacer nada más.
+          <b>Cómo funciona:</b> Novudent deja las tareas en la cola. El servicio Botika debe estar configurado
+          para enviarlas por WhatsApp. Una tarea figura como enviada o respondida solo cuando Botika registra
+          ese resultado; las respuestas se reflejan en la agenda y las fichas.
         </p>
       </Card>
       </Reveal>
@@ -240,14 +246,14 @@ export default function IntegrationsPage() {
                       {t.status === "error" && <Badge tone="err" tip={t.result?.error}>Error</Badge>}
                       {t.status === "pendiente" && (
                         <>
-                          <button
+                          {isDemo && <button
                             onClick={() => simulate(t)}
                             disabled={busy === t.id}
                             className="inline-flex items-center gap-1 rounded-lg bg-azure-50 px-2.5 py-1.5 text-[11px] font-bold text-azure-700 transition-colors hover:bg-azure-100 disabled:opacity-50"
-                            title="Demo: simula la respuesta que escribirá el worker real de Botika"
+                            title="Demo: simula la respuesta que escribiría Botika"
                           >
                             <PlayCircle className="h-3.5 w-3.5" /> {busy === t.id ? "Conversando…" : "Simular respuesta"}
-                          </button>
+                          </button>}
                           <button onClick={() => store.deleteOutboxTask(t.id)} className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err" title="Cancelar tarea">
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>

@@ -141,8 +141,8 @@ export default function AgendaPage() {
   const notificar = async (a: Appointment, tipo: "confirmacion" | "estado") => {
     const r = await enviarAvisoCita(session!.clinicId, a.id, tipo);
     if (r.ok) {
-      if (tipo === "confirmacion") upsertAppointment({ ...a, reminderSent: true });
-      setAviso({ ok: true, texto: r.demo ? "En la demo no se mandan correos: quedó marcado como enviado." : "Correo enviado al paciente." });
+      if (tipo === "confirmacion" && !r.demo) upsertAppointment({ ...a, reminderSent: true });
+      setAviso({ ok: true, texto: r.demo ? "En la demo no se envían correos; la cita no se marcó como notificada." : "Correo enviado al paciente." });
     } else {
       setAviso({ ok: false, texto: r.error });
     }

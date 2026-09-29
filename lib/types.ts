@@ -738,7 +738,7 @@ export interface RecoveryMonitor {
 // ===== Módulos de paridad Dentalink (CRM, Laboratorios, Liquidaciones, Box) =====
 export type CrmStage = "nuevo" | "contactado" | "presupuesto" | "seguimiento" | "ganado" | "perdido";
 export interface CrmCard { id: string; patientId: string; stage: CrmStage; note?: string; createdAt: string; updatedAt: string; }
-export interface Campaign { id: string; name: string; channel: "whatsapp" | "email"; message: string; audience: string; createdAt: string; sentAt?: string; sentCount?: number; }
+export interface Campaign { id: string; name: string; channel: "whatsapp" | "email"; message: string; audience: string; createdAt: string; recipientIds?: string[]; sentAt?: string; sentCount?: number; }
 
 export type LabStatus = "enviado" | "en_proceso" | "recibido" | "entregado";
 export interface LabOrder { id: string; patientId: string; professionalId?: string; lab: string; workType: string; sentAt: string; dueAt?: string; cost?: number; status: LabStatus; notes?: string; createdAt: string; }

@@ -83,11 +83,20 @@ test.describe("agenda del día", () => {
       await expect(menu).toContainText(estado);
     }
     await items.first().click();
-    await expect(page.getByRole("status").filter({ hasText: "En la demo no se mandan correos" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "En la demo no se envían correos" })).toBeVisible();
 
     await main(page).getByRole("button", { name: "No confirmado" }).first().click();
     await page.getByRole("menu", { name: "Estado de la cita" }).getByRole("menuitem", { name: "En sala de espera" }).click();
     await expect.poll(async () => (await leerDB(page)).appointments.find((a: { id: string }) => a.id === "a_e2e_hoy")?.status).toBe("en_sala");
+  });
+
+  test("la demo no marca como enviado un correo que no salió", async ({ page }) => {
+    const antes = (await leerDB(page)).appointments.map((a: { id: string; reminderSent?: boolean }) => [a.id, a.reminderSent]);
+    await main(page).getByRole("button", { name: "Acciones de la cita" }).first().click();
+    await page.getByRole("menuitem", { name: "Ver" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Enviar al correo" }).click();
+    await expect(page.getByText("En la demo no se envían correos; la cita no se marcó como notificada.")).toBeVisible();
+    expect((await leerDB(page)).appointments.map((a: { id: string; reminderSent?: boolean }) => [a.id, a.reminderSent])).toEqual(antes);
   });
 
   test("el comentario de la cita se ve en un globo", async ({ page }) => {
