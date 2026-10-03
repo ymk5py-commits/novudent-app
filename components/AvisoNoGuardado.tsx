@@ -49,12 +49,12 @@ export default function AvisoNoGuardado() {
       <div className="mx-auto flex max-w-5xl flex-wrap items-start gap-x-4 gap-y-3">
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-state-err" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-extrabold text-state-err">
+          <p className="text-sm font-bold text-state-err">
             {titulo}
             {fallos.length > 1 && ` (${fallos.length} cambios)`}
           </p>
           <p className="mt-0.5 text-[13px] leading-relaxed text-clinic-text">{ayuda}</p>
-          <p className="mt-1 font-mono text-[11px] text-clinic-muted">
+          <p className="mt-1 tabular-nums text-[11px] text-clinic-muted">
             {fallos.slice(0, 3).map((f) => f.clave).join(" · ")}
             {fallos.length > 3 && ` · y ${fallos.length - 3} más`}
           </p>

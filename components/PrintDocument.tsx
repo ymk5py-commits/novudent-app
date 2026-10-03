@@ -23,7 +23,7 @@ export function PrintLetterhead({ clinic, label }: { clinic: Clinic; label: stri
       <header className="plan-print-header flex flex-wrap items-start justify-between gap-4">
         <div className="plan-print-brand flex flex-col items-start gap-1">
           <Logotipo className="plan-print-logo h-10 w-auto" />
-          <span className="text-[10px] font-extrabold uppercase tracking-[.14em] text-azure-700">{label}</span>
+          <span className="text-[12px] font-bold text-azure-700">{label}</span>
         </div>
         <div className="plan-print-clinic flex max-w-[250px] flex-col items-end text-right text-xs text-clinic-muted">
           {clinic.config.logo && <img src={clinic.config.logo} alt="" className="plan-print-clinic-logo mb-1 h-8 w-auto max-w-32 object-contain" />}

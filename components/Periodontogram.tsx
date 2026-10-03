@@ -35,7 +35,7 @@ const SITES = ["MV", "V", "DV", "ML", "L", "DL"];
 
 function pdColor(v: number | null): string {
   if (v === null || v === 0) return "text-clinic-muted";
-  if (v >= 6) return "bg-state-errbg text-state-err font-extrabold";
+  if (v >= 6) return "bg-state-errbg text-state-err font-bold";
   if (v >= 4) return "bg-state-warnbg text-state-warn font-bold";
   return "text-clinic-text";
 }
@@ -153,9 +153,9 @@ function PerioTable({ teeth }: { teeth: Record<string, PerioToothRecord> }) {
   const rows = [...UPPER, ...LOWER].filter((t) => teeth[t]);
   if (rows.length === 0) return <p className="text-xs text-clinic-muted">Sin piezas medidas.</p>;
   return (
-    <table className="w-full min-w-[560px] border-collapse text-center font-mono text-[11px]">
+    <table className="w-full min-w-[560px] border-collapse text-center tabular-nums text-[11px]">
       <thead>
-        <tr className="text-[11px] uppercase tracking-wide text-clinic-muted">
+        <tr className="text-[13px] font-bold text-clinic-text">
           <th className="p-1 text-left">Pieza</th>
           {SITES.map((s) => <th key={s} className="p-1">{s}</th>)}
           <th className="p-1">CAL</th>
@@ -173,7 +173,7 @@ function PerioTable({ teeth }: { teeth: Record<string, PerioToothRecord> }) {
           });
           return (
             <tr key={t} className="border-t border-clinic-border/60">
-              <td className="p-1 text-left font-extrabold text-clinic-text">{t}</td>
+              <td className="p-1 text-left font-bold text-clinic-text">{t}</td>
               {r.pd.map((v, i) => {
                 const rec = r.recession?.[i];
                 return (
@@ -387,7 +387,7 @@ function PerioEditor({
     <Card className="p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h3 className="font-extrabold text-clinic-text">Nueva medición</h3>
+          <h3 className="font-bold text-clinic-text">Nueva medición</h3>
           <Badge tone="info">{measured} pieza{measured === 1 ? "" : "s"}</Badge>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -462,7 +462,7 @@ function PerioEditor({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-center text-[11px]">
           <thead>
-            <tr className="text-[11px] uppercase tracking-wide text-clinic-muted">
+            <tr className="text-[13px] font-bold text-clinic-text">
               <th className="p-1 text-left">Pieza</th>
               {SITES.map((s) => <th key={s} className="p-1">{s}</th>)}
               <th className="p-1">Mov.</th>
@@ -477,7 +477,7 @@ function PerioEditor({
                   key={t}
                   className={`border-t border-clinic-border/60 transition-colors ${isHighlighted ? "bg-azure-50" : ""}`}
                 >
-                  <td className={`p-1 text-left font-mono font-extrabold ${isHighlighted ? "text-azure-700" : "text-clinic-text"}`}>{t}</td>
+                  <td className={`p-1 text-left tabular-nums font-bold ${isHighlighted ? "text-azure-700" : "text-clinic-text"}`}>{t}</td>
                   {SITES.map((_, i) => (
                     <td key={i} className="p-0.5">
                       <div className="flex flex-col items-center gap-0.5">
@@ -489,7 +489,7 @@ function PerioEditor({
                             value={r?.pd[i] ?? ""}
                             onChange={(e) => setPd(t, i, e.target.value)}
                             title="Profundidad de sondaje (mm)"
-                            className={`h-8 w-10 rounded-md border border-clinic-border text-center font-mono text-xs focus:border-azure-600 ${pdColor(r?.pd[i] ?? null)}`}
+                            className={`h-8 w-10 rounded-md border border-clinic-border text-center tabular-nums text-xs focus:border-azure-600 ${pdColor(r?.pd[i] ?? null)}`}
                           />
                           <button
                             type="button"
@@ -509,7 +509,7 @@ function PerioEditor({
                             onChange={(e) => setRecession(t, i, e.target.value)}
                             title="Recesión gingival (mm)"
                             placeholder="rec"
-                            className="h-6 w-10 rounded-md border border-clinic-border/70 text-center font-mono text-[11px] text-clinic-muted placeholder:text-clinic-muted/50 focus:border-azure-600"
+                            className="h-6 w-10 rounded-md border border-clinic-border/70 text-center tabular-nums text-[11px] text-clinic-muted placeholder:text-clinic-muted/50 focus:border-azure-600"
                           />
                           <button
                             type="button"
@@ -528,7 +528,7 @@ function PerioEditor({
                       max={3}
                       value={r?.mobility ?? ""}
                       onChange={(e) => setMobility(t, e.target.value)}
-                      className="h-8 w-10 rounded-md border border-clinic-border text-center font-mono text-xs focus:border-azure-600"
+                      className="h-8 w-10 rounded-md border border-clinic-border text-center tabular-nums text-xs focus:border-azure-600"
                     />
                   </td>
                 </tr>

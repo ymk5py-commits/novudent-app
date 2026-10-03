@@ -66,7 +66,7 @@ export function EstadisticasTareas() {
                 <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: CHART_COLOR[tipo] }} />
                 {label}
               </p>
-              <p className="mt-1 text-3xl font-extrabold text-clinic-text">{e.contadores[tipo].exitos}</p>
+              <p className="mt-1 text-3xl font-bold text-clinic-text">{e.contadores[tipo].exitos}</p>
               <p className="text-xs text-clinic-muted">de {e.contadores[tipo].casos} {e.contadores[tipo].casos === 1 ? "caso" : "casos"}</p>
             </div>
           ))}
@@ -74,7 +74,7 @@ export function EstadisticasTareas() {
 
         <Card className="min-w-0 p-4 sm:p-5">
           <div className="flex items-start gap-2">
-            <h2 className="text-base font-extrabold text-clinic-text">Usuarios y los casos en los que han participado</h2>
+            <h2 className="text-base font-bold text-clinic-text">Usuarios y los casos en los que han participado</h2>
             <span
               tabIndex={0}
               className="mt-0.5 text-clinic-muted"
@@ -154,7 +154,7 @@ function Grafico({ usuarios }: { usuarios: Usuarios }) {
                       className="pointer-events-none absolute bottom-full z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-lg border border-clinic-border bg-white px-2.5 py-1.5 text-xs shadow-pop"
                       style={{ left: `${((tip.desde + tip.ancho / 2) / (acumulado || 1)) * 100}%` }}
                     >
-                      <b className="font-extrabold text-clinic-text">{tip.n}</b>{" "}
+                      <b className="font-bold text-clinic-text">{tip.n}</b>{" "}
                       <span className="text-clinic-muted">{TIPO_TAREA_LABEL[tip.t]}</span>
                     </span>
                   )}
@@ -179,7 +179,7 @@ function Tabla({ usuarios }: { usuarios: Usuarios }) {
       <table className="w-full min-w-[520px] text-sm">
         <caption className="sr-only">Casos por usuario y tipo de tarea</caption>
         <thead>
-          <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+          <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
             <th scope="col" className="px-3 py-2">Usuario</th>
             {cols.map((c) => <th key={c} scope="col" className="px-2 py-2 text-right">{TIPO_TAREA_LABEL[c]}</th>)}
             <th scope="col" className="px-3 py-2 text-right">Total</th>
@@ -190,7 +190,7 @@ function Tabla({ usuarios }: { usuarios: Usuarios }) {
             <tr key={u.userId}>
               <th scope="row" className="px-3 py-2 text-left font-semibold text-clinic-text">{u.nombre}</th>
               {cols.map((c) => <td key={c} className="px-2 py-2 text-right text-clinic-text">{u.porTipo[c] ?? 0}</td>)}
-              <td className="px-3 py-2 text-right font-extrabold text-clinic-text">{u.total}</td>
+              <td className="px-3 py-2 text-right font-bold text-clinic-text">{u.total}</td>
             </tr>
           ))}
         </tbody>

@@ -25,7 +25,7 @@ export function SubscriptionBanner() {
       <p className="min-w-0 flex-1 text-sm font-semibold">{notice.text}</p>
       <Link
         href="/app/suscripcion"
-        className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-extrabold text-white transition-transform hover:-translate-y-0.5 ${
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold text-white transition-transform hover:-translate-y-0.5 ${
           err ? "bg-state-err" : "bg-state-warn"
         }`}
       >

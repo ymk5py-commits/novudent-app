@@ -190,7 +190,7 @@ function VoiceNoteModal({
             <span className="absolute h-20 w-20 animate-ping rounded-full bg-red-400/30" />
             <Mic className="h-8 w-8 text-state-err" />
           </div>
-          <p className="font-mono text-2xl font-bold tabular-nums text-clinic-text">
+          <p className="tabular-nums text-2xl font-bold tabular-nums text-clinic-text">
             {mm}:{ss}
           </p>
           <p className="text-xs text-clinic-muted">Grabando… hablá con naturalidad.</p>
@@ -424,7 +424,7 @@ export function ReportsIAPanel({ datos }: { datos: unknown }) {
           <Sparkles className="h-4.5 w-4.5 h-5 w-5" />
         </span>
         <div>
-          <h2 className="font-extrabold text-clinic-text">Pregúntale a tus datos</h2>
+          <h2 className="font-bold text-clinic-text">Pregúntale a tus datos</h2>
           <p className="text-xs text-clinic-muted">
             Consultá los números de los últimos 30 días en lenguaje natural.
           </p>
@@ -513,7 +513,7 @@ export function ContralorCard({ pendientes }: { pendientes: unknown }) {
             <ShieldCheck className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="font-extrabold text-clinic-text">Contralor IA</h2>
+            <h2 className="font-bold text-clinic-text">Contralor IA</h2>
             <p className="text-xs text-clinic-muted">
               El parte del día: qué atacar primero para que nada quede colgado.
             </p>

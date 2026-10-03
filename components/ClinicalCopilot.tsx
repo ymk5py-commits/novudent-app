@@ -88,7 +88,7 @@ export function ClinicalCopilot({ patient }: { patient: Patient }) {
       <div className="rounded-2xl border border-clinic-border bg-white p-5">
         <div className="mb-1 flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-50 text-azure-600"><Sparkles className="h-4 w-4" /></span>
-          <h3 className="font-extrabold text-clinic-text">Clinical Copilot</h3>
+          <h3 className="font-bold text-clinic-text">Clinical Copilot</h3>
           <Badge tone="info">IA</Badge>
         </div>
         <p className="mb-3 flex items-start gap-1.5 text-[11px] text-clinic-muted"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" /> Subí una radiografía: la IA propone diagnóstico, odontograma y plan{verMontos ? " con precios del arancel" : " de tratamiento"}. Es <b className="mx-0.5">apoyo</b> — revisá y aprobá antes de aplicar.</p>
@@ -107,11 +107,11 @@ export function ClinicalCopilot({ patient }: { patient: Patient }) {
 
       {res && (
         <>
-          {res.summary && <Card className="p-4"><div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Resumen</div><p className="text-sm text-clinic-text">{res.summary}</p></Card>}
+          {res.summary && <Card className="p-4"><div className="mb-1 text-[13px] font-semibold text-clinic-muted">Resumen</div><p className="text-sm text-clinic-text">{res.summary}</p></Card>}
 
           <Card className="p-4">
             <div className="mb-2 flex items-center justify-between">
-              <h4 className="font-extrabold text-clinic-text">Hallazgos / odontograma</h4>
+              <h4 className="font-bold text-clinic-text">Hallazgos / odontograma</h4>
               <Btn variant="outline" onClick={aplicarOdontograma} disabled={fSel.size === 0}><Smile className="h-3.5 w-3.5" /> Aplicar al odontograma</Btn>
             </div>
             {res.findings.length === 0 ? <Empty title="Sin hallazgos" desc="La IA no detectó hallazgos en la imagen." /> : (
@@ -119,7 +119,7 @@ export function ClinicalCopilot({ patient }: { patient: Patient }) {
                 {res.findings.map((f, i) => (
                   <li key={i} className="flex flex-wrap items-center gap-2 py-2 text-sm">
                     <input type="checkbox" checked={fSel.has(i)} onChange={() => toggle(fSel, setFSel, i)} />
-                    <span className="font-mono font-extrabold text-clinic-text">{f.tooth}</span>
+                    <span className="tabular-nums font-bold text-clinic-text">{f.tooth}</span>
                     <Badge tone="info">{COND_LABEL[f.condition] ?? f.condition}</Badge>
                     <Badge tone={sevTone(f.severity)}>{f.severity}</Badge>
                     <span className="text-[11px] text-clinic-muted">{Math.round(f.confidence * 100)}% conf.</span>
@@ -132,7 +132,7 @@ export function ClinicalCopilot({ patient }: { patient: Patient }) {
 
           <Card className="p-4">
             <div className="mb-2 flex items-center justify-between">
-              <h4 className="font-extrabold text-clinic-text">Plan de tratamiento sugerido</h4>
+              <h4 className="font-bold text-clinic-text">Plan de tratamiento sugerido</h4>
               {alcance.puede("plans.create") && <Btn variant="outline" onClick={crearPlan} disabled={pSel.size === 0}><FileSpreadsheet className="h-3.5 w-3.5" /> Crear plan (borrador)</Btn>}
             </div>
             {res.plan.length === 0 ? <Empty title="Sin plan" desc="La IA no sugirió procedimientos." /> : (
@@ -141,17 +141,17 @@ export function ClinicalCopilot({ patient }: { patient: Patient }) {
                   {res.plan.map((p, i) => (
                     <li key={i} className="flex items-center gap-2 py-2 text-sm">
                       <input type="checkbox" checked={pSel.has(i)} onChange={() => toggle(pSel, setPSel, i)} />
-                      {p.tooth && <span className="font-mono font-bold text-clinic-text">{p.tooth}</span>}
+                      {p.tooth && <span className="tabular-nums font-bold text-clinic-text">{p.tooth}</span>}
                       <span className="min-w-0 flex-1 truncate text-clinic-text">{p.description}</span>
                       {p.priority === 1 && <Badge tone="err">Urgente</Badge>}
-                      {verMontos && <span className="font-mono font-bold text-clinic-text">{fmtGs(p.price)}</span>}
+                      {verMontos && <span className="tabular-nums font-bold text-clinic-text">{fmtGs(p.price)}</span>}
                     </li>
                   ))}
                 </ul>
                 {verMontos && (
                   <div className="mt-2 flex items-center justify-between border-t border-clinic-border pt-2 text-sm">
                     <span className="font-bold text-clinic-muted">Total seleccionado</span>
-                    <span className="font-mono text-base font-extrabold text-azure-700">{fmtGs(planTotal)}</span>
+                    <span className="tabular-nums text-base font-bold text-azure-700">{fmtGs(planTotal)}</span>
                   </div>
                 )}
               </>

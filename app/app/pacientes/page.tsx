@@ -61,7 +61,7 @@ export default function PatientsPage() {
   return (
     <div className="space-y-5">
       <Reveal y={0} className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold text-clinic-text">Pacientes</h1>
+        <h1 className="text-[16px] font-bold text-clinic-text">Pacientes</h1>
         {verPersonales && <Btn onClick={() => router.push("/app/pacientes/nuevo")}><Plus className="h-4 w-4" /> Nuevo paciente</Btn>}
       </Reveal>
 
@@ -70,7 +70,7 @@ export default function PatientsPage() {
           <span key={t.k} className="contents">
             <button
               onClick={() => setTab(t.k)}
-              className={`rounded-xl px-3.5 py-2 text-sm font-bold transition-colors ${tab === t.k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
+              className={`rounded-xl px-3.5 py-2 text-[14px] font-normal transition-colors ${tab === t.k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
             >
               {t.label}
             </button>
@@ -80,7 +80,7 @@ export default function PatientsPage() {
                 aria-label="Mostrar pacientes"
                 value={estado}
                 onChange={(e) => { setEstado(e.target.value as typeof estado); setTab("lista"); }}
-                className="rounded-xl border-0 bg-transparent px-2 py-2 text-sm font-bold text-clinic-muted hover:bg-clinic-bg focus:ring-2 focus:ring-azure-200"
+                className="rounded-xl border-0 bg-transparent px-2 py-2 text-[14px] font-normal text-clinic-text hover:bg-clinic-bg focus:ring-2 focus:ring-azure-200"
               >
                 <option value="habilitados">Habilitados</option>
                 <option value="deshabilitados">Deshabilitados</option>
@@ -123,7 +123,7 @@ export default function PatientsPage() {
                     <div className="flex min-w-0 items-start justify-between gap-3">
                       <div className="min-w-0">
                         <Link href={`/app/pacientes/${p.id}`} className="block text-base font-bold text-clinic-text hover:text-azure-700">{fullName(p)}</Link>
-                        <p className="mt-1 font-mono text-xs text-clinic-muted">{p.code ?? "Sin código"}{verPersonales && <> · {p.document || p.ruc || "Sin documento"}</>}</p>
+                        <p className="mt-1 tabular-nums text-xs text-clinic-muted">{p.code ?? "Sin código"}{verPersonales && <> · {p.document || p.ruc || "Sin documento"}</>}</p>
                       </div>
                       <AccionesPaciente paciente={p} onDeshabilitar={verPersonales ? () => {
                         const accion = p.disabled ? "habilitar" : "deshabilitar";
@@ -142,7 +142,7 @@ export default function PatientsPage() {
             <Card className="hidden min-w-0 overflow-x-auto p-0 sm:block">
               <table className="w-full min-w-[680px] text-sm">
                 <thead>
-                  <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                  <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                     <th className="px-4 py-3">Código</th>
                     {verPersonales && <th className="px-2 py-3">CI o RUC</th>}
                     <th className="px-2 py-3">Nombre</th>
@@ -158,8 +158,8 @@ export default function PatientsPage() {
                     const debt = verMontos && patientBalance(p.id, db.budgets, db.payments) > 0;
                     return (
                       <tr key={p.id} className={`hover:bg-clinic-bg/60 ${p.disabled ? "opacity-60" : ""}`}>
-                        <td className="px-4 py-2.5 font-mono text-xs text-clinic-muted">{p.code ?? "—"}</td>
-                        {verPersonales && <td className="px-2 py-2.5 font-mono text-xs text-clinic-text">{p.document || p.ruc || "—"}</td>}
+                        <td className="px-4 py-2.5 tabular-nums text-xs text-clinic-muted">{p.code ?? "—"}</td>
+                        {verPersonales && <td className="px-2 py-2.5 tabular-nums text-xs text-clinic-text">{p.document || p.ruc || "—"}</td>}
                         <td className="px-2 py-2.5">
                           {/* aria-label con el nombre completo: el apellido vive en otra celda. */}
                           <Link href={`/app/pacientes/${p.id}`} aria-label={`Abrir la ficha de ${fullName(p)}`} className="font-semibold text-clinic-text hover:text-azure-700">{p.firstName}</Link>

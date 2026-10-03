@@ -68,7 +68,7 @@ export function PanelTarea({
       <div className="space-y-3 p-4 sm:p-5">
         <div className="flex items-start gap-2.5">
           <User aria-hidden className="mt-1 h-4 w-4 shrink-0 text-clinic-muted" />
-          <h2 className="min-w-0 flex-1 text-lg font-extrabold leading-tight text-clinic-text">
+          <h2 className="min-w-0 flex-1 text-[16px] font-bold leading-tight text-clinic-text">
             {p && alcance.vePaciente(p.id) ? (
               <Link href={`/app/pacientes/${p.id}`} className="hover:text-azure-700 hover:underline">{nombre}</Link>
             ) : nombre}
@@ -85,8 +85,8 @@ export function PanelTarea({
           {p && verPersonales && (p.phone || p.landline) && (
             <Linea icono={Phone} etiqueta="Teléfonos">
               <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                {p.phone && <span className="font-mono text-[13px]">{p.phone}</span>}
-                {p.landline && <span className="font-mono text-[13px]">{p.landline}</span>}
+                {p.phone && <span className="tabular-nums text-[13px]">{p.phone}</span>}
+                {p.landline && <span className="tabular-nums text-[13px]">{p.landline}</span>}
                 {p.phone && (
                   <a
                     href={waLink(p.phone, `Hola ${p.firstName}, te contactamos de ${db.clinics[0]?.name ?? "la clínica"}.`)}
@@ -104,7 +104,7 @@ export function PanelTarea({
           {p && verMontos && saldo > 0 && (
             <Linea icono={AlertTriangle} etiqueta="Deuda" tono="err">
               <span className="inline-flex items-center rounded-md bg-state-err px-2 py-0.5 text-xs font-bold text-white">Paciente tiene deuda</span>
-              <span className="ml-2 font-mono text-xs font-bold text-state-err">{fmtGs(saldo)}</span>
+              <span className="ml-2 tabular-nums text-xs font-bold text-state-err">{fmtGs(saldo)}</span>
             </Linea>
           )}
           {detalle && <Linea icono={MessageSquare} etiqueta="Detalle"><span className="font-semibold text-clinic-text">{detalle}</span></Linea>}
@@ -121,7 +121,7 @@ export function PanelTarea({
         {fila.estado === "pendiente" && <Finalizar key={fila.id} fila={fila} hoy={hoy} onGestionar={onGestionar} />}
         {fila.estado === "completada" && fila.gestion && (
           <div role="status" className="rounded-xl border border-state-ok/30 bg-state-okbg px-3.5 py-3">
-            <p className="flex items-center gap-1.5 text-sm font-extrabold text-state-ok">
+            <p className="flex items-center gap-1.5 text-sm font-bold text-state-ok">
               <CheckCircle2 aria-hidden className="h-4 w-4" /> Tarea completada{fila.gestion.byName ? ` · ${fila.gestion.byName}` : ""}
             </p>
             <p className="mt-0.5 text-xs text-clinic-text">
@@ -133,7 +133,7 @@ export function PanelTarea({
         )}
         {fila.estado === "sistema" && (
           <div role="status" className="rounded-xl border border-clinic-border bg-clinic-bg px-3.5 py-3">
-            <p className="flex items-center gap-1.5 text-sm font-extrabold text-clinic-muted"><CheckCircle2 aria-hidden className="h-4 w-4" /> Completada por el sistema</p>
+            <p className="flex items-center gap-1.5 text-sm font-bold text-clinic-muted"><CheckCircle2 aria-hidden className="h-4 w-4" /> Completada por el sistema</p>
             <p className="mt-0.5 text-xs text-clinic-text">{MOTIVO_SISTEMA[fila.type]}</p>
           </div>
         )}
@@ -203,14 +203,14 @@ function Finalizar({ fila, hoy, onGestionar }: { fila: FilaTarea; hoy: string; o
 
       {recontacto && (
         <fieldset className="rounded-xl border border-clinic-border bg-clinic-bg/60 p-3">
-          <legend className="px-1 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Volver a contactar en…</legend>
+          <legend className="px-1 text-[13px] font-bold text-clinic-muted">Volver a contactar en…</legend>
           <div className="space-y-1">
             {RECONTACTO_OPCIONES.map((o) => (
               <label key={o.dias} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm hover:bg-white">
                 <input type="radio" name="recontacto" checked={opcion === o.dias} onChange={() => setOpcion(o.dias)} className="accent-azure-600" />
                 <RotateCcw aria-hidden className="h-3.5 w-3.5 text-clinic-muted" />
                 <span className="flex-1 font-semibold text-clinic-text">{o.label}</span>
-                <span className="font-mono text-[11px] text-clinic-muted">{fechaCorta(sumarDias(base, o.dias), hoy)}</span>
+                <span className="tabular-nums text-[11px] text-clinic-muted">{fechaCorta(sumarDias(base, o.dias), hoy)}</span>
               </label>
             ))}
             <label className="flex cursor-pointer flex-wrap items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm hover:bg-white">
@@ -351,14 +351,14 @@ function Presupuestos({ paciente }: { paciente: Patient }) {
           <li key={b.id} className="rounded-xl border border-clinic-border p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-clinic-muted">Dr(a).</p>
+                <p className="text-[13px] font-semibold text-clinic-muted">Dr(a).</p>
                 <p className="truncate text-sm font-bold text-clinic-text">{nombres.usuario(b.dentistId) || "—"}</p>
                 <p className="truncate text-xs text-clinic-muted">Plan #{b.id}{b.name ? ` · ${b.name}` : ""}</p>
               </div>
               {verMontos && (
                 <div className="shrink-0 text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-clinic-muted">Deuda</p>
-                  <p className={`font-mono text-sm font-extrabold ${deuda > 0 ? "text-state-err" : "text-clinic-text"}`}>{fmtGs(deuda)}</p>
+                  <p className="text-[13px] font-semibold text-clinic-muted">Deuda</p>
+                  <p className={`tabular-nums text-sm font-bold ${deuda > 0 ? "text-state-err" : "text-clinic-text"}`}>{fmtGs(deuda)}</p>
                 </div>
               )}
             </div>
@@ -397,14 +397,14 @@ function Citas({ paciente }: { paciente: Patient }) {
         <li key={a.id} className="rounded-xl border border-clinic-border p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-clinic-muted">Dr(a).</p>
+              <p className="text-[13px] font-semibold text-clinic-muted">Dr(a).</p>
               <p className="truncate text-sm font-bold text-clinic-text">{nombres.usuario(a.dentistId) || "—"}</p>
               <p className="truncate text-xs text-clinic-muted">{a.title}{a.budgetId ? ` · Plan #${a.budgetId}` : ""}</p>
             </div>
             <div className="shrink-0 text-right">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-clinic-muted">Fecha</p>
-              <p className="text-sm font-extrabold text-clinic-text">{new Date(a.start).toLocaleDateString("es-PY", { day: "2-digit", month: "short", year: "2-digit" })}</p>
-              <p className="font-mono text-[11px] text-clinic-muted">{fmtTime(a.start)}</p>
+              <p className="text-[13px] font-semibold text-clinic-muted">Fecha</p>
+              <p className="text-sm font-bold text-clinic-text">{new Date(a.start).toLocaleDateString("es-PY", { day: "2-digit", month: "short", year: "2-digit" })}</p>
+              <p className="tabular-nums text-[11px] text-clinic-muted">{fmtTime(a.start)}</p>
             </div>
           </div>
           <div className="mt-2 flex items-center gap-2">

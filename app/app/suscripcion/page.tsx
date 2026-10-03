@@ -40,7 +40,7 @@ export default function SubscriptionPage() {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">La suscripción de la plataforma es exclusiva del rol <b>Administrador</b>.</p>
       </Card>
     );
@@ -50,7 +50,7 @@ export default function SubscriptionPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-clinic-text">Suscripción</h1>
+          <h1 className="text-[16px] font-bold text-clinic-text">Suscripción</h1>
           <p className="text-sm text-clinic-muted">Plan de {db.clinics[0]?.name ?? "tu clínica"} en Novudent.</p>
         </div>
         {sub?.customerPortalUrl && (
@@ -76,7 +76,7 @@ export default function SubscriptionPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="whitespace-nowrap text-lg font-extrabold text-clinic-text">Plan {planActual.label}</h2>
+                <h2 className="whitespace-nowrap text-[16px] font-bold text-clinic-text">Plan {planActual.label}</h2>
                 {sub ? <Badge tone={ESTADO[sub.status].tone}>{ESTADO[sub.status].label}</Badge>
                      : <Badge tone="info">Cuenta anterior al cobro</Badge>}
               </div>
@@ -94,7 +94,7 @@ export default function SubscriptionPage() {
             </div>
             <div className="min-w-0 text-left sm:text-right">
               <div className="text-xs font-semibold text-clinic-muted">Precio publicado</div>
-              <div className="font-mono text-2xl font-extrabold text-clinic-text">{gs(planActual.priceGs)}<span className="ml-1 text-xs font-semibold text-clinic-muted">/ mes</span></div>
+              <div className="tabular-nums text-2xl font-bold text-clinic-text">{gs(planActual.priceGs)}<span className="ml-1 text-xs font-semibold text-clinic-muted">/ mes</span></div>
             </div>
           </div>
         </Card>
@@ -104,7 +104,7 @@ export default function SubscriptionPage() {
       <Reveal>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-extrabold text-clinic-text">Planes Novudent</h2>
+            <h2 className="text-[16px] font-bold text-clinic-text">Planes Novudent</h2>
             <p className="text-sm text-clinic-muted">Los mismos planes y precios que mostramos en la web.</p>
           </div>
           <div role="group" aria-label="Período de pago" className="inline-flex rounded-xl border border-clinic-border bg-white p-1 text-sm font-semibold">
@@ -120,11 +120,11 @@ export default function SubscriptionPage() {
             return (
               <Card key={id} className={`flex flex-col p-6 ${esActual ? "ring-2 ring-azure-400" : ""}`}>
                 <div className="flex items-center justify-between">
-                  <h3 className="font-extrabold text-clinic-text">Plan {p.label}</h3>
+                  <h3 className="font-bold text-clinic-text">Plan {p.label}</h3>
                   {esActual && <Badge tone="ok">Tu plan</Badge>}
                 </div>
                 <p className="mt-1 text-xs text-clinic-muted">{oferta.para} · {oferta.profesionales}</p>
-                <div className="mt-4 font-mono text-2xl font-extrabold text-clinic-text">
+                <div className="mt-4 tabular-nums text-2xl font-bold text-clinic-text">
                   {gs(anual ? p.annualGs : p.priceGs)}
                   <span className="ml-1 text-xs font-semibold text-clinic-muted">/ {anual ? "año" : "mes"}</span>
                 </div>

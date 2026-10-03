@@ -71,7 +71,7 @@ export function NuevaTareaModal({
       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); crear(); }}>
         {!paciente && (
           <div>
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-clinic-muted">Paciente</span>
+            <span className="mb-1 block text-[13px] font-semibold text-clinic-muted">Paciente</span>
             {elegido ? (
               <div className="flex items-center justify-between gap-2 rounded-xl border border-azure-300 bg-azure-50 px-3 py-2 text-sm font-bold text-clinic-text">
                 <span className="truncate">{fullName(elegido)}</span>

@@ -38,7 +38,7 @@ export default function BillingPage() {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">La facturación la ven el <b>Administrador</b> y <b>Recepción y caja</b>.</p>
       </Card>
     );
@@ -56,7 +56,7 @@ export default function BillingPage() {
       <Reveal y={0}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-clinic-text">Facturación</h1>
+          <h1 className="text-[16px] font-bold text-clinic-text">Facturación</h1>
           <p className="text-sm text-clinic-muted">
             Flujo: <b>Enviar a cobro</b> → MBILLED + retención (HOLD/MGRHOLD) → <b>Release from Hold</b> → FACTURADO.
           </p>
@@ -80,7 +80,7 @@ export default function BillingPage() {
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className={`rounded-xl px-3.5 py-2 text-sm font-bold transition-colors ${filter === f.key ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg"}`}
+            className={`rounded-xl px-3.5 py-2 text-[14px] font-normal transition-colors ${filter === f.key ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg"}`}
           >
             {f.label}
           </button>
@@ -102,11 +102,11 @@ export default function BillingPage() {
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-sm font-extrabold text-clinic-text">{b.cpt}</span>
+                      <span className="tabular-nums text-sm font-bold text-clinic-text">{b.cpt}</span>
                       <span className="text-sm text-clinic-muted">{proc?.description ?? "Procedimiento"}</span>
                       {p && <Link href={`/app/pacientes/${p.id}`} className="text-sm font-bold text-azure-600 hover:underline">{fullName(p)}</Link>}
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-clinic-muted">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums text-[11px] text-clinic-muted">
                       <span data-tip="Diagnóstico (DX)">DX {b.dx}</span>
                       <span data-tip="Place of Service">POS {b.pos}</span>
                       <span data-tip="Modificador">MOD {b.modifier || "—"}</span>
@@ -116,7 +116,7 @@ export default function BillingPage() {
                     {b.extras && b.extras.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {b.extras.map((e, i) => (
-                          <span key={i} className="rounded-md bg-azure-50 px-2 py-0.5 font-mono text-[11px] font-bold text-azure-700" data-tip={`Procedimiento adicional · ${fmtGs(e.amount)}`}>
+                          <span key={i} className="rounded-md bg-azure-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-azure-700" data-tip={`Procedimiento adicional · ${fmtGs(e.amount)}`}>
                             + {e.cpt}{e.modifier ? `·${e.modifier}` : ""}
                           </span>
                         ))}
@@ -181,7 +181,7 @@ export default function BillingPage() {
           <div className="space-y-2">
             {historyFor.history.map((h, i) => (
               <div key={i} className="flex items-start gap-3 rounded-xl bg-clinic-bg p-3 text-sm">
-                <span className="font-mono text-[11px] text-clinic-muted">{new Date(h.at).toLocaleString("es-PY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                <span className="tabular-nums text-[11px] text-clinic-muted">{new Date(h.at).toLocaleString("es-PY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                 <span className="flex-1 font-semibold text-clinic-text">{h.action}</span>
                 <span className="text-[11px] text-clinic-muted">{h.by}</span>
               </div>
@@ -296,7 +296,7 @@ function NewBilling({ onClose, onSave }: { onClose: () => void; onSave: (b: Bill
         {/* Procedimientos adicionales (Procedure_Billing_Mapping) */}
         <div className="rounded-2xl border border-clinic-border bg-clinic-bg/50 p-4">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wide text-clinic-muted">Procedimientos adicionales</span>
+            <span className="text-[13px] font-bold text-clinic-muted">Procedimientos adicionales</span>
             <Btn variant="outline" onClick={addExtra}><Plus className="h-3.5 w-3.5" /> Agregar</Btn>
           </div>
           {extras.length === 0 ? (
@@ -322,7 +322,7 @@ function NewBilling({ onClose, onSave }: { onClose: () => void; onSave: (b: Bill
             <input type="checkbox" checked={athena} onChange={(e) => setAthena(e.target.checked)} className="h-4 w-4 accent-azure-600" />
             Cuenta ATHENA asociada
           </label>
-          <span className="text-sm text-clinic-muted">Total del reclamo: <b className="font-mono text-clinic-text">{fmtGs(total)}</b></span>
+          <span className="text-sm text-clinic-muted">Total del reclamo: <b className="tabular-nums text-clinic-text">{fmtGs(total)}</b></span>
         </div>
         {issues.length > 0 && (
           <div className="space-y-1 rounded-xl bg-state-errbg px-3 py-2">

@@ -38,7 +38,7 @@ export function TareasPaciente({ patient }: { patient: Patient }) {
     <div className="space-y-4">
       <Card className="p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="mr-auto text-lg font-extrabold text-clinic-text">Tareas de gestión</h2>
+          <h2 className="mr-auto text-[16px] font-bold text-clinic-text">Tareas de gestión</h2>
           <Btn variant="outline" onClick={() => setVerCompletadas((v) => !v)}>
             {verCompletadas ? "Ocultar tareas completadas" : "Ver tareas completadas"}
           </Btn>
@@ -60,7 +60,7 @@ export function TareasPaciente({ patient }: { patient: Patient }) {
 
       {notasViejas && (
         <section className="space-y-2">
-          <h3 className="text-sm font-extrabold text-clinic-text">Tareas anotadas antes</h3>
+          <h3 className="text-sm font-bold text-clinic-text">Tareas anotadas antes</h3>
           <p className="text-xs text-clinic-muted">Notas de tarea cargadas antes de las tareas de gestión. Se pueden marcar hechas o borrar; las nuevas se crean arriba.</p>
           <PatientNotas patient={patient} kind="tarea" sinAlta />
         </section>
@@ -85,7 +85,7 @@ function Fila({ f, hoy, responsable }: { f: FilaTarea; hoy: string; responsable:
           {f.gestion?.byName ? ` · trabajada por ${f.gestion.byName}` : ""}
         </span>
       </span>
-      <span className={`font-mono text-xs ${atrasada ? "font-bold text-state-err" : "text-clinic-muted"}`}>{fechaCorta(f.fecha, hoy)}</span>
+      <span className={`tabular-nums text-xs ${atrasada ? "font-bold text-state-err" : "text-clinic-muted"}`}>{fechaCorta(f.fecha, hoy)}</span>
       <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-bold ${atrasada ? "bg-state-errbg text-state-err" : f.estado === "pendiente" ? "bg-azure-50 text-azure-700" : "bg-clinic-bg text-clinic-muted"}`}>{estado}</span>
       <Link
         href={`/app/tareas?fecha=${f.fecha}&tarea=${encodeURIComponent(f.id)}`}

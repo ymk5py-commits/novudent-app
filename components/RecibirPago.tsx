@@ -109,7 +109,7 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
           <Card className="overflow-x-auto p-0">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                   <th className="w-10 px-4 py-3"></th>
                   <th className="px-2 py-3">Presupuesto</th>
                   <th className="px-2 py-3 text-right">Total</th>
@@ -134,10 +134,10 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
                           {fin.tone === "err" && <span className="ml-1 rounded bg-state-errbg px-1 font-bold text-state-err">DEUDA</span>}
                         </div>
                       </td>
-                      <td className="px-2 py-2.5 text-right font-mono">{fmtGs(budgetTotal(b))}</td>
-                      <td className="px-2 py-2.5 text-right font-mono">{fmtGs(budgetRealizado(b))}</td>
-                      <td className="px-2 py-2.5 text-right font-mono">{fmtGs(budgetPaid(b.id, db.payments))}</td>
-                      <td className="px-2 py-2.5 text-right font-mono font-extrabold text-state-err">{fmtGs(budgetBalance(b, db.payments))}</td>
+                      <td className="px-2 py-2.5 text-right tabular-nums">{fmtGs(budgetTotal(b))}</td>
+                      <td className="px-2 py-2.5 text-right tabular-nums">{fmtGs(budgetRealizado(b))}</td>
+                      <td className="px-2 py-2.5 text-right tabular-nums">{fmtGs(budgetPaid(b.id, db.payments))}</td>
+                      <td className="px-2 py-2.5 text-right tabular-nums font-bold text-state-err">{fmtGs(budgetBalance(b, db.payments))}</td>
                     </tr>
                   );
                 })}
@@ -175,7 +175,7 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
 
       {conCuotas.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-extrabold text-clinic-text">Por cuotas de financiamiento</h3>
+          <h3 className="text-sm font-bold text-clinic-text">Por cuotas de financiamiento</h3>
           {conCuotas.map((b) => {
             const cuotas = installmentStatus(b.schedule!, budgetPaid(b.id, db.payments));
             const next = cuotas.find((c) => c.saldo > 0);
@@ -188,7 +188,7 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[460px] text-sm">
                     <thead>
-                      <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                      <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                         <th className="px-4 py-2.5">Cuota</th>
                         <th className="px-2 py-2.5">Vencimiento</th>
                         <th className="px-2 py-2.5 text-right">Monto</th>
@@ -199,11 +199,11 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
                     <tbody className="divide-y divide-clinic-border">
                       {cuotas.map((c) => (
                         <tr key={c.numero}>
-                          <td className="px-4 py-2 font-mono text-clinic-muted">#{c.numero}</td>
+                          <td className="px-4 py-2 tabular-nums text-clinic-muted">#{c.numero}</td>
                           <td className="px-2 py-2 text-clinic-muted">{fmtDate(c.dueDate)}</td>
-                          <td className="px-2 py-2 text-right font-mono">{fmtGs(c.amount)}</td>
-                          <td className="px-2 py-2 text-right font-mono text-state-ok">{fmtGs(c.pagado)}</td>
-                          <td className="px-2 py-2 text-right font-mono font-bold">
+                          <td className="px-2 py-2 text-right tabular-nums">{fmtGs(c.amount)}</td>
+                          <td className="px-2 py-2 text-right tabular-nums text-state-ok">{fmtGs(c.pagado)}</td>
+                          <td className="px-2 py-2 text-right tabular-nums font-bold">
                             {c.saldo > 0 ? <span className="text-state-err">{fmtGs(c.saldo)}</span> : <span className="text-state-ok">✓</span>}
                           </td>
                         </tr>

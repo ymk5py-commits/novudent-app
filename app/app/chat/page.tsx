@@ -77,7 +77,7 @@ export default function ChatPage() {
       <div className="mb-3 flex items-center gap-2">
         <span className="grid h-9 w-9 place-items-center rounded-xl bg-azure-50 text-azure-600"><MessageCircle className="h-5 w-5" /></span>
         <div>
-          <h1 className="text-lg font-extrabold text-clinic-text">Chat interno</h1>
+          <h1 className="text-[16px] font-bold text-clinic-text">Chat interno</h1>
           <p className="text-[11px] text-clinic-muted">El canal del equipo y tus mensajes directos.{backend === "firebase" ? " En vivo." : ""}</p>
         </div>
       </div>
@@ -203,7 +203,7 @@ function ItemConversacion({ activa, onClick, avatar, titulo, subtitulo, vistaPre
           <span className={`block truncate text-xs ${sinLeer > 0 ? "font-bold text-clinic-text" : "text-clinic-muted"}`}>{vistaPrevia}</span>
         </span>
         {sinLeer > 0 && (
-          <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-azure-600 px-1.5 font-mono text-[11px] font-bold text-white">
+          <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-azure-600 px-1.5 tabular-nums text-[11px] font-bold text-white">
             <span aria-hidden>{sinLeer}</span>
             <span className="sr-only">{sinLeer === 1 ? "1 mensaje sin leer" : `${sinLeer} mensajes sin leer`}</span>
           </span>
@@ -221,7 +221,7 @@ function CabeceraHilo({ onVolver, avatar, titulo, subtitulo }: { onVolver: () =>
       </button>
       {avatar}
       <div className="min-w-0">
-        <h2 className="truncate text-sm font-extrabold text-clinic-text">{titulo}</h2>
+        <h2 className="truncate text-sm font-bold text-clinic-text">{titulo}</h2>
         <p className="truncate text-[11px] text-clinic-muted">{subtitulo}</p>
       </div>
     </div>
@@ -247,7 +247,7 @@ function ListaMensajes({ items, vacio }: { items: ItemMensaje[]; vacio: string }
           const nuevoDia = i === 0 || items[i - 1].createdAt.slice(0, 10) !== m.createdAt.slice(0, 10);
           return (
             <li key={m.id}>
-              {nuevoDia && <div className="my-2 text-center text-[11px] font-bold uppercase tracking-wide text-clinic-muted">{fmtDate(m.createdAt)}</div>}
+              {nuevoDia && <div className="my-2 text-center text-[13px] font-semibold text-clinic-muted">{fmtDate(m.createdAt)}</div>}
               <div className={`flex items-end gap-2 ${m.mio ? "flex-row-reverse" : ""}`}>
                 <Avatar color={m.color} nombre={m.autor} />
                 <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${m.mio ? "rounded-br-sm bg-azure-600 text-white" : "rounded-bl-sm bg-clinic-bg text-clinic-text"}`}>
@@ -255,7 +255,7 @@ function ListaMensajes({ items, vacio }: { items: ItemMensaje[]; vacio: string }
                     <div className={`mb-0.5 flex flex-wrap items-center gap-1.5 text-[11px] font-bold ${m.mio ? "text-white/85" : "text-azure-700"}`}>
                       {!m.mio && <span>{m.autor}</span>}
                       {m.difusion && (
-                        <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-px font-mono text-[10px] uppercase tracking-wide ${m.mio ? "bg-white/20 text-white" : "bg-navy-800 text-white"}`}>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-px tabular-nums text-[13px] font-semibold ${m.mio ? "bg-white/20 text-white" : "bg-navy-800 text-white"}`}>
                           <Megaphone className="h-3 w-3" aria-hidden /> Difusión
                         </span>
                       )}
@@ -384,7 +384,7 @@ function PanelDifusion({ destinatarios, enviadas, nombreDe, onVolver, onEnviar }
         </form>
 
         <div>
-          <h3 className="mb-2 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Difusiones enviadas</h3>
+          <h3 className="mb-2 text-[13px] font-bold text-clinic-muted">Difusiones enviadas</h3>
           {enviadas.length === 0 ? (
             <p className="text-sm text-clinic-muted">Todavía no se mandó ninguna.</p>
           ) : (

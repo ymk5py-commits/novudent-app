@@ -62,7 +62,7 @@ export function PlazosTareas() {
           <span><b>Atención:</b> hay cambios no guardados. Para confirmarlos, presioná el botón «Guardar» en la parte inferior derecha de esta sección.</span>
         </p>
       )}
-      <h2 className="text-lg font-extrabold text-clinic-text">Configuración de plazos</h2>
+      <h2 className="text-[16px] font-bold text-clinic-text">Configuración de plazos</h2>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         {TARJETAS.map((c) => (
           <Tarjeta key={c.tipo} {...c} valor={borrador[c.tipo]} onChange={(p) => setBorrador((b) => ({ ...b, [c.tipo]: p }))} />
@@ -123,7 +123,7 @@ function Tarjeta({ tipo, titulo, texto, valor, onChange }: {
               aria-label={`Días de la ${titulo.toLowerCase()}`}
               value={dias || ""}
               onChange={(e) => onChange(plazoDeDias(Number(e.target.value)))}
-              className="w-20 rounded-lg border border-clinic-border px-2 py-1.5 text-right font-mono text-sm text-clinic-text focus:border-azure-600"
+              className="w-20 rounded-lg border border-clinic-border px-2 py-1.5 text-right tabular-nums text-sm text-clinic-text focus:border-azure-600"
             />
             días
           </label>

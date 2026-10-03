@@ -34,7 +34,7 @@ const withColors = (parts: { label: string; v: number }[]) =>
 function SectionHeading({ children }: { children: string }) {
   return (
     <div className="text-center">
-      <h2 className="text-base font-extrabold uppercase tracking-wide text-azure-600">{children}</h2>
+      <h2 className="text-base font-bold text-azure-600">{children}</h2>
       <div className="mx-auto mt-2 h-2.5 w-2.5 rotate-45 bg-azure-500" />
     </div>
   );
@@ -68,7 +68,7 @@ function MiniDonut({ title, parts }: { title: string; parts: { label: string; v:
   const total = parts.reduce((s, p) => s + p.v, 0);
   return (
     <Card className="p-3">
-      <h3 className="mb-2 text-center text-[11px] font-extrabold leading-tight text-clinic-text">{title}</h3>
+      <h3 className="mb-2 text-center text-[11px] font-bold leading-tight text-clinic-text">{title}</h3>
       {total === 0 ? (
         <p className="py-8 text-center text-[11px] text-clinic-muted">Sin datos.</p>
       ) : (
@@ -167,7 +167,7 @@ export function AnalisisConversion() {
 
       {/* Filtro */}
       <div className="text-center">
-        <p className="text-sm font-extrabold text-clinic-text">Filtrar los resultados</p>
+        <p className="text-sm font-bold text-clinic-text">Filtrar los resultados</p>
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-sm">
           <input type="date" value={fromI} max={toI} onChange={(e) => setFromI(e.target.value)} className={`${inputCls} w-auto`} />
           <input type="date" value={toI} min={fromI} onChange={(e) => setToI(e.target.value)} className={`${inputCls} w-auto`} />
@@ -192,11 +192,11 @@ export function AnalisisConversion() {
       {/* Gráficos */}
       <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
         <Card className="p-5">
-          <h3 className="mb-3 text-center text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Conversión total del período</h3>
+          <h3 className="mb-3 text-center text-[13px] font-bold text-clinic-muted">Conversión total del período</h3>
           <FunnelChart stages={stages} />
         </Card>
         <Card className="p-5">
-          <h3 className="mb-2 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Conversión de pacientes a través del tiempo</h3>
+          <h3 className="mb-2 text-[13px] font-bold text-clinic-muted">Conversión de pacientes a través del tiempo</h3>
           <ConversionLineChart data={data.timeline} />
         </Card>
       </div>
@@ -206,15 +206,15 @@ export function AnalisisConversion() {
 
       {/* Valores totales */}
       <div>
-        <p className="mb-3 text-center text-sm font-extrabold text-clinic-text">Valores totales de conversión para el período</p>
+        <p className="mb-3 text-center text-sm font-bold text-clinic-text">Valores totales de conversión para el período</p>
         <div className="grid gap-4 sm:grid-cols-3">
           {cards.map((c) => (
             <div key={c.label} className="overflow-hidden rounded-2xl border border-clinic-border text-center shadow-sm">
               <div className="px-4 py-6 text-white" style={{ background: c.color }}>
-                <div className="text-[11px] font-bold uppercase tracking-wide" style={{ opacity: 0.92 }}>{c.label}</div>
-                <div className="mt-2 font-mono text-4xl font-extrabold leading-none">{c.pct}%</div>
+                <div className="text-[13px] font-semibold" style={{ opacity: 0.92 }}>{c.label}</div>
+                <div className="mt-2 tabular-nums text-4xl font-bold leading-none">{c.pct}%</div>
               </div>
-              <div className="bg-white py-2.5 font-mono text-base font-extrabold" style={{ color: c.color, borderBottom: `3px solid ${c.color}` }}>
+              <div className="bg-white py-2.5 tabular-nums text-base font-bold" style={{ color: c.color, borderBottom: `3px solid ${c.color}` }}>
                 {c.v.toLocaleString("es-PY")}
               </div>
             </div>

@@ -181,7 +181,7 @@ export default function PatientProfile() {
               {p.photo ? (
                 <img src={p.photo} alt="" className="h-16 w-16 rounded-full object-cover" />
               ) : (
-                <span className="grid h-16 w-16 place-items-center bg-white/15 text-xl font-extrabold text-white">
+                <span className="grid h-16 w-16 place-items-center bg-white/15 text-xl font-bold text-white">
                   {p.firstName[0]}{p.lastName[0]}
                 </span>
               )}
@@ -195,8 +195,8 @@ export default function PatientProfile() {
 
             {/* Identificación */}
             <div className="min-w-0 flex-1 text-white">
-              {verPersonales && <div className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-azure-200">ID {p.document}</div>}
-              <h1 className="font-logo text-2xl leading-tight sm:text-3xl">{fullName(p)}</h1>
+              {verPersonales && <div className="tabular-nums text-[12px] font-bold text-azure-200">ID {p.document}</div>}
+              <h1 className="text-xl font-bold leading-tight">{fullName(p)}</h1>
               <p className="mt-0.5 truncate text-sm text-white/70">
                 {verPersonales
                   ? <>CI {p.document}{age != null ? ` · ${age} años` : ""}{p.phone ? ` · ${p.phone}` : ""}{p.insurer ? ` · ${p.insurer}` : ""}</>
@@ -310,14 +310,14 @@ export default function PatientProfile() {
       {tab === "resumen" && (
         <Reveal className="grid gap-5 lg:grid-cols-2">
           <Card className="p-5">
-            <h2 className="mb-3 font-extrabold text-clinic-text">Próximas citas</h2>
+            <h2 className="mb-3 font-bold text-clinic-text">Próximas citas</h2>
             {appts.filter((a) => new Date(a.start) >= new Date()).length === 0 ? (
               <p className="text-sm text-clinic-muted">Sin citas futuras.</p>
             ) : (
               <div className="divide-y divide-clinic-border">
                 {appts.filter((a) => new Date(a.start) >= new Date()).slice(0, 4).map((a) => (
                   <div key={a.id} className="flex items-center gap-3 py-2.5 text-sm">
-                    <span className="font-mono text-xs font-bold">{new Date(a.start).toLocaleDateString("es-PY", { day: "2-digit", month: "short" })} {fmtTime(a.start)}</span>
+                    <span className="tabular-nums text-xs font-bold">{new Date(a.start).toLocaleDateString("es-PY", { day: "2-digit", month: "short" })} {fmtTime(a.start)}</span>
                     <span className="flex-1 truncate font-semibold text-clinic-text">{a.title}</span>
                     <StatusBadge status={a.status} />
                   </div>
@@ -326,7 +326,7 @@ export default function PatientProfile() {
             )}
           </Card>
           <Card className="p-5">
-            <h2 className="mb-3 font-extrabold text-clinic-text">Última actividad clínica</h2>
+            <h2 className="mb-3 font-bold text-clinic-text">Última actividad clínica</h2>
             {p.emr.length === 0 ? (
               <p className="text-sm text-clinic-muted">Sin registros aún.</p>
             ) : (
@@ -411,7 +411,7 @@ export default function PatientProfile() {
             <Card className="overflow-x-auto p-0">
               <table className="w-full min-w-[560px] text-sm">
                 <thead>
-                  <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                  <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                     <th className="px-4 py-3">Fecha</th>
                     <th className="px-2 py-3">Motivo</th>
                     <th className="px-2 py-3">Profesional</th>
@@ -421,7 +421,7 @@ export default function PatientProfile() {
                 <tbody className="divide-y divide-clinic-border">
                   {appts.map((a) => (
                     <tr key={a.id} className="hover:bg-clinic-bg/50">
-                      <td className="px-4 py-2.5 font-mono text-xs text-clinic-muted">{new Date(a.start).toLocaleString("es-PY", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
+                      <td className="px-4 py-2.5 tabular-nums text-xs text-clinic-muted">{new Date(a.start).toLocaleString("es-PY", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
                       <td className="px-2 py-2.5 text-clinic-text">{a.title}</td>
                       <td className="px-2 py-2.5 text-clinic-muted">{db.users.find((u) => u.id === a.dentistId)?.name ?? "—"}</td>
                       <td className="px-2 py-2.5"><StatusBadge status={a.status} /></td>
@@ -444,7 +444,7 @@ export default function PatientProfile() {
       {tab === "evoluciones" && (
         <Reveal>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-extrabold text-clinic-text">Evoluciones clínicas</h2>
+            <h2 className="font-bold text-clinic-text">Evoluciones clínicas</h2>
             {canWriteEmr && <Btn onClick={() => setWritingNote(true)}><Plus className="h-4 w-4" /> Nueva evolución</Btn>}
           </div>
           {p.emr.length === 0 ? (
@@ -480,20 +480,20 @@ export default function PatientProfile() {
         <Reveal>
           <Card className="p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-extrabold text-clinic-text">Antecedentes médicos</h2>
+              <h2 className="font-bold text-clinic-text">Antecedentes médicos</h2>
               {canEditPatient && <Btn variant="outline" onClick={() => setMedOpen(true)}><Pencil className="h-3.5 w-3.5" /> Editar</Btn>}
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="rounded-xl border border-clinic-border p-4">
-                <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-state-warn"><AlertTriangle className="h-3.5 w-3.5" /> Alertas médicas</div>
+                <div className="flex items-center gap-1.5 text-[13px] font-bold text-state-warn"><AlertTriangle className="h-3.5 w-3.5" /> Alertas médicas</div>
                 <p className="mt-1.5 whitespace-pre-wrap text-sm text-clinic-text">{p.medicalAlerts || <span className="text-clinic-muted">Sin información</span>}</p>
               </div>
               <div className="rounded-xl border border-clinic-border p-4">
-                <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-state-err"><HeartPulse className="h-3.5 w-3.5" /> Enfermedades</div>
+                <div className="flex items-center gap-1.5 text-[13px] font-bold text-state-err"><HeartPulse className="h-3.5 w-3.5" /> Enfermedades</div>
                 <p className="mt-1.5 whitespace-pre-wrap text-sm text-clinic-text">{p.conditions || <span className="text-clinic-muted">Sin información</span>}</p>
               </div>
               <div className="rounded-xl border border-clinic-border p-4">
-                <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-azure-700"><Pill className="h-3.5 w-3.5" /> Medicamentos</div>
+                <div className="flex items-center gap-1.5 text-[13px] font-bold text-azure-700"><Pill className="h-3.5 w-3.5" /> Medicamentos</div>
                 <p className="mt-1.5 whitespace-pre-wrap text-sm text-clinic-text">{p.medications || <span className="text-clinic-muted">Sin información</span>}</p>
               </div>
             </div>
@@ -602,7 +602,7 @@ function MedBadge({ icon: Icon, label, value, editable, onClick }: { icon: any; 
       onClick={editable ? onClick : undefined}
       className={`glass-dark min-w-[116px] max-w-[190px] rounded-xl px-3 py-2 text-left ${editable ? "transition-colors hover:bg-white/15" : "cursor-default"}`}
     >
-      <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-white/80">
+      <span className="flex items-center gap-1.5 text-[13px] font-semibold text-white/80">
         <Icon className="h-3.5 w-3.5" /> {label}
       </span>
       <span className={`mt-0.5 block truncate text-xs ${value ? "text-white" : "text-white/45"}`}>

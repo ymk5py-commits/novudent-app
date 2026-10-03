@@ -56,7 +56,7 @@ export function PlanLocked({ feature }: { feature: PlanFeature }) {
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-navy-800 text-white shadow-[0_12px_28px_-10px_rgba(15,31,61,0.5)]">
           <Lock className="h-6 w-6" />
         </span>
-        <h1 className="mt-4 text-xl font-extrabold text-clinic-text">{FEATURE_LABEL[feature]}</h1>
+        <h1 className="mt-4 text-[16px] font-bold text-clinic-text">{FEATURE_LABEL[feature]}</h1>
         <p className="mt-1.5 text-sm leading-relaxed text-clinic-muted">
           Este módulo no está incluido en tu <b>Plan {current.label}</b>.
           Desbloquealo pasándote al <b>Plan {target.label}</b>
@@ -71,7 +71,7 @@ export function PlanLocked({ feature }: { feature: PlanFeature }) {
         </ul>
         <Link
           href="/app/suscripcion"
-          className="btn-shine mt-6 inline-flex items-center gap-2 rounded-2xl bg-azure-600 px-5 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700"
+          className="btn-shine mt-6 inline-flex items-center gap-2 rounded-2xl bg-azure-600 px-5 py-3 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700"
         >
           <Sparkles className="h-4 w-4" /> Mejorar mi plan <ArrowRight className="h-4 w-4" />
         </Link>

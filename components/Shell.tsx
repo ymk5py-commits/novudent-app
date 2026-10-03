@@ -122,7 +122,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             ))}
           </div>
           <div className="h-72 animate-pulse rounded-2xl bg-clinic-border/40" />
-          <p className="text-center font-mono text-[11px] font-bold uppercase tracking-widest text-clinic-muted">Cargando Novudent…</p>
+          <p className="text-center tabular-nums text-[13px] font-semiboldst text-clinic-muted">Cargando Novudent…</p>
         </div>
       </div>
     );
@@ -169,13 +169,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <div className="mt-4 flex items-center gap-2.5 border-t border-white/10 pt-3">
             {logo && <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white p-1"><img src={logo} alt="" width={28} height={28} className="max-h-7 max-w-7 object-contain" /></span>}
             <span className="min-w-0 truncate text-xs font-semibold text-white/80">{clinicName}</span>
-            <span className="ml-auto shrink-0 text-[10px] font-semibold uppercase tracking-wider text-azure-200">{plan.label}</span>
+            <span className="ml-auto shrink-0 text-[12px] font-semiboldr text-azure-200">{plan.label}</span>
           </div>
         </div>
         <nav className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 py-4">
           {nav.map((e) => e.children ? (
             <div key={e.label}>
-              <div className="px-3 pb-1.5 text-[11px] font-extrabold uppercase tracking-[0.18em] text-clinic-muted/80">{e.label}</div>
+              <div className="px-3 pb-1.5 text-[12px] font-bold text-clinic-muted/80">{e.label}</div>
               <div className="space-y-1">
                 {e.children.map((it) => <DrawerLink key={it.href} {...it} active={isActive(it.href)} badge={badgeDe(it.href)} />)}
               </div>
@@ -209,7 +209,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </button>
           <Link href="/app" aria-label="Novudent, inicio" className="flex shrink-0 items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
             <Logotipo tono="blanco" className="h-8 w-auto" />
-            <span data-tip={`Plan ${plan.label}`} className="hidden rounded-md border border-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-azure-200 2xl:inline">{plan.label}</span>
+            <span data-tip={`Plan ${plan.label}`} className="hidden rounded-md border border-white/20 px-2 py-0.5 text-[12px] font-boldr text-azure-200 2xl:inline">{plan.label}</span>
           </Link>
           {/* En celular el buscador ocupa una segunda línea para que el logo no se comprima. */}
           <div className="relative order-last w-full sm:order-none sm:ml-1 sm:min-w-0 sm:max-w-sm">
@@ -244,7 +244,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <span
               data-tip={backend === "firebase" ? "Datos guardados en la nube" : "Sin conexión — datos solo en este navegador"}
               data-tip-pos="down"
-              className={`hidden items-center gap-1.5 whitespace-nowrap rounded-md border border-white/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider xl:inline-flex ${backend === "firebase" ? "text-emerald-200" : "text-amber-200"}`}
+              className={`hidden items-center gap-1.5 whitespace-nowrap rounded-md border border-white/15 px-2 py-1 text-[13px] font-semiboldr xl:inline-flex ${backend === "firebase" ? "text-emerald-200" : "text-amber-200"}`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${backend === "firebase" ? "bg-emerald-300" : "bg-amber-300"}`} />
               {backend === "firebase" ? "En línea" : "Sin conexión"}
@@ -262,7 +262,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               aria-label={pendings > 0 ? `Ver pendientes (${pendings})` : "Sin pendientes"}
             >
               <Bell className="h-[18px] w-[18px]" />
-              {pendings > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 font-mono text-[11px] font-bold text-white">{pendings}</span>}
+              {pendings > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 tabular-nums text-[11px] font-bold text-white">{pendings}</span>}
             </Link>
             {/* Ayuda de Novum («call center»): al lado del nombre. Desde md, que es donde
                 entra en la barra (el texto, desde lg); en el celular está en el menú,
@@ -319,7 +319,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 function Contador({ n }: { n: number }) {
   if (n <= 0) return null;
   return (
-    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 font-mono text-[11px] font-bold leading-none text-white">
+    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 tabular-nums text-[11px] font-bold leading-none text-white">
       <span aria-hidden>{n}</span>
       <span className="sr-only">{n === 1 ? ", 1 mensaje sin leer" : `, ${n} mensajes sin leer`}</span>
     </span>
@@ -331,7 +331,7 @@ function NavLink({ href, label, icon: Icon, active, badge = 0 }: { href: string;
   return (
     <Link
       href={href}
-      className={`relative flex items-center gap-1.5 rounded-[9px] px-3.5 py-2.5 font-logo text-[14px] font-semibold transition-colors ${active ? "bg-azure-50 text-azure-700" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
+      className={`relative flex items-center gap-1.5 rounded-[9px] px-3 py-2.5 text-[14px] font-normal transition-colors ${active ? "text-azure-600" : "text-clinic-text hover:text-azure-600"}`}
     >
       <Icon className="h-4 w-4" /> {label}
       <Contador n={badge} />
@@ -354,7 +354,7 @@ function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; ic
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-1.5 rounded-[9px] px-3.5 py-2.5 font-logo text-[14px] font-semibold transition-colors ${active || open ? "bg-azure-50 text-azure-700" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
+        className={`flex items-center gap-1.5 rounded-[9px] px-3 py-2.5 text-[14px] font-normal transition-colors ${active || open ? "text-azure-600" : "text-clinic-text hover:text-azure-600"}`}
       >
         <Icon className="h-4 w-4" /> {label}
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
@@ -363,7 +363,7 @@ function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; ic
         const renderItem = (it: NavLeaf) => {
           const a = pathname.startsWith(it.href.split(/[?#]/)[0]);
           return (
-            <Link key={it.href} href={it.href} onClick={() => setOpen(false)} className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${a ? "bg-azure-50 text-azure-700" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
+            <Link key={it.href} href={it.href} onClick={() => setOpen(false)} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-[13px] font-normal transition-colors ${a ? "bg-azure-50 text-azure-700" : "text-clinic-text hover:bg-clinic-bg hover:text-azure-600"}`}>
               <it.icon className="h-4 w-4 shrink-0" /> {it.label}
             </Link>
           );
@@ -374,7 +374,7 @@ function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; ic
           <div className="absolute left-0 top-full z-50 mt-0.5 grid w-[460px] max-w-[92vw] grid-cols-2 gap-x-2 rounded-xl border border-clinic-border bg-white p-2 shadow-pop">
             {grouped.map(([title, its]) => (
               <div key={title}>
-                <div className="px-3 pb-1 pt-1 text-[11px] font-extrabold uppercase tracking-wide text-clinic-muted/70">{title}</div>
+                <div className="px-3 pb-1 pt-1 text-[13px] font-semibold text-clinic-muted/70">{title}</div>
                 {its.map(renderItem)}
               </div>
             ))}

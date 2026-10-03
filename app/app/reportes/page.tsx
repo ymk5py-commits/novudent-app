@@ -115,7 +115,7 @@ export default function ReportsPage() {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">Los informes financieros son del <b>Administrador</b>.</p>
       </Card>
     );
@@ -249,7 +249,7 @@ export default function ReportsPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-clinic-text">Informes de gestión</h1>
+          <h1 className="text-[16px] font-bold text-clinic-text">Informes de gestión</h1>
           <p className="text-sm text-clinic-muted">Resultados de los últimos 30 días + reportes descargables.</p>
         </div>
       </div>
@@ -257,7 +257,7 @@ export default function ReportsPage() {
       {/* Sub-pestañas estilo Dentalink */}
       <div className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
         {([["desempeno", "Panel de desempeño"], ["analisis", "Análisis de pacientes"], ["excel", "Reportes Excel"]] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-3.5 py-2 text-sm font-bold transition-colors ${tab === k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>{label}</button>
+          <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-3.5 py-2 text-[14px] font-normal transition-colors ${tab === k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>{label}</button>
         ))}
       </div>
 
@@ -272,29 +272,29 @@ export default function ReportsPage() {
       <Stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StaggerItem className="block h-full">
         <Card className="p-5">
-          <div className="flex items-center gap-2 text-state-ok"><TrendingUp className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Cobrado 30d</span></div>
-          <div className="mt-1 font-mono text-xl font-extrabold text-clinic-text">{fmtGs(data.collected)}</div>
+          <div className="flex items-center gap-2 text-state-ok"><TrendingUp className="h-4 w-4" /><span className="text-[13px] font-bold">Cobrado 30d</span></div>
+          <div className="mt-1 tabular-nums text-xl font-bold text-clinic-text">{fmtGs(data.collected)}</div>
           <div className="mt-1 text-[11px] text-clinic-muted">{data.pays.length} pagos</div>
         </Card>
         </StaggerItem>
         <StaggerItem className="block h-full">
         <Card className="p-5">
-          <div className="flex items-center gap-2 text-state-err"><TrendingDown className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Gastos 30d</span></div>
-          <div className="mt-1 font-mono text-xl font-extrabold text-clinic-text">{fmtGs(data.spent)}</div>
+          <div className="flex items-center gap-2 text-state-err"><TrendingDown className="h-4 w-4" /><span className="text-[13px] font-bold">Gastos 30d</span></div>
+          <div className="mt-1 tabular-nums text-xl font-bold text-clinic-text">{fmtGs(data.spent)}</div>
           <div className="mt-1 text-[11px] text-clinic-muted">{data.exps.length} registros</div>
         </Card>
         </StaggerItem>
         <StaggerItem className="block h-full">
         <Card className="p-5">
-          <div className="flex items-center gap-2 text-azure-600"><Scale className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Resultado</span></div>
-          <div className={`mt-1 font-mono text-xl font-extrabold ${data.collectedNet - data.spent >= 0 ? "text-state-ok" : "text-state-err"}`}>{fmtGs(data.collectedNet - data.spent)}</div>
+          <div className="flex items-center gap-2 text-azure-600"><Scale className="h-4 w-4" /><span className="text-[13px] font-bold">Resultado</span></div>
+          <div className={`mt-1 tabular-nums text-xl font-bold ${data.collectedNet - data.spent >= 0 ? "text-state-ok" : "text-state-err"}`}>{fmtGs(data.collectedNet - data.spent)}</div>
           <div className="mt-1 text-[11px] text-clinic-muted">{data.retention > 0 ? `cobrado neto − gastos · retención ${fmtGs(data.retention)}` : "cobrado − gastos"}</div>
         </Card>
         </StaggerItem>
         <StaggerItem className="block h-full">
         <Card className="p-5">
-          <div className="flex items-center gap-2 text-azure-600"><Percent className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Aceptación</span></div>
-          <div className="mt-1 font-mono text-xl font-extrabold text-clinic-text">{data.acceptRate}%</div>
+          <div className="flex items-center gap-2 text-azure-600"><Percent className="h-4 w-4" /><span className="text-[13px] font-bold">Aceptación</span></div>
+          <div className="mt-1 tabular-nums text-xl font-bold text-clinic-text">{data.acceptRate}%</div>
           <div className="mt-1 text-[11px] text-clinic-muted">{data.accepted.length} de {data.presented.length} presupuestos</div>
         </Card>
         </StaggerItem>
@@ -303,7 +303,7 @@ export default function ReportsPage() {
       {/* flujo de caja 30 días — cobrado vs gastos */}
       <Reveal>
       <Card className="p-5">
-        <h2 className="font-extrabold text-clinic-text">Flujo de caja — últimos 30 días</h2>
+        <h2 className="font-bold text-clinic-text">Flujo de caja — últimos 30 días</h2>
         <p className="text-[11px] text-clinic-muted">Cobros y gastos por día. Pasá el mouse para ver el detalle.</p>
         <div className="mt-4">
           <CashflowAreaChart data={data.cashflow} />
@@ -314,7 +314,7 @@ export default function ReportsPage() {
       <Reveal className="grid gap-5 lg:grid-cols-2">
         {/* producción + comisiones */}
         <Card className="p-5">
-          <h2 className="font-extrabold text-clinic-text">Producción y comisiones por profesional</h2>
+          <h2 className="font-bold text-clinic-text">Producción y comisiones por profesional</h2>
           <p className="text-[11px] text-clinic-muted">Pagos cobrados (30 días) sobre presupuestos de cada profesional. Comisiones calculadas sobre el monto bruto cobrado (la retención del medio de pago la absorbe la clínica).</p>
           <div className="mt-4">
             <ProductionBarsChart data={data.production.map((x) => ({ name: x.d.name, v: x.collected, color: x.d.color }))} />
@@ -325,7 +325,7 @@ export default function ReportsPage() {
                     <span className="h-2 w-2 rounded-full" style={{ background: d.color }} />
                     {d.name} · comisión {pct}%
                   </span>
-                  <span className="font-mono font-bold text-state-ok">{fmtGs(commission)}</span>
+                  <span className="tabular-nums font-bold text-state-ok">{fmtGs(commission)}</span>
                 </div>
               ))}
             </div>
@@ -336,7 +336,7 @@ export default function ReportsPage() {
         {/* morosidad */}
         <Card className="p-5">
           <div className="flex items-center justify-between">
-            <h2 className="font-extrabold text-clinic-text">Morosidad — saldos pendientes</h2>
+            <h2 className="font-bold text-clinic-text">Morosidad — saldos pendientes</h2>
             <Badge tone={data.debtors.length ? "warn" : "ok"}>{data.debtors.length}</Badge>
           </div>
           {data.debtors.length === 0 ? (
@@ -346,7 +346,7 @@ export default function ReportsPage() {
               {data.debtors.map(({ p, balance }) => (
                 <li key={p.id} className="flex items-center justify-between py-2.5">
                   <Link href={`/app/pacientes/${p.id}`} className="text-sm font-semibold text-clinic-text hover:text-azure-700">{fullName(p)}</Link>
-                  <span className="font-mono text-sm font-extrabold text-state-err">{fmtGs(balance)}</span>
+                  <span className="tabular-nums text-sm font-bold text-state-err">{fmtGs(balance)}</span>
                 </li>
               ))}
             </ul>
@@ -363,7 +363,7 @@ export default function ReportsPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Star className="h-4 w-4 text-azure-600" />
-            <h2 className="font-extrabold text-clinic-text">Encuestas NPS</h2>
+            <h2 className="font-bold text-clinic-text">Encuestas NPS</h2>
             <Badge tone="info" tip="Las encuestas las hace Botika por WhatsApp al completar cada tratamiento">
               <span className="inline-flex items-center gap-1"><Bot className="h-3 w-3" /> vía Botika</span>
             </Badge>
@@ -375,8 +375,8 @@ export default function ReportsPage() {
         ) : (
           <div className="mt-4 grid gap-5 lg:grid-cols-[180px_1fr]">
             <div className="rounded-2xl bg-navy-800 p-5 text-center text-white">
-              <div className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-azure-200">NPS</div>
-              <div className="mt-1 font-mono text-4xl font-extrabold">{data.npsScore > 0 ? `+${data.npsScore}` : data.npsScore}</div>
+              <div className="tabular-nums text-[12px] font-bold text-azure-200">NPS</div>
+              <div className="mt-1 tabular-nums text-4xl font-bold">{data.npsScore > 0 ? `+${data.npsScore}` : data.npsScore}</div>
               <div className="mt-1 text-[11px] text-white/60">{data.surveys.length} encuesta{data.surveys.length !== 1 && "s"}</div>
             </div>
             <div>
@@ -399,7 +399,7 @@ export default function ReportsPage() {
                   .slice(0, 3)
                   .map((s) => (
                     <p key={s.p.id} className="rounded-xl bg-clinic-bg px-3 py-2 text-xs text-clinic-muted">
-                      <b className="font-mono text-clinic-text">{s.score}/10</b> — “{s.comment}” · <Link href={`/app/pacientes/${s.p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(s.p)}</Link>
+                      <b className="tabular-nums text-clinic-text">{s.score}/10</b> — “{s.comment}” · <Link href={`/app/pacientes/${s.p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(s.p)}</Link>
                     </p>
                   ))}
               </div>
@@ -417,7 +417,7 @@ export default function ReportsPage() {
       {/* exportables */}
       <Reveal>
       <Card className="p-5">
-        <div className="flex items-center gap-2"><FileSpreadsheet className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Reportes descargables (Excel)</h2></div>
+        <div className="flex items-center gap-2"><FileSpreadsheet className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Reportes descargables (Excel)</h2></div>
         <p className="text-[11px] text-clinic-muted">CSV con codificación UTF-8 — se abren directamente en Excel o Google Sheets.</p>
         <div className="mt-4 space-y-4">
           {(() => {
@@ -428,7 +428,7 @@ export default function ReportsPage() {
               if (!xs.length) return null;
               return (
                 <div key={cat}>
-                  <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wide text-clinic-muted">{cat}</div>
+                  <div className="mb-1.5 text-[13px] font-semibold text-clinic-muted">{cat}</div>
                   <div className="flex flex-wrap gap-2">
                     {xs.map((x) => (
                       <Btn key={x.file} variant="outline" onClick={() => downloadCsv(x.file, x.rows())}>
@@ -442,7 +442,7 @@ export default function ReportsPage() {
           })()}
           {/* CRM: como Dentalink, las tareas de gestión con su propio rango de fechas. */}
           <div>
-            <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wide text-clinic-muted">CRM</div>
+            <div className="mb-1.5 text-[13px] font-semibold text-clinic-muted">CRM</div>
             <div className="flex flex-wrap items-end gap-2">
               <div className="w-40"><Field label="Desde"><input type="date" className={inputCls} value={crmDesde} max={crmHasta || undefined} onChange={(e) => setCrmDesde(e.target.value)} /></Field></div>
               <div className="w-40"><Field label="Hasta"><input type="date" className={inputCls} value={crmHasta} min={crmDesde || undefined} onChange={(e) => setCrmHasta(e.target.value)} /></Field></div>

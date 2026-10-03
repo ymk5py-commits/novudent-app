@@ -45,7 +45,7 @@ export default function EsterilizacionPage() {
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-azure-50 text-azure-600"><ShieldCheck className="h-5 w-5" /></span>
           <div>
-            <h1 className="text-lg font-extrabold text-clinic-text">Esterilización</h1>
+            <h1 className="text-[16px] font-bold text-clinic-text">Esterilización</h1>
             <p className="text-[11px] text-clinic-muted">Bitácora de ciclos e indicadores de control (cumplimiento).</p>
           </div>
         </div>
@@ -58,16 +58,16 @@ export default function EsterilizacionPage() {
       {/* Resumen */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="p-4">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Último ciclo</div>
+          <div className="text-[13px] font-semibold text-clinic-muted">Último ciclo</div>
           <div className="mt-1 text-sm font-bold text-clinic-text">{ultimo ? `${fmtDate(ultimo.date)} · ${METHOD_LABEL[ultimo.method]}` : "—"}</div>
         </Card>
         <Card className="p-4">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Indicadores biológicos pendientes</div>
-          <div className={`mt-1 text-2xl font-extrabold ${pendientesBio > 0 ? "text-state-warn" : "text-state-ok"}`}>{pendientesBio}</div>
+          <div className="text-[13px] font-semibold text-clinic-muted">Indicadores biológicos pendientes</div>
+          <div className={`mt-1 text-2xl font-bold ${pendientesBio > 0 ? "text-state-warn" : "text-state-ok"}`}>{pendientesBio}</div>
         </Card>
         <Card className="p-4">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Ciclos no conformes</div>
-          <div className={`mt-1 text-2xl font-extrabold ${fallas > 0 ? "text-state-err" : "text-state-ok"}`}>{fallas}</div>
+          <div className="text-[13px] font-semibold text-clinic-muted">Ciclos no conformes</div>
+          <div className={`mt-1 text-2xl font-bold ${fallas > 0 ? "text-state-err" : "text-state-ok"}`}>{fallas}</div>
         </Card>
       </div>
 
@@ -85,7 +85,7 @@ export default function EsterilizacionPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-sm">
               <thead>
-                <tr className="border-b border-clinic-border bg-clinic-bg/50 text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                <tr className="border-b border-clinic-border bg-clinic-bg/50 text-left text-[13px] font-bold text-clinic-text">
                   <th className="px-4 py-2.5">Fecha</th>
                   <th className="px-4 py-2.5">Método</th>
                   <th className="px-4 py-2.5">Carga</th>
@@ -99,10 +99,10 @@ export default function EsterilizacionPage() {
               <tbody className="divide-y divide-clinic-border">
                 {list.map((c) => (
                   <tr key={c.id} className="hover:bg-clinic-bg/40">
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs">{fmtDate(c.date)}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-xs">{fmtDate(c.date)}</td>
                     <td className="px-4 py-2.5">{METHOD_LABEL[c.method]}{c.temperature ? ` · ${c.temperature}°C` : ""}</td>
                     <td className="max-w-[220px] truncate px-4 py-2.5 text-clinic-muted" title={c.load}>{c.load}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-clinic-muted">{c.cycleNumber ?? "—"}{c.lot ? ` · ${c.lot}` : ""}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-xs text-clinic-muted">{c.cycleNumber ?? "—"}{c.lot ? ` · ${c.lot}` : ""}</td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-xs">{userName(c.responsibleId)}</td>
                     <td className="px-4 py-2.5"><Badge tone={indTone(c.chemicalIndicator)}>{c.chemicalIndicator ? IND_LABEL[c.chemicalIndicator] : "—"}</Badge></td>
                     <td className="px-4 py-2.5"><Badge tone={indTone(c.biologicalIndicator)}>{c.biologicalIndicator ? IND_LABEL[c.biologicalIndicator] : "—"}</Badge></td>

@@ -79,7 +79,7 @@ export default function LiquidacionesPage() {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">
           Las liquidaciones a profesionales son del <b>Administrador</b>.
         </p>
@@ -122,7 +122,7 @@ export default function LiquidacionesPage() {
       <Reveal y={0}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold text-clinic-text">Liquidaciones</h1>
+            <h1 className="text-[16px] font-bold text-clinic-text">Liquidaciones</h1>
             <p className="text-sm text-clinic-muted">
               Pago de producción y comisiones a cada profesional por período.
             </p>
@@ -144,22 +144,22 @@ export default function LiquidacionesPage() {
       <Stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StaggerItem className="block h-full">
           <Card className="p-5">
-            <div className="flex items-center gap-2 text-azure-600"><Coins className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Comisiones del período</span></div>
-            <div className="mt-1 font-mono text-xl font-extrabold text-clinic-text">{fmtGs(totalPeriodo)}</div>
+            <div className="flex items-center gap-2 text-azure-600"><Coins className="h-4 w-4" /><span className="text-[13px] font-bold">Comisiones del período</span></div>
+            <div className="mt-1 tabular-nums text-xl font-bold text-clinic-text">{fmtGs(totalPeriodo)}</div>
             <div className="mt-1 text-[11px] text-clinic-muted">{rows.length} profesional{rows.length !== 1 && "es"} · {fmtDate(from + "T12:00:00")} → {fmtDate(to + "T12:00:00")}</div>
           </Card>
         </StaggerItem>
         <StaggerItem className="block h-full">
           <Card className="p-5">
-            <div className="flex items-center gap-2 text-state-warn"><HandCoins className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Pendiente de pago</span></div>
-            <div className="mt-1 font-mono text-xl font-extrabold text-clinic-text">{fmtGs(totalPendiente)}</div>
+            <div className="flex items-center gap-2 text-state-warn"><HandCoins className="h-4 w-4" /><span className="text-[13px] font-bold">Pendiente de pago</span></div>
+            <div className="mt-1 tabular-nums text-xl font-bold text-clinic-text">{fmtGs(totalPendiente)}</div>
             <div className="mt-1 text-[11px] text-clinic-muted">{pendientes.length} liquidación{pendientes.length !== 1 && "es"} sin pagar</div>
           </Card>
         </StaggerItem>
         <StaggerItem className="block h-full">
           <Card className="p-5">
-            <div className="flex items-center gap-2 text-state-ok"><Check className="h-4 w-4" /><span className="text-xs font-extrabold uppercase tracking-wide">Histórico</span></div>
-            <div className="mt-1 font-mono text-xl font-extrabold text-clinic-text">{db.settlements.length}</div>
+            <div className="flex items-center gap-2 text-state-ok"><Check className="h-4 w-4" /><span className="text-[13px] font-bold">Histórico</span></div>
+            <div className="mt-1 tabular-nums text-xl font-bold text-clinic-text">{db.settlements.length}</div>
             <div className="mt-1 text-[11px] text-clinic-muted">liquidaciones registradas</div>
           </Card>
         </StaggerItem>
@@ -168,7 +168,7 @@ export default function LiquidacionesPage() {
       {/* cálculo por profesional */}
       <Reveal>
         <Card className="p-5">
-          <h2 className="font-extrabold text-clinic-text">Producción por profesional</h2>
+          <h2 className="font-bold text-clinic-text">Producción por profesional</h2>
           <p className="text-[11px] text-clinic-muted">
             Suma de citas <b>completadas</b> (importe − descuento) atribuidas al profesional en el período.
             La producción y la comisión quedan editables antes de liquidar.
@@ -182,7 +182,7 @@ export default function LiquidacionesPage() {
               <div className="scroll-hint-shown min-w-0 max-w-full overflow-x-auto overscroll-x-contain">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-clinic-border text-left text-[11px] font-semibold uppercase tracking-wide text-clinic-muted">
+                  <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                     <th className="py-2 pr-3">Profesional</th>
                     <th className="py-2 pr-3 text-right">Producción</th>
                     <th className="py-2 pr-3 text-right">% Comisión</th>
@@ -205,7 +205,7 @@ export default function LiquidacionesPage() {
                           type="number"
                           min={0}
                           inputMode="numeric"
-                          className={inputCls + " !w-36 text-right font-mono"}
+                          className={inputCls + " !w-36 text-right tabular-nums"}
                           value={prodOverride[r.d.id] ?? String(r.computedProd)}
                           onChange={(e) => setProdOverride((o) => ({ ...o, [r.d.id]: e.target.value }))}
                           title="Producción del período (editable)"
@@ -219,7 +219,7 @@ export default function LiquidacionesPage() {
                             min={0}
                             max={100}
                             inputMode="decimal"
-                            className={inputCls + " !w-20 pr-6 text-right font-mono"}
+                            className={inputCls + " !w-20 pr-6 text-right tabular-nums"}
                             value={pctOverride[r.d.id] ?? String(r.d.commissionPct ?? 0)}
                             onChange={(e) => setPctOverride((o) => ({ ...o, [r.d.id]: e.target.value }))}
                             title="% de comisión sobre producción"
@@ -232,13 +232,13 @@ export default function LiquidacionesPage() {
                           type="number"
                           min={0}
                           inputMode="numeric"
-                          className={inputCls + " !w-32 text-right font-mono"}
+                          className={inputCls + " !w-32 text-right tabular-nums"}
                           value={salOverride[r.d.id] ?? String(r.d.salaryBase ?? 0)}
                           onChange={(e) => setSalOverride((o) => ({ ...o, [r.d.id]: e.target.value }))}
                           title="Sueldo base del período (salario fijo / mixto)"
                         />
                       </td>
-                      <td className="py-3 pr-3 text-right font-mono font-extrabold text-state-ok">{fmtGs(r.amount)}</td>
+                      <td className="py-3 pr-3 text-right tabular-nums font-bold text-state-ok">{fmtGs(r.amount)}</td>
                       <td className="py-3 pl-3 text-right">
                         <Btn onClick={() => liquidar(r)} disabled={r.amount <= 0}>
                           <Coins className="h-3.5 w-3.5" /> Liquidar
@@ -259,7 +259,7 @@ export default function LiquidacionesPage() {
         <Card className="p-5">
           <div className="flex items-center gap-2">
             <History className="h-4 w-4 text-azure-600" />
-            <h2 className="font-extrabold text-clinic-text">Historial de liquidaciones</h2>
+            <h2 className="font-bold text-clinic-text">Historial de liquidaciones</h2>
             <Badge tone={pendientes.length ? "warn" : "muted"}>{pendientes.length} pendiente{pendientes.length !== 1 && "s"}</Badge>
           </div>
 
@@ -273,7 +273,7 @@ export default function LiquidacionesPage() {
               <div className="scroll-hint-shown min-w-0 max-w-full overflow-x-auto overscroll-x-contain">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-clinic-border text-left text-[11px] font-semibold uppercase tracking-wide text-clinic-muted">
+                  <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                     <th className="py-2 pr-3">Profesional</th>
                     <th className="py-2 pr-3">Período</th>
                     <th className="py-2 pr-3 text-right">Producción</th>
@@ -290,9 +290,9 @@ export default function LiquidacionesPage() {
                       <td className="py-3 pr-3 text-clinic-muted">
                         {fmtDate(s.periodFrom + "T12:00:00")} → {fmtDate(s.periodTo + "T12:00:00")}
                       </td>
-                      <td className="py-3 pr-3 text-right font-mono text-clinic-text">{fmtGs(s.production)}</td>
-                      <td className="py-3 pr-3 text-right font-mono text-clinic-muted">{s.commissionPct}%</td>
-                      <td className="py-3 pr-3 text-right font-mono font-extrabold text-clinic-text">{fmtGs(s.amount)}</td>
+                      <td className="py-3 pr-3 text-right tabular-nums text-clinic-text">{fmtGs(s.production)}</td>
+                      <td className="py-3 pr-3 text-right tabular-nums text-clinic-muted">{s.commissionPct}%</td>
+                      <td className="py-3 pr-3 text-right tabular-nums font-bold text-clinic-text">{fmtGs(s.amount)}</td>
                       <td className="py-3 pr-3">
                         <Badge tone={s.status === "liquidado" ? "ok" : "warn"}>
                           {s.status === "liquidado" ? "Liquidado" : "Pendiente"}

@@ -29,7 +29,7 @@ export default function NuevoPacientePage() {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">Los pacientes nuevos los carga la <b>recepción</b> o el <b>Administrador</b>.</p>
       </Card>
     );
@@ -56,8 +56,8 @@ export default function NuevoPacientePage() {
     <form className="space-y-5" onSubmit={guardar}>
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/app/pacientes" className="inline-flex items-center gap-1 text-sm font-bold text-azure-700 hover:underline"><ChevronLeft className="h-4 w-4" /> Pacientes</Link>
-        <h1 className="text-2xl font-extrabold text-clinic-text">Nuevo paciente</h1>
-        <span className="ml-auto text-xs text-clinic-muted">Código interno: <b className="font-mono text-clinic-text">{siguienteCodigo(db.patients)}</b> (se asigna al guardar)</span>
+        <h1 className="text-[16px] font-bold text-clinic-text">Nuevo paciente</h1>
+        <span className="ml-auto text-xs text-clinic-muted">Código interno: <b className="tabular-nums text-clinic-text">{siguienteCodigo(db.patients)}</b> (se asigna al guardar)</span>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">

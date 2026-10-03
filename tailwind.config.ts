@@ -27,8 +27,8 @@ const config: Config = {
           bg: "#F3F6FB",
           card: "#FFFFFF",
           border: "#DDE5F0",
-          text: "#102747",
-          muted: "#586A82",
+          text: "#333333",
+          muted: "#666666",
         },
         /* Identidad de la LANDING (referencia: la propuesta de several.).
          * Va aparte a propósito: el panel `/app/*` es el clon 1:1 de Dentalink y

@@ -53,7 +53,7 @@ export default function ConfigPage() {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">La configuración de la práctica es exclusiva del rol <b>Administrador</b> (matriz RBAC, sec. 2.2).</p>
       </Card>
     );
@@ -64,14 +64,14 @@ export default function ConfigPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-clinic-text">Configuración</h1>
+        <h1 className="text-[16px] font-bold text-clinic-text">Configuración</h1>
         <p className="text-sm text-clinic-muted">Usuarios, servicios y datos de la clínica.</p>
       </div>
 
       {/* Clínica */}
       <Reveal>
       <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><Building2 className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Clínica</h2></div>
+        <div className="mb-3 flex items-center gap-2"><Building2 className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Clínica</h2></div>
         <div className="grid gap-3 text-sm sm:grid-cols-2">
           <div><span className="text-clinic-muted">Nombre:</span> <b>{clinic?.name}</b></div>
           <div id="moneda" className="scroll-mt-24"><span className="text-clinic-muted">Moneda:</span>{" "}
@@ -95,7 +95,7 @@ export default function ConfigPage() {
       <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Sucursales</h2></div>
+          <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Sucursales</h2></div>
           <Btn onClick={() => setEditBranch({ id: "", clinicId: db.clinics[0]?.id ?? "", name: "", active: true })}><Plus className="h-4 w-4" /> Agregar sucursal</Btn>
         </div>
         <p className="mb-3 text-xs text-clinic-muted">Sedes de la clínica. Asigná usuarios, citas y cajas a una sucursal.</p>
@@ -121,7 +121,7 @@ export default function ConfigPage() {
       {/* Pago online (configurable, sin guardar credenciales secretas) */}
       <Reveal>
       <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><HandCoins className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Pago online</h2></div>
+        <div className="mb-3 flex items-center gap-2"><HandCoins className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Pago online</h2></div>
         <p className="mb-3 text-xs text-clinic-muted">Pegá el <b>link de checkout de tu propia pasarela</b> (MercadoPago, Bancard, Pagopar, Stripe… la que uses) y, opcionalmente, tus datos de transferencia. Novudent arma una página de pago para enviarle al paciente por WhatsApp/email. No guardamos credenciales secretas — solo el link público que vos pegás.</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Link de checkout de tu pasarela">
@@ -138,7 +138,7 @@ export default function ConfigPage() {
       {/* Agendamiento online */}
       <Reveal>
       <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><CalendarClock className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Agendamiento online</h2></div>
+        <div className="mb-3 flex items-center gap-2"><CalendarClock className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Agendamiento online</h2></div>
         <p className="mb-3 text-xs text-clinic-muted">Compartí este link en tu web, Instagram, WhatsApp o Facebook para que los pacientes reserven solos. Las reservas entran a la agenda como pendientes de validar.</p>
         <BookingLink clinicId={db.clinics[0]?.id ?? ""} />
       </Card>
@@ -149,7 +149,7 @@ export default function ConfigPage() {
       <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-2"><UserCog className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Usuarios del equipo</h2><span data-tip={`Tu Plan ${plan.label} incluye hasta ${plan.maxUsers === Infinity ? "usuarios ilimitados" : `${plan.maxUsers} usuarios`} y ${plan.maxDentists === Infinity ? "profesionales ilimitados" : `${plan.maxDentists} profesional${plan.maxDentists > 1 ? "es" : ""}`}`} className="rounded-full bg-clinic-bg px-2 py-0.5 font-mono text-[11px] font-bold text-clinic-muted">{db.users.filter((u) => u.active).length}{plan.maxUsers === Infinity ? "" : ` / ${plan.maxUsers}`}</span></div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2"><UserCog className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Usuarios del equipo</h2><span data-tip={`Tu Plan ${plan.label} incluye hasta ${plan.maxUsers === Infinity ? "usuarios ilimitados" : `${plan.maxUsers} usuarios`} y ${plan.maxDentists === Infinity ? "profesionales ilimitados" : `${plan.maxDentists} profesional${plan.maxDentists > 1 ? "es" : ""}`}`} className="rounded-full bg-clinic-bg px-2 py-0.5 tabular-nums text-[11px] font-bold text-clinic-muted">{db.users.filter((u) => u.active).length}{plan.maxUsers === Infinity ? "" : ` / ${plan.maxUsers}`}</span></div>
           <Btn onClick={() => setAddingUser(true)}><Plus className="h-4 w-4" /> Agregar usuario</Btn>
         </div>
         <datalist id="especialidades-list">
@@ -193,7 +193,7 @@ export default function ConfigPage() {
                   <Percent className="h-3 w-3 text-clinic-muted" />
                   <input
                     type="number" min={0} max={100}
-                    className="w-10 bg-transparent text-right font-mono text-xs font-bold text-clinic-text"
+                    className="w-10 bg-transparent text-right tabular-nums text-xs font-bold text-clinic-text"
                     value={u.commissionPct ?? 0}
                     onChange={(e) => upsertUser({ ...u, commissionPct: Number(e.target.value) || 0 })}
                   />
@@ -251,12 +251,12 @@ export default function ConfigPage() {
       {/* Convenios */}
       <Reveal>
       <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><Handshake className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Gestión de convenios</h2></div>
+        <div className="mb-3 flex items-center gap-2"><Handshake className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Gestión de convenios</h2></div>
         <p className="mb-3 text-xs text-clinic-muted">Acuerdos con empresas/aseguradoras — el descuento se aplica automáticamente en los presupuestos.</p>
         <div className="flex flex-wrap gap-2">
           {(clinic.config.convenios ?? []).map((c) => (
             <span key={c.name} data-tip={[c.ruc && `RUC ${c.ruc}`, c.phone].filter(Boolean).join(" · ") || undefined} className="inline-flex items-center gap-2 rounded-full border border-clinic-border bg-clinic-bg px-3 py-1.5 text-xs font-bold text-clinic-text">
-              {c.name} <span className="font-mono text-azure-700">{c.discountPct}%</span>
+              {c.name} <span className="tabular-nums text-azure-700">{c.discountPct}%</span>
               <button
                 onClick={() => updateClinicConfig({ convenios: (clinic.config.convenios ?? []).filter((x) => x.name !== c.name) })}
                 className="text-clinic-muted hover:text-state-err" aria-label={`Quitar ${c.name}`}
@@ -311,7 +311,7 @@ export default function ConfigPage() {
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <HandCoins className="h-4 w-4 text-azure-600" />
-                <h2 className="font-extrabold text-clinic-text">Negociación de presupuestos</h2>
+                <h2 className="font-bold text-clinic-text">Negociación de presupuestos</h2>
                 <Badge tone={isOn ? "ok" : "muted"}>{isOn ? "Activo" : "Inactivo"}</Badge>
               </div>
               <label className="flex cursor-pointer items-center gap-2 select-none">
@@ -379,8 +379,8 @@ export default function ConfigPage() {
       {/* Plantilla de recordatorio */}
       <Reveal>
       <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><MessageSquareText className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Confirmación de citas — plantilla WhatsApp</h2></div>
-        <p className="mb-2 text-xs text-clinic-muted">Variables disponibles: <code className="font-mono">{"{paciente} {fecha} {hora} {clinica}"}</code>. Se usa desde la Agenda al enviar recordatorios.</p>
+        <div className="mb-3 flex items-center gap-2"><MessageSquareText className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Confirmación de citas — plantilla WhatsApp</h2></div>
+        <p className="mb-2 text-xs text-clinic-muted">Variables disponibles: <code className="tabular-nums">{"{paciente} {fecha} {hora} {clinica}"}</code>. Se usa desde la Agenda al enviar recordatorios.</p>
         <textarea
           rows={3}
           className={inputCls}
@@ -399,7 +399,7 @@ export default function ConfigPage() {
       <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2"><UploadCloud className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Migración desde Dentalink</h2></div>
+          <div className="flex items-center gap-2"><UploadCloud className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Migración desde Dentalink</h2></div>
           <Btn onClick={() => setImporting(true)}><UploadCloud className="h-4 w-4" /> Iniciar migración</Btn>
         </div>
         <p className="text-xs leading-relaxed text-clinic-muted">
@@ -413,7 +413,7 @@ export default function ConfigPage() {
       {/* Servicios / aranceles */}
       <Reveal>
       <Card className="p-5">
-        <div id="logotipo" className="mb-3 flex scroll-mt-24 items-center gap-2"><ImageIcon className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Logotipo</h2></div>
+        <div id="logotipo" className="mb-3 flex scroll-mt-24 items-center gap-2"><ImageIcon className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Logotipo</h2></div>
         <p className="mb-3 text-xs text-clinic-muted">Se usa en la cabecera de la app y en los documentos impresos (presupuestos).</p>
         <div className="flex flex-wrap items-center gap-4">
           <div className="grid h-16 w-40 place-items-center rounded-xl border border-clinic-border bg-clinic-bg">
@@ -430,7 +430,7 @@ export default function ConfigPage() {
 
       <Reveal>
       <Card className="p-5">
-        <div id="fusion" className="mb-3 flex scroll-mt-24 items-center gap-2"><Users className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Fusión de fichas</h2></div>
+        <div id="fusion" className="mb-3 flex scroll-mt-24 items-center gap-2"><Users className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Fusión de fichas</h2></div>
         <p className="mb-3 text-xs text-clinic-muted">Unificá dos fichas duplicadas: citas, presupuestos, pagos e historial pasan a la ficha que se mantiene; la otra se elimina.</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Mantener esta ficha"><select className={inputCls} value={mergeKeep} onChange={(e) => { setMergeKeep(e.target.value); if (e.target.value === mergeRemove) setMergeRemove(""); }}>{db.patients.map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {p.document}</option>)}</select></Field>
@@ -448,7 +448,7 @@ export default function ConfigPage() {
       <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div id="arancel" className="flex scroll-mt-24 items-center gap-2"><Stethoscope className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Servicios y aranceles</h2></div>
+          <div id="arancel" className="flex scroll-mt-24 items-center gap-2"><Stethoscope className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Servicios y aranceles</h2></div>
           <Btn onClick={() => setAddingProc(true)}><Plus className="h-4 w-4" /> Agregar servicio</Btn>
         </div>
         {db.procedures.length === 0 ? (
@@ -459,16 +459,16 @@ export default function ConfigPage() {
           <div className="scroll-hint-shown min-w-0 max-w-full overflow-x-auto overscroll-x-contain">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
-              <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+              <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                 <th className="py-2 pr-3">Código</th><th className="py-2 pr-3">Descripción</th><th className="py-2 text-right">Arancel</th><th className="py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-clinic-border">
               {db.procedures.map((p) => (
                 <tr key={p.cpt} className="hover:bg-clinic-bg/50">
-                  <td className="py-2.5 pr-3 font-mono font-bold text-clinic-text">{p.cpt}</td>
+                  <td className="py-2.5 pr-3 tabular-nums font-bold text-clinic-text">{p.cpt}</td>
                   <td className="py-2.5 pr-3">{p.description}</td>
-                  <td className="py-2.5 text-right font-mono">{fmtGs(p.price)}</td>
+                  <td className="py-2.5 text-right tabular-nums">{fmtGs(p.price)}</td>
                   <td className="py-2.5 pl-2 text-right">
                     <span className="flex items-center justify-end gap-1">
                       <button onClick={() => setEditingProc(p)} title="Editar servicio" className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-azure-50 hover:text-azure-700"><Pencil className="h-3.5 w-3.5" /></button>
@@ -488,7 +488,7 @@ export default function ConfigPage() {
       {/* Servicios adicionales */}
       <Reveal>
       <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><Sparkles className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Servicios adicionales</h2></div>
+        <div className="mb-3 flex items-center gap-2"><Sparkles className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Servicios adicionales</h2></div>
         <p className="mb-4 text-xs text-clinic-muted">Capacidades extra de Novudent según tu plan. La activación real vive dentro de la ficha del paciente.</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex items-start gap-3 rounded-2xl border border-clinic-border bg-clinic-bg p-4">
@@ -528,7 +528,7 @@ export default function ConfigPage() {
           cálculo usa SU zona horaria, no la del servidor. */}
       <Reveal>
       <Card className="p-5">
-        <div id="reserva-online" className="mb-1 flex scroll-mt-24 items-center gap-2"><Clock className="h-4 w-4 text-azure-600" /><h2 className="text-sm font-extrabold text-clinic-text">Reserva online</h2></div>
+        <div id="reserva-online" className="mb-1 flex scroll-mt-24 items-center gap-2"><Clock className="h-4 w-4 text-azure-600" /><h2 className="text-sm font-bold text-clinic-text">Reserva online</h2></div>
         <p className="mt-1 text-xs text-clinic-muted">Con cuánta anticipación mínima puede el paciente tomar un turno desde la web.</p>
         <div className="mt-4 max-w-sm">
           <Field label="Anticipación mínima" hint={`Se calcula en la zona horaria de la clínica (${clinic.config.timezone || "sin configurar"}).`}>
@@ -563,7 +563,7 @@ export default function ConfigPage() {
           `config.taskDeadlines`. La página entera ya está gateada por `practice.config`. */}
       <Reveal>
         <div id="tareas" className="scroll-mt-24">
-          <div className="mb-2 flex items-center gap-2"><ListChecks className="h-4 w-4 text-azure-600" /><h2 className="text-sm font-extrabold text-clinic-text">Plazos de tareas automáticas</h2></div>
+          <div className="mb-2 flex items-center gap-2"><ListChecks className="h-4 w-4 text-azure-600" /><h2 className="text-sm font-bold text-clinic-text">Plazos de tareas automáticas</h2></div>
           <PlazosTareas />
         </div>
       </Reveal>
@@ -574,7 +574,7 @@ export default function ConfigPage() {
           criterio que Plazos de tareas automáticas. */}
       <Reveal>
       <Card className="p-5">
-        <div id="retencion" className="mb-1 flex scroll-mt-24 items-center gap-2"><Percent className="h-4 w-4 text-azure-600" /><h2 className="text-sm font-extrabold text-clinic-text">Retención por medio de pago</h2></div>
+        <div id="retencion" className="mb-1 flex scroll-mt-24 items-center gap-2"><Percent className="h-4 w-4 text-azure-600" /><h2 className="text-sm font-bold text-clinic-text">Retención por medio de pago</h2></div>
         <p className="mt-1 text-xs text-clinic-muted">El % que se queda el medio de pago (ej.: comisión de la tarjeta). Los reportes muestran el ingreso neto descontándolo. La caja y el arqueo siguen en bruto.</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {(Object.keys(PAYMENT_METHOD_LABEL) as PaymentMethod[]).map((method) => (
@@ -750,7 +750,7 @@ function ConsentTemplatesCard({ templates, onSave }: { templates: ConsentTemplat
   return (
     <Card className="p-5">
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2"><FileSignature className="h-4 w-4 text-azure-600" /><h2 className="font-extrabold text-clinic-text">Plantillas de consentimiento</h2></div>
+        <div className="flex items-center gap-2"><FileSignature className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Plantillas de consentimiento</h2></div>
         <Btn variant="outline" onClick={add}><Plus className="h-3.5 w-3.5" /> Nueva plantilla</Btn>
       </div>
       <p className="mb-4 text-xs leading-relaxed text-clinic-muted">

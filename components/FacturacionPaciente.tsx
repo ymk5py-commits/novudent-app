@@ -48,7 +48,7 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-1 rounded-xl border border-clinic-border bg-white p-1">
         {SUBS.map((s) => (
-          <button key={s.k} onClick={() => setTab(s.k)} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${tab === s.k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>{s.label}</button>
+          <button key={s.k} onClick={() => setTab(s.k)} className={`rounded-lg px-3 py-1.5 text-[13px] font-normal transition-colors ${tab === s.k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>{s.label}</button>
         ))}
       </div>
 
@@ -57,18 +57,18 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
       ) : (
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[760px] text-sm">
-            <thead><tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+            <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
               <th className="px-4 py-3">N° Pago</th><th className="px-2 py-3">Plan</th><th className="px-2 py-3">Medio de pago</th><th className="px-2 py-3">N° Boleta</th><th className="px-2 py-3">Recepción</th><th className="px-2 py-3 text-right">Monto</th><th className="px-2 py-3"></th>
             </tr></thead>
             <tbody className="divide-y divide-clinic-border">
               {pagos.map((p) => (
                 <tr key={p.id} className="hover:bg-clinic-bg/60">
-                  <td className="px-4 py-2.5 font-mono text-xs text-clinic-muted">{p.paymentNumber ?? "—"}</td>
+                  <td className="px-4 py-2.5 tabular-nums text-xs text-clinic-muted">{p.paymentNumber ?? "—"}</td>
                   <td className="px-2 py-2.5">{p.budgetId ? <span className="font-semibold text-azure-700">#{p.budgetId}</span> : <span className="text-clinic-muted">Libre</span>}</td>
                   <td className="px-2 py-2.5"><div className="text-clinic-text">{PAYMENT_METHOD_LABEL[p.method] ?? p.method}</div><div className="text-[11px] text-clinic-muted">Recibido por {p.receivedBy}</div></td>
-                  <td className="px-2 py-2.5 font-mono text-xs text-clinic-muted">{p.receiptNumber ?? "—"}</td>
+                  <td className="px-2 py-2.5 tabular-nums text-xs text-clinic-muted">{p.receiptNumber ?? "—"}</td>
                   <td className="px-2 py-2.5 text-clinic-muted">{fmtDate(p.date)}</td>
-                  <td className="px-2 py-2.5 text-right font-mono font-bold text-clinic-text">{fmtGs(p.amount)}</td>
+                  <td className="px-2 py-2.5 text-right tabular-nums font-bold text-clinic-text">{fmtGs(p.amount)}</td>
                   <td className="px-2 py-2.5 text-right">
                     {canManage && (
                       <span className="flex items-center justify-end gap-1">
@@ -90,16 +90,16 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
       ) : (
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[520px] text-sm">
-            <thead><tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+            <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
               <th className="px-4 py-3">N° Boleta</th><th className="px-2 py-3">Fecha</th><th className="px-2 py-3">Pago</th><th className="px-2 py-3 text-right">Monto</th>
             </tr></thead>
             <tbody className="divide-y divide-clinic-border">
               {boletas.map((d) => (
                 <tr key={d.id} className="hover:bg-clinic-bg/60">
-                  <td className="px-4 py-2.5 font-mono text-clinic-text">{d.number ?? "—"}</td>
+                  <td className="px-4 py-2.5 tabular-nums text-clinic-text">{d.number ?? "—"}</td>
                   <td className="px-2 py-2.5 text-clinic-muted">{fmtDate(d.date)}</td>
                   <td className="px-2 py-2.5 text-clinic-muted">{d.paymentId ?? "—"}</td>
-                  <td className="px-2 py-2.5 text-right font-mono font-bold">{fmtGs(d.amount)}</td>
+                  <td className="px-2 py-2.5 text-right tabular-nums font-bold">{fmtGs(d.amount)}</td>
                 </tr>
               ))}
             </tbody>
@@ -112,7 +112,7 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
       ) : (
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[520px] text-sm">
-            <thead><tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+            <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
               <th className="px-4 py-3">Fecha</th><th className="px-2 py-3">Motivo</th><th className="px-2 py-3">Registrado por</th><th className="px-2 py-3 text-right">Monto</th>
             </tr></thead>
             <tbody className="divide-y divide-clinic-border">
@@ -121,7 +121,7 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
                   <td className="px-4 py-2.5 text-clinic-muted">{fmtDate(d.date)}</td>
                   <td className="px-2 py-2.5 text-clinic-text">{d.reason ?? "—"}</td>
                   <td className="px-2 py-2.5 text-clinic-muted">{d.by}</td>
-                  <td className="px-2 py-2.5 text-right font-mono font-bold text-state-warn">{fmtGs(d.amount)}</td>
+                  <td className="px-2 py-2.5 text-right tabular-nums font-bold text-state-warn">{fmtGs(d.amount)}</td>
                 </tr>
               ))}
             </tbody>
@@ -134,7 +134,7 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
       ) : (
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[520px] text-sm">
-            <thead><tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+            <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
               <th className="px-4 py-3">Recepción</th><th className="px-2 py-3">Medio</th><th className="px-2 py-3">Anulado</th><th className="px-2 py-3 text-right">Monto</th>
             </tr></thead>
             <tbody className="divide-y divide-clinic-border">
@@ -143,7 +143,7 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
                   <td className="px-4 py-2.5">{fmtDate(p.date)}</td>
                   <td className="px-2 py-2.5">{PAYMENT_METHOD_LABEL[p.method] ?? p.method}</td>
                   <td className="px-2 py-2.5">{p.voidedAt ? `${fmtDate(p.voidedAt)} · ${p.voidedBy ?? ""}` : "—"}</td>
-                  <td className="px-2 py-2.5 text-right font-mono line-through">{fmtGs(p.amount)}</td>
+                  <td className="px-2 py-2.5 text-right tabular-nums line-through">{fmtGs(p.amount)}</td>
                 </tr>
               ))}
             </tbody>
@@ -175,8 +175,8 @@ function BalancePaciente({ patient }: { patient: Patient }) {
 function Stat({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
     <Card className="p-5">
-      <div className="text-xs font-bold uppercase tracking-wide text-clinic-muted">{label}</div>
-      <div className={`mt-1 font-mono text-2xl font-extrabold ${tone}`}>{fmtGs(value)}</div>
+      <div className="text-[13px] font-bold text-clinic-muted">{label}</div>
+      <div className={`mt-1 tabular-nums text-2xl font-bold ${tone}`}>{fmtGs(value)}</div>
     </Card>
   );
 }

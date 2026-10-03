@@ -67,7 +67,7 @@ export function SmileSimulator({ onSave }: { onSave?: (dataUrl: string, label: s
     <div className="rounded-2xl border border-clinic-border bg-white p-5">
       <div className="mb-1 flex items-center gap-2">
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-50 text-azure-600"><Sparkles className="h-4 w-4" /></span>
-        <h3 className="font-extrabold text-clinic-text">Simulador de sonrisas IA</h3>
+        <h3 className="font-bold text-clinic-text">Simulador de sonrisas IA</h3>
       </div>
       <p className="mb-3 text-[11px] text-clinic-muted">Proyectá el resultado estético sobre una foto del paciente. Es una estimación, no un resultado garantizado.</p>
 
@@ -87,13 +87,13 @@ export function SmileSimulator({ onSave }: { onSave?: (dataUrl: string, label: s
       {(src || result) && (
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Antes</div>
+            <div className="mb-1 text-[13px] font-semibold text-clinic-muted">Antes</div>
             {src
               ? <img src={src} alt="Antes" className="w-full rounded-xl border border-clinic-border" />
               : <div className="grid aspect-square place-items-center rounded-xl border border-dashed border-clinic-border text-xs text-clinic-muted">Subí una foto</div>}
           </div>
           <div>
-            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Después (simulado)</div>
+            <div className="mb-1 text-[13px] font-semibold text-clinic-muted">Después (simulado)</div>
             {result ? (
               <div>
                 <img src={result} alt="Después" className="w-full rounded-xl border border-azure-300" />

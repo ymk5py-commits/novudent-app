@@ -34,7 +34,7 @@ export default function EncuestasPage() {
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-azure-50 text-azure-600"><Star className="h-5 w-5" /></span>
           <div>
-            <h1 className="text-lg font-extrabold text-clinic-text">Encuestas y NPS</h1>
+            <h1 className="text-[16px] font-bold text-clinic-text">Encuestas y NPS</h1>
             <p className="text-[11px] text-clinic-muted">Satisfacción del paciente y recomendación (NPS), con link para responder.</p>
           </div>
         </div>
@@ -53,7 +53,7 @@ export default function EncuestasPage() {
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelId(s.id); } }} className={`cursor-pointer rounded-2xl border bg-white p-4 shadow-card transition-colors ${sel?.id === s.id ? "border-azure-400 ring-1 ring-azure-300" : "border-clinic-border hover:border-azure-200"}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-extrabold text-clinic-text">{s.title}</div>
+                      <div className="truncate text-sm font-bold text-clinic-text">{s.title}</div>
                       <div className="mt-1 flex items-center gap-2">
                         <Badge tone={s.kind === "nps" ? "info" : "ok"}>{s.kind === "nps" ? "NPS" : "Satisfacción"}</Badge>
                         {!s.active && <Badge tone="muted">Inactiva</Badge>}
@@ -93,14 +93,14 @@ function Resultados({ survey, responses }: { survey: Survey; responses: import("
   const comments = responses.map((r) => ({ name: r.patientName, text: r.comment, date: r.createdAt })).filter((c) => c.text);
   return (
     <Card className="p-5">
-      <h3 className="mb-1 font-extrabold text-clinic-text">{survey.title}</h3>
+      <h3 className="mb-1 font-bold text-clinic-text">{survey.title}</h3>
       <p className="mb-4 text-[11px] text-clinic-muted">{responses.length} respuesta(s).</p>
 
       {survey.kind === "nps" ? <NpsResultados responses={responses} /> : <SatResultados survey={survey} responses={responses} />}
 
       {comments.length > 0 && (
         <div className="mt-5">
-          <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Comentarios</div>
+          <div className="mb-2 text-[13px] font-semibold text-clinic-muted">Comentarios</div>
           <ul className="space-y-2">
             {comments.slice(0, 12).map((c, i) => (
               <li key={i} className="rounded-xl border border-clinic-border bg-clinic-bg/40 p-3 text-sm">
@@ -127,7 +127,7 @@ function NpsResultados({ responses }: { responses: import("@/lib/types").SurveyR
   return (
     <div>
       <div className="mb-4 flex items-baseline gap-3">
-        <span className={`font-mono text-5xl font-extrabold ${tone}`}>{s.nps}</span>
+        <span className={`tabular-nums text-5xl font-bold ${tone}`}>{s.nps}</span>
         <span className="text-sm font-bold text-clinic-muted">NPS · {s.n} respuestas</span>
       </div>
       <div className="space-y-3">
@@ -146,7 +146,7 @@ function SatResultados({ survey, responses }: { survey: Survey; responses: impor
     <div className="space-y-3">
       {avgs.map((a) => (
         <div key={a.question}>
-          <div className="mb-1 flex items-center justify-between text-sm"><span className="font-bold text-clinic-text">{a.question}</span><span className="font-mono font-bold text-azure-700">{a.avg.toFixed(1)} / 5</span></div>
+          <div className="mb-1 flex items-center justify-between text-sm"><span className="font-bold text-clinic-text">{a.question}</span><span className="tabular-nums font-bold text-azure-700">{a.avg.toFixed(1)} / 5</span></div>
           <div className="h-2.5 overflow-hidden rounded-full bg-clinic-bg"><div className="h-full rounded-full bg-azure-500" style={{ width: `${(a.avg / 5) * 100}%` }} /></div>
         </div>
       ))}

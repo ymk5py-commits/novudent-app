@@ -51,7 +51,7 @@ function SpikeStat({
       <span className={`grid h-10 w-10 place-items-center rounded-[10px] ${tones.icon}`}>
         <Icon className="h-5 w-5" strokeWidth={2} />
       </span>
-      <p className="mt-4 font-logo text-[32px] font-semibold leading-none tabular-nums text-clinic-text"><Count value={value} /></p>
+      <p className="mt-4 text-[28px] font-bold leading-none tabular-nums text-clinic-text"><Count value={value} /></p>
       <p className="mt-0.5 text-sm font-medium text-clinic-muted">{label}</p>
     </Link>
   );
@@ -207,11 +207,11 @@ export default function Dashboard() {
       <div className="dashboard-hero relative overflow-hidden rounded-[22px] px-6 py-7 text-white sm:px-8 sm:py-9">
         <Isologo className="pointer-events-none absolute -right-6 -top-20 h-[300px] w-auto opacity-[0.12] sm:right-8 sm:-top-16 sm:h-[350px]" />
         <div className="relative max-w-2xl">
-          <div className="inline-flex items-center gap-2 border-b border-azure-300/40 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-azure-200">
+          <div className="inline-flex items-center gap-2 border-b border-azure-300/40 pb-2 text-[12px] font-semibold text-azure-200">
             <span className="h-1.5 w-1.5 rounded-full bg-azure-300" />
             {today.toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" })}
           </div>
-          <h1 className="mt-4 font-logo text-3xl font-semibold sm:text-4xl">Hola, {saludo(session.name)}</h1>
+          <h1 className="mt-4 text-2xl font-bold">Hola, {saludo(session.name)}</h1>
           <p className="mt-1.5 max-w-md text-sm text-white/65">
             {todays.length > 0
               ? <>Tenés <b className="text-white">{todays.length} cita{todays.length > 1 ? "s" : ""}</b> hoy{canReports && <> · producción semanal <b className="text-white">{fmtGs(weekRevenue)}</b></>}.</>
@@ -248,7 +248,7 @@ export default function Dashboard() {
         <Card className="p-5">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-state-warn" />
-            <h2 className="font-extrabold text-clinic-text">Tareas críticas</h2>
+            <h2 className="font-bold text-clinic-text">Tareas críticas</h2>
             <Badge tone="warn">{criticalTasks.length}</Badge>
           </div>
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
@@ -273,7 +273,7 @@ export default function Dashboard() {
           <Card className="p-6 lg:col-span-3">
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 className="font-extrabold text-clinic-text">Producción de la semana</h2>
+                <h2 className="font-bold text-clinic-text">Producción de la semana</h2>
                 <p className="text-xs text-clinic-muted">Total: <b className="text-clinic-text">{fmtGs(weekRevenue)}</b> · citas no canceladas</p>
               </div>
               <span className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-clinic-bg"><MoreHorizontal className="h-4 w-4" /></span>
@@ -282,7 +282,7 @@ export default function Dashboard() {
           </Card>
         ) : (
           <Card className="p-6 lg:col-span-3">
-            <h2 className="font-extrabold text-clinic-text">Mi semana clínica</h2>
+            <h2 className="font-bold text-clinic-text">Mi semana clínica</h2>
             <p className="mt-0.5 text-xs text-clinic-muted">Citas por día (los reportes financieros son del área administrativa)</p>
             <div className="mt-5">
               <WeekBarsChart name="Citas" data={DAYS.map((d, i) => {
@@ -295,7 +295,7 @@ export default function Dashboard() {
         <Card className="p-6 lg:col-span-2">
           <div className="mb-4 flex items-start justify-between">
             <div>
-              <h2 className="font-extrabold text-clinic-text">Estados de citas</h2>
+              <h2 className="font-bold text-clinic-text">Estados de citas</h2>
               <p className="text-xs text-clinic-muted">Semana actual</p>
             </div>
             <span className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-clinic-bg"><MoreHorizontal className="h-4 w-4" /></span>
@@ -317,7 +317,7 @@ export default function Dashboard() {
       <Reveal className="grid gap-5 lg:grid-cols-5">
         <Card className="p-6 lg:col-span-3">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-extrabold text-clinic-text">Agenda de hoy</h2>
+            <h2 className="font-bold text-clinic-text">Agenda de hoy</h2>
             <Link href="/app/agenda" className="inline-flex items-center gap-1 text-xs font-bold text-azure-600 hover:text-azure-700">
               Ver completa <ArrowRight className="h-3.5 w-3.5" />
             </Link>
@@ -330,7 +330,7 @@ export default function Dashboard() {
                 const p = db.patients.find((x) => x.id === a.patientId);
                 return (
                   <Link key={a.id} href={`/app/pacientes/${a.patientId}`} className="-mx-2 flex items-center gap-4 rounded-lg px-2 py-3 hover:bg-clinic-bg">
-                    <span className="w-12 font-mono text-sm font-bold text-clinic-text">{fmtTime(a.start)}</span>
+                    <span className="w-12 tabular-nums text-sm font-bold text-clinic-text">{fmtTime(a.start)}</span>
                     <span className="flex-1">
                       <span className="block text-sm font-bold text-clinic-text">{p ? fullName(p) : "—"}</span>
                       <span className="block text-xs text-clinic-muted">{a.title}</span>
@@ -345,7 +345,7 @@ export default function Dashboard() {
         </Card>
 
         <Card className="p-6 lg:col-span-2">
-          <h2 className="font-extrabold text-clinic-text">Puesta en marcha</h2>
+          <h2 className="font-bold text-clinic-text">Puesta en marcha</h2>
           <p className="mt-0.5 text-xs text-clinic-muted">
             {checklist.filter((c) => !c.done).length === 0 ? "¡Todo listo! La clínica está configurada." : `${checklist.filter((c) => !c.done).length} paso(s) pendiente(s)`}
           </p>

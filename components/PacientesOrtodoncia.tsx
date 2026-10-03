@@ -67,7 +67,7 @@ export function PacientesOrtodoncia() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-extrabold text-clinic-text">Pacientes en tratamiento de ortodoncia</h3>
+        <h3 className="font-bold text-clinic-text">Pacientes en tratamiento de ortodoncia</h3>
         {data.rows.length > 0 && <Btn variant="outline" onClick={descargar}><Download className="h-3.5 w-3.5" /> Descargar reporte</Btn>}
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -85,7 +85,7 @@ export function PacientesOrtodoncia() {
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[760px] text-sm">
             <thead>
-              <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+              <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                 <th className="px-4 py-3">Paciente</th>
                 <th className="px-2 py-3">Sexo</th>
                 <th className="px-2 py-3">Edad</th>
@@ -104,7 +104,7 @@ export function PacientesOrtodoncia() {
                   </td>
                   <td className="px-2 py-2.5 text-clinic-muted">{r.p.sex ?? r.p.gender ?? "—"}</td>
                   <td className="px-2 py-2.5 text-clinic-muted">{r.age ?? "—"}</td>
-                  {verPersonales && <td className="px-2 py-2.5 font-mono text-xs text-clinic-muted">{r.p.phone}</td>}
+                  {verPersonales && <td className="px-2 py-2.5 tabular-nums text-xs text-clinic-muted">{r.p.phone}</td>}
                   <td className="px-2 py-2.5 text-clinic-muted">{fmtDate(r.o.startDate)}</td>
                   <td className="px-2 py-2.5 text-clinic-muted">{r.dr}</td>
                   <td className="px-4 py-2.5">
@@ -112,7 +112,7 @@ export function PacientesOrtodoncia() {
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-clinic-bg">
                         <div className="h-full rounded-full bg-azure-500 transition-[width]" style={{ width: `${r.prog.calendarPct}%` }} />
                       </div>
-                      <span className="w-9 text-right font-mono text-xs font-bold text-clinic-text">{r.prog.calendarPct}%</span>
+                      <span className="w-9 text-right tabular-nums text-xs font-bold text-clinic-text">{r.prog.calendarPct}%</span>
                     </div>
                   </td>
                 </tr>
@@ -130,8 +130,8 @@ function Kpi({ label, value, icon: Icon, tone }: { label: string; value: number;
   return (
     <Card className="p-4 text-center">
       <Icon className={`mx-auto h-5 w-5 ${c}`} />
-      <div className="mt-1 font-mono text-2xl font-extrabold text-clinic-text">{value}</div>
-      <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">{label}</div>
+      <div className="mt-1 tabular-nums text-2xl font-bold text-clinic-text">{value}</div>
+      <div className="text-[13px] font-semibold text-clinic-muted">{label}</div>
     </Card>
   );
 }

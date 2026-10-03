@@ -40,7 +40,7 @@ export function Btn({
       onClick={onClick}
       disabled={disabled}
       data-tip={tip}
-      className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[10px] px-4 py-2 text-sm font-semibold transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 disabled:cursor-not-allowed ${styles} ${className}`}
+      className={`inline-flex min-h-[34px] items-center justify-center gap-1.5 rounded-[10px] px-3.5 py-1.5 text-[13px] font-semibold transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 disabled:cursor-not-allowed ${styles} ${className}`}
     >
       {children}
     </button>
@@ -57,7 +57,7 @@ export function Badge({ tone, children, tip }: { tone: "ok" | "warn" | "err" | "
     muted: "bg-clinic-bg text-clinic-muted",
   }[tone];
   return (
-    <span data-tip={tip} className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${c}`}>
+    <span data-tip={tip} className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${c}`}>
       {children}
     </span>
   );
@@ -162,7 +162,7 @@ function ModalContent({ title, onClose, children, wide, xl }: { title: string; o
         className={`max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-[20px] border border-clinic-border bg-white p-6 shadow-pop outline-none ${xl ? "max-w-6xl" : wide ? "max-w-3xl" : "max-w-lg"}`}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 id={titleId} className="font-logo text-xl font-semibold text-clinic-text">{title}</h3>
+          <h3 id={titleId} className="text-[16px] font-bold text-clinic-text">{title}</h3>
           <button onClick={onClose} aria-label="Cerrar" className="grid h-8 w-8 place-items-center rounded-full hover:bg-clinic-bg">
             <X className="h-4 w-4 text-clinic-muted" />
           </button>
@@ -185,9 +185,9 @@ export function Modal(props: { title: string; onClose: () => void; children: Rea
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-clinic-muted">{label}</span>
+      <span className="mb-1 block text-[13px] font-semibold text-clinic-text">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-[11px] text-clinic-muted">{hint}</span>}
+      {hint && <span className="mt-1 block text-[12px] text-clinic-muted">{hint}</span>}
     </label>
   );
 }

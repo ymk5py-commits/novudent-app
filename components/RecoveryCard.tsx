@@ -59,7 +59,7 @@ export default function RecoveryCard({ patient }: { patient: Patient }) {
       <Card className="p-5">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <HeartPulse className="h-4 w-4 text-azure-600" />
-          <h2 className="font-extrabold text-clinic-text">Recuperación post-operatoria</h2>
+          <h2 className="font-bold text-clinic-text">Recuperación post-operatoria</h2>
           <Badge tone={isEscalated ? "err" : "info"}>
             {isEscalated ? "Escalado" : "Activo"}
           </Badge>
@@ -79,7 +79,7 @@ export default function RecoveryCard({ patient }: { patient: Patient }) {
                   <span className="font-bold text-clinic-text">{LABEL[tp.offsetHours]}</span>
                   <span className="text-clinic-muted">{STATUS_LABEL[tp.status]}</span>
                   {tp.pain != null && (
-                    <span className="rounded-full bg-state-warnbg px-2 py-0.5 font-mono text-[11px] font-semibold text-state-warn">
+                    <span className="rounded-full bg-state-warnbg px-2 py-0.5 tabular-nums text-[11px] font-semibold text-state-warn">
                       Dolor {tp.pain}/10
                     </span>
                   )}

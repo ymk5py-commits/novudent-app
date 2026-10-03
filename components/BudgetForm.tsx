@@ -93,7 +93,7 @@ export function BudgetForm({ budget, onClose, onSave, sinMontos = false, pacient
         {/* ítems */}
         <div className="rounded-xl border border-clinic-border p-3">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Procedimientos</span>
+            <span className="text-[13px] font-bold text-clinic-muted">Procedimientos</span>
             <Btn variant="outline" onClick={addItem}><Plus className="h-3.5 w-3.5" /> Agregar</Btn>
           </div>
           {items.length === 0 && <p className="py-3 text-center text-sm text-clinic-muted">Agregá al menos un procedimiento.</p>}
@@ -126,7 +126,7 @@ export function BudgetForm({ budget, onClose, onSave, sinMontos = false, pacient
 
         {!sinMontos && <div className="flex items-center justify-between rounded-xl bg-clinic-bg px-4 py-3">
           <span className="text-sm font-bold text-clinic-text">Total {discountPct ? `(− ${discountPct}%)` : ""}</span>
-          <span className="font-mono text-lg font-extrabold text-clinic-text">
+          <span className="tabular-nums text-lg font-bold text-clinic-text">
             {fmtGs(total)}
             {installments > 1 && total > 0 && <span className="ml-2 text-xs font-bold text-clinic-muted">· {installments}× {fmtGs(Math.round(total / installments))}</span>}
           </span>

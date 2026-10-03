@@ -46,7 +46,7 @@ export default function CashPage() {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">La caja la gestionan el <b>Administrador</b> y <b>Recepción y caja</b>.</p>
       </Card>
     );
@@ -63,10 +63,10 @@ export default function CashPage() {
   return (
     <div className="space-y-4">
       <Reveal className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2"><Wallet className="h-6 w-6 text-azure-600" /><h1 className="text-xl font-extrabold text-clinic-text">Cajas</h1></div>
+        <div className="flex items-center gap-2"><Wallet className="h-6 w-6 text-azure-600" /><h1 className="text-[16px] font-bold text-clinic-text">Cajas</h1></div>
         <div className="flex flex-wrap gap-1 rounded-xl border border-clinic-border bg-white p-1">
           {TABS.map(([k, label]) => (
-            <button key={k} onClick={() => setTab(k)} className={`rounded-lg px-3 py-1.5 text-sm font-bold transition-colors ${tab === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
+            <button key={k} onClick={() => setTab(k)} className={`rounded-lg px-3 py-1.5 text-[14px] font-normal transition-colors ${tab === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
               {label}
               {k === "abiertas" && abiertas.length > 0 ? ` (${abiertas.length})` : ""}
               {k === "cheques" && chequesPorCobrar > 0 ? ` (${chequesPorCobrar})` : ""}
@@ -83,7 +83,7 @@ export default function CashPage() {
       {tab === "mi" && (miCaja ? <MiCajaPanel s={miCaja} onCerrar={() => setCerrar(miCaja)} onPay={() => setNewPay(true)} /> : (
         <Card className="p-10 text-center">
           <Lock className="mx-auto h-10 w-10 text-clinic-muted" />
-          <h2 className="mt-3 font-extrabold text-clinic-text">No tenés una caja abierta</h2>
+          <h2 className="mt-3 font-bold text-clinic-text">No tenés una caja abierta</h2>
           <p className="mt-1 text-sm text-clinic-muted">Abrí tu caja con el saldo inicial para registrar los movimientos del turno.</p>
           <Btn className="mx-auto mt-4" onClick={() => setAbrir(true)}><Lock className="h-4 w-4" /> Abrir caja</Btn>
         </Card>
@@ -128,7 +128,7 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
 
       <Reveal className="grid gap-4 lg:grid-cols-5">
         <Card className="min-w-0 p-5 lg:col-span-3">
-          <div className="flex items-center justify-between"><h2 className="font-extrabold text-clinic-text">Movimientos de la caja</h2><Btn variant="outline" onClick={onPay}><Plus className="h-3.5 w-3.5" /> Pago</Btn></div>
+          <div className="flex items-center justify-between"><h2 className="font-bold text-clinic-text">Movimientos de la caja</h2><Btn variant="outline" onClick={onPay}><Plus className="h-3.5 w-3.5" /> Pago</Btn></div>
           {t.pays.length === 0 && t.exps.length === 0 ? (
             <p className="py-8 text-center text-sm text-clinic-muted">Sin movimientos en esta caja todavía.</p>
           ) : (
@@ -143,7 +143,7 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
                       <span className="block break-words text-sm font-semibold text-clinic-text">{patient ? fullName(patient) : "—"} · {p.concept}</span>
                       <span className="block text-[11px] leading-4 text-clinic-muted">{fmtTime(p.date)} · {PAYMENT_METHOD_LABEL[p.method]} · {p.receivedBy}</span>
                     </span>
-                    <span className="col-start-2 shrink-0 font-mono text-sm font-extrabold text-state-ok">+ {fmtGs(p.amount)}</span>
+                    <span className="col-start-2 shrink-0 tabular-nums text-sm font-bold text-state-ok">+ {fmtGs(p.amount)}</span>
                     {isAdmin && <button onClick={() => store.deletePayment(p.id)} className="col-start-3 grid h-10 w-10 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err sm:h-8 sm:w-8" title="Eliminar pago"><Trash2 className="h-3.5 w-3.5" /></button>}
                   </li>
                 );
@@ -155,7 +155,7 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
                     <span className="block break-words text-sm font-semibold text-clinic-text">{e.description}</span>
                     <span className="block text-[11px] leading-4 text-clinic-muted">{e.category}{e.supplier ? ` · ${e.supplier}` : ""} · {e.registeredBy}</span>
                   </span>
-                  <span className="col-start-2 shrink-0 font-mono text-sm font-extrabold text-state-err">− {fmtGs(e.amount)}</span>
+                  <span className="col-start-2 shrink-0 tabular-nums text-sm font-bold text-state-err">− {fmtGs(e.amount)}</span>
                 </li>
               ))}
             </ul>
@@ -164,7 +164,7 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
 
         <Card className="min-w-0 p-5 lg:col-span-2">
           <div className="flex items-center justify-between">
-            <h2 className="font-extrabold text-clinic-text">Cuentas por cobrar</h2>
+            <h2 className="font-bold text-clinic-text">Cuentas por cobrar</h2>
             <Badge tone={debtors.length > 0 ? "warn" : "ok"} tip="Pacientes con saldo pendiente">{debtors.length} paciente{debtors.length !== 1 && "s"}</Badge>
           </div>
           {debtors.length === 0 ? (
@@ -175,7 +175,7 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
                 <li key={p.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-3">
                   <Link href={`/app/pacientes/${p.id}`} className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{fullName(p)}</span>
-                    <span className="font-mono text-xs font-extrabold text-state-err">{fmtGs(balance)}</span>
+                    <span className="tabular-nums text-xs font-bold text-state-err">{fmtGs(balance)}</span>
                   </Link>
                   {botikaEnabled(db, "cobranza") && (
                     <button disabled={queued.includes(p.id)} onClick={() => { store.addOutboxTask(makeOutboxTask({ db, type: "cobranza", patient: p, by: session!.name, message: botikaMessage(db, "cobranza", { paciente: p.firstName, clinica: db.clinics[0].name, saldo: fmtGs(balance) }) })); setQueued((q) => [...q, p.id]); }} className="inline-flex items-center gap-1.5 rounded-xl bg-navy-800 px-3 py-2 text-xs font-bold text-azure-200 transition-colors hover:bg-navy-700 disabled:opacity-60" title="Botika gestiona el cobro">
@@ -202,7 +202,7 @@ function SesionesTable({ sessions, kind, onCerrar }: { sessions: CashSession[]; 
   return (
     <Card className="overflow-x-auto p-0">
       <table className="w-full min-w-[820px] text-sm">
-        <thead><tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+        <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
           <th className="px-4 py-3">Usuario</th><th className="px-2 py-3">Apertura</th>{kind === "closed" && <th className="px-2 py-3">Cierre</th>}<th className="px-2 py-3 text-right">Saldo inicial</th><th className="px-2 py-3 text-right">Ingresos</th><th className="px-2 py-3 text-right">Egresos</th><th className="px-2 py-3 text-right">Acumulado</th>{kind === "closed" && <th className="px-2 py-3 text-right">Diferencia</th>}{kind === "open" && <th className="px-2 py-3"></th>}
         </tr></thead>
         <tbody className="divide-y divide-clinic-border">
@@ -214,11 +214,11 @@ function SesionesTable({ sessions, kind, onCerrar }: { sessions: CashSession[]; 
                 <td className="px-4 py-2.5 font-semibold text-clinic-text">{s.userName}</td>
                 <td className="px-2 py-2.5 text-clinic-muted">{fmtDate(s.openedAt)} · {fmtTime(s.openedAt)}</td>
                 {kind === "closed" && <td className="px-2 py-2.5 text-clinic-muted">{s.closedAt ? `${fmtDate(s.closedAt)} · ${fmtTime(s.closedAt)}` : "—"}</td>}
-                <td className="px-2 py-2.5 text-right font-mono">{fmtGs(s.openingBalance)}</td>
-                <td className="px-2 py-2.5 text-right font-mono text-state-ok">{fmtGs(t.ingresos)}</td>
-                <td className="px-2 py-2.5 text-right font-mono text-state-err">{fmtGs(t.egresos)}</td>
-                <td className="px-2 py-2.5 text-right font-mono font-bold text-clinic-text">{fmtGs(t.acumulado)}</td>
-                {kind === "closed" && <td className={`px-2 py-2.5 text-right font-mono font-bold ${diff === 0 ? "text-state-ok" : "text-state-err"}`}>{diff > 0 ? "+" : ""}{fmtGs(diff)}</td>}
+                <td className="px-2 py-2.5 text-right tabular-nums">{fmtGs(s.openingBalance)}</td>
+                <td className="px-2 py-2.5 text-right tabular-nums text-state-ok">{fmtGs(t.ingresos)}</td>
+                <td className="px-2 py-2.5 text-right tabular-nums text-state-err">{fmtGs(t.egresos)}</td>
+                <td className="px-2 py-2.5 text-right tabular-nums font-bold text-clinic-text">{fmtGs(t.acumulado)}</td>
+                {kind === "closed" && <td className={`px-2 py-2.5 text-right tabular-nums font-bold ${diff === 0 ? "text-state-ok" : "text-state-err"}`}>{diff > 0 ? "+" : ""}{fmtGs(diff)}</td>}
                 {kind === "open" && <td className="px-2 py-2.5 text-right">{onCerrar && <Btn variant="outline" onClick={() => onCerrar(s)}><Unlock className="h-3.5 w-3.5" /> Cerrar</Btn>}</td>}
               </tr>
             );
@@ -232,8 +232,8 @@ function SesionesTable({ sessions, kind, onCerrar }: { sessions: CashSession[]; 
 function Stat({ label, value, icon: Icon, tone }: { label: string; value: number; icon: any; tone: string }) {
   return (
     <Card className="p-4">
-      <div className="flex items-center gap-1.5 text-clinic-muted"><Icon className="h-4 w-4" /><span className="text-[11px] font-extrabold uppercase tracking-wide">{label}</span></div>
-      <div className={`mt-1 font-mono text-xl font-extrabold ${tone}`}>{fmtGs(value)}</div>
+      <div className="flex items-center gap-1.5 text-clinic-muted"><Icon className="h-4 w-4" /><span className="text-[13px] font-semibold">{label}</span></div>
+      <div className={`mt-1 tabular-nums text-xl font-bold ${tone}`}>{fmtGs(value)}</div>
     </Card>
   );
 }
@@ -283,7 +283,7 @@ function CerrarCajaModal({ s, onClose }: { s: CashSession; onClose: () => void }
         <Field label="Efectivo contado (Gs)"><input type="number" className={inputCls} value={countedCash} onChange={(e) => setCountedCash(Number(e.target.value))} autoFocus /></Field>
         <div className={`flex items-center justify-between rounded-xl px-3 py-2 font-bold ${diff === 0 ? "bg-state-okbg text-state-ok" : "bg-state-errbg text-state-err"}`}>
           <span>{diff === 0 ? "Caja cuadrada" : diff > 0 ? "Sobrante" : "Faltante"}</span>
-          <span className="font-mono">{diff > 0 ? "+" : ""}{fmtGs(diff)}</span>
+          <span className="tabular-nums">{diff > 0 ? "+" : ""}{fmtGs(diff)}</span>
         </div>
         <Field label="Observación (opcional)"><input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej.: diferencia por vuelto…" /></Field>
         <div className="flex justify-end gap-2">
@@ -296,7 +296,7 @@ function CerrarCajaModal({ s, onClose }: { s: CashSession; onClose: () => void }
 }
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
-  return <div className="flex items-center justify-between"><span className="text-clinic-muted">{label}</span><span className={`font-mono ${bold ? "font-extrabold text-clinic-text" : "text-clinic-text"}`}>{value}</span></div>;
+  return <div className="flex items-center justify-between"><span className="text-clinic-muted">{label}</span><span className={`tabular-nums ${bold ? "font-bold text-clinic-text" : "text-clinic-text"}`}>{value}</span></div>;
 }
 
 /* ===== Registrar pago ===== */
@@ -393,7 +393,7 @@ function ChequesPanel() {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-1 rounded-xl border border-clinic-border bg-white p-1">
         {VISTAS.map(([k, label]) => (
-          <button key={k} onClick={() => setVista(k)} className={`rounded-lg px-3 py-1.5 text-sm font-bold transition-colors ${vista === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
+          <button key={k} onClick={() => setVista(k)} className={`rounded-lg px-3 py-1.5 text-[14px] font-normal transition-colors ${vista === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
             {label}{k === "porCobrar" && porCobrar.length > 0 ? ` (${porCobrar.length})` : ""}
           </button>
         ))}
@@ -405,7 +405,7 @@ function ChequesPanel() {
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[760px] text-sm">
             <thead>
-              <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+              <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                 <th className="px-4 py-3">Paciente</th>
                 <th className="px-2 py-3">N° cheque</th>
                 <th className="px-2 py-3">Banco</th>
@@ -424,13 +424,13 @@ function ChequesPanel() {
                     <td className="px-4 py-2.5">
                       {patient ? <Link href={`/app/pacientes/${patient.id}`} className="font-semibold text-clinic-text hover:text-azure-700">{fullName(patient)}</Link> : "—"}
                     </td>
-                    <td className="px-2 py-2.5 font-mono text-clinic-muted">{p.check.number}</td>
+                    <td className="px-2 py-2.5 tabular-nums text-clinic-muted">{p.check.number}</td>
                     <td className="px-2 py-2.5 text-clinic-muted">{p.check.bank}</td>
                     <td className="px-2 py-2.5">
                       <span className={atrasado ? "font-bold text-state-err" : "text-clinic-muted"}>{fmtDate(p.check.cashDate)}</span>
                       {atrasado && <Badge tone="err">Atrasado</Badge>}
                     </td>
-                    <td className="px-2 py-2.5 text-right font-mono font-bold">{fmtGs(p.amount)}</td>
+                    <td className="px-2 py-2.5 text-right tabular-nums font-bold">{fmtGs(p.amount)}</td>
                     <td className="px-2 py-2.5 text-clinic-muted">{p.receivedBy}</td>
                     {vista === "porCobrar" && (
                       <td className="px-2 py-2.5">

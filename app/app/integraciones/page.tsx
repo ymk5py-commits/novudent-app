@@ -26,9 +26,9 @@ function TemplatesEditor({ botika, onSave }: { botika: BotikaConfig; onSave: (t:
 
   return (
     <Card className="p-5">
-      <h2 className="font-extrabold text-clinic-text">Plantillas de mensajes</h2>
+      <h2 className="font-bold text-clinic-text">Plantillas de mensajes</h2>
       <p className="mt-0.5 text-xs text-clinic-muted">
-        Primer mensaje que envía Botika en cada automatización. Variables: <code className="font-mono">{BOTIKA_TEMPLATE_VARS}</code>.
+        Primer mensaje que envía Botika en cada automatización. Variables: <code className="tabular-nums">{BOTIKA_TEMPLATE_VARS}</code>.
         La conversación posterior la maneja la IA de Botika.
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -98,7 +98,7 @@ export default function IntegrationsPage() {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">Las integraciones las gestiona el rol <b>Administrador</b>.</p>
       </Card>
     );
@@ -135,7 +135,7 @@ export default function IntegrationsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-extrabold text-clinic-text">Integraciones</h1>
+        <h1 className="text-[16px] font-bold text-clinic-text">Integraciones</h1>
         <p className="text-sm text-clinic-muted">Conectá Novudent con el ecosistema NOVUM.</p>
       </div>
 
@@ -148,7 +148,7 @@ export default function IntegrationsPage() {
             <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-navy-800"><Bot className="h-7 w-7 text-azure-300" /></span>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-lg font-extrabold text-clinic-text">Contact Center IA</h2>
+                <h2 className="text-[16px] font-bold text-clinic-text">Contact Center IA</h2>
                 <Badge tone="info">Botika · by NOVUM</Badge>
                 {botika.connected ? (
                   isDemo ? <Badge tone="info">Modo demo</Badge>
@@ -217,7 +217,7 @@ export default function IntegrationsPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <MessageCircle className="h-4 w-4 text-azure-600" />
-            <h2 className="font-extrabold text-clinic-text">Cola de mensajería</h2>
+            <h2 className="font-bold text-clinic-text">Cola de mensajería</h2>
           </div>
           <div className="flex gap-2">
             <Badge tone={pending.length ? "warn" : "ok"}>{pending.length} pendiente{pending.length !== 1 && "s"}</Badge>
@@ -238,7 +238,7 @@ export default function IntegrationsPage() {
                     <span className="grid h-8 w-8 place-items-center rounded-lg bg-clinic-bg"><info.icon className="h-4 w-4 text-azure-600" /></span>
                     <Badge tone={info.tone}>{info.label}</Badge>
                     <span className="text-sm font-bold text-clinic-text">{patient ? fullName(patient) : t.phone}</span>
-                    <span className="font-mono text-[11px] text-clinic-muted">{fmtDate(t.createdAt)} {fmtTime(t.createdAt)}</span>
+                    <span className="tabular-nums text-[11px] text-clinic-muted">{fmtDate(t.createdAt)} {fmtTime(t.createdAt)}</span>
                     <span className="ml-auto flex items-center gap-2">
                       {t.status === "pendiente" && <Badge tone="warn" tip="Esperando que el worker de Botika la procese">Pendiente</Badge>}
                       {t.status === "enviado" && <Badge tone="info">Enviado</Badge>}

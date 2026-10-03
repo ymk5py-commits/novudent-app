@@ -156,7 +156,7 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
       {done ? (
         <div className="space-y-4 py-4 text-center">
           <CheckCircle2 className="mx-auto h-12 w-12 text-state-ok" />
-          <h3 className="text-lg font-extrabold text-clinic-text">¡Migración completada!</h3>
+          <h3 className="text-lg font-bold text-clinic-text">¡Migración completada!</h3>
           <p className="text-sm text-clinic-muted">
             <b className="text-clinic-text">{done.imported}</b> paciente{done.imported !== 1 && "s"} importado{done.imported !== 1 && "s"}
             {done.skipped > 0 && <> · {done.skipped} duplicado{done.skipped > 1 && "s"} omitido{done.skipped > 1 && "s"}</>}
@@ -170,10 +170,10 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
       ) : (
         <div className="space-y-4">
           {/* pasos */}
-          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide">
+          <div className="flex items-center gap-2 text-[13px] font-semibold">
             {["Datos", "Columnas", "Confirmar"].map((s, i) => (
               <span key={s} className={`flex items-center gap-2 ${i + 1 <= step ? "text-azure-700" : "text-clinic-muted"}`}>
-                <span className={`grid h-5 w-5 place-items-center rounded-full font-mono text-[11px] ${i + 1 <= step ? "bg-azure-600 text-white" : "bg-clinic-bg"}`}>{i + 1}</span>
+                <span className={`grid h-5 w-5 place-items-center rounded-full tabular-nums text-[11px] ${i + 1 <= step ? "bg-azure-600 text-white" : "bg-clinic-bg"}`}>{i + 1}</span>
                 {s} {i < 2 && <ArrowRight className="h-3 w-3 text-clinic-border" />}
               </span>
             ))}
@@ -198,7 +198,7 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
               </div>
               <textarea
                 rows={9}
-                className={inputCls + " font-mono text-[11px]"}
+                className={inputCls + " tabular-nums text-[11px]"}
                 placeholder={"Nombre\tApellidos\tRUT\tTeléfono\tEmail\tDeuda\nMaría\tGonzález\t3.456.789\t0981 111 111\tmaria@mail.com\t250000"}
                 value={raw}
                 onChange={(e) => setRaw(e.target.value)}
@@ -257,7 +257,7 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
               <div className="overflow-x-auto rounded-xl border border-clinic-border">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-clinic-border bg-clinic-bg text-left font-bold uppercase tracking-wide text-clinic-muted">
+                    <tr className="border-b border-clinic-border bg-clinic-bg text-left text-[13px] font-bold text-clinic-text">
                       <th className="px-3 py-2">Paciente</th><th className="px-3 py-2">CI</th><th className="px-3 py-2">Teléfono</th><th className="px-3 py-2">Convenio</th><th className="px-3 py-2 text-right">Deuda</th>
                     </tr>
                   </thead>
@@ -265,10 +265,10 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
                     {news.slice(0, 6).map((x) => (
                       <tr key={x.patient.id}>
                         <td className="px-3 py-2 font-semibold text-clinic-text">{x.patient.firstName} {x.patient.lastName}</td>
-                        <td className="px-3 py-2 font-mono">{x.patient.document}</td>
+                        <td className="px-3 py-2 tabular-nums">{x.patient.document}</td>
                         <td className="px-3 py-2">{x.patient.phone || "—"}</td>
                         <td className="px-3 py-2">{x.patient.insurer ?? "—"}</td>
-                        <td className="px-3 py-2 text-right font-mono">{x.debt > 0 ? fmtGs(x.debt) : "—"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{x.debt > 0 ? fmtGs(x.debt) : "—"}</td>
                       </tr>
                     ))}
                   </tbody>

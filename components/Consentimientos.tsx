@@ -144,7 +144,7 @@ function ConsentimientosInner({ patient, canManage }: { patient: Patient; canMan
               <FileSignature className="h-5 w-5" />
             </span>
             <div>
-              <h2 className="font-extrabold text-clinic-text">Nuevo consentimiento</h2>
+              <h2 className="font-bold text-clinic-text">Nuevo consentimiento</h2>
               <p className="text-xs text-clinic-muted">
                 Elegí una plantilla; se crea como pendiente para firmar en consultorio o desde el celular del paciente.
               </p>
@@ -175,7 +175,7 @@ function ConsentimientosInner({ patient, canManage }: { patient: Patient; canMan
 
       {/* ---- Lista de documentos ---- */}
       <div>
-        <h3 className="mb-2 text-sm font-extrabold text-clinic-text">Consentimientos del paciente</h3>
+        <h3 className="mb-2 text-sm font-bold text-clinic-text">Consentimientos del paciente</h3>
         {docs.length === 0 ? (
           <Empty title="Sin consentimientos" desc="Los consentimientos creados aparecerán acá." />
         ) : (
@@ -290,7 +290,7 @@ function SignInline({
         <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre y apellido" />
       </Field>
       <div>
-        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-clinic-muted">Firma</span>
+        <span className="mb-1 block text-[13px] font-semibold text-clinic-muted">Firma</span>
         <SignaturePad ref={padRef} onChange={(d) => setHasInk(!!d)} />
       </div>
       {error && (
@@ -337,7 +337,7 @@ function ShareInline({ url, onClose }: { url: string; onClose: () => void }) {
   return (
     <div className="mt-4 rounded-2xl border border-clinic-border bg-clinic-bg p-4">
       <div className="mb-3 flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-clinic-muted">
+        <p className="flex items-center gap-1.5 text-[13px] font-bold text-clinic-muted">
           <QrCode className="h-4 w-4" /> Firmar desde el celular
         </p>
         <button onClick={onClose} aria-label="Cerrar" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white">
@@ -360,7 +360,7 @@ function ShareInline({ url, onClose }: { url: string; onClose: () => void }) {
             El paciente escanea el código con la cámara de su celular y firma en su pantalla. También podés enviarle el enlace.
           </p>
           <div className="flex items-center gap-2">
-            <input readOnly value={url} className={`${inputCls} font-mono text-[11px]`} onFocus={(e) => e.currentTarget.select()} />
+            <input readOnly value={url} className={`${inputCls} tabular-nums text-[11px]`} onFocus={(e) => e.currentTarget.select()} />
             <Btn variant="outline" onClick={copy}>
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               {copied ? "Copiado" : "Copiar"}
@@ -386,7 +386,7 @@ function PrintViewer({ doc, clinic, patientName, onClose }: { doc: SignatureDoc;
         className="max-h-[90vh] w-full max-w-3xl overflow-y-auto overscroll-contain rounded-2xl bg-white p-6 shadow-pop outline-none print:max-h-none print:w-full print:max-w-none print:rounded-none print:shadow-none"
       >
         <div className="mb-4 flex items-center justify-between print:hidden">
-          <h3 id={titleId} className="text-lg font-extrabold text-clinic-text">Consentimiento firmado</h3>
+          <h3 id={titleId} className="text-lg font-bold text-clinic-text">Consentimiento firmado</h3>
           <div className="flex items-center gap-2">
             <Btn variant="outline" onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> Imprimir
@@ -400,13 +400,13 @@ function PrintViewer({ doc, clinic, patientName, onClose }: { doc: SignatureDoc;
         {/* Vista previa del documento con el mismo membrete del PDF. */}
         <div>
           <PrintLetterhead clinic={clinic} label="CONSENTIMIENTO INFORMADO" />
-          <h1 className="text-xl font-extrabold text-clinic-text">{doc.title}</h1>
+          <h1 className="text-[16px] font-bold text-clinic-text">{doc.title}</h1>
           <p className="mt-1 text-xs text-clinic-muted">Paciente: {patientName}</p>
 
           <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-clinic-text">{doc.body}</div>
 
           <div className="mt-6 border-t border-clinic-border pt-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-clinic-muted">Firma</p>
+            <p className="text-[13px] font-bold text-clinic-muted">Firma</p>
             {doc.signatureImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={doc.signatureImage} alt="Firma" className="mt-2 h-28 w-auto max-w-full object-contain" />

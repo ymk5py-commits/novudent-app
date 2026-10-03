@@ -37,7 +37,7 @@ export default function AmbientalPage() {
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-state-okbg text-state-ok"><Leaf className="h-5 w-5" /></span>
           <div>
-            <h1 className="text-lg font-extrabold text-clinic-text">Registro ambiental</h1>
+            <h1 className="text-[16px] font-bold text-clinic-text">Registro ambiental</h1>
             <p className="text-[11px] text-clinic-muted">Gestión y entrega de residuos al gestor externo (cumplimiento).</p>
           </div>
         </div>
@@ -48,8 +48,8 @@ export default function AmbientalPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="p-4"><div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Total del mes</div><div className="mt-1 text-2xl font-extrabold text-clinic-text">{totalKg.toFixed(1)} kg</div></Card>
-        <Card className="p-4"><div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Residuos peligrosos</div><div className="mt-1 text-2xl font-extrabold text-state-err">{peligrosoKg.toFixed(1)} kg</div></Card>
+        <Card className="p-4"><div className="text-[13px] font-semibold text-clinic-muted">Total del mes</div><div className="mt-1 text-2xl font-bold text-clinic-text">{totalKg.toFixed(1)} kg</div></Card>
+        <Card className="p-4"><div className="text-[13px] font-semibold text-clinic-muted">Residuos peligrosos</div><div className="mt-1 text-2xl font-bold text-state-err">{peligrosoKg.toFixed(1)} kg</div></Card>
       </div>
 
       {list.length === 0 ? (
@@ -59,18 +59,18 @@ export default function AmbientalPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="border-b border-clinic-border bg-clinic-bg/50 text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                <tr className="border-b border-clinic-border bg-clinic-bg/50 text-left text-[13px] font-bold text-clinic-text">
                   <th className="px-4 py-2.5">Fecha</th><th className="px-4 py-2.5">Tipo</th><th className="px-4 py-2.5">Cantidad</th><th className="px-4 py-2.5">Gestor</th><th className="px-4 py-2.5">Manifiesto</th><th className="px-4 py-2.5">Resp.</th><th className="px-4 py-2.5"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-clinic-border">
                 {list.map((e) => (
                   <tr key={e.id} className="hover:bg-clinic-bg/40">
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs">{fmtDate(e.date)}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-xs">{fmtDate(e.date)}</td>
                     <td className="px-4 py-2.5"><Badge tone={WASTE_TONE[e.wasteType]}>{WASTE_LABEL[e.wasteType]}</Badge></td>
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono">{e.quantityKg.toFixed(1)} kg</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 tabular-nums">{e.quantityKg.toFixed(1)} kg</td>
                     <td className="max-w-[200px] truncate px-4 py-2.5 text-clinic-muted" title={e.collector}>{e.collector ?? "—"}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-clinic-muted">{e.manifest ?? "—"}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-xs text-clinic-muted">{e.manifest ?? "—"}</td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-xs">{userName(e.responsibleId)}</td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-right">
                       <button onClick={() => { setEditing(e); setShowForm(true); }} className="mr-1 rounded-lg p-1.5 text-clinic-muted hover:bg-clinic-bg hover:text-azure-700" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>

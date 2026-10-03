@@ -23,8 +23,8 @@ export function BudgetsTab({ patient }: { patient: Patient }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-clinic-border bg-white p-4">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Saldo del paciente</span>
-          <div className={`font-mono text-xl font-extrabold ${balance > 0 ? "text-state-err" : "text-state-ok"}`}>{fmtGs(Math.max(0, balance))}</div>
+          <span className="text-[13px] font-bold text-clinic-muted">Saldo del paciente</span>
+          <div className={`tabular-nums text-xl font-bold ${balance > 0 ? "text-state-err" : "text-state-ok"}`}>{fmtGs(Math.max(0, balance))}</div>
         </div>
         <Link href="/app/presupuestos"><Btn variant="outline"><FileSpreadsheet className="h-4 w-4" /> Gestionar presupuestos</Btn></Link>
       </div>
@@ -37,15 +37,15 @@ export function BudgetsTab({ patient }: { patient: Patient }) {
           const paid = budgetPaid(b.id, db.payments);
           return (
             <Card key={b.id} className="flex flex-wrap items-center gap-3 p-4">
-              <span className="font-mono text-xs font-bold text-clinic-muted">{fmtDate(b.createdAt)}</span>
+              <span className="tabular-nums text-xs font-bold text-clinic-muted">{fmtDate(b.createdAt)}</span>
               <span className="flex-1 text-sm font-semibold text-clinic-text">
                 {b.items.length} procedimiento{b.items.length !== 1 && "s"}
                 {b.convenio && <span className="text-clinic-muted"> · {b.convenio}</span>}
                 {b.installments && b.installments > 1 && <span className="text-clinic-muted"> · {b.installments} cuotas</span>}
               </span>
-              <span className="font-mono text-sm font-extrabold">{fmtGs(total)}</span>
+              <span className="tabular-nums text-sm font-bold">{fmtGs(total)}</span>
               {(b.status === "aceptado" || b.status === "completado") && total - paid > 0 && (
-                <span className="font-mono text-xs font-bold text-state-err">saldo {fmtGs(total - paid)}</span>
+                <span className="tabular-nums text-xs font-bold text-state-err">saldo {fmtGs(total - paid)}</span>
               )}
               <Badge tone={info.tone} tip={info.desc}>{info.label}</Badge>
             </Card>
@@ -98,7 +98,7 @@ export function RxTab({ patient }: { patient: Patient }) {
           <Card key={rx.id} className="p-4">
             <div className="flex flex-wrap items-center gap-2 text-[11px] text-clinic-muted">
               <Pill className="h-3.5 w-3.5 text-azure-600" />
-              <span className="font-mono font-bold">{fmtDate(rx.date)}</span> · {rx.dentistName}
+              <span className="tabular-nums font-bold">{fmtDate(rx.date)}</span> · {rx.dentistName}
               <button onClick={() => setPrinting(rx)} className="ml-auto inline-flex items-center gap-1 rounded-lg border border-clinic-border px-2.5 py-1 text-[11px] font-bold text-clinic-text hover:border-azure-300 hover:text-azure-700">
                 <Printer className="h-3 w-3" /> Imprimir
               </button>
@@ -200,7 +200,7 @@ function RxPrint({ rx, patient, onClose }: { rx: Prescription; patient: Patient;
           <div><span className="text-clinic-muted">Fecha:</span> {new Date(rx.date).toLocaleDateString("es-PY")}</div>
         </div>
         <div className="rounded-xl border border-clinic-border p-4">
-          <div className="mb-2 text-2xl font-extrabold text-clinic-text">℞</div>
+          <div className="mb-2 text-2xl font-bold text-clinic-text">℞</div>
           <ul className="space-y-2">
             {rx.items.map((it, i) => (
               <li key={i} className="text-sm text-clinic-text">
@@ -307,7 +307,7 @@ export function FilesTab({ patient }: { patient: Patient }) {
         <div className="space-y-5">
           {grouped.map(([date, fs]) => (
             <div key={date}>
-              <div className="mb-2 border-b border-clinic-border pb-1 text-xs font-bold uppercase tracking-wide text-clinic-muted">{fmtDate(date)}</div>
+              <div className="mb-2 border-b border-clinic-border pb-1 text-[13px] font-bold text-clinic-muted">{fmtDate(date)}</div>
               <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {fs.map((f) => (
                   <Card key={f.id} className="group overflow-hidden">
@@ -359,12 +359,12 @@ function FileViewer({ file, images, onClose, onNav }: { file: PatientFileRec; im
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
               <Btn variant="outline" onClick={() => go(-1)} disabled={idx <= 0}><ChevronLeft className="h-4 w-4" /></Btn>
-              <span className="font-mono text-xs text-clinic-muted">{idx + 1} / {images.length}</span>
+              <span className="tabular-nums text-xs text-clinic-muted">{idx + 1} / {images.length}</span>
               <Btn variant="outline" onClick={() => go(1)} disabled={idx < 0 || idx >= images.length - 1}><ChevronRight className="h-4 w-4" /></Btn>
             </div>
             <div className="flex items-center gap-1.5">
               <Btn variant="outline" onClick={() => setZoom((z) => Math.max(1, +(z - 0.25).toFixed(2)))}><ZoomOut className="h-4 w-4" /></Btn>
-              <span className="w-12 text-center font-mono text-xs">{Math.round(zoom * 100)}%</span>
+              <span className="w-12 text-center tabular-nums text-xs">{Math.round(zoom * 100)}%</span>
               <Btn variant="outline" onClick={() => setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2)))}><ZoomIn className="h-4 w-4" /></Btn>
               <a href={file.dataUrl} download={file.name}><Btn variant="outline"><Download className="h-4 w-4" /></Btn></a>
             </div>
@@ -392,7 +392,7 @@ export function OrthoTab({ patient }: { patient: Patient }) {
     return (
       <div className="rounded-2xl border border-dashed border-clinic-border bg-white p-10 text-center">
         <Braces className="mx-auto h-10 w-10 text-azure-300" />
-        <h3 className="mt-3 text-sm font-extrabold text-clinic-text">Módulo de ortodoncia inactivo</h3>
+        <h3 className="mt-3 text-sm font-bold text-clinic-text">Módulo de ortodoncia inactivo</h3>
         <p className="mt-1 text-sm text-clinic-muted">Activá el módulo para registrar aparatología, cuota mensual y controles.</p>
         {o && !o.active && <p className="mt-2 text-xs text-clinic-muted">Tratamiento anterior finalizado ({o.controls.length} controles registrados).</p>}
         {canWrite && <div className="mt-4"><Btn onClick={() => setActivating(true)}><Plus className="h-4 w-4" /> Activar ortodoncia</Btn></div>}
@@ -409,7 +409,7 @@ export function OrthoTab({ patient }: { patient: Patient }) {
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-azure-100"><Braces className="h-5 w-5 text-azure-700" /></span>
             <div>
-              <h3 className="font-extrabold text-clinic-text">{o.applianceType}</h3>
+              <h3 className="font-bold text-clinic-text">{o.applianceType}</h3>
               <p className="text-xs text-clinic-muted">{o.diagnosis}</p>
             </div>
           </div>
@@ -417,7 +417,7 @@ export function OrthoTab({ patient }: { patient: Patient }) {
         </div>
         <div className="mt-4 grid gap-3 rounded-xl bg-clinic-bg p-4 text-sm sm:grid-cols-3">
           <div><span className="block text-[11px] text-clinic-muted">Inicio</span><b>{fmtDate(o.startDate)}</b></div>
-          <div><span className="block text-[11px] text-clinic-muted">Cuota mensual</span><b className="font-mono">{fmtGs(o.monthlyFee)}</b></div>
+          <div><span className="block text-[11px] text-clinic-muted">Cuota mensual</span><b className="tabular-nums">{fmtGs(o.monthlyFee)}</b></div>
           <div><span className="block text-[11px] text-clinic-muted">Controles</span><b>{o.controls.length}</b></div>
         </div>
         {canWrite && (
@@ -429,7 +429,7 @@ export function OrthoTab({ patient }: { patient: Patient }) {
       </Card>
 
       <div className="space-y-0">
-        <h4 className="mb-2 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Controles mensuales</h4>
+        <h4 className="mb-2 text-[13px] font-bold text-clinic-muted">Controles mensuales</h4>
         {sorted.length === 0 ? (
           <Empty title="Sin controles registrados" />
         ) : (
@@ -438,7 +438,7 @@ export function OrthoTab({ patient }: { patient: Patient }) {
               <Card key={i} className="relative p-4">
                 <span className="absolute -left-5 top-5 h-3 w-3 rounded-full border-2 border-white bg-azure-500" />
                 <div className="flex items-center gap-2 text-[11px] text-clinic-muted">
-                  <Calendar className="h-3.5 w-3.5" /><span className="font-mono font-bold">{fmtDate(c.date)}</span> · {c.by}
+                  <Calendar className="h-3.5 w-3.5" /><span className="tabular-nums font-bold">{fmtDate(c.date)}</span> · {c.by}
                 </div>
                 <p className="mt-1 text-sm text-clinic-text">{c.note}</p>
               </Card>

@@ -222,7 +222,7 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, onClose, onGu
         {/* ===== Agenda disponible ===== */}
         <section aria-labelledby="dc-grilla" className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 id="dc-grilla" className="text-sm font-extrabold text-clinic-text">Agenda disponible{dentista ? ` · ${dentista.name}` : ""}</h3>
+            <h3 id="dc-grilla" className="text-sm font-bold text-clinic-text">Agenda disponible{dentista ? ` · ${dentista.name}` : ""}</h3>
             <div className="ml-auto flex items-center gap-1">
               <button type="button" onClick={() => { const d = new Date(desde); d.setDate(d.getDate() - 7); setDesde(d < hoy ? hoy : d); }} disabled={desde <= hoy} className="grid h-8 w-8 place-items-center rounded-lg border border-clinic-border hover:bg-clinic-bg disabled:opacity-40" aria-label="Semana anterior"><ChevronLeft className="h-4 w-4" /></button>
               <button type="button" onClick={() => setDesde(hoy)} className="rounded-lg border border-clinic-border px-2.5 py-1.5 text-xs font-bold text-azure-700 hover:bg-clinic-bg">Hoy</button>
@@ -237,8 +237,8 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, onClose, onGu
                 return (
                   <div key={d.toDateString()} className="min-w-0">
                     <div className={`border-b border-clinic-border px-1.5 py-2 text-center ${d.getTime() === hoy.getTime() ? "bg-azure-50" : "bg-clinic-bg/60"}`}>
-                      <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">{d.toLocaleDateString("es-PY", { weekday: "short" })}</div>
-                      <div className="text-sm font-extrabold text-clinic-text">{d.getDate()}/{d.getMonth() + 1}</div>
+                      <div className="text-[13px] font-semibold text-clinic-muted">{d.toLocaleDateString("es-PY", { weekday: "short" })}</div>
+                      <div className="text-sm font-bold text-clinic-text">{d.getDate()}/{d.getMonth() + 1}</div>
                     </div>
                     <div className="max-h-[360px] space-y-1 overflow-y-auto p-1.5">
                       {libres.length === 0 ? (
@@ -255,7 +255,7 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, onClose, onGu
                             aria-pressed={elegido}
                             aria-label={`${d.toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long" })}, ${h}`}
                             onClick={() => elegir(t)}
-                            className={`block w-full rounded-lg border px-1 py-1.5 text-center font-mono text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${elegido ? "border-azure-600 bg-azure-600 text-white" : "border-clinic-border bg-white text-clinic-text hover:border-azure-400 hover:bg-azure-50"}`}
+                            className={`block w-full rounded-lg border px-1 py-1.5 text-center tabular-nums text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${elegido ? "border-azure-600 bg-azure-600 text-white" : "border-clinic-border bg-white text-clinic-text hover:border-azure-400 hover:bg-azure-50"}`}
                           >
                             {h}
                           </button>
@@ -327,7 +327,7 @@ function BuscadorPaciente({ valor, onElegir, onCrear }: { valor: string; onElegi
 
   return (
     <div ref={caja} className="relative">
-      <label htmlFor={`${id}-input`} className="mb-1 block text-xs font-semibold uppercase tracking-wide text-clinic-muted">Paciente</label>
+      <label htmlFor={`${id}-input`} className="mb-1 block text-[13px] font-semibold text-clinic-muted">Paciente</label>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
         <input
@@ -367,7 +367,7 @@ function BuscadorPaciente({ valor, onElegir, onCrear }: { valor: string; onElegi
               aria-selected={p.id === valor}
               onMouseDown={(e) => { e.preventDefault(); elegir(i); }}
               onMouseEnter={() => setActivo(i)}
-              className={`cursor-pointer px-3 py-2 font-mono text-xs ${i === activo ? "bg-azure-50 text-azure-800" : "text-clinic-text"}`}
+              className={`cursor-pointer px-3 py-2 tabular-nums text-xs ${i === activo ? "bg-azure-50 text-azure-800" : "text-clinic-text"}`}
             >
               {etiqueta(p)}
             </li>

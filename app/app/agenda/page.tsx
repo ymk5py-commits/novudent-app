@@ -81,7 +81,7 @@ function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (
         <span className="ml-1 text-sm font-bold capitalize text-clinic-text">{monthLabel}</span>
       </div>
       <div className="overflow-hidden rounded-2xl border border-clinic-border bg-white">
-        <div className="grid grid-cols-7 border-b border-clinic-border bg-clinic-bg/50 text-center text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+        <div className="grid grid-cols-7 border-b border-clinic-border bg-clinic-bg/50 text-center text-[13px] font-semibold text-clinic-muted">
           {WD.map((w) => <div key={w} className="py-2">{w}</div>)}
         </div>
         <div className="grid grid-cols-7">
@@ -277,12 +277,12 @@ export default function AgendaPage() {
       {/* Header estilo Dentalink: título + tabs + acciones */}
       <Reveal className="flex flex-wrap items-center gap-2 print:hidden">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-extrabold text-clinic-text">Agenda</h1>
-          <span className="rounded-full bg-azure-50 px-2 py-0.5 font-mono text-[11px] font-bold text-azure-700">{headerCount} citas</span>
+          <h1 className="text-[16px] font-bold text-clinic-text">Agenda</h1>
+          <span className="rounded-full bg-azure-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-azure-700">{headerCount} citas</span>
         </div>
         <div className="flex flex-wrap items-center gap-1 rounded-xl border border-clinic-border bg-white p-1">
           {TABS.map(([k, label, Icon]) => (
-            <button key={k} onClick={() => setTab(k)} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold transition-colors ${tab === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
+            <button key={k} onClick={() => setTab(k)} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[14px] font-normal transition-colors ${tab === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
               <Icon className="h-4 w-4" /> {label}
             </button>
           ))}
@@ -296,7 +296,7 @@ export default function AgendaPage() {
           <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-clinic-muted hover:text-clinic-text"><Printer className="h-4 w-4" /> Imprimir</button>
           <Btn variant="outline" onClick={() => setWaitOpen(true)}>
             <Hourglass className="h-4 w-4" /> Lista de espera
-            {enEspera > 0 && <span className="rounded-full bg-azure-600 px-1.5 font-mono text-[11px] font-bold text-white">{enEspera}</span>}
+            {enEspera > 0 && <span className="rounded-full bg-azure-600 px-1.5 tabular-nums text-[11px] font-bold text-white">{enEspera}</span>}
           </Btn>
         </div>
       </Reveal>
@@ -327,7 +327,7 @@ export default function AgendaPage() {
 
       {/* Encabezado que solo sale al imprimir */}
       <div className="hidden print:block">
-        <p className="text-lg font-extrabold">{db.clinics[0]?.name} · Agenda {VISTA[tab].toLowerCase()}</p>
+        <p className="text-lg font-bold">{db.clinics[0]?.name} · Agenda {VISTA[tab].toLowerCase()}</p>
         <p className="text-sm">
           {tab === "semanal" ? `Semana del ${weekStart.toLocaleDateString("es-PY", { day: "numeric", month: "long", year: "numeric" })}`
             : tab === "mensual" ? day.toLocaleDateString("es-PY", { month: "long", year: "numeric" })
@@ -355,8 +355,8 @@ export default function AgendaPage() {
                 const isToday = date.toDateString() === today.toDateString();
                 return (
                   <div key={d} className={`border-l border-clinic-border px-2 py-2.5 text-center ${isToday ? "bg-azure-50" : ""}`}>
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">{d}</div>
-                    <div className={`text-lg font-extrabold ${isToday ? "text-azure-600" : "text-clinic-text"}`}>{date.getDate()}</div>
+                    <div className="text-[13px] font-semibold text-clinic-muted">{d}</div>
+                    <div className={`text-lg font-bold ${isToday ? "text-azure-600" : "text-clinic-text"}`}>{date.getDate()}</div>
                   </div>
                 );
               })}
@@ -366,7 +366,7 @@ export default function AgendaPage() {
                 <div>
                   {Array.from({ length: 24 }, (_, h) => (
                     <div key={h} className="flex h-14 items-start justify-end border-b border-clinic-border/60 pr-2 pt-1">
-                      <span className="font-mono text-[11px] text-clinic-muted">{String(h).padStart(2, "0")}:00</span>
+                      <span className="tabular-nums text-[11px] text-clinic-muted">{String(h).padStart(2, "0")}:00</span>
                     </div>
                   ))}
                 </div>
@@ -417,7 +417,7 @@ export default function AgendaPage() {
           ) : (
             <Card className="overflow-x-auto p-0">
               <table className="w-full min-w-[640px] text-sm">
-                <thead><tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                   <th className="px-4 py-3">Cita original</th><th className="px-2 py-3">Paciente</th><th className="px-2 py-3">Doctor</th><th className="px-2 py-3"></th>
                 </tr></thead>
                 <tbody className="divide-y divide-clinic-border">
@@ -447,8 +447,8 @@ export default function AgendaPage() {
               <div className="flex items-center justify-between">
                 <button onClick={() => setDay(addDays(day, -1))} className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-clinic-bg" aria-label="Día anterior"><ChevronLeft className="h-4 w-4" /></button>
                 <div className="text-center">
-                  <div className="text-xs font-bold uppercase tracking-wide text-clinic-muted">{day.toLocaleDateString("es-PY", { weekday: "long" })}</div>
-                  <div className="font-mono text-3xl font-extrabold text-clinic-text">{String(day.getDate()).padStart(2, "0")}</div>
+                  <div className="text-[13px] font-bold text-clinic-muted">{day.toLocaleDateString("es-PY", { weekday: "long" })}</div>
+                  <div className="tabular-nums text-3xl font-bold text-clinic-text">{String(day.getDate()).padStart(2, "0")}</div>
                   <div className="text-xs text-clinic-muted">{day.toLocaleDateString("es-PY", { month: "long", year: "numeric" })}</div>
                 </div>
                 <button onClick={() => setDay(addDays(day, 1))} className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-clinic-bg" aria-label="Día siguiente"><ChevronRight className="h-4 w-4" /></button>
@@ -465,7 +465,7 @@ export default function AgendaPage() {
 
             <Card className="p-3">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-[11px] font-extrabold uppercase tracking-wide text-clinic-muted">Estados</span>
+                <span className="text-[13px] font-semibold text-clinic-muted">Estados</span>
                 <button onClick={() => setStatusFilter(new Set(ALL_STATUSES))} className="text-[11px] font-bold text-azure-600 hover:underline">Marcar todos</button>
               </div>
               <div className="space-y-0.5">
@@ -476,7 +476,7 @@ export default function AgendaPage() {
                       <input type="checkbox" checked={statusFilter.has(s)} onChange={() => toggleStatus(s)} className="accent-azure-600" />
                       <span className="h-3.5 w-1 rounded-full" style={{ background: STATUS_DOT[s] }} />
                       <span className="text-clinic-text">{STATUS_LABEL[s]}</span>
-                      <span className="ml-auto font-mono text-xs text-clinic-muted">{n}</span>
+                      <span className="ml-auto tabular-nums text-xs text-clinic-muted">{n}</span>
                     </label>
                   );
                 })}
@@ -496,7 +496,7 @@ export default function AgendaPage() {
                         <div className="mb-2 flex items-center gap-2 rounded-xl bg-clinic-bg px-3 py-2">
                           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: d.color }} />
                           <span className="truncate text-sm font-bold text-clinic-text">{d.name}</span>
-                          <span className="ml-auto font-mono text-xs text-clinic-muted">{list.length}</span>
+                          <span className="ml-auto tabular-nums text-xs text-clinic-muted">{list.length}</span>
                         </div>
                         <div className="space-y-2">
                           {list.length === 0 ? <p className="py-4 text-center text-xs text-clinic-muted">Sin citas</p> : list.map((a) => {
@@ -504,7 +504,7 @@ export default function AgendaPage() {
                             return (
                               <div key={a.id} className="relative">
                                 <button onClick={() => setViewing(a)} className="block w-full rounded-xl border border-clinic-border border-l-4 bg-white p-2.5 text-left shadow-card transition-shadow hover:shadow-pop" style={{ borderLeftColor: STATUS_DOT[a.status] }}>
-                                  <div className="font-mono text-[11px] font-bold text-clinic-text">{fmtTime(a.start)}–{fmtTime(a.end)}</div>
+                                  <div className="tabular-nums text-[11px] font-bold text-clinic-text">{fmtTime(a.start)}–{fmtTime(a.end)}</div>
                                   <div className="truncate pr-6 text-sm font-semibold text-clinic-text">{p ? fullName(p) : "—"}</div>
                                   <div className="truncate text-[11px] font-semibold" style={{ color: STATUS_DOT[a.status] }}>{STATUS_LABEL[a.status]}</div>
                                 </button>
@@ -528,7 +528,7 @@ export default function AgendaPage() {
             ) : (
               <Card className="overflow-x-auto p-0 print:overflow-visible">
                 <table className="w-full min-w-[820px] text-sm print:min-w-0">
-                  <thead><tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                  <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                     <th className="px-3 py-3">Hora</th><th className="px-2 py-3">Paciente</th><th className="px-2 py-3">Doctor</th><th className="px-2 py-3">Estado de la cita</th>{verMontos && <th className="px-2 py-3">Situación</th>}<th className="px-2 py-3"></th>
                   </tr></thead>
                   <tbody className="divide-y divide-clinic-border">
@@ -539,7 +539,7 @@ export default function AgendaPage() {
                       return (
                         <tr key={a.id} className="align-top hover:bg-clinic-bg/50">
                           <td className="px-3 py-3">
-                            <div className="inline-flex flex-col items-center rounded-lg border-l-4 bg-clinic-bg px-2 py-1 font-mono text-[11px] font-bold text-clinic-text" style={{ borderColor: STATUS_DOT[a.status] }}>
+                            <div className="inline-flex flex-col items-center rounded-lg border-l-4 bg-clinic-bg px-2 py-1 tabular-nums text-[11px] font-bold text-clinic-text" style={{ borderColor: STATUS_DOT[a.status] }}>
                               <span>{fmtTime(a.start)}</span><ChevronDown className="h-3 w-3 text-clinic-muted" /><span>{fmtTime(a.end)}</span>
                             </div>
                           </td>
@@ -593,13 +593,13 @@ export default function AgendaPage() {
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Estado</span><StatusBadge status={live.status} /></div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Paciente</span>{p ? <Link className="font-bold text-azure-600 hover:underline" href={`/app/pacientes/${p.id}`}>{fullName(p)}</Link> : "—"}</div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Dentista</span><span className="font-semibold">{d?.name ?? "—"}</span></div>
-                <div className="flex items-center justify-between"><span className="text-clinic-muted">Horario</span><span className="font-mono text-xs">{new Date(live.start).toLocaleString("es-PY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} → {fmtTime(live.end)}</span></div>
-                {verMontos && <div className="flex items-center justify-between"><span className="text-clinic-muted">Total a cobrar</span><span className="font-mono font-bold">{fmtGs(live.amount - live.discount)}</span></div>}
+                <div className="flex items-center justify-between"><span className="text-clinic-muted">Horario</span><span className="tabular-nums text-xs">{new Date(live.start).toLocaleString("es-PY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} → {fmtTime(live.end)}</span></div>
+                {verMontos && <div className="flex items-center justify-between"><span className="text-clinic-muted">Total a cobrar</span><span className="tabular-nums font-bold">{fmtGs(live.amount - live.discount)}</span></div>}
                 {live.notes && <p className="rounded-xl bg-clinic-bg p-3 text-clinic-text">{live.notes}</p>}
 
                 {live.telemed && (
                   <div className="rounded-xl border border-azure-300 bg-azure-50 p-3">
-                    <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-azure-700"><Video className="h-3.5 w-3.5" /> Videoconsulta</div>
+                    <div className="flex items-center gap-1.5 text-[13px] font-bold text-azure-700"><Video className="h-3.5 w-3.5" /> Videoconsulta</div>
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       <button onClick={() => { const tok = live.videoToken ?? newSignToken(); if (!live.videoToken) upsertAppointment({ ...live, videoToken: tok }); window.open(`https://meet.jit.si/nvd-${tok}`, "_blank", "noopener,noreferrer"); }} className="inline-flex items-center gap-1.5 rounded-xl bg-azure-600 px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-azure-700"><Video className="h-4 w-4" /> Iniciar videoconsulta</button>
                       <button onClick={() => { const tok = live.videoToken ?? newSignToken(); if (!live.videoToken) upsertAppointment({ ...live, videoToken: tok }); try { navigator.clipboard?.writeText(`${window.location.origin}/videoconsulta/${live.clinicId}/${live.id}?t=${tok}`); } catch { /* sin portapapeles */ } }} className="rounded-xl border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-muted hover:text-clinic-text">Copiar link del paciente</button>
@@ -610,7 +610,7 @@ export default function AgendaPage() {
                 {p && verPersonales && puedeEditar && (
                   <div className="rounded-xl border border-clinic-border p-3">
                     <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-clinic-muted"><BellRing className="h-3.5 w-3.5" /> Confirmación de cita</span>
+                      <span className="flex items-center gap-1.5 text-[13px] font-bold text-clinic-muted"><BellRing className="h-3.5 w-3.5" /> Confirmación de cita</span>
                       {live.reminderSent ? <Badge tone="ok" tip="Ya se envió el recordatorio">Enviado</Badge> : <Badge tone="warn" tip="Aún sin recordatorio">Pendiente</Badge>}
                     </div>
                     <div className="mt-2.5 flex flex-wrap gap-2">

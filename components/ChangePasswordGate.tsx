@@ -49,12 +49,12 @@ export default function ChangePasswordGate() {
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <Logotipo tono="blanco" className="mx-auto h-12 w-auto" />
-          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-azure-500/20 px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-azure-200">
+          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-azure-500/20 px-3 py-1 tabular-nums text-[12px] font-bold text-azure-200">
             <ShieldCheck className="h-3 w-3" /> Seguridad
           </div>
         </div>
         <div className="rounded-3xl border border-white/10 bg-white p-7 shadow-pop">
-          <h1 className="text-xl font-extrabold text-navy-800">Creá tu contraseña</h1>
+          <h1 className="text-[16px] font-bold text-navy-800">Creá tu contraseña</h1>
           <p className="mt-1 text-sm text-clinic-muted">
             Hola {session?.name?.split(" ")[0]} 👋 Por seguridad, reemplazá la contraseña inicial
             que te dieron por una tuya antes de continuar.
@@ -79,7 +79,7 @@ export default function ChangePasswordGate() {
             <button
               type="submit"
               disabled={busy}
-              className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted"
+              className="grid w-full place-items-center rounded-2xl bg-azure-600 py-3 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(46,131,245,0.6)] transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted"
             >
               {busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : "Guardar y continuar"}
             </button>

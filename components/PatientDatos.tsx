@@ -58,7 +58,7 @@ export function DatosTab({ patient }: { patient: Patient }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-extrabold text-clinic-text">Datos personales</h3>
+        <h3 className="font-bold text-clinic-text">Datos personales</h3>
         {canEdit && (
           <Btn disabled={!dirty || !f.firstName.trim() || !f.lastName.trim()} onClick={save}>
             <Save className="h-4 w-4" /> Guardar datos
@@ -67,7 +67,7 @@ export function DatosTab({ patient }: { patient: Patient }) {
       </div>
 
       <Card className="p-5">
-        <h4 className="mb-3 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Datos requeridos</h4>
+        <h4 className="mb-3 text-[13px] font-bold text-clinic-muted">Datos requeridos</h4>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {T("Tipo", "tipo")}
           {T("Nombre legal", "firstName")}
@@ -87,7 +87,7 @@ export function DatosTab({ patient }: { patient: Patient }) {
       </Card>
 
       <Card className="p-5">
-        <h4 className="mb-3 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Datos opcionales</h4>
+        <h4 className="mb-3 text-[13px] font-bold text-clinic-muted">Datos opcionales</h4>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {T("Nombre social", "socialName")}
           {T("Convenio / seguro", "insurer")}

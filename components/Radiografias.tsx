@@ -320,7 +320,7 @@ function RadiografiasInner({ patient, canEdit }: { patient: Patient; canEdit: bo
               <ScanLine className="h-5 w-5" />
             </span>
             <div>
-              <h2 className="font-extrabold text-clinic-text">Análisis IA de radiografías</h2>
+              <h2 className="font-bold text-clinic-text">Análisis IA de radiografías</h2>
               <p className="text-xs text-clinic-muted">
                 Subí una radiografía, la IA marca hallazgos sobre la imagen y vos los ajustás.
               </p>
@@ -425,13 +425,13 @@ function RadiografiasInner({ patient, canEdit }: { patient: Patient; canEdit: bo
             <div className="space-y-3">
               {draft.aiSummary && (
                 <div className="rounded-2xl bg-clinic-bg p-3 text-xs leading-relaxed text-clinic-text">
-                  <p className="mb-1 font-bold uppercase tracking-wide text-clinic-muted">Resumen técnico</p>
+                  <p className="mb-1 font-bold text-clinic-muted">Resumen técnico</p>
                   {draft.aiSummary}
                 </div>
               )}
 
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-wide text-clinic-muted">
+                <p className="text-[13px] font-bold text-clinic-muted">
                   Hallazgos ({draft.findings.length})
                 </p>
                 {draft.findings.length === 0 ? (
@@ -491,7 +491,7 @@ function RadiografiasInner({ patient, canEdit }: { patient: Patient; canEdit: bo
 
       {/* ---- Estudios previos ---- */}
       <div>
-        <h3 className="mb-2 text-sm font-extrabold text-clinic-text">Estudios previos</h3>
+        <h3 className="mb-2 text-sm font-bold text-clinic-text">Estudios previos</h3>
         {studies.length === 0 ? (
           <Empty title="Sin estudios" desc="Las radiografías analizadas aparecerán acá." />
         ) : (
@@ -731,7 +731,7 @@ function PatientView({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-extrabold text-clinic-text">Tu radiografía</h2>
+        <h2 className="text-[16px] font-bold text-clinic-text">Tu radiografía</h2>
         <Btn variant="outline" onClick={onExit}>
           <EyeOff className="h-4 w-4" /> Salir de la vista
         </Btn>

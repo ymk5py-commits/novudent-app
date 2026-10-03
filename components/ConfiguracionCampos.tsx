@@ -47,7 +47,7 @@ export function ConfiguracionCampos() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="font-extrabold text-clinic-text">Configuración de campos del paciente</h3>
+          <h3 className="font-bold text-clinic-text">Configuración de campos del paciente</h3>
           <p className="text-[11px] text-clinic-muted">Qué datos se piden (<b>presente</b>) y cuáles son obligatorios (<b>requerido</b>) al crear un paciente en cada lugar.</p>
         </div>
         {canEdit && <Btn disabled={!dirty} onClick={() => updateClinicConfig({ patientFields: local })}><Save className="h-4 w-4" /> Guardar</Btn>}
@@ -58,15 +58,15 @@ export function ConfiguracionCampos() {
         <table className="w-full min-w-[640px] text-sm">
           <caption className="sr-only">Campos del paciente por contexto</caption>
           <thead>
-            <tr className="border-b border-clinic-border text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+            <tr className="border-b border-clinic-border text-[13px] font-bold text-clinic-text">
               <th rowSpan={2} scope="col" className="px-4 py-3 text-left">Campo</th>
               {CONTEXTOS.map((c) => <th key={c.key} colSpan={2} scope="colgroup" className="border-l border-clinic-border px-2 py-2 text-center">{c.label}</th>)}
             </tr>
-            <tr className="border-b border-clinic-border text-[11px] font-bold uppercase text-clinic-muted">
+            <tr className="border-b border-clinic-border text-[13px] font-bold text-clinic-text">
               {CONTEXTOS.map((c) => (
                 <Fragment key={c.key}>
-                  <th scope="col" className="border-l border-clinic-border px-2 py-1 text-center font-semibold">Presente</th>
-                  <th scope="col" className="px-2 py-1 text-center font-semibold">Requerido</th>
+                  <th scope="col" className="border-l border-clinic-border px-2 py-1 text-center font-bold">Presente</th>
+                  <th scope="col" className="px-2 py-1 text-center font-bold">Requerido</th>
                 </Fragment>
               ))}
             </tr>
@@ -74,7 +74,7 @@ export function ConfiguracionCampos() {
           <tbody className="divide-y divide-clinic-border">
             {CAMPOS.map((f) => (
               <tr key={f.key} className="hover:bg-clinic-bg/40">
-                <th scope="row" className="px-4 py-2 text-left font-semibold text-clinic-text">{f.label}</th>
+                <th scope="row" className="px-4 py-2 text-left font-normal text-clinic-text">{f.label}</th>
                 {CONTEXTOS.map((ctx) => {
                   const c = celda(f.key, ctx.key);
                   const bloqueada = !canEdit || c.fijo || c.noAplica;

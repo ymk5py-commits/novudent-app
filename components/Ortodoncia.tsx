@@ -32,7 +32,7 @@ export function OrtodonciaPanel({ patient, budget }: { patient: Patient; budget:
     return (
       <div className="rounded-2xl border border-dashed border-clinic-border bg-white p-10 text-center">
         <Braces className="mx-auto h-10 w-10 text-azure-300" />
-        <h3 className="mt-3 text-sm font-extrabold text-clinic-text">Ortodoncia no iniciada</h3>
+        <h3 className="mt-3 text-sm font-bold text-clinic-text">Ortodoncia no iniciada</h3>
         <p className="mt-1 text-sm text-clinic-muted">Activá el seguimiento para registrar aparatología, progreso y evoluciones.</p>
         {o && !o.active && <p className="mt-2 text-xs text-clinic-muted">Tratamiento anterior finalizado ({o.controls.length} controles).</p>}
         {canWrite && <div className="mt-4"><Btn onClick={() => setActivating(true)}><Plus className="h-4 w-4" /> Activar ortodoncia</Btn></div>}
@@ -56,7 +56,7 @@ export function OrtodonciaPanel({ patient, budget }: { patient: Patient; budget:
           <button
             key={s.key}
             onClick={() => setSub(s.key)}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-normal transition-colors ${
               sub === s.key ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"
             }`}
           >
@@ -85,7 +85,7 @@ function Donut({ pct, label, hint }: { pct: number; label: string; hint: string 
           <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" stroke="currentColor" className="text-clinic-border" />
           <circle cx="40" cy="40" r={r} fill="none" strokeWidth="7" strokeLinecap="round" stroke="currentColor" strokeDasharray={circ} strokeDashoffset={off} className="text-azure-500 transition-[stroke-dashoffset] duration-700" />
         </svg>
-        <span className="absolute inset-0 grid place-items-center text-base font-extrabold text-clinic-text">{pct}%</span>
+        <span className="absolute inset-0 grid place-items-center text-base font-bold text-clinic-text">{pct}%</span>
       </div>
       <span className="text-xs font-bold text-clinic-text">{label}</span>
       <span className="text-[11px] text-clinic-muted">{hint}</span>
@@ -96,7 +96,7 @@ function Donut({ pct, label, hint }: { pct: number; label: string; hint: string 
 function Info({ k, v }: { k: string; v?: string | null }) {
   return (
     <div>
-      <span className="block text-[11px] font-semibold uppercase tracking-wide text-clinic-muted">{k}</span>
+      <span className="block text-[13px] font-semibold text-clinic-muted">{k}</span>
       <span className={`block text-sm ${v ? "font-semibold text-clinic-text" : "text-clinic-muted/60"}`}>{v || "—"}</span>
     </div>
   );
@@ -130,7 +130,7 @@ function OrthoResumen({ patient, canWrite }: { patient: Patient; canWrite: boole
           <Donut pct={prog.realPct} label="Real" hint="avance clínico" />
         </div>
         <div className="text-center">
-          <span className="text-2xl font-extrabold text-clinic-text">{prog.monthsElapsed}</span>
+          <span className="text-2xl font-bold text-clinic-text">{prog.monthsElapsed}</span>
           <span className="text-sm font-bold text-clinic-muted"> de {prog.totalMonths} meses</span>
         </div>
         <Badge tone="ok">En tratamiento</Badge>
@@ -139,7 +139,7 @@ function OrthoResumen({ patient, canWrite }: { patient: Patient; canWrite: boole
       <div className="space-y-4">
         <Card className="p-5">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-extrabold text-clinic-text">Seguimiento del tratamiento</h3>
+            <h3 className="font-bold text-clinic-text">Seguimiento del tratamiento</h3>
             {canWrite && (
               <div className="flex gap-2">
                 <Btn variant="outline" onClick={() => setEditing(true)}><Pencil className="h-3.5 w-3.5" /> Editar</Btn>
@@ -158,11 +158,11 @@ function OrthoResumen({ patient, canWrite }: { patient: Patient; canWrite: boole
         </Card>
 
         <Card className="p-5">
-          <h4 className="mb-2 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Última evolución</h4>
+          <h4 className="mb-2 text-[13px] font-bold text-clinic-muted">Última evolución</h4>
           {last ? (
             <div className="rounded-xl bg-clinic-bg p-3">
               <div className="flex items-center gap-2 text-[11px] text-clinic-muted">
-                <Calendar className="h-3.5 w-3.5" /><span className="font-mono font-bold">{fmtDate(last.date)}</span> · {last.by}
+                <Calendar className="h-3.5 w-3.5" /><span className="tabular-nums font-bold">{fmtDate(last.date)}</span> · {last.by}
               </div>
               <p className="mt-1 text-sm text-clinic-text"><b>Acción realizada:</b> {last.note}</p>
             </div>
@@ -265,7 +265,7 @@ function OrthoFotos({ patient, canWrite }: { patient: Patient; canWrite: boolean
   return (
     <Card className="p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-extrabold text-clinic-text">Plantilla fotográfica</h3>
+        <h3 className="font-bold text-clinic-text">Plantilla fotográfica</h3>
         {canWrite && (
           <>
             <Btn onClick={() => inputRef.current?.click()}><Upload className="h-4 w-4" /> Subir foto</Btn>
@@ -305,14 +305,14 @@ function OrthoDiagnostico({ patient, canWrite }: { patient: Patient; canWrite: b
     <Card className="space-y-4 p-5">
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="font-extrabold text-clinic-text">Diagnóstico ortodóncico</h3>
+          <h3 className="font-bold text-clinic-text">Diagnóstico ortodóncico</h3>
           {canWrite && dirty && <Btn onClick={() => setOrtho(patient.id, { ...o, diagnosis: text.trim() })}><CircleCheck className="h-4 w-4" /> Guardar</Btn>}
         </div>
         <textarea rows={3} className={inputCls} value={text} disabled={!canWrite} onChange={(e) => setText(e.target.value)} placeholder="Clase, apiñamiento, mordida, plan…" />
       </div>
       {dxNotes.length > 0 && (
         <div>
-          <h4 className="mb-2 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Diagnósticos en el historial</h4>
+          <h4 className="mb-2 text-[13px] font-bold text-clinic-muted">Diagnósticos en el historial</h4>
           <div className="space-y-2">
             {dxNotes.map((n) => (
               <div key={n.id} className="rounded-xl bg-clinic-bg p-3 text-sm">
@@ -333,7 +333,7 @@ function OrthoPlan({ budget }: { budget: Budget }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-extrabold text-clinic-text">Plan de tratamiento</h3>
+        <h3 className="font-bold text-clinic-text">Plan de tratamiento</h3>
         {gestiona && <Link href="/app/presupuestos" className="text-xs font-bold text-azure-600 hover:underline">Gestionar →</Link>}
       </div>
       <PrestacionesList budget={budget} />

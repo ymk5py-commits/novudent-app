@@ -73,7 +73,7 @@ export default function LaboratoriosPage() {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">Los laboratorios los gestiona el <b>Administrador</b>.</p>
       </Card>
     );
@@ -108,7 +108,7 @@ export default function LaboratoriosPage() {
       <Reveal y={0}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold text-clinic-text">Laboratorios</h1>
+            <h1 className="text-[16px] font-bold text-clinic-text">Laboratorios</h1>
             <p className="text-sm text-clinic-muted">
               Órdenes de laboratorio y seguimiento de trabajos.
             </p>
@@ -127,19 +127,19 @@ export default function LaboratoriosPage() {
           <Card className="h-full p-5">
             <div className="flex items-center gap-2 text-azure-600">
               <FlaskConical className="h-4 w-4" />
-              <span className="text-xs font-extrabold uppercase tracking-wide">Total</span>
+              <span className="text-[13px] font-bold">Total</span>
             </div>
-            <div className="mt-1 font-mono text-2xl font-extrabold text-clinic-text">{total}</div>
+            <div className="mt-1 tabular-nums text-2xl font-bold text-clinic-text">{total}</div>
           </Card>
         </StaggerItem>
         <StaggerItem>
           <Card className="h-full p-5">
             <div className="flex items-center gap-2 text-state-warn">
               <Clock className="h-4 w-4" />
-              <span className="text-xs font-extrabold uppercase tracking-wide">Pendientes</span>
+              <span className="text-[13px] font-bold">Pendientes</span>
             </div>
             <div
-              className={`mt-1 font-mono text-2xl font-extrabold ${
+              className={`mt-1 tabular-nums text-2xl font-bold ${
                 pendingCount > 0 ? "text-state-warn" : "text-clinic-text"
               }`}
             >
@@ -151,10 +151,10 @@ export default function LaboratoriosPage() {
           <Card className="h-full p-5">
             <div className="flex items-center gap-2 text-state-err">
               <AlertTriangle className="h-4 w-4" />
-              <span className="text-xs font-extrabold uppercase tracking-wide">Vencidas</span>
+              <span className="text-[13px] font-bold">Vencidas</span>
             </div>
             <div
-              className={`mt-1 font-mono text-2xl font-extrabold ${
+              className={`mt-1 tabular-nums text-2xl font-bold ${
                 overdueCount > 0 ? "text-state-err" : "text-clinic-text"
               }`}
             >
@@ -203,7 +203,7 @@ export default function LaboratoriosPage() {
           <Card className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+                <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                   <th className="px-5 py-3">Paciente</th>
                   <th className="px-5 py-3">Laboratorio</th>
                   <th className="px-5 py-3">Trabajo</th>
@@ -250,13 +250,13 @@ export default function LaboratoriosPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3 font-mono text-xs text-clinic-muted">
+                      <td className="px-5 py-3 tabular-nums text-xs text-clinic-muted">
                         {fmtDate(order.sentAt)}
                       </td>
                       <td className="px-5 py-3">
                         {order.dueAt ? (
                           <span
-                            className={`font-mono text-xs ${
+                            className={`tabular-nums text-xs ${
                               isOverdue ? "font-bold text-state-err" : "text-clinic-muted"
                             }`}
                           >
@@ -269,7 +269,7 @@ export default function LaboratoriosPage() {
                           <span className="text-[11px] text-clinic-muted">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-right font-mono text-xs">
+                      <td className="px-5 py-3 text-right tabular-nums text-xs">
                         {order.cost != null ? fmtGs(order.cost) : "—"}
                       </td>
                       <td className="px-5 py-3">

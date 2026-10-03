@@ -51,7 +51,7 @@ export default function CrmPage() {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">El CRM lo gestiona la <b>recepción</b> y el <b>Administrador</b>.</p>
       </Card>
     );
@@ -135,7 +135,7 @@ export default function CrmPage() {
     <div className="space-y-5">
       <Reveal className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-clinic-text">CRM</h1>
+          <h1 className="text-[16px] font-bold text-clinic-text">CRM</h1>
           <p className="text-sm text-clinic-muted">Embudo de pacientes, oportunidades y campañas de captación.</p>
         </div>
         <Btn onClick={() => setNewCard(true)}><UserPlus className="h-4 w-4" /> Nuevo en pipeline</Btn>
@@ -144,7 +144,7 @@ export default function CrmPage() {
       {/* Pestañas del CRM (estilo Dentalink) */}
       <Reveal className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
         {([["reportes", "Reportes"], ["campanas", "Campañas de Marketing"], ["plantillas", "Plantillas"], ["config", "Configuración"]] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-3.5 py-2 text-sm font-bold transition-colors ${tab === k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>{label}</button>
+          <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-3.5 py-2 text-[14px] font-normal transition-colors ${tab === k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>{label}</button>
         ))}
       </Reveal>
 
@@ -157,7 +157,7 @@ export default function CrmPage() {
             return (
               <div key={st.id} className="flex min-w-0 flex-col rounded-2xl border border-clinic-border bg-clinic-bg/60 p-3">
                 <div className="mb-2 flex items-center justify-between gap-1">
-                  <span className="truncate text-xs font-extrabold uppercase tracking-wide text-clinic-text">{st.label}</span>
+                  <span className="truncate text-[13px] font-bold text-clinic-text">{st.label}</span>
                   <Badge tone={st.tone}>{cards.length}</Badge>
                 </div>
                 <div className="space-y-2">
@@ -223,7 +223,7 @@ export default function CrmPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-state-warnbg text-state-warn"><Target className="h-4 w-4" /></span>
-                <h2 className="font-extrabold text-clinic-text">Oportunidades</h2>
+                <h2 className="font-bold text-clinic-text">Oportunidades</h2>
               </div>
               <Badge tone={opportunities.length > 0 ? "warn" : "muted"}>{opportunities.length} abierta{opportunities.length !== 1 && "s"}</Badge>
             </div>
@@ -238,7 +238,7 @@ export default function CrmPage() {
                     <li key={b.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-3">
                       <Link href={`/app/pacientes/${b.patientId}`} className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{patientName(b.patientId)}</span>
-                        {verMontos && <span className="mr-1.5 font-mono text-xs font-extrabold text-state-warn">{fmtGs(budgetTotal(b))} ·</span>}
+                        {verMontos && <span className="mr-1.5 tabular-nums text-xs font-bold text-state-warn">{fmtGs(budgetTotal(b))} ·</span>}
                         <span className="text-[11px] text-clinic-muted">{fmtDate(b.createdAt)}</span>
                       </Link>
                       <Btn
@@ -263,7 +263,7 @@ export default function CrmPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-state-infobg text-state-info"><RefreshCcw className="h-4 w-4" /></span>
-                <h2 className="font-extrabold text-clinic-text">Reactivación</h2>
+                <h2 className="font-bold text-clinic-text">Reactivación</h2>
               </div>
               <Badge tone={reactivation.length > 0 ? "info" : "muted"}>{reactivation.length} paciente{reactivation.length !== 1 && "s"}</Badge>
             </div>
@@ -278,7 +278,7 @@ export default function CrmPage() {
                     <li key={p.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-3">
                       <Link href={`/app/pacientes/${p.id}`} className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-bold text-clinic-text hover:text-azure-700">{fullName(p)}</span>
-                        {p.phone && <span className="font-mono text-[11px] text-clinic-muted">{p.phone}</span>}
+                        {p.phone && <span className="tabular-nums text-[11px] text-clinic-muted">{p.phone}</span>}
                       </Link>
                       <Btn
                         variant="outline"
@@ -303,7 +303,7 @@ export default function CrmPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="grid h-8 w-8 place-items-center rounded-lg bg-state-warnbg text-state-warn"><Cake className="h-4 w-4" /></span>
-              <h2 className="font-extrabold text-clinic-text">Cumpleaños</h2>
+              <h2 className="font-bold text-clinic-text">Cumpleaños</h2>
             </div>
             <Badge tone={birthdays.length > 0 ? "warn" : "muted"}>{birthdays.length} en 7 días</Badge>
           </div>
@@ -335,7 +335,7 @@ export default function CrmPage() {
       <Reveal>
         <Card className="p-5">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-100 text-azure-700"><Filter className="h-4 w-4" /></span><h2 className="font-extrabold text-clinic-text">Segmentar pacientes</h2></div>
+            <div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-100 text-azure-700"><Filter className="h-4 w-4" /></span><h2 className="font-bold text-clinic-text">Segmentar pacientes</h2></div>
             <Badge tone="info">{segMatches.length} paciente{segMatches.length !== 1 && "s"}</Badge>
           </div>
           <p className="mb-3 text-xs text-clinic-muted">Combiná filtros para armar una lista de destinatarios (deudores, por ciudad, edad, sin cita…).</p>
@@ -375,7 +375,7 @@ export default function CrmPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="grid h-8 w-8 place-items-center rounded-lg bg-state-okbg text-state-ok"><Megaphone className="h-4 w-4" /></span>
-              <h2 className="font-extrabold text-clinic-text">Campañas</h2>
+              <h2 className="font-bold text-clinic-text">Campañas</h2>
             </div>
             <Btn variant="outline" onClick={() => setNewCampaign(true)}><Plus className="h-4 w-4" /> Nueva campaña</Btn>
           </div>
@@ -394,7 +394,7 @@ export default function CrmPage() {
                   <div className="flex h-full flex-col rounded-xl border border-clinic-border p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-extrabold text-clinic-text">{c.name}</div>
+                        <div className="truncate text-sm font-bold text-clinic-text">{c.name}</div>
                         <div className="mt-0.5 text-[11px] text-clinic-muted">{fmtDate(c.createdAt)}</div>
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -412,7 +412,7 @@ export default function CrmPage() {
                     </div>
                     <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-xs leading-snug text-clinic-text">{c.message}</p>
                     <div className="mt-auto pt-2 text-[11px] text-clinic-muted">
-                      <span className="font-semibold uppercase tracking-wide">Audiencia:</span> {c.audience || "—"}
+                      <span className="font-semibold">Audiencia:</span> {c.audience || "—"}
                     </div>
                     {c.channel === "email" && <p className="mt-1 text-[11px] text-clinic-muted">{recipients.length} destinatario{recipients.length === 1 ? "" : "s"} seleccionado{recipients.length === 1 ? "" : "s"}</p>}
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-clinic-border pt-2">
@@ -443,7 +443,7 @@ export default function CrmPage() {
       {tab === "plantillas" && (
         <Reveal>
           <Card className="p-5">
-            <div className="mb-3 flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-100 text-azure-700"><Mail className="h-4 w-4" /></span><h2 className="font-extrabold text-clinic-text">Plantillas de mensaje</h2></div>
+            <div className="mb-3 flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-100 text-azure-700"><Mail className="h-4 w-4" /></span><h2 className="font-bold text-clinic-text">Plantillas de mensaje</h2></div>
             <p className="mb-3 text-xs text-clinic-muted">Mensajes reutilizables para campañas y saludos. Los recordatorios automáticos se editan en <Link href="/app/integraciones" className="font-bold text-azure-700 hover:underline">Integraciones</Link>.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {[
@@ -453,7 +453,7 @@ export default function CrmPage() {
                 { t: "Promoción", m: "Hola {paciente} 👋 Este mes en {clinica} tenemos una promo. ¿Te interesa?" },
               ].map((x) => (
                 <div key={x.t} className="rounded-xl border border-clinic-border p-4">
-                  <div className="text-sm font-extrabold text-clinic-text">{x.t}</div>
+                  <div className="text-sm font-bold text-clinic-text">{x.t}</div>
                   <p className="mt-1 whitespace-pre-wrap text-xs text-clinic-muted">{x.m}</p>
                 </div>
               ))}
@@ -465,12 +465,12 @@ export default function CrmPage() {
       {tab === "config" && (
         <Reveal>
           <Card className="p-5">
-            <div className="mb-3 flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-100 text-azure-700"><Target className="h-4 w-4" /></span><h2 className="font-extrabold text-clinic-text">Configuración del embudo</h2></div>
+            <div className="mb-3 flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-azure-100 text-azure-700"><Target className="h-4 w-4" /></span><h2 className="font-bold text-clinic-text">Configuración del embudo</h2></div>
             <p className="mb-3 text-xs text-clinic-muted">Etapas del pipeline de captación de pacientes.</p>
             <ol className="space-y-2">
               {STAGES.map((st, i) => (
                 <li key={st.id} className="flex items-center gap-3 rounded-xl bg-clinic-bg p-3">
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-white font-mono text-xs font-bold text-clinic-muted">{i + 1}</span>
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-white tabular-nums text-xs font-bold text-clinic-muted">{i + 1}</span>
                   <span className="flex-1 text-sm font-bold text-clinic-text">{st.label}</span>
                   <Badge tone={st.tone}>{db.crmCards.filter((c) => c.stage === st.id).length}</Badge>
                 </li>

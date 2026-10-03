@@ -27,7 +27,7 @@ export function AnalisisEstudios() {
       <div role="group" aria-label="Tipo de estudio" className="flex flex-wrap gap-1.5">
         {VISTAS.map((v) => (
           <button key={v.k} type="button" aria-pressed={vista === v.k} onClick={() => setVista(v.k)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${vista === v.k ? "bg-azure-600 text-white" : "border border-clinic-border bg-white text-clinic-muted hover:text-clinic-text"}`}>
+            className={`rounded-lg px-3 py-1.5 text-[13px] font-normal transition-colors ${vista === v.k ? "bg-azure-600 text-white" : "border border-clinic-border bg-white text-clinic-muted hover:text-clinic-text"}`}>
             {v.label}
           </button>
         ))}
@@ -71,21 +71,21 @@ function TablaEstudio({ vista }: { vista: Exclude<Vista, "ortodoncia"> }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <Card className="p-4"><div className="text-2xl font-extrabold text-clinic-text">{filas.length}</div><div className="text-xs text-clinic-muted">Pacientes en {titulo.toLowerCase()}</div></Card>
-        <Card className="p-4"><div className="text-2xl font-extrabold text-clinic-text">{filas.length - sinProxima}</div><div className="text-xs text-clinic-muted">Con próxima cita</div></Card>
-        <Card className="p-4"><div className="text-2xl font-extrabold text-state-warn">{sinProxima}</div><div className="text-xs text-clinic-muted">Sin próxima cita (a recontactar)</div></Card>
+        <Card className="p-4"><div className="text-2xl font-bold text-clinic-text">{filas.length}</div><div className="text-xs text-clinic-muted">Pacientes en {titulo.toLowerCase()}</div></Card>
+        <Card className="p-4"><div className="text-2xl font-bold text-clinic-text">{filas.length - sinProxima}</div><div className="text-xs text-clinic-muted">Con próxima cita</div></Card>
+        <Card className="p-4"><div className="text-2xl font-bold text-state-warn">{sinProxima}</div><div className="text-xs text-clinic-muted">Sin próxima cita (a recontactar)</div></Card>
       </div>
       {filas.length === 0 ? (
         <Empty title={`Sin pacientes en ${titulo.toLowerCase()}`} desc={vista === "general" ? "Cuando un paciente tenga una cita o un plan, aparece acá." : "Aparecen los pacientes con citas de este tipo de consulta (se elige al dar la cita)."} />
       ) : (
         <Card className="overflow-x-auto p-0">
           <div className="flex items-center justify-between border-b border-clinic-border px-4 py-2.5">
-            <h3 className="text-sm font-extrabold text-clinic-text">{titulo}</h3>
+            <h3 className="text-sm font-bold text-clinic-text">{titulo}</h3>
             <Btn variant="outline" onClick={exportar}><Download className="h-3.5 w-3.5" /> Exportar CSV</Btn>
           </div>
           <table className="w-full min-w-[640px] text-sm">
             <thead>
-              <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+              <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
                 <th className="px-4 py-3">Paciente</th>
                 {verPersonales && <th className="px-2 py-3">CI</th>}
                 <th className="px-2 py-3">Profesional</th>
@@ -99,12 +99,12 @@ function TablaEstudio({ vista }: { vista: Exclude<Vista, "ortodoncia"> }) {
               {filas.map((f) => (
                 <tr key={f.p.id} className="hover:bg-clinic-bg/60">
                   <td className="px-4 py-2.5"><Link href={`/app/pacientes/${f.p.id}`} className="font-semibold text-clinic-text hover:text-azure-700">{fullName(f.p)}</Link></td>
-                  {verPersonales && <td className="px-2 py-2.5 font-mono text-xs">{f.p.document || "—"}</td>}
+                  {verPersonales && <td className="px-2 py-2.5 tabular-nums text-xs">{f.p.document || "—"}</td>}
                   <td className="px-2 py-2.5 text-clinic-muted">{f.profesional ?? "—"}</td>
                   <td className="px-2 py-2.5 text-clinic-muted">{f.ultima ? fmtDate(f.ultima.start) : "—"}</td>
                   <td className="px-2 py-2.5">{f.proxima ? fmtDate(f.proxima.start) : <span className="font-semibold text-state-warn">Sin cita</span>}</td>
-                  <td className="px-2 py-2.5 text-right font-mono">{f.citas}</td>
-                  <td className="px-2 py-2.5 text-right font-mono">{f.planes}</td>
+                  <td className="px-2 py-2.5 text-right tabular-nums">{f.citas}</td>
+                  <td className="px-2 py-2.5 text-right tabular-nums">{f.planes}</td>
                 </tr>
               ))}
             </tbody>

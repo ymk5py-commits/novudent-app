@@ -35,7 +35,7 @@ export const CHART_COLOR: Record<"captura" | "cobranza" | "control" | "cita", st
 export function TipoBadge({ type, apagada, children }: { type: MgmtTaskType; apagada?: boolean; children?: ReactNode }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 font-mono text-[10.5px] font-bold uppercase tracking-wide ring-1 ring-inset ${
+      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 tabular-nums text-[13px] font-semibold ring-1 ring-inset ${
         apagada ? "bg-clinic-bg text-clinic-muted ring-clinic-border" : TIPO_BADGE[type]
       }`}
     >

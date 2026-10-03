@@ -79,7 +79,7 @@ function MiniRing({ pct }: { pct: number }) {
         <circle cx="22" cy="22" r={r} fill="none" strokeWidth="4" stroke="currentColor" className="text-clinic-border" />
         <circle cx="22" cy="22" r={r} fill="none" strokeWidth="4" strokeLinecap="round" stroke="currentColor" strokeDasharray={c} strokeDashoffset={off} className="text-azure-500" />
       </svg>
-      <span className="absolute inset-0 grid place-items-center text-[11px] font-extrabold text-clinic-text">{pct}%</span>
+      <span className="absolute inset-0 grid place-items-center text-[11px] font-bold text-clinic-text">{pct}%</span>
     </div>
   );
 }
@@ -133,7 +133,7 @@ function PlanLista({ patient, budgets, onOpen, onNuevo }: { patient: Patient; bu
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-extrabold text-clinic-text">Planes de tratamiento</h2>
+        <h2 className="text-[16px] font-bold text-clinic-text">Planes de tratamiento</h2>
         <div className="flex items-center gap-2">
           <select value={filtro} onChange={(e) => setFiltro(e.target.value as "activos" | "todos")} className={`${inputCls} !w-auto`}>
             <option value="activos">Tratamientos activos</option>
@@ -145,13 +145,13 @@ function PlanLista({ patient, budgets, onOpen, onNuevo }: { patient: Patient; bu
       </div>
       {enEjecucion.length > 0 && (
         <div>
-          <h3 className="mb-2 border-b border-clinic-border pb-1 text-sm font-extrabold text-azure-700">En ejecución</h3>
+          <h3 className="mb-2 border-b border-clinic-border pb-1 text-sm font-bold text-azure-700">En ejecución</h3>
           <Card className="divide-y divide-clinic-border p-0">{enEjecucion.map(Row)}</Card>
         </div>
       )}
       {otros.length > 0 && (
         <div>
-          <h3 className="mb-2 border-b border-clinic-border pb-1 text-sm font-extrabold text-clinic-muted">Otros</h3>
+          <h3 className="mb-2 border-b border-clinic-border pb-1 text-sm font-bold text-clinic-muted">Otros</h3>
           <Card className="divide-y divide-clinic-border p-0">{otros.map(Row)}</Card>
         </div>
       )}
@@ -163,7 +163,7 @@ function PlanLista({ patient, budgets, onOpen, onNuevo }: { patient: Patient; bu
 function Col({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">{label}</div>
+      <div className="text-[13px] font-semibold text-clinic-muted">{label}</div>
       <div className="mt-0.5 text-sm">{children}</div>
     </div>
   );
@@ -240,7 +240,7 @@ function PlanFinanciero({
     <Card className="h-fit min-w-0 overflow-hidden p-0">
       <div className="mesh-hero px-5 py-4 text-white">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-azure-200">Plan de tratamiento</span>
+          <span className="tabular-nums text-[12px] font-bold text-azure-200">Plan de tratamiento</span>
           <button onClick={copyId} className="inline-flex items-center gap-1 text-[11px] text-white/70 transition-colors hover:text-white" title="Copiar ID del plan">
             <Copy className="h-3 w-3" /> {copied ? "Copiado" : `#${budget.id}`}
           </button>
@@ -256,8 +256,8 @@ function PlanFinanciero({
       <div className="p-5">
         {!verMontos && (
           <div className="text-center">
-            <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Avance del plan</div>
-            <div className="mt-1 font-mono text-3xl font-extrabold text-azure-600">
+            <div className="text-[13px] font-semibold text-clinic-muted">Avance del plan</div>
+            <div className="mt-1 tabular-nums text-3xl font-bold text-azure-600">
               {budget.items.filter((i) => i.status === "realizado").length} / {budget.items.length}
             </div>
             <div className="text-xs text-clinic-muted">prestaciones realizadas</div>
@@ -265,8 +265,8 @@ function PlanFinanciero({
         )}
         {verMontos && <>
         <div className="text-center">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Presupuesto total</div>
-          <div className="mt-1 font-mono text-3xl font-extrabold text-azure-600">{fmtGs(total)}</div>
+          <div className="text-[13px] font-semibold text-clinic-muted">Presupuesto total</div>
+          <div className="mt-1 tabular-nums text-3xl font-bold text-azure-600">{fmtGs(total)}</div>
         </div>
         <DescuentoRow budget={budget} />
         <div className="my-3 border-t border-clinic-border" />
@@ -278,16 +278,16 @@ function PlanFinanciero({
           {pagos.length === 0 ? (
             <div className="flex items-center justify-between text-sm">
               <span className="text-clinic-muted">No hay abonos</span>
-              <span className="font-mono font-bold text-clinic-text">{fmtGs(0)}</span>
+              <span className="tabular-nums font-bold text-clinic-text">{fmtGs(0)}</span>
             </div>
           ) : (
             <>
-              <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Abonos</div>
+              <div className="mb-1 text-[13px] font-semibold text-clinic-muted">Abonos</div>
               <ul className="space-y-1">
                 {pagos.map((p) => (
                   <li key={p.id} className="flex items-center justify-between text-xs">
                     <span className="text-clinic-muted">{fmtDate(p.date)} · {PAYMENT_METHOD_LABEL[p.method] ?? p.method}</span>
-                    <span className="font-mono font-bold text-clinic-text">{fmtGs(p.amount)}</span>
+                    <span className="tabular-nums font-bold text-clinic-text">{fmtGs(p.amount)}</span>
                   </li>
                 ))}
               </ul>
@@ -310,7 +310,7 @@ function PlanFinanciero({
 
         {citas.length > 0 && (
           <div className="mt-3 border-t border-clinic-border pt-3">
-            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Citas del paciente</div>
+            <div className="mb-1 text-[13px] font-semibold text-clinic-muted">Citas del paciente</div>
             <ul className="space-y-1">
               {citas.map((a) => (
                 <li key={a.id} className="flex items-center justify-between gap-2 text-xs">
@@ -338,7 +338,7 @@ function DottedRow({ label, value, strong, tone }: { label: string; value: strin
     <div className="flex items-baseline gap-2 py-1 text-sm">
       <span className="text-clinic-muted">{label}</span>
       <span className="mb-1 flex-1 self-end border-b border-dotted border-clinic-border" />
-      <span className={`font-mono ${strong ? "text-base font-extrabold" : "font-bold"} ${color}`}>{value}</span>
+      <span className={`tabular-nums ${strong ? "text-base font-bold" : "font-bold"} ${color}`}>{value}</span>
     </div>
   );
 }
@@ -354,13 +354,13 @@ function PlanNameEdit({ budget }: { budget: Budget }) {
     const save = () => { upsertBudget({ ...budget, name: name.trim() || undefined }); setEditing(false); };
     return (
       <div className="mt-1 flex items-center gap-2">
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} className="min-w-0 flex-1 rounded-lg bg-white/15 px-2 py-1 font-logo text-xl text-white placeholder:text-white/50" />
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} className="min-w-0 flex-1 rounded-lg bg-white/15 px-2 py-1 text-[16px] font-bold text-white placeholder:text-white/50" />
         <button onClick={save} className="shrink-0 text-white/90 hover:text-white" title="Guardar"><Save className="h-4 w-4" /></button>
       </div>
     );
   }
   return (
-    <h2 className="mt-1 flex items-center gap-2 font-logo text-xl leading-tight">
+    <h2 className="mt-1 flex items-center gap-2 text-[16px] font-bold leading-tight">
       <span className="min-w-0 truncate">{label}</span>
       {canWrite && <button onClick={() => { setName(label); setEditing(true); }} className="shrink-0 text-white/60 hover:text-white" title="Renombrar plan"><Pencil className="h-3.5 w-3.5" /></button>}
     </h2>
@@ -401,7 +401,7 @@ function ComentariosPaciente({ budget }: { budget: Budget }) {
   return (
     <Card className="p-5">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="font-extrabold text-clinic-text">Comentarios para el paciente</h3>
+        <h3 className="font-bold text-clinic-text">Comentarios para el paciente</h3>
         {canWrite && dirty && <Btn onClick={() => upsertBudget({ ...budget, patientComments: text.trim() || undefined })}><Save className="h-4 w-4" /> Guardar</Btn>}
       </div>
       <p className="mb-2 text-[11px] text-clinic-muted">Se incluyen en la impresión del presupuesto.</p>
@@ -462,7 +462,7 @@ function RipsBanner({ budget }: { budget: Budget }) {
   return (
     <Card className="p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-extrabold text-clinic-text">Actualizar los detalles RIPS</h3>
+        <h3 className="font-bold text-clinic-text">Actualizar los detalles RIPS</h3>
         <div className="flex flex-wrap gap-2">
           <button onClick={() => setOpen(open === "rips" ? null : "rips")} className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-1.5 text-xs font-bold text-clinic-text transition-colors hover:border-azure-300 hover:text-azure-700">
             Detalles RIPS {!completo && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
@@ -575,11 +575,11 @@ function EsteticaFacial({ budget }: { budget: Budget; patient: Patient }) {
 
   return (
     <div className="space-y-4 rounded-2xl border border-clinic-border bg-white p-5">
-      <h3 className="font-extrabold text-clinic-text">Estética facial</h3>
+      <h3 className="font-bold text-clinic-text">Estética facial</h3>
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Registro fotográfico (pre / post)</span>
+          <span className="text-[13px] font-semibold text-clinic-muted">Registro fotográfico (pre / post)</span>
           {canWrite && photos.length < 8 && (
             <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-clinic-border px-2.5 py-1 text-xs font-bold text-clinic-text hover:border-azure-300 hover:text-azure-700">
               <Upload className="h-3.5 w-3.5" /> {busy ? "Subiendo…" : "Agregar fotos"}
@@ -607,7 +607,7 @@ function EsteticaFacial({ budget }: { budget: Budget; patient: Patient }) {
       </div>
 
       <div>
-        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Análisis facial</div>
+        <div className="mb-2 text-[13px] font-semibold text-clinic-muted">Análisis facial</div>
         <div className="grid gap-3 sm:grid-cols-2">
           {MF("Proporción de tercios", "tercios", "Sup/medio/inf equilibrados…")}
           {MF("Línea media", "lineaMedia", "Centrada / desviada …")}
@@ -617,7 +617,7 @@ function EsteticaFacial({ budget }: { budget: Budget; patient: Patient }) {
       </div>
 
       <div>
-        <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-clinic-muted">Observaciones</div>
+        <div className="mb-1 text-[13px] font-semibold text-clinic-muted">Observaciones</div>
         <textarea disabled={!canWrite} rows={4} value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} placeholder="Objetivos estéticos, indicaciones…" />
       </div>
 
@@ -634,7 +634,7 @@ function TabBtn({ active, onClick, icon: Icon, label }: { active: boolean; onCli
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-normal transition-colors ${
         active ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"
       }`}
     >

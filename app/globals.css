@@ -4,7 +4,7 @@
 
 html, body {
   background: #f3f6fb;
-  color: #102747;
+  color: #333333;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "tnum" on;
   /* `clip`, NO `hidden`: hidden crearía un contenedor de scroll y rompería
@@ -16,6 +16,9 @@ html, body {
 /* Tema claro declarado: los controles nativos (fechas, selects, barras de scroll)
    no se pintan oscuros si el sistema está en modo oscuro. */
 html { color-scheme: light; }
+
+/* Panel: escala tipográfica de Dentalink — Open Sans 14px, texto #333. */
+.app-workspace { font-size: 14px; line-height: 1.43; }
 
 /* Toques en el celular: sin la demora del doble toque y con un resaltado suave
    en el azul de la marca, en vez del gris del navegador. */
@@ -40,8 +43,9 @@ a, button, [role="button"], input, select, textarea, label, summary {
   background: radial-gradient(80% 300px at 50% 0, rgba(4,169,242,.055), transparent 100%), #f3f6fb;
 }
 .app-workspace :is(h1, h2, h3) {
-  font-family: var(--font-jost), ui-sans-serif, system-ui;
-  letter-spacing: -.025em;
+  /* Títulos en Open Sans, igual que Dentalink (antes Jost). */
+  font-family: var(--font-open-sans), ui-sans-serif, system-ui;
+  letter-spacing: normal;
   font-style: normal;
 }
 .app-topbar {

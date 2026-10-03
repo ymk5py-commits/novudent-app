@@ -67,7 +67,7 @@ export default function BoxPage() {
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <Reveal className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-clinic-text">Box / Sillones</h1>
+          <h1 className="text-[16px] font-bold text-clinic-text">Box / Sillones</h1>
           <p className="text-sm text-clinic-muted">
             Gestión de operatorios y asignación de citas por sillón
           </p>
@@ -82,7 +82,7 @@ export default function BoxPage() {
       {/* ── Gestión de boxes ──────────────────────────────────────────────── */}
       <Reveal delay={0.05}>
         <Card className="p-5">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-clinic-muted">
+          <h2 className="mb-3 text-[13px] font-bold text-clinic-muted">
             Sillones configurados
           </h2>
           {db.boxes.length === 0 ? (
@@ -203,7 +203,7 @@ export default function BoxPage() {
                     }}
                   >
                     <Armchair className="h-4 w-4" style={{ color: box.color ?? "#94A3B8" }} />
-                    <span className="text-sm font-extrabold text-clinic-text">{box.name}</span>
+                    <span className="text-sm font-bold text-clinic-text">{box.name}</span>
                     <Badge tone="muted">{boxAppts.length} cita{boxAppts.length !== 1 ? "s" : ""}</Badge>
                   </div>
                   {/* lista de citas del box */}
@@ -216,7 +216,7 @@ export default function BoxPage() {
                         return (
                           <div key={appt.id} className="px-4 py-3">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-mono text-[11px] font-bold text-clinic-muted">
+                              <span className="tabular-nums text-[11px] font-bold text-clinic-muted">
                                 {fmtTime(appt.start)}
                               </span>
                               <StatusDot status={appt.status} />
@@ -245,7 +245,7 @@ export default function BoxPage() {
       <Reveal delay={0.18}>
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-clinic-muted">
+            <h2 className="text-[13px] font-bold text-clinic-muted">
               Sin box asignado
             </h2>
             {unassigned.length > 0 && (
@@ -268,7 +268,7 @@ export default function BoxPage() {
                       key={appt.id}
                       className="flex flex-wrap items-center gap-3 rounded-xl bg-clinic-bg p-3"
                     >
-                      <span className="font-mono text-[11px] font-bold text-clinic-muted w-10 shrink-0">
+                      <span className="tabular-nums text-[11px] font-bold text-clinic-muted w-10 shrink-0">
                         {fmtTime(appt.start)}
                       </span>
                       <div className="min-w-0 flex-1">

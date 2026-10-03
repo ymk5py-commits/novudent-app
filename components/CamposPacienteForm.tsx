@@ -80,7 +80,7 @@ export function CamposPacienteForm({ campos, valores, onChange, convenios = [], 
         }
         return (
           <fieldset key={g.key} className="space-y-3">
-            {!compacto && <legend className="mb-1 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">{g.label}</legend>}
+            {!compacto && <legend className="mb-1 text-[13px] font-bold text-clinic-muted">{g.label}</legend>}
             {g.key === "responsable" && menor && (
               <p role="status" className="rounded-xl bg-state-infobg px-3 py-2 text-xs font-semibold text-state-info">El paciente es menor de edad: completá los datos del responsable.</p>
             )}

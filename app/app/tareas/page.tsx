@@ -82,7 +82,7 @@ export default function TareasPage() {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">Tu rol no tiene acceso a la bandeja de tareas.</p>
       </Card>
     );
@@ -133,7 +133,7 @@ export default function TareasPage() {
             ))}
           </div>
         )}
-        <h1 className="min-w-0 text-lg font-extrabold text-clinic-text sm:text-xl">{titulo}</h1>
+        <h1 className="min-w-0 text-lg font-bold text-clinic-text sm:text-xl">{titulo}</h1>
 
         {vistaEfectiva === "bandeja" && (
           <div className="flex w-full flex-wrap items-center gap-1.5 sm:ml-auto sm:w-auto">
@@ -148,7 +148,7 @@ export default function TareasPage() {
                 aria-label="Fecha"
                 value={fecha}
                 onChange={(e) => { if (esFecha(e.target.value)) irA(e.target.value); }}
-                className="w-[8.5rem] bg-transparent font-mono text-[13px] outline-none"
+                className="w-[8.5rem] bg-transparent tabular-nums text-[13px] outline-none"
               />
             </label>
             <Btn variant="outline" onClick={() => irA(sumarDias(fecha, 1))} tip="Día siguiente">
@@ -174,7 +174,7 @@ export default function TareasPage() {
                   role="tab"
                   aria-selected={lista === k}
                   onClick={() => { setLista(k); setSelId(null); }}
-                  className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${lista === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:text-clinic-text"}`}
+                  className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-normal transition-colors ${lista === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:text-clinic-text"}`}
                 >
                   {label}
                   {n != null && (
@@ -192,13 +192,13 @@ export default function TareasPage() {
               >
                 {(cerrar) => (
                   <>
-                    <p className="px-3 pb-1 pt-2 text-[10px] font-extrabold uppercase tracking-wide text-clinic-muted">Tipo de tarea</p>
+                    <p className="px-3 pb-1 pt-2 text-[13px] font-semibold text-clinic-muted">Tipo de tarea</p>
                     {(["todas", ...tipos] as const).map((t) => (
                       <Opcion key={t} marcada={filtroTipo === t} onClick={() => { setFiltroTipo(t); cerrar(); }}>
                         {t === "todas" ? "Todas" : TIPO_TAREA_LABEL[t]}
                       </Opcion>
                     ))}
-                    <p className="mt-1 border-t border-clinic-border px-3 pb-1 pt-2 text-[10px] font-extrabold uppercase tracking-wide text-clinic-muted">Responsable</p>
+                    <p className="mt-1 border-t border-clinic-border px-3 pb-1 pt-2 text-[13px] font-semibold text-clinic-muted">Responsable</p>
                     {([["todos", "Todas"], ["mias", "Asignadas a mí"], ["sin", "Sin asignar"]] as const).map(([k, label]) => (
                       <Opcion key={k} marcada={filtroResp === k} onClick={() => { setFiltroResp(k); cerrar(); }}>{label}</Opcion>
                     ))}
@@ -305,7 +305,7 @@ function FilaBandeja({ f, hoy: hoyFila, seleccionada, onSeleccionar, onAsignar }
         >
           <span className="flex items-center gap-2 sm:w-[112px] sm:shrink-0">
             <TipoBadge type={f.type} apagada={f.estado !== "pendiente"} />
-            <span className={`whitespace-nowrap font-mono text-[11px] sm:hidden ${atrasada ? "font-bold text-state-err" : "text-clinic-muted"}`}>{fechaCorta(f.fecha, hoyFila)}</span>
+            <span className={`whitespace-nowrap tabular-nums text-[11px] sm:hidden ${atrasada ? "font-bold text-state-err" : "text-clinic-muted"}`}>{fechaCorta(f.fecha, hoyFila)}</span>
           </span>
           <span className="block w-full min-w-0">
             <span className={`block truncate text-sm font-bold ${f.estado === "pendiente" ? "text-clinic-text" : "text-clinic-muted"}`}>{nombre}</span>
@@ -325,7 +325,7 @@ function FilaBandeja({ f, hoy: hoyFila, seleccionada, onSeleccionar, onAsignar }
                 <Opcion marcada={f.assigneeId === session?.userId} onClick={() => { if (session) onAsignar(session.userId); cerrar(); }}>Asignar a mí</Opcion>
                 {asignables.length > 0 && (
                   <>
-                    <p className="border-t border-clinic-border px-3 pb-1 pt-2 text-[10px] font-extrabold uppercase tracking-wide text-clinic-muted">Asignar a otro usuario</p>
+                    <p className="border-t border-clinic-border px-3 pb-1 pt-2 text-[13px] font-semibold text-clinic-muted">Asignar a otro usuario</p>
                     <div className="max-h-56 overflow-y-auto">
                       {asignables.map((u) => (
                         <Opcion key={u.id} marcada={f.assigneeId === u.id} onClick={() => { onAsignar(u.id); cerrar(); }}>{u.name}</Opcion>
@@ -345,7 +345,7 @@ function FilaBandeja({ f, hoy: hoyFila, seleccionada, onSeleccionar, onAsignar }
           <span className="max-w-[7rem] truncate text-xs text-clinic-muted">{asignado || "No asignado"}</span>
         )}
       </div>
-      <span className={`hidden w-14 shrink-0 text-right font-mono text-xs sm:block ${atrasada ? "font-bold text-state-err" : "text-clinic-muted"}`}>{fechaCorta(f.fecha, hoyFila)}</span>
+      <span className={`hidden w-14 shrink-0 text-right tabular-nums text-xs sm:block ${atrasada ? "font-bold text-state-err" : "text-clinic-muted"}`}>{fechaCorta(f.fecha, hoyFila)}</span>
       <button type="button" tabIndex={-1} aria-hidden onClick={onSeleccionar} className="hidden text-clinic-muted hover:text-clinic-text sm:block">
         <ChevronRight className="h-4 w-4" />
       </button>

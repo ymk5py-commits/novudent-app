@@ -37,7 +37,7 @@ export default function VideosPage() {
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-azure-50 text-azure-600"><Video className="h-5 w-5" /></span>
           <div>
-            <h1 className="text-lg font-extrabold text-clinic-text">Videos 3D</h1>
+            <h1 className="text-[16px] font-bold text-clinic-text">Videos 3D</h1>
             <p className="text-[11px] text-clinic-muted">Animaciones de tratamientos para explicar al paciente.</p>
           </div>
         </div>
@@ -47,7 +47,7 @@ export default function VideosPage() {
       {db.eduVideos.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {categories.map((c) => (
-            <button key={c} onClick={() => setCat(c)} className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${cat === c ? "bg-navy-800 text-white" : "border border-clinic-border bg-white text-clinic-muted hover:text-clinic-text"}`}>{c}</button>
+            <button key={c} onClick={() => setCat(c)} className={`rounded-lg px-3 py-1.5 text-[13px] font-normal transition-colors ${cat === c ? "bg-navy-800 text-white" : "border border-clinic-border bg-white text-clinic-muted hover:text-clinic-text"}`}>{c}</button>
           ))}
         </div>
       )}

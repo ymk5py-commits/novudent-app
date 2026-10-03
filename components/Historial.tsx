@@ -79,7 +79,7 @@ export function HistorialTimeline({ patient }: { patient: Patient }) {
         <div className="print-area space-y-5">
           {groups.map((g) => (
             <div key={g.day}>
-              <h4 className="mb-2 text-xs font-extrabold uppercase tracking-wide text-clinic-muted">{dayLabel(g.day)}</h4>
+              <h4 className="mb-2 text-[13px] font-bold text-clinic-muted">{dayLabel(g.day)}</h4>
               <div className="relative space-y-2.5 pl-5 before:absolute before:bottom-2 before:left-1.5 before:top-2 before:w-px before:bg-clinic-border">
                 {g.items.map((e) => {
                   const m = KIND_META[e.kind];
@@ -88,14 +88,14 @@ export function HistorialTimeline({ patient }: { patient: Patient }) {
                       <span className={`absolute -left-[14px] top-4 h-3 w-3 rounded-full border-2 border-white ${m.color}`} />
                       <div className="flex flex-wrap items-center gap-2 text-[11px] text-clinic-muted">
                         <m.icon className="h-3.5 w-3.5" />
-                        <span className="font-bold uppercase tracking-wide">{e.title}</span>
+                        <span className="font-bold">{e.title}</span>
                         {e.badge && <Badge tone="muted">{e.badge}</Badge>}
                         {e.by && <span>· {e.by}</span>}
-                        <span className="ml-auto font-mono">{new Date(e.at).toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" })}</span>
+                        <span className="ml-auto tabular-nums">{new Date(e.at).toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" })}</span>
                       </div>
                       <p className="mt-1 text-sm text-clinic-text">
                         {e.detail}
-                        {e.amount != null && <span className="ml-1 font-mono font-bold text-state-ok">· {fmtGs(e.amount)}</span>}
+                        {e.amount != null && <span className="ml-1 tabular-nums font-bold text-state-ok">· {fmtGs(e.amount)}</span>}
                       </p>
                     </Card>
                   );

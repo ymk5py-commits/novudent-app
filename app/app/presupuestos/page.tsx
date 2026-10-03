@@ -32,7 +32,7 @@ export default function BudgetsPage() {
     return (
       <Card className="p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
-        <h1 className="mt-3 text-lg font-extrabold text-clinic-text">Acceso denegado</h1>
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
         <p className="mt-1 text-sm text-clinic-muted">Tu rol no tiene permiso para gestionar presupuestos.</p>
       </Card>
     );
@@ -64,7 +64,7 @@ export default function BudgetsPage() {
     <div className="space-y-5">
       <Reveal className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-clinic-text">Presupuestos</h1>
+          <h1 className="text-[16px] font-bold text-clinic-text">Presupuestos</h1>
           <p className="text-sm text-clinic-muted">Planes de tratamiento, convenios y cobro en cuotas.</p>
         </div>
         <Btn onClick={() => setEditing("new")}><Plus className="h-4 w-4" /> Nuevo presupuesto</Btn>
@@ -78,7 +78,7 @@ export default function BudgetsPage() {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-bold capitalize transition-colors ${
+              className={`rounded-full px-3.5 py-1.5 text-[13px] font-normal capitalize transition-colors ${
                 filter === f ? "bg-azure-600 text-white" : "bg-white text-clinic-muted border border-clinic-border hover:text-clinic-text"
               }`}
             >
@@ -105,7 +105,7 @@ export default function BudgetsPage() {
               <Card className="flex h-full flex-col p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <button onClick={() => setDetail(b)} className="block truncate text-left text-[15px] font-extrabold text-clinic-text hover:text-azure-700">
+                    <button onClick={() => setDetail(b)} className="block truncate text-left text-[15px] font-bold text-clinic-text hover:text-azure-700">
                       {patient ? fullName(patient) : "—"}
                     </button>
                     <div className="mt-0.5 text-xs text-clinic-muted">
@@ -125,17 +125,17 @@ export default function BudgetsPage() {
 
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
                   <div>
-                    <div className="font-mono text-lg font-extrabold text-clinic-text">{fmtGs(total)}</div>
+                    <div className="tabular-nums text-lg font-bold text-clinic-text">{fmtGs(total)}</div>
                     <div className="text-[11px] text-clinic-muted">
                       {b.discountPct ? <>desc. {b.discountPct}% · </> : null}
-                      {cuota ? <>{b.installments} cuotas de <b className="font-mono">{fmtGs(cuota)}</b> · </> : null}
+                      {cuota ? <>{b.installments} cuotas de <b className="tabular-nums">{fmtGs(cuota)}</b> · </> : null}
                       {(b.status === "aceptado" || b.status === "completado") && (
-                        <>pagado <b className="font-mono text-state-ok">{fmtGs(paid)}</b>{total - paid > 0 && <> · saldo <b className="font-mono text-state-err">{fmtGs(total - paid)}</b></>}</>
+                        <>pagado <b className="tabular-nums text-state-ok">{fmtGs(paid)}</b>{total - paid > 0 && <> · saldo <b className="tabular-nums text-state-err">{fmtGs(total - paid)}</b></>}</>
                       )}
                     </div>
                   </div>
                   {b.status === "aceptado" && (
-                    <span className="font-mono text-[11px] font-bold uppercase tracking-wide text-clinic-muted">{done}/{b.items.length} realizados</span>
+                    <span className="tabular-nums text-[13px] font-semibold text-clinic-muted">{done}/{b.items.length} realizados</span>
                   )}
                 </div>
 
@@ -245,7 +245,7 @@ function BudgetDetail({ budget: b, onClose }: { budget: Budget; onClose: () => v
         <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
-            <tr className="border-b border-clinic-border text-left text-[11px] font-bold uppercase tracking-wide text-clinic-muted">
+            <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
               <th className="py-2">Procedimiento</th>
               <th className="py-2">Pieza</th>
               <th className="py-2 text-right">Precio</th>
@@ -255,15 +255,15 @@ function BudgetDetail({ budget: b, onClose }: { budget: Budget; onClose: () => v
           <tbody className="divide-y divide-clinic-border">
             {b.items.map((it) => (
               <tr key={it.id}>
-                <td className="py-2.5 font-semibold text-clinic-text">{it.description} <span className="font-mono text-[11px] text-clinic-muted">{it.cpt}</span></td>
-                <td className="py-2.5 font-mono text-xs">{it.tooth ?? "—"}</td>
-                <td className="py-2.5 text-right font-mono text-xs font-bold">{fmtGs(it.price)}</td>
+                <td className="py-2.5 font-semibold text-clinic-text">{it.description} <span className="tabular-nums text-[11px] text-clinic-muted">{it.cpt}</span></td>
+                <td className="py-2.5 tabular-nums text-xs">{it.tooth ?? "—"}</td>
+                <td className="py-2.5 text-right tabular-nums text-xs font-bold">{fmtGs(it.price)}</td>
                 <td className="py-2.5 text-right print:hidden">
                   {b.status === "aceptado" || b.status === "completado" ? (
                     canExec ? (
                       <button
                         onClick={() => toggleItem(it)}
-                        className={`rounded-full px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wide transition-colors ${
+                        className={`rounded-full px-2.5 py-1 tabular-nums text-[13px] font-semibold transition-colors ${
                           it.status === "realizado" ? "bg-state-okbg text-state-ok" : "bg-clinic-bg text-clinic-muted hover:bg-state-infobg hover:text-state-info"
                         }`}
                         title={it.status === "realizado" ? `Realizado ${it.doneAt ? fmtDate(it.doneAt) : ""} por ${it.doneBy ?? ""} — click para desmarcar` : "Marcar como realizado"}
@@ -284,16 +284,16 @@ function BudgetDetail({ budget: b, onClose }: { budget: Budget; onClose: () => v
         </div>
 
         <div className="space-y-1 rounded-xl border border-clinic-border p-4 text-sm">
-          <div className="flex justify-between text-clinic-muted"><span>Subtotal</span><span className="font-mono">{fmtGs(budgetSubtotal(b))}</span></div>
+          <div className="flex justify-between text-clinic-muted"><span>Subtotal</span><span className="tabular-nums">{fmtGs(budgetSubtotal(b))}</span></div>
           {b.discountPct ? (
-            <div className="flex justify-between text-clinic-muted"><span>Descuento {b.discountPct}%{b.convenio ? ` (${b.convenio})` : ""}</span><span className="font-mono">− {fmtGs(budgetSubtotal(b) - total)}</span></div>
+            <div className="flex justify-between text-clinic-muted"><span>Descuento {b.discountPct}%{b.convenio ? ` (${b.convenio})` : ""}</span><span className="tabular-nums">− {fmtGs(budgetSubtotal(b) - total)}</span></div>
           ) : null}
-          <div className="flex justify-between border-t border-clinic-border pt-2 text-base font-extrabold text-clinic-text"><span>Total</span><span className="font-mono">{fmtGs(total)}</span></div>
-          {cuota && <div className="flex justify-between text-clinic-muted"><span>{b.installments} cuotas de</span><span className="font-mono font-bold">{fmtGs(cuota)}</span></div>}
+          <div className="flex justify-between border-t border-clinic-border pt-2 text-base font-bold text-clinic-text"><span>Total</span><span className="tabular-nums">{fmtGs(total)}</span></div>
+          {cuota && <div className="flex justify-between text-clinic-muted"><span>{b.installments} cuotas de</span><span className="tabular-nums font-bold">{fmtGs(cuota)}</span></div>}
           {(b.status === "aceptado" || b.status === "completado") && (
             <>
-              <div className="flex justify-between text-state-ok"><span>Pagado</span><span className="font-mono font-bold">{fmtGs(paid)}</span></div>
-              <div className={`flex justify-between font-bold ${total - paid > 0 ? "text-state-err" : "text-state-ok"}`}><span>Saldo</span><span className="font-mono">{fmtGs(Math.max(0, total - paid))}</span></div>
+              <div className="flex justify-between text-state-ok"><span>Pagado</span><span className="tabular-nums font-bold">{fmtGs(paid)}</span></div>
+              <div className={`flex justify-between font-bold ${total - paid > 0 ? "text-state-err" : "text-state-ok"}`}><span>Saldo</span><span className="tabular-nums">{fmtGs(Math.max(0, total - paid))}</span></div>
             </>
           )}
         </div>
@@ -302,12 +302,12 @@ function BudgetDetail({ budget: b, onClose }: { budget: Budget; onClose: () => v
 
         {linkedPayments.length > 0 && (
           <div className="print:hidden">
-            <h4 className="text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Pagos asociados</h4>
+            <h4 className="text-[13px] font-bold text-clinic-muted">Pagos asociados</h4>
             <ul className="mt-2 space-y-1 text-sm">
               {linkedPayments.map((p) => (
                 <li key={p.id} className="flex justify-between rounded-lg bg-clinic-bg px-3 py-1.5">
                   <span>{fmtDate(p.date)} · {p.concept}</span>
-                  <span className="font-mono font-bold text-state-ok">{fmtGs(p.amount)}</span>
+                  <span className="tabular-nums font-bold text-state-ok">{fmtGs(p.amount)}</span>
                 </li>
               ))}
             </ul>
@@ -315,10 +315,10 @@ function BudgetDetail({ budget: b, onClose }: { budget: Budget; onClose: () => v
         )}
 
         <div className="print:hidden">
-          <h4 className="text-xs font-extrabold uppercase tracking-wide text-clinic-muted">Historial</h4>
+          <h4 className="text-[13px] font-bold text-clinic-muted">Historial</h4>
           <ul className="mt-2 space-y-1">
             {[...b.history].reverse().map((h, i) => (
-              <li key={i} className="text-xs text-clinic-muted"><span className="font-mono">{fmtDate(h.at)}</span> — {h.action} · <i>{h.by}</i></li>
+              <li key={i} className="text-xs text-clinic-muted"><span className="tabular-nums">{fmtDate(h.at)}</span> — {h.action} · <i>{h.by}</i></li>
             ))}
           </ul>
         </div>
