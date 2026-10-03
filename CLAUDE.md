@@ -101,6 +101,15 @@ notas/boletas; el demo sí por `isDemo`). **Único pendiente real:** link de pag
 (fuera de alcance sin gateway). Plan maestro y audit en
 `docs/superpowers/specs/2026-06-20-dentalink-paridad-plan-maestro-v2.md`.
 
+**Identidad Dentalink (oct-2026):** el panel copia la **tipografía y la forma** de Dentalink
+(Open Sans 14px, esquinas 4px, pestañas subrayadas, tablas densas) y **mantiene los colores
+de Novudent**. Relevamiento en `docs/dentalink/05-videos-identidad-y-funciones.md`, con la
+lista de funciones que faltan. **Estados de cita configurables** (`lib/estadosCita.ts`):
+`Appointment.status` sigue siendo el comportamiento base (7 valores, los usa toda la lógica)
+y `Appointment.estadoId` apunta al estado configurable de `Clinic.config.estadosCita`
+(Configuración › Estados de cita). Para pintar una cita usar `estadoDeCita()` /
+`useEstadosCita()`, nunca `ESTADO_LABEL[status]` directo.
+
 ## Diferenciadores (cross-repo con Botika)
 
 Monitor post-op + Negociación de presupuestos: contrato outbox con Botika

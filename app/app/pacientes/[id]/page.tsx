@@ -319,7 +319,7 @@ export default function PatientProfile() {
                   <div key={a.id} className="flex items-center gap-3 py-2.5 text-sm">
                     <span className="tabular-nums text-xs font-bold">{new Date(a.start).toLocaleDateString("es-PY", { day: "2-digit", month: "short" })} {fmtTime(a.start)}</span>
                     <span className="flex-1 truncate font-semibold text-clinic-text">{a.title}</span>
-                    <StatusBadge status={a.status} />
+                    <StatusBadge status={a.status} estadoId={a.estadoId} />
                   </div>
                 ))}
               </div>
@@ -424,7 +424,7 @@ export default function PatientProfile() {
                       <td className="px-4 py-2.5 tabular-nums text-xs text-clinic-muted">{new Date(a.start).toLocaleString("es-PY", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
                       <td className="px-2 py-2.5 text-clinic-text">{a.title}</td>
                       <td className="px-2 py-2.5 text-clinic-muted">{db.users.find((u) => u.id === a.dentistId)?.name ?? "—"}</td>
-                      <td className="px-2 py-2.5"><StatusBadge status={a.status} /></td>
+                      <td className="px-2 py-2.5"><StatusBadge status={a.status} estadoId={a.estadoId} /></td>
                     </tr>
                   ))}
                 </tbody>

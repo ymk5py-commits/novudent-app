@@ -15,6 +15,7 @@ import { PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
 import DentalinkImport from "@/components/DentalinkImport";
+import { EstadosCitaConfig } from "@/components/EstadosCitaConfig";
 import { resizeToDataUrl } from "@/lib/image";
 import { Reveal } from "@/components/motion";
 import { Logotipo } from "@/components/Marca";
@@ -141,6 +142,16 @@ export default function ConfigPage() {
         <div className="mb-3 flex items-center gap-2"><CalendarClock className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Agendamiento online</h2></div>
         <p className="mb-3 text-xs text-clinic-muted">Compartí este link en tu web, Instagram, WhatsApp o Facebook para que los pacientes reserven solos. Las reservas entran a la agenda como pendientes de validar.</p>
         <BookingLink clinicId={db.clinics[0]?.id ?? ""} />
+      </Card>
+      </Reveal>
+
+      <span id="estados-cita" className="block scroll-mt-24" aria-hidden="true" />
+      {/* Estados de cita (paridad Dentalink: Administración › Estados de agenda) */}
+      <Reveal>
+      <Card className="p-5">
+        <div className="mb-3 flex items-center gap-2"><ListChecks className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Estados de cita</h2></div>
+        <p className="mb-3 text-xs text-clinic-muted">Los estados que la recepción le pone a cada cita en la agenda. Podés renombrarlos, cambiarles el color, desactivar los internos y crear estados propios (ej. «Control 6 meses»).</p>
+        <EstadosCitaConfig />
       </Card>
       </Reveal>
 

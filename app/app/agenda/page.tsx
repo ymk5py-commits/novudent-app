@@ -11,7 +11,9 @@ import {
 import { newSignToken } from "@/lib/firma";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName } from "@/lib/store";
 import { useAlcance } from "@/lib/useAlcance";
-import { ESTADOS_CITA, ESTADO_LABEL, ESTADO_COLOR } from "@/lib/estadosCita";
+import { estadoDeCita } from "@/lib/estadosCita";
+import { useEstadosCita } from "@/lib/useEstadosCita";
+import type { EstadoCita } from "@/lib/types";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { patientBalance } from "@/lib/budgets";
 import type { Appointment, AppointmentStatus, Patient } from "@/lib/types";
@@ -46,14 +48,13 @@ const STATUS_BG: Record<AppointmentStatus, string> = {
   ausente: "bg-state-warnbg border-state-warn/30 text-state-warn",
 };
 /* Estados de cita (nombres, orden y colores en lib/estadosCita.ts) */
-const ALL_STATUSES = ESTADOS_CITA;
-const STATUS_LABEL = ESTADO_LABEL;
-const STATUS_DOT = ESTADO_COLOR;
 
 type Tab = "diaria" | "global" | "semanal" | "mensual" | "reprog";
 
 /* ===== Vista MENSUAL (calendario del mes) ===== */
 function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (d: Date) => void; setTab: (t: Tab) => void; appointments: Appointment[] }) {
+  const estados = useEstadosCita();
+  const estadoDe = (x: Appointment) => estadoDeCita(x, estados);
   const y = day.getFullYear(), m = day.getMonth();
   const first = new Date(y, m, 1);
   const startWeekday = (first.getDay() + 6) % 7; // lunes = 0
@@ -97,7 +98,7 @@ function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (
                   <div className="space-y-0.5">
                     {appts.slice(0, 3).map((a) => (
                       <div key={a.id} className="flex items-center gap-1 truncate text-[11px] text-clinic-muted">
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: STATUS_DOT[a.status] }} />
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: estadoDe(a).color }} />
                         <span className="truncate">{a.start.slice(11, 16)} {a.title || "Cita"}</span>
                       </div>
                     ))}
@@ -129,7 +130,9 @@ export default function AgendaPage() {
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
   const [proFilter, setProFilter] = useState<string>("all");
   const [branchFilter, setBranchFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<Set<AppointmentStatus>>(new Set(ALL_STATUSES));
+  const estados = useEstadosCita();
+  const estadoDe = (x: Appointment) => estadoDeCita(x, estados);
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(() => new Set(estados.map((e) => e.id)));
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [preseleccion, setPreseleccion] = useState<{ fecha: Date; hora: string } | undefined>(undefined);
@@ -175,7 +178,7 @@ export default function AgendaPage() {
   const dayAppts = useMemo(() => {
     const t = q.trim().toLowerCase();
     return dayAllPro.filter((a) => {
-      if (!statusFilter.has(a.status)) return false;
+      if (!statusFilter.has(estadoDe(a).id)) return false;
       if (!t) return true;
       const p = db.patients.find((x) => x.id === a.patientId);
       return p ? fullName(p).toLowerCase().includes(t) : false;
@@ -233,20 +236,20 @@ export default function AgendaPage() {
     setPreseleccion(undefined);
     setEditing({ ...a, id: `a_${Date.now()}`, status: "pendiente", cancelReason: undefined, reminderSent: undefined, confirmedVia: undefined, videoToken: undefined });
   };
-  const toggleStatus = (s: AppointmentStatus) =>
+  const toggleStatus = (s: string) =>
     setStatusFilter((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
 
   /* Cambiar estado; cancelada/ausente piden motivo. */
-  const setEstado = (a: Appointment, s: AppointmentStatus) => {
+  const setEstado = (a: Appointment, e: EstadoCita) => {
     let cancelReason = a.cancelReason;
-    if (s === "cancelada" || s === "ausente") {
-      const r = window.prompt(`Motivo (${STATUS_LABEL[s].toLowerCase()}):`, a.cancelReason ?? "");
+    if (e.base === "cancelada" || e.base === "ausente") {
+      const r = window.prompt(`Motivo (${e.label.toLowerCase()}):`, a.cancelReason ?? "");
       if (r === null) return;
       cancelReason = r.trim() || undefined;
     } else {
       cancelReason = undefined;
     }
-    upsertAppointment({ ...a, status: s, cancelReason });
+    upsertAppointment({ ...a, status: e.base, estadoId: e.id, cancelReason });
   };
 
   const sucursalUnica = db.branches.length <= 1;
@@ -309,7 +312,7 @@ export default function AgendaPage() {
       {(tab === "diaria" || tab === "global") && porValidar > 0 && (
         <Reveal className="flex flex-wrap items-center gap-2 rounded-xl border border-state-ok/30 bg-state-okbg px-4 py-2.5 text-sm text-state-ok">
           <BellRing className="h-4 w-4" /> Hay {porValidar} agendamiento(s) online que deben ser validados.
-          <button onClick={() => setStatusFilter(new Set(["pendiente"]))} className="font-bold underline">Ver y validar</button>
+          <button onClick={() => setStatusFilter(new Set(estados.filter((e) => e.base === "pendiente").map((e) => e.id)))} className="font-bold underline">Ver y validar</button>
         </Reveal>
       )}
 
@@ -466,16 +469,16 @@ export default function AgendaPage() {
             <Card className="p-3">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-clinic-muted">Estados</span>
-                <button onClick={() => setStatusFilter(new Set(ALL_STATUSES))} className="text-[11px] font-bold text-azure-600 hover:underline">Marcar todos</button>
+                <button onClick={() => setStatusFilter(new Set(estados.map((e) => e.id)))} className="text-[11px] font-bold text-azure-600 hover:underline">Marcar todos</button>
               </div>
               <div className="space-y-0.5">
-                {ALL_STATUSES.map((s) => {
-                  const n = dayAllPro.filter((a) => a.status === s).length;
+                {estados.map((e) => {
+                  const n = dayAllPro.filter((a) => estadoDe(a).id === e.id).length;
                   return (
-                    <label key={s} className="flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1.5 text-sm hover:bg-clinic-bg">
-                      <input type="checkbox" checked={statusFilter.has(s)} onChange={() => toggleStatus(s)} className="accent-azure-600" />
-                      <span className="h-3.5 w-1 rounded-full" style={{ background: STATUS_DOT[s] }} />
-                      <span className="text-clinic-text">{STATUS_LABEL[s]}</span>
+                    <label key={e.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1.5 text-sm hover:bg-clinic-bg">
+                      <input type="checkbox" checked={statusFilter.has(e.id)} onChange={() => toggleStatus(e.id)} className="accent-azure-600" />
+                      <span className="h-3.5 w-1 rounded-full" style={{ background: e.color }} />
+                      <span className="text-clinic-text">{e.label}</span>
                       <span className="ml-auto tabular-nums text-xs text-clinic-muted">{n}</span>
                     </label>
                   );
@@ -490,7 +493,7 @@ export default function AgendaPage() {
               <div className="overflow-x-auto pb-1">
                 <div className="flex gap-3" style={{ minWidth: Math.max(1, dentists.filter((d) => proFilter === "all" || d.id === proFilter).length) * 210 }}>
                   {dentists.filter((d) => proFilter === "all" || d.id === proFilter).map((d) => {
-                    const list = dayAll.filter((a) => a.dentistId === d.id && statusFilter.has(a.status) && pasaFiltros(a)).sort((a, b) => a.start.localeCompare(b.start));
+                    const list = dayAll.filter((a) => a.dentistId === d.id && statusFilter.has(estadoDe(a).id) && pasaFiltros(a)).sort((a, b) => a.start.localeCompare(b.start));
                     return (
                       <div key={d.id} className="min-w-[200px] flex-1">
                         <div className="mb-2 flex items-center gap-2 rounded-xl bg-clinic-bg px-3 py-2">
@@ -503,10 +506,10 @@ export default function AgendaPage() {
                             const p = db.patients.find((x) => x.id === a.patientId);
                             return (
                               <div key={a.id} className="relative">
-                                <button onClick={() => setViewing(a)} className="block w-full rounded-xl border border-clinic-border border-l-4 bg-white p-2.5 text-left shadow-card transition-shadow hover:shadow-pop" style={{ borderLeftColor: STATUS_DOT[a.status] }}>
+                                <button onClick={() => setViewing(a)} className="block w-full rounded-xl border border-clinic-border border-l-4 bg-white p-2.5 text-left shadow-card transition-shadow hover:shadow-pop" style={{ borderLeftColor: estadoDe(a).color }}>
                                   <div className="tabular-nums text-[11px] font-bold text-clinic-text">{fmtTime(a.start)}–{fmtTime(a.end)}</div>
                                   <div className="truncate pr-6 text-sm font-semibold text-clinic-text">{p ? fullName(p) : "—"}</div>
-                                  <div className="truncate text-[11px] font-semibold" style={{ color: STATUS_DOT[a.status] }}>{STATUS_LABEL[a.status]}</div>
+                                  <div className="truncate text-[11px] font-semibold" style={{ color: estadoDe(a).color }}>{estadoDe(a).label}</div>
                                 </button>
                                 <ComentarioCita texto={a.notes} className="absolute right-1.5 top-1.5 print:hidden" />
                               </div>
@@ -539,7 +542,7 @@ export default function AgendaPage() {
                       return (
                         <tr key={a.id} className="align-top hover:bg-clinic-bg/50">
                           <td className="px-3 py-2">
-                            <div className="inline-flex flex-col items-center rounded-lg border-l-4 bg-clinic-bg px-2 py-1 tabular-nums text-[11px] font-bold text-clinic-text" style={{ borderColor: STATUS_DOT[a.status] }}>
+                            <div className="inline-flex flex-col items-center rounded-lg border-l-4 bg-clinic-bg px-2 py-1 tabular-nums text-[11px] font-bold text-clinic-text" style={{ borderColor: estadoDe(a).color }}>
                               <span>{fmtTime(a.start)}</span><ChevronDown className="h-3 w-3 text-clinic-muted" /><span>{fmtTime(a.end)}</span>
                             </div>
                           </td>
@@ -590,7 +593,7 @@ export default function AgendaPage() {
             const live = db.appointments.find((x) => x.id === viewing.id) ?? viewing;
             return (
               <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between"><span className="text-clinic-muted">Estado</span><StatusBadge status={live.status} /></div>
+                <div className="flex items-center justify-between"><span className="text-clinic-muted">Estado</span><StatusBadge status={live.status} estadoId={live.estadoId} /></div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Paciente</span>{p ? <Link className="font-bold text-azure-600 hover:underline" href={`/app/pacientes/${p.id}`}>{fullName(p)}</Link> : "—"}</div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Dentista</span><span className="font-semibold">{d?.name ?? "—"}</span></div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Horario</span><span className="tabular-nums text-xs">{new Date(live.start).toLocaleString("es-PY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} → {fmtTime(live.end)}</span></div>
@@ -684,22 +687,24 @@ export default function AgendaPage() {
    El menú se dibuja en un portal (components/Desplegable): dentro de la tabla con scroll
    quedaba cortado y aparecía una barra interna. Arriba, «Notificar por mail». */
 function EstadoCell({ appt, onSet, editable, onNotificar, sinEmail }: {
-  appt: Appointment; onSet: (s: AppointmentStatus) => void; editable: boolean;
+  appt: Appointment; onSet: (e: EstadoCita) => void; editable: boolean;
   /** Avisa al paciente por correo el estado actual. Sin esto no se muestra la opción. */
   onNotificar?: () => void;
   sinEmail?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
-  const punto = <span className="h-2 w-2 rounded-full" style={{ background: STATUS_DOT[appt.status] }} />;
+  const estados = useEstadosCita();
+  const actual = estadoDeCita(appt, estados);
+  const punto = <span className="h-2 w-2 rounded-full" style={{ background: actual.color }} />;
   if (!editable) {
-    return <span className="flex items-center gap-1.5 px-1 py-0.5 text-sm font-semibold" style={{ color: STATUS_DOT[appt.status] }}>{punto}{STATUS_LABEL[appt.status]}</span>;
+    return <span className="flex items-center gap-1.5 px-1 py-0.5 text-sm font-semibold" style={{ color: actual.color }}>{punto}{actual.label}</span>;
   }
   return (
     <>
-      <button ref={ref} type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 rounded-lg px-1 py-0.5 text-sm font-semibold hover:bg-clinic-bg" style={{ color: STATUS_DOT[appt.status] }}>
+      <button ref={ref} type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 rounded-lg px-1 py-0.5 text-sm font-semibold hover:bg-clinic-bg" style={{ color: actual.color }}>
         {punto}
-        {STATUS_LABEL[appt.status]}
+        {actual.label}
         <ChevronDown className={`h-3.5 w-3.5 text-clinic-muted transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       <Desplegable ancla={ref} abierto={open} onCerrar={() => setOpen(false)} ancho={220} etiqueta="Estado de la cita">
@@ -711,11 +716,11 @@ function EstadoCell({ appt, onSet, editable, onNotificar, sinEmail }: {
             <div className="my-1 border-t border-clinic-border" />
           </>
         )}
-        {ALL_STATUSES.map((st) => (
-          <ItemMenu key={st} onClick={() => { onSet(st); setOpen(false); }}>
-            <span className="h-2 w-2 rounded-full" style={{ background: STATUS_DOT[st] }} />
-            <span className={st === appt.status ? "font-bold" : ""}>{STATUS_LABEL[st]}</span>
-            {st === appt.status && <Check className="ml-auto h-3.5 w-3.5 text-azure-600" />}
+        {estados.map((st) => (
+          <ItemMenu key={st.id} onClick={() => { onSet(st); setOpen(false); }}>
+            <span className="h-2 w-2 rounded-full" style={{ background: st.color }} />
+            <span className={st.id === actual.id ? "font-bold" : ""}>{st.label}</span>
+            {st.id === actual.id && <Check className="ml-auto h-3.5 w-3.5 text-azure-600" />}
           </ItemMenu>
         ))}
       </Desplegable>

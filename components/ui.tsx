@@ -2,7 +2,8 @@
 import { ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { ESTADO_LABEL, ESTADO_TONO } from "@/lib/estadosCita";
+import { ESTADO_TONO, estadoDeCita } from "@/lib/estadosCita";
+import { useEstadosCita } from "@/lib/useEstadosCita";
 import type { BillingFlag, AppointmentStatus } from "@/lib/types";
 import { FLAG_INFO } from "@/lib/billing";
 
@@ -68,8 +69,15 @@ export function FlagBadge({ flag }: { flag: BillingFlag }) {
   return <Badge tone={info.tone === "err" ? "err" : info.tone} tip={info.desc}>{info.label}</Badge>;
 }
 
-export function StatusBadge({ status }: { status: AppointmentStatus }) {
-  return <Badge tone={ESTADO_TONO[status] ?? "muted"}>{ESTADO_LABEL[status] ?? status}</Badge>;
+export function StatusBadge({ status, estadoId }: { status: AppointmentStatus; estadoId?: string }) {
+  const estados = useEstadosCita();
+  const e = estadoDeCita({ status, estadoId }, estados);
+  return (
+    <Badge tone={ESTADO_TONO[e.base] ?? "muted"}>
+      <span aria-hidden className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: e.color }} />
+      {e.label}
+    </Badge>
+  );
 }
 
 /** Selector de lo que puede recibir foco dentro del diálogo (para la trampa de foco). */

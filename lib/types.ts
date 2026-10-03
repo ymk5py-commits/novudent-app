@@ -41,6 +41,8 @@ export interface Clinic {
     consentTemplates?: ConsentTemplate[];
     /** Config de campos del paciente: presente/requerido por contexto */
     patientFields?: Record<string, FieldConfig>;
+    /** Estados de cita propios de la clínica (nombre, color, comportamiento). Sin esto, los de fábrica. */
+    estadosCita?: EstadoCita[];
     /** Plazos de las tareas automáticas de gestión (módulo Tareas). */
     taskDeadlines?: TaskDeadlines;
     /** Reserva online del paciente (paridad Dentalink). */
@@ -127,6 +129,21 @@ export interface User {
  *  Las claves no cambian para no romper los datos guardados. */
 export type AppointmentStatus = "confirmada" | "en_atencion" | "en_sala" | "pendiente" | "completada" | "cancelada" | "ausente";
 
+/** Tipo de estado de cita: de fábrica (reservado), interno (lo pone el sistema: WhatsApp,
+ *  agenda online) o propio de la clínica. Solo los propios se pueden borrar. */
+export type TipoEstadoCita = "reservado" | "interno" | "propio";
+
+/** Estado de cita configurable. `base` es el comportamiento que entiende el resto de la
+ *  app (agenda, tareas, historial); `anula` libera el cupo en la agenda. */
+export interface EstadoCita {
+  id: string;
+  label: string;
+  color: string;
+  base: AppointmentStatus;
+  tipo: TipoEstadoCita;
+  activo?: boolean;
+}
+
 export interface Appointment {
   id: string;
   clinicId: string;
@@ -136,6 +153,8 @@ export interface Appointment {
   start: string; // ISO
   end: string; // ISO
   status: AppointmentStatus;
+  /** Estado configurable de la clínica (lib/estadosCita). `status` es su comportamiento base. */
+  estadoId?: string;
   amount: number; // Importe total
   discount: number; // Descuento
   notes?: string;

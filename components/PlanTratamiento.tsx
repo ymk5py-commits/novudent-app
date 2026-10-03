@@ -315,7 +315,7 @@ function PlanFinanciero({
               {citas.map((a) => (
                 <li key={a.id} className="flex items-center justify-between gap-2 text-xs">
                   <span className="min-w-0 flex-1 truncate text-clinic-muted">{fmtDate(a.start)} · {a.title}</span>
-                  <StatusBadge status={a.status} />
+                  <StatusBadge status={a.status} estadoId={a.estadoId} />
                 </li>
               ))}
             </ul>

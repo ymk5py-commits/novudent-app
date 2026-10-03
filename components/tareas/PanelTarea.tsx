@@ -408,7 +408,7 @@ function Citas({ paciente }: { paciente: Patient }) {
             </div>
           </div>
           <div className="mt-2 flex items-center gap-2">
-            <StatusBadge status={a.status} />
+            <StatusBadge status={a.status} estadoId={a.estadoId} />
             {a.budgetId && (
               <Link href={`/app/pacientes/${paciente.id}#planes`} className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-azure-700 hover:underline">
                 Ir al tratamiento <ExternalLink aria-hidden className="h-3 w-3" />

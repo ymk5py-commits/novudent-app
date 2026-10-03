@@ -336,7 +336,7 @@ export default function Dashboard() {
                       <span className="block text-xs text-clinic-muted">{a.title}</span>
                     </span>
                     {alcance.puede("money.view") && <span className="hidden text-xs font-semibold text-clinic-muted sm:block">{fmtGs(a.amount - a.discount)}</span>}
-                    <StatusBadge status={a.status} />
+                    <StatusBadge status={a.status} estadoId={a.estadoId} />
                   </Link>
                 );
               })}

@@ -199,8 +199,8 @@ cupo en la agenda.
 
 ## 4. Qué le falta a Novudent (ordenado por valor para la clínica)
 
-1. **Estados de cita configurables** (hoy 7 fijos; Dentalink 16 + propios, con color,
-   anulación y tipo). Administración › Estados de cita.
+1. ~~**Estados de cita configurables**~~ ✅ hecho el 3-oct-2026 (`lib/estadosCita.ts`,
+   Configuración › Estados de cita: 7 base + 9 internos + propios, con color, anulación y tipo).
 2. **Ingresar un pago en 3 pasos** con varios medios en un pago, abono libre y
    comprobante imprimible/enviable.
 3. **Plan de tratamiento: Opciones ▾** (financiamiento por crédito con cuotas y
