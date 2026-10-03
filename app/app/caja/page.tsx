@@ -64,9 +64,9 @@ export default function CashPage() {
     <div className="space-y-4">
       <Reveal className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-2"><Wallet className="h-6 w-6 text-azure-600" /><h1 className="text-[16px] font-bold text-clinic-text">Cajas</h1></div>
-        <div className="flex flex-wrap gap-1 rounded-xl border border-clinic-border bg-white p-1">
+        <div className="flex flex-wrap border-b border-clinic-border">
           {TABS.map(([k, label]) => (
-            <button key={k} onClick={() => setTab(k)} className={`rounded-lg px-3 py-1.5 text-[14px] font-normal transition-colors ${tab === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
+            <button key={k} onClick={() => setTab(k)} className={`-mb-px rounded-none border-b-2 px-3 py-1.5 text-[14px] font-normal transition-colors ${tab === k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}>
               {label}
               {k === "abiertas" && abiertas.length > 0 ? ` (${abiertas.length})` : ""}
               {k === "cheques" && chequesPorCobrar > 0 ? ` (${chequesPorCobrar})` : ""}
@@ -203,7 +203,7 @@ function SesionesTable({ sessions, kind, onCerrar }: { sessions: CashSession[]; 
     <Card className="overflow-x-auto p-0">
       <table className="w-full min-w-[820px] text-sm">
         <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-          <th className="px-4 py-3">Usuario</th><th className="px-2 py-3">Apertura</th>{kind === "closed" && <th className="px-2 py-3">Cierre</th>}<th className="px-2 py-3 text-right">Saldo inicial</th><th className="px-2 py-3 text-right">Ingresos</th><th className="px-2 py-3 text-right">Egresos</th><th className="px-2 py-3 text-right">Acumulado</th>{kind === "closed" && <th className="px-2 py-3 text-right">Diferencia</th>}{kind === "open" && <th className="px-2 py-3"></th>}
+          <th className="px-4 py-2">Usuario</th><th className="px-2 py-2">Apertura</th>{kind === "closed" && <th className="px-2 py-2">Cierre</th>}<th className="px-2 py-2 text-right">Saldo inicial</th><th className="px-2 py-2 text-right">Ingresos</th><th className="px-2 py-2 text-right">Egresos</th><th className="px-2 py-2 text-right">Acumulado</th>{kind === "closed" && <th className="px-2 py-2 text-right">Diferencia</th>}{kind === "open" && <th className="px-2 py-2"></th>}
         </tr></thead>
         <tbody className="divide-y divide-clinic-border">
           {sessions.map((s) => {
@@ -391,9 +391,9 @@ function ChequesPanel() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-1 rounded-xl border border-clinic-border bg-white p-1">
+      <div className="flex flex-wrap border-b border-clinic-border">
         {VISTAS.map(([k, label]) => (
-          <button key={k} onClick={() => setVista(k)} className={`rounded-lg px-3 py-1.5 text-[14px] font-normal transition-colors ${vista === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
+          <button key={k} onClick={() => setVista(k)} className={`-mb-px rounded-none border-b-2 px-3 py-1.5 text-[14px] font-normal transition-colors ${vista === k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}>
             {label}{k === "porCobrar" && porCobrar.length > 0 ? ` (${porCobrar.length})` : ""}
           </button>
         ))}
@@ -406,13 +406,13 @@ function ChequesPanel() {
           <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-                <th className="px-4 py-3">Paciente</th>
-                <th className="px-2 py-3">N° cheque</th>
-                <th className="px-2 py-3">Banco</th>
-                <th className="px-2 py-3">Fecha de cobro</th>
-                <th className="px-2 py-3 text-right">Monto</th>
-                <th className="px-2 py-3">Recibido por</th>
-                {vista === "porCobrar" && <th className="px-2 py-3"></th>}
+                <th className="px-4 py-2">Paciente</th>
+                <th className="px-2 py-2">N° cheque</th>
+                <th className="px-2 py-2">Banco</th>
+                <th className="px-2 py-2">Fecha de cobro</th>
+                <th className="px-2 py-2 text-right">Monto</th>
+                <th className="px-2 py-2">Recibido por</th>
+                {vista === "porCobrar" && <th className="px-2 py-2"></th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-clinic-border">

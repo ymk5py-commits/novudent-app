@@ -204,14 +204,14 @@ export default function LaboratoriosPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-                  <th className="px-5 py-3">Paciente</th>
-                  <th className="px-5 py-3">Laboratorio</th>
-                  <th className="px-5 py-3">Trabajo</th>
-                  <th className="px-5 py-3">Enviado</th>
-                  <th className="px-5 py-3">Entrega</th>
-                  <th className="px-5 py-3 text-right">Costo</th>
-                  <th className="px-5 py-3">Estado</th>
-                  {canWrite && <th className="px-5 py-3 text-right">Acciones</th>}
+                  <th className="px-5 py-2">Paciente</th>
+                  <th className="px-5 py-2">Laboratorio</th>
+                  <th className="px-5 py-2">Trabajo</th>
+                  <th className="px-5 py-2">Enviado</th>
+                  <th className="px-5 py-2">Entrega</th>
+                  <th className="px-5 py-2 text-right">Costo</th>
+                  <th className="px-5 py-2">Estado</th>
+                  {canWrite && <th className="px-5 py-2 text-right">Acciones</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-clinic-border">
@@ -231,7 +231,7 @@ export default function LaboratoriosPage() {
                       key={order.id}
                       className={isOverdue ? "bg-state-errbg/30" : "hover:bg-clinic-bg/60"}
                     >
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-2">
                         <span className="block font-semibold text-clinic-text">
                           {patient ? fullName(patient) : "—"}
                         </span>
@@ -241,8 +241,8 @@ export default function LaboratoriosPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-clinic-text">{order.lab}</td>
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-2 text-clinic-text">{order.lab}</td>
+                      <td className="px-5 py-2">
                         <span className="font-medium text-clinic-text">{order.workType}</span>
                         {order.notes && (
                           <span className="mt-0.5 block truncate max-w-[140px] text-[11px] text-clinic-muted">
@@ -250,10 +250,10 @@ export default function LaboratoriosPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3 tabular-nums text-xs text-clinic-muted">
+                      <td className="px-5 py-2 tabular-nums text-xs text-clinic-muted">
                         {fmtDate(order.sentAt)}
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-2">
                         {order.dueAt ? (
                           <span
                             className={`tabular-nums text-xs ${
@@ -269,16 +269,16 @@ export default function LaboratoriosPage() {
                           <span className="text-[11px] text-clinic-muted">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-right tabular-nums text-xs">
+                      <td className="px-5 py-2 text-right tabular-nums text-xs">
                         {order.cost != null ? fmtGs(order.cost) : "—"}
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-2">
                         <Badge tone={LAB_STATUS_TONE[order.status]}>
                           {LAB_STATUS_LABEL[order.status]}
                         </Badge>
                       </td>
                       {canWrite && (
-                        <td className="px-5 py-3">
+                        <td className="px-5 py-2">
                           <div className="flex items-center justify-end gap-1.5">
                             {/* Avanzar estado */}
                             {next && (

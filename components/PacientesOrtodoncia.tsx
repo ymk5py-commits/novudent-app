@@ -86,13 +86,13 @@ export function PacientesOrtodoncia() {
           <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-                <th className="px-4 py-3">Paciente</th>
-                <th className="px-2 py-3">Sexo</th>
-                <th className="px-2 py-3">Edad</th>
-                {verPersonales && <th className="px-2 py-3">Tel. móvil</th>}
-                <th className="px-2 py-3">Inicio</th>
-                <th className="px-2 py-3">Dr(a) tratante</th>
-                <th className="w-48 px-4 py-3">Progreso calendario</th>
+                <th className="px-4 py-2">Paciente</th>
+                <th className="px-2 py-2">Sexo</th>
+                <th className="px-2 py-2">Edad</th>
+                {verPersonales && <th className="px-2 py-2">Tel. móvil</th>}
+                <th className="px-2 py-2">Inicio</th>
+                <th className="px-2 py-2">Dr(a) tratante</th>
+                <th className="w-48 px-4 py-2">Progreso calendario</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-clinic-border">

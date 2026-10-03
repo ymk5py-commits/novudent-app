@@ -255,9 +255,9 @@ export default function ReportsPage() {
       </div>
 
       {/* Sub-pestañas estilo Dentalink */}
-      <div className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
+      <div className="flex flex-wrap border-b border-clinic-border">
         {([["desempeno", "Panel de desempeño"], ["analisis", "Análisis de pacientes"], ["excel", "Reportes Excel"]] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setTab(k)} className={`rounded-xl px-3.5 py-2 text-[14px] font-normal transition-colors ${tab === k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>{label}</button>
+          <button key={k} onClick={() => setTab(k)} className={`-mb-px rounded-none border-b-2 px-3.5 py-2 text-[14px] font-normal transition-colors ${tab === k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}>{label}</button>
         ))}
       </div>
 

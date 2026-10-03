@@ -95,11 +95,11 @@ export default function InventoryPage() {
           <table className="hidden w-full text-sm sm:table">
             <thead>
               <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-                <th className="px-5 py-3">Ítem</th>
-                <th className="px-5 py-3 text-right">Stock</th>
-                <th className="px-5 py-3 text-right">Mín / Ópt</th>
-                <th className="px-5 py-3 text-right">Costo unit.</th>
-                <th className="px-5 py-3 text-right">Acciones</th>
+                <th className="px-5 py-2">Ítem</th>
+                <th className="px-5 py-2 text-right">Stock</th>
+                <th className="px-5 py-2 text-right">Mín / Ópt</th>
+                <th className="px-5 py-2 text-right">Costo unit.</th>
+                <th className="px-5 py-2 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-clinic-border">
@@ -108,17 +108,17 @@ export default function InventoryPage() {
                 const li = LEVEL[lvl];
                 return (
                   <tr key={s.id} className={lvl === "critico" ? "bg-state-errbg/30" : lvl === "bajo" ? "bg-state-warnbg/30" : "hover:bg-clinic-bg/60"}>
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-2">
                       <span className="block font-semibold text-clinic-text">{s.name}</span>
                       <span className="text-[11px] text-clinic-muted">{s.category} · {s.unit}{s.supplier ? ` · ${s.supplier}` : ""}</span>
                     </td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-5 py-2 text-right">
                       <span className={`tabular-nums text-sm font-bold ${lvl === "critico" ? "text-state-err" : lvl === "bajo" ? "text-state-warn" : "text-clinic-text"}`}>{s.stock}</span>{" "}
                       <Badge tone={li.tone} tip={`Mínimo ${s.minStock}${s.optimalStock != null ? ` · óptimo ${s.optimalStock}` : ""}${s.maxStock != null ? ` · máximo ${s.maxStock}` : ""}`}>{li.label}</Badge>
                     </td>
-                    <td className="px-5 py-3 text-right tabular-nums text-xs text-clinic-muted">{s.minStock}{s.optimalStock != null ? ` / ${s.optimalStock}` : ""}</td>
-                    <td className="px-5 py-3 text-right tabular-nums text-xs">{fmtGs(s.cost)}</td>
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-2 text-right tabular-nums text-xs text-clinic-muted">{s.minStock}{s.optimalStock != null ? ` / ${s.optimalStock}` : ""}</td>
+                    <td className="px-5 py-2 text-right tabular-nums text-xs">{fmtGs(s.cost)}</td>
+                    <td className="px-5 py-2">
                       <div className="flex justify-end gap-1.5">
                         <button onClick={() => setMoving({ item: s, type: "entrada" })} className="grid h-8 w-8 place-items-center rounded-lg bg-state-okbg text-state-ok hover:opacity-80" title="Registrar entrada">
                           <PackagePlus className="h-4 w-4" />

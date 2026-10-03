@@ -280,9 +280,9 @@ export default function AgendaPage() {
           <h1 className="text-[16px] font-bold text-clinic-text">Agenda</h1>
           <span className="rounded-full bg-azure-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-azure-700">{headerCount} citas</span>
         </div>
-        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-clinic-border bg-white p-1">
+        <div className="flex flex-wrap items-center border-b border-clinic-border">
           {TABS.map(([k, label, Icon]) => (
-            <button key={k} onClick={() => setTab(k)} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[14px] font-normal transition-colors ${tab === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>
+            <button key={k} onClick={() => setTab(k)} className={`flex items-center gap-1.5 -mb-px rounded-none border-b-2 px-3 py-1.5 text-[14px] font-normal transition-colors ${tab === k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}>
               <Icon className="h-4 w-4" /> {label}
             </button>
           ))}
@@ -418,7 +418,7 @@ export default function AgendaPage() {
             <Card className="overflow-x-auto p-0">
               <table className="w-full min-w-[640px] text-sm">
                 <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-                  <th className="px-4 py-3">Cita original</th><th className="px-2 py-3">Paciente</th><th className="px-2 py-3">Doctor</th><th className="px-2 py-3"></th>
+                  <th className="px-4 py-2">Cita original</th><th className="px-2 py-2">Paciente</th><th className="px-2 py-2">Doctor</th><th className="px-2 py-2"></th>
                 </tr></thead>
                 <tbody className="divide-y divide-clinic-border">
                   {reprog.map((a) => {
@@ -529,7 +529,7 @@ export default function AgendaPage() {
               <Card className="overflow-x-auto p-0 print:overflow-visible">
                 <table className="w-full min-w-[820px] text-sm print:min-w-0">
                   <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-                    <th className="px-3 py-3">Hora</th><th className="px-2 py-3">Paciente</th><th className="px-2 py-3">Doctor</th><th className="px-2 py-3">Estado de la cita</th>{verMontos && <th className="px-2 py-3">Situación</th>}<th className="px-2 py-3"></th>
+                    <th className="px-3 py-2">Hora</th><th className="px-2 py-2">Paciente</th><th className="px-2 py-2">Doctor</th><th className="px-2 py-2">Estado de la cita</th>{verMontos && <th className="px-2 py-2">Situación</th>}<th className="px-2 py-2"></th>
                   </tr></thead>
                   <tbody className="divide-y divide-clinic-border">
                     {dayAppts.map((a) => {
@@ -538,20 +538,20 @@ export default function AgendaPage() {
                       const multi = p ? dayAll.filter((x) => x.patientId === p.id).length > 1 : false;
                       return (
                         <tr key={a.id} className="align-top hover:bg-clinic-bg/50">
-                          <td className="px-3 py-3">
+                          <td className="px-3 py-2">
                             <div className="inline-flex flex-col items-center rounded-lg border-l-4 bg-clinic-bg px-2 py-1 tabular-nums text-[11px] font-bold text-clinic-text" style={{ borderColor: STATUS_DOT[a.status] }}>
                               <span>{fmtTime(a.start)}</span><ChevronDown className="h-3 w-3 text-clinic-muted" /><span>{fmtTime(a.end)}</span>
                             </div>
                           </td>
-                          <td className="px-2 py-3">
+                          <td className="px-2 py-2">
                             {p ? <Link href={`/app/pacientes/${p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(p)}</Link> : <span className="text-clinic-muted">—</span>}
                             {a.source === "online" && <span className="ml-2 rounded bg-state-infobg px-1.5 text-[11px] font-bold text-state-info">Online</span>}
                             {multi && <span className="ml-2 rounded bg-state-warnbg px-1.5 text-[11px] font-bold text-state-warn">Múltiples citas hoy</span>}
                             <ComentarioCita texto={a.notes} className="ml-1 align-middle print:hidden" />
                             {verPersonales && p?.phone && <div className="mt-0.5 flex items-center gap-1 text-xs text-clinic-muted"><Phone className="h-3 w-3" /> {p.phone}</div>}
                           </td>
-                          <td className="px-2 py-3 text-clinic-muted">{dent?.name ?? "—"}</td>
-                          <td className="px-2 py-3">
+                          <td className="px-2 py-2 text-clinic-muted">{dent?.name ?? "—"}</td>
+                          <td className="px-2 py-2">
                             <EstadoCell
                               appt={a}
                               editable={puedeEditar}
@@ -561,8 +561,8 @@ export default function AgendaPage() {
                             />
                             {(a.status === "cancelada" || a.status === "ausente") && <div className="mt-0.5 text-[11px] text-clinic-muted">{a.cancelReason || "Sin motivo"}</div>}
                           </td>
-                          {verMontos && <td className="px-2 py-3"><SituacionPill patientId={a.patientId} /></td>}
-                          <td className="px-2 py-3 text-right print:hidden">
+                          {verMontos && <td className="px-2 py-2"><SituacionPill patientId={a.patientId} /></td>}
+                          <td className="px-2 py-2 text-right print:hidden">
                             <AccionesCita
                               onVer={() => setViewing(a)}
                               onEditar={puedeEditar ? () => { setPreseleccion(undefined); setEditing(a); } : undefined}

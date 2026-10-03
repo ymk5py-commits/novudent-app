@@ -110,12 +110,12 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-                  <th className="w-10 px-4 py-3"></th>
-                  <th className="px-2 py-3">Presupuesto</th>
-                  <th className="px-2 py-3 text-right">Total</th>
-                  <th className="px-2 py-3 text-right">Realizado</th>
-                  <th className="px-2 py-3 text-right">Pagado</th>
-                  <th className="px-2 py-3 text-right">Saldo</th>
+                  <th className="w-10 px-4 py-2"></th>
+                  <th className="px-2 py-2">Presupuesto</th>
+                  <th className="px-2 py-2 text-right">Total</th>
+                  <th className="px-2 py-2 text-right">Realizado</th>
+                  <th className="px-2 py-2 text-right">Pagado</th>
+                  <th className="px-2 py-2 text-right">Saldo</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-clinic-border">

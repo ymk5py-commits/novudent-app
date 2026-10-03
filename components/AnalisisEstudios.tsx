@@ -86,13 +86,13 @@ function TablaEstudio({ vista }: { vista: Exclude<Vista, "ortodoncia"> }) {
           <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-                <th className="px-4 py-3">Paciente</th>
-                {verPersonales && <th className="px-2 py-3">CI</th>}
-                <th className="px-2 py-3">Profesional</th>
-                <th className="px-2 py-3">Última cita</th>
-                <th className="px-2 py-3">Próxima cita</th>
-                <th className="px-2 py-3 text-right">Citas</th>
-                <th className="px-2 py-3 text-right">Planes</th>
+                <th className="px-4 py-2">Paciente</th>
+                {verPersonales && <th className="px-2 py-2">CI</th>}
+                <th className="px-2 py-2">Profesional</th>
+                <th className="px-2 py-2">Última cita</th>
+                <th className="px-2 py-2">Próxima cita</th>
+                <th className="px-2 py-2 text-right">Citas</th>
+                <th className="px-2 py-2 text-right">Planes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-clinic-border">

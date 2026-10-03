@@ -65,12 +65,12 @@ export default function PatientsPage() {
         {verPersonales && <Btn onClick={() => router.push("/app/pacientes/nuevo")}><Plus className="h-4 w-4" /> Nuevo paciente</Btn>}
       </Reveal>
 
-      <Reveal delay={0.05} className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
+      <Reveal delay={0.05} className="flex flex-wrap items-end border-b border-clinic-border">
         {TABS.map((t, i) => (
           <span key={t.k} className="contents">
             <button
               onClick={() => setTab(t.k)}
-              className={`rounded-xl px-3.5 py-2 text-[14px] font-normal transition-colors ${tab === t.k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
+              className={`-mb-px rounded-none border-b-2 px-3.5 py-2 text-[14px] font-normal transition-colors ${tab === t.k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}
             >
               {t.label}
             </button>
@@ -143,13 +143,13 @@ export default function PatientsPage() {
               <table className="w-full min-w-[680px] text-sm">
                 <thead>
                   <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-                    <th className="px-4 py-3">Código</th>
-                    {verPersonales && <th className="px-2 py-3">CI o RUC</th>}
-                    <th className="px-2 py-3">Nombre</th>
-                    <th className="px-2 py-3">Apellido</th>
-                    <th className="px-2 py-3">Tratamientos</th>
-                    {verMontos && <th className="px-2 py-3">Deudas</th>}
-                    <th className="px-2 py-3"><span className="sr-only">Acciones</span></th>
+                    <th className="px-4 py-2">Código</th>
+                    {verPersonales && <th className="px-2 py-2">CI o RUC</th>}
+                    <th className="px-2 py-2">Nombre</th>
+                    <th className="px-2 py-2">Apellido</th>
+                    <th className="px-2 py-2">Tratamientos</th>
+                    {verMontos && <th className="px-2 py-2">Deudas</th>}
+                    <th className="px-2 py-2"><span className="sr-only">Acciones</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-clinic-border">

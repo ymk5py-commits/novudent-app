@@ -126,7 +126,7 @@ export default function TareasPage() {
                 aria-label={label}
                 title={label}
                 onClick={() => { setVista(k); history.replaceState(null, "", k === "bandeja" ? window.location.pathname + window.location.search : `#${k}`); }}
-                className={`grid h-8 w-9 place-items-center rounded-lg transition-colors ${vistaEfectiva === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
+                className={`grid h-8 w-9 place-items-center rounded-lg transition-colors ${vistaEfectiva === k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}
               >
                 <Icono className="h-4 w-4" />
               </button>

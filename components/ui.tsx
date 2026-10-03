@@ -7,7 +7,7 @@ import type { BillingFlag, AppointmentStatus } from "@/lib/types";
 import { FLAG_INFO } from "@/lib/billing";
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-[18px] border border-clinic-border bg-white shadow-card ${className}`}>{children}</div>;
+  return <div className={`rounded border border-clinic-border bg-white ${className}`}>{children}</div>;
 }
 
 export function Btn({
@@ -29,7 +29,7 @@ export function Btn({
 }) {
   const styles = {
     primary:
-      "bg-azure-600 text-white shadow-[0_6px_16px_-8px_rgba(3,105,201,0.55)] hover:bg-azure-700 hover:shadow-[0_8px_18px_-8px_rgba(3,105,201,0.42)] active:scale-[0.98] disabled:bg-clinic-border disabled:text-clinic-muted disabled:shadow-none",
+      "bg-azure-600 text-white hover:bg-azure-700 active:scale-[0.98] disabled:bg-clinic-border disabled:text-clinic-muted disabled:shadow-none",
     ghost: "text-clinic-text hover:bg-clinic-bg active:scale-[0.98]",
     outline: "border border-clinic-border bg-white text-clinic-text hover:border-azure-300 hover:bg-azure-50 hover:text-azure-700 active:scale-[0.98]",
     danger: "bg-state-errbg text-state-err hover:bg-red-100 active:scale-[0.98]",
@@ -40,7 +40,7 @@ export function Btn({
       onClick={onClick}
       disabled={disabled}
       data-tip={tip}
-      className={`inline-flex min-h-[34px] items-center justify-center gap-1.5 rounded-[10px] px-3.5 py-1.5 text-[13px] font-semibold transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 disabled:cursor-not-allowed ${styles} ${className}`}
+      className={`inline-flex min-h-[30px] items-center justify-center gap-1.5 rounded px-3 py-1 text-[13px] font-semibold transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 disabled:cursor-not-allowed ${styles} ${className}`}
     >
       {children}
     </button>
@@ -57,7 +57,7 @@ export function Badge({ tone, children, tip }: { tone: "ok" | "warn" | "err" | "
     muted: "bg-clinic-bg text-clinic-muted",
   }[tone];
   return (
-    <span data-tip={tip} className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${c}`}>
+    <span data-tip={tip} className={`inline-flex items-center rounded px-2 py-0.5 text-[12px] font-semibold ${c}`}>
       {children}
     </span>
   );
@@ -146,7 +146,7 @@ export function useDialogA11y(onClose: () => void) {
 export function Portal({ children }: { children: ReactNode }) {
   const [montado, setMontado] = useState(false);
   useEffect(() => { setMontado(true); }, []);   // en SSR no hay document
-  return montado ? createPortal(children, document.body) : null;
+  return montado ? createPortal(<div className="app-portal">{children}</div>, document.body) : null;
 }
 
 /** Contenido del diálogo. Va aparte de <Modal> a propósito: así useDialogA11y
@@ -159,7 +159,7 @@ function ModalContent({ title, onClose, children, wide, xl }: { title: string; o
     <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4" onClick={onClose} role="presentation">
       <div
         {...dialogProps}
-        className={`max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-[20px] border border-clinic-border bg-white p-6 shadow-pop outline-none ${xl ? "max-w-6xl" : wide ? "max-w-3xl" : "max-w-lg"}`}
+        className={`max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded border border-clinic-border bg-white p-5 shadow-pop outline-none ${xl ? "max-w-6xl" : wide ? "max-w-3xl" : "max-w-lg"}`}
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 id={titleId} className="text-[16px] font-bold text-clinic-text">{title}</h3>
@@ -193,11 +193,11 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 export const inputCls =
-  "w-full min-h-10 rounded-[10px] border border-clinic-border bg-white px-3 py-2 text-sm text-clinic-text placeholder:text-clinic-muted/60 transition-[border-color,box-shadow] focus:border-azure-600 focus:ring-2 focus:ring-azure-100";
+  "w-full min-h-[32px] rounded border border-clinic-border bg-white px-2.5 py-1.5 text-[13px] text-clinic-text placeholder:text-clinic-muted/60 transition-[border-color,box-shadow] focus:border-azure-600 focus:ring-2 focus:ring-azure-100";
 
 export function Empty({ title, desc }: { title: string; desc?: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-clinic-border bg-white p-10 text-center">
+    <div className="rounded border border-dashed border-clinic-border bg-white p-8 text-center">
       <div className="text-sm font-bold text-clinic-text">{title}</div>
       {desc && <div className="mt-1 text-sm text-clinic-muted">{desc}</div>}
     </div>

@@ -194,13 +194,13 @@ export default function LiquidacionesPage() {
                 <tbody className="divide-y divide-clinic-border">
                   {rows.map((r) => (
                     <tr key={r.d.id}>
-                      <td className="py-3 pr-3">
+                      <td className="py-2 pr-3">
                         <span className="flex items-center gap-2 font-semibold text-clinic-text">
                           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: r.d.color }} />
                           {r.d.name}
                         </span>
                       </td>
-                      <td className="py-3 pr-3 text-right">
+                      <td className="py-2 pr-3 text-right">
                         <input
                           type="number"
                           min={0}
@@ -212,7 +212,7 @@ export default function LiquidacionesPage() {
                         />
                         <div className="mt-1 text-[11px] text-clinic-muted">calc.: {fmtGs(r.computedProd)}</div>
                       </td>
-                      <td className="py-3 pr-3 text-right">
+                      <td className="py-2 pr-3 text-right">
                         <span className="relative inline-flex items-center">
                           <input
                             type="number"
@@ -227,7 +227,7 @@ export default function LiquidacionesPage() {
                           <Percent className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-clinic-muted" />
                         </span>
                       </td>
-                      <td className="py-3 pr-3 text-right">
+                      <td className="py-2 pr-3 text-right">
                         <input
                           type="number"
                           min={0}
@@ -238,8 +238,8 @@ export default function LiquidacionesPage() {
                           title="Sueldo base del período (salario fijo / mixto)"
                         />
                       </td>
-                      <td className="py-3 pr-3 text-right tabular-nums font-bold text-state-ok">{fmtGs(r.amount)}</td>
-                      <td className="py-3 pl-3 text-right">
+                      <td className="py-2 pr-3 text-right tabular-nums font-bold text-state-ok">{fmtGs(r.amount)}</td>
+                      <td className="py-2 pl-3 text-right">
                         <Btn onClick={() => liquidar(r)} disabled={r.amount <= 0}>
                           <Coins className="h-3.5 w-3.5" /> Liquidar
                         </Btn>
@@ -286,14 +286,14 @@ export default function LiquidacionesPage() {
                 <tbody className="divide-y divide-clinic-border">
                   {history.map((s) => (
                     <tr key={s.id}>
-                      <td className="py-3 pr-3 font-semibold text-clinic-text">{proName(s.professionalId)}</td>
-                      <td className="py-3 pr-3 text-clinic-muted">
+                      <td className="py-2 pr-3 font-semibold text-clinic-text">{proName(s.professionalId)}</td>
+                      <td className="py-2 pr-3 text-clinic-muted">
                         {fmtDate(s.periodFrom + "T12:00:00")} → {fmtDate(s.periodTo + "T12:00:00")}
                       </td>
-                      <td className="py-3 pr-3 text-right tabular-nums text-clinic-text">{fmtGs(s.production)}</td>
-                      <td className="py-3 pr-3 text-right tabular-nums text-clinic-muted">{s.commissionPct}%</td>
-                      <td className="py-3 pr-3 text-right tabular-nums font-bold text-clinic-text">{fmtGs(s.amount)}</td>
-                      <td className="py-3 pr-3">
+                      <td className="py-2 pr-3 text-right tabular-nums text-clinic-text">{fmtGs(s.production)}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums text-clinic-muted">{s.commissionPct}%</td>
+                      <td className="py-2 pr-3 text-right tabular-nums font-bold text-clinic-text">{fmtGs(s.amount)}</td>
+                      <td className="py-2 pr-3">
                         <Badge tone={s.status === "liquidado" ? "ok" : "warn"}>
                           {s.status === "liquidado" ? "Liquidado" : "Pendiente"}
                         </Badge>
@@ -301,7 +301,7 @@ export default function LiquidacionesPage() {
                           <span className="ml-1.5 text-[11px] text-clinic-muted">{fmtDate(s.paidAt)}</span>
                         )}
                       </td>
-                      <td className="py-3 pl-3 text-right">
+                      <td className="py-2 pl-3 text-right">
                         {s.status === "pendiente" ? (
                           <Btn variant="outline" onClick={() => marcarPagado(s)}>
                             <Check className="h-3.5 w-3.5" /> Marcar pagado

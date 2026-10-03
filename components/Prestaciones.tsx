@@ -26,11 +26,11 @@ export function PrestacionesList({ budget }: { budget: Budget }) {
       <table className={`w-full text-sm ${verMontos ? "min-w-[620px]" : "min-w-[420px]"}`}>
         <thead>
           <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-            <th className="px-4 py-3">Prestación</th>
-            <th className="px-2 py-3">Pieza</th>
-            {verMontos && <th className="px-2 py-3 text-right">Dscto</th>}
-            {verMontos && <th className="px-2 py-3 text-right">Precio</th>}
-            <th className="px-2 py-3 text-center">Pago</th>
+            <th className="px-4 py-2">Prestación</th>
+            <th className="px-2 py-2">Pieza</th>
+            {verMontos && <th className="px-2 py-2 text-right">Dscto</th>}
+            {verMontos && <th className="px-2 py-2 text-right">Precio</th>}
+            <th className="px-2 py-2 text-center">Pago</th>
           </tr>
         </thead>
         <tbody>
@@ -64,7 +64,7 @@ export function PrestacionesList({ budget }: { budget: Budget }) {
           <tfoot>
             <tr className="border-t border-clinic-border">
               <td colSpan={3} className="px-4 py-3 text-right text-sm font-bold text-clinic-text">Total{budget.discountPct ? ` (−${budget.discountPct}%)` : ""}</td>
-              <td className="px-2 py-3 text-right tabular-nums text-base font-bold text-clinic-text">{fmtGs(budgetTotal(budget))}</td>
+              <td className="px-2 py-2 text-right tabular-nums text-base font-bold text-clinic-text">{fmtGs(budgetTotal(budget))}</td>
               <td />
             </tr>
           </tfoot>

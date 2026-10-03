@@ -310,6 +310,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           PageTransition quedaría atrapada por su transform (contexto de
           apilamiento) y dejaría de posicionarse contra la ventana. */}
       <AvisoNoGuardado />
+      {/* Botón flotante de ayuda, como el de soporte de Dentalink (abajo a la derecha). */}
+      {!ayuda && (
+        <button
+          type="button"
+          onClick={abrirAyuda}
+          aria-haspopup="dialog"
+          aria-label="Ayuda de Novum"
+          title="Ayuda de Novum"
+          className="fixed bottom-5 right-5 z-40 grid h-12 w-12 place-items-center rounded-full bg-azure-600 text-white shadow-[0_4px_14px_rgba(3,105,201,0.4)] transition-colors hover:bg-azure-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-azure-300 print:hidden"
+        >
+          <Headset className="h-6 w-6" />
+        </button>
+      )}
       {ayuda && <AyudaNovum clinica={clinicName} usuario={session.name} onClose={() => setAyuda(false)} />}
     </div>
   );
@@ -394,7 +407,7 @@ function DrawerLink({ href, label, icon: Icon, active, badge = 0 }: { href: stri
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${active ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
+      className={`flex items-center gap-3 -mb-px rounded-none border-b-2 px-3 py-2.5 text-sm font-semibold transition-colors ${active ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}
     >
       <Icon className="h-[18px] w-[18px]" strokeWidth={2} /> {label}
       <Contador n={badge} />

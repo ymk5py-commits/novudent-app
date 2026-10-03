@@ -69,9 +69,9 @@ export default function GastosPage() {
         <Stat label="Categorías" value={porCategoria.length} money={false} />
       </Reveal>
 
-      <div className="flex w-fit gap-1 rounded-xl border border-clinic-border bg-white p-1">
+      <div className="flex w-fit border-b border-clinic-border">
         {([["detalle", "Detalle", FileText], ["resumen", "Resumen por categoría", BarChart3]] as const).map(([k, label, Icon]) => (
-          <button key={k} onClick={() => setTab(k)} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[14px] font-normal transition-colors ${tab === k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}><Icon className="h-4 w-4" /> {label}</button>
+          <button key={k} onClick={() => setTab(k)} className={`flex items-center gap-1.5 -mb-px rounded-none border-b-2 px-3 py-1.5 text-[14px] font-normal transition-colors ${tab === k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}><Icon className="h-4 w-4" /> {label}</button>
         ))}
       </div>
 
@@ -82,7 +82,7 @@ export default function GastosPage() {
           <Card className="overflow-x-auto p-0">
             <table className="w-full min-w-[760px] text-sm">
               <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-                <th className="px-4 py-3">Categoría</th><th className="px-2 py-3">Detalle</th><th className="px-2 py-3">Fecha factura</th><th className="px-2 py-3">Fecha pago</th><th className="px-2 py-3 text-right">Total</th><th className="px-2 py-3"></th>
+                <th className="px-4 py-2">Categoría</th><th className="px-2 py-2">Detalle</th><th className="px-2 py-2">Fecha factura</th><th className="px-2 py-2">Fecha pago</th><th className="px-2 py-2 text-right">Total</th><th className="px-2 py-2"></th>
               </tr></thead>
               <tbody className="divide-y divide-clinic-border">
                 {filtered.map((e) => (

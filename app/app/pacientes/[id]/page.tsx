@@ -268,15 +268,15 @@ export default function PatientProfile() {
 
       {/* Navegación 2 niveles estilo Dentalink: grupos (N1) + sub-tabs (N2) */}
       <Reveal delay={0.05} className="space-y-2">
-        <div className="flex flex-wrap gap-1 rounded-2xl border border-clinic-border bg-white p-1">
+        <div className="flex flex-wrap items-end border-b border-clinic-border">
           {grupos.map((g) => {
             const active = g.key === activeGroup.key;
             return (
               <button
                 key={g.key}
                 onClick={() => setTab(g.tabs[0].key)}
-                className={`rounded-xl px-3.5 py-2 text-sm font-bold transition-colors ${
-                  active ? "bg-navy-800 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"
+                className={`-mb-px rounded-none border-b-2 px-3.5 py-2 text-[14px] font-semibold transition-colors ${
+                  active ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"
                 }`}
               >
                 {g.label}
@@ -285,7 +285,7 @@ export default function PatientProfile() {
           })}
         </div>
         {activeGroup.tabs.length > 1 && (
-          <div className="flex flex-wrap gap-1 px-1">
+          <div className="flex flex-wrap items-end border-b border-clinic-border px-1">
             {activeGroup.tabs.map((t) => {
               const active = t.key === tab;
               const badge = t.key === "formularios" ? pendingForms.length : 0;
@@ -293,8 +293,8 @@ export default function PatientProfile() {
                 <button
                   key={t.key}
                   onClick={() => setTab(t.key)}
-                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors ${
-                    active ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"
+                  className={`-mb-px flex items-center gap-1.5 rounded-none border-b-2 px-3 py-2 text-[13px] font-normal transition-colors ${
+                    active ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"
                   }`}
                 >
                   <t.icon className="h-4 w-4" /> {t.label}
@@ -412,10 +412,10 @@ export default function PatientProfile() {
               <table className="w-full min-w-[560px] text-sm">
                 <thead>
                   <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-                    <th className="px-4 py-3">Fecha</th>
-                    <th className="px-2 py-3">Motivo</th>
-                    <th className="px-2 py-3">Profesional</th>
-                    <th className="px-2 py-3">Estado</th>
+                    <th className="px-4 py-2">Fecha</th>
+                    <th className="px-2 py-2">Motivo</th>
+                    <th className="px-2 py-2">Profesional</th>
+                    <th className="px-2 py-2">Estado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-clinic-border">

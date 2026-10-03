@@ -39,19 +39,21 @@ a, button, [role="button"], input, select, textarea, label, summary {
 
 /* El panel sigue la tinta navy y el azul del isologo; la tipografía de títulos
    conecta sus módulos sin cambiar la densidad de formularios y tablas. */
-.app-workspace {
-  background: radial-gradient(80% 300px at 50% 0, rgba(4,169,242,.055), transparent 100%), #f3f6fb;
-}
+.app-workspace { background: #f3f6fb; }
+
+/* Forma del panel igual a Dentalink (relevada en sus videos, oct 2026):
+   esquinas de 4px, separación por líneas de 1px y sin sombras marcadas.
+   Alcanza al panel y a los portales (modales), no a la landing. */
+:is(.app-workspace, .app-portal) :is(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-\[9px\], .rounded-\[10px\], .rounded-\[12px\], .rounded-\[18px\], .rounded-\[20px\]) { border-radius: 4px; }
+:is(.app-workspace, .app-portal) .shadow-card { box-shadow: none; }
+:is(.app-workspace, .app-portal) .shadow-pop { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16); }
 .app-workspace :is(h1, h2, h3) {
   /* Títulos en Open Sans, igual que Dentalink (antes Jost). */
   font-family: var(--font-open-sans), ui-sans-serif, system-ui;
   letter-spacing: normal;
   font-style: normal;
 }
-.app-topbar {
-  background: linear-gradient(115deg, #051735 58%, #0a2a5e 100%);
-  box-shadow: inset 0 -2px 0 rgba(4,169,242,.55);
-}
+.app-topbar { background: #051735; }
 .dashboard-hero {
   background-color: #051735;
   background-image: linear-gradient(125deg, transparent 52%, rgba(4,169,242,.12) 100%), radial-gradient(100% 120% at 100% 0, rgba(4,169,242,.14), transparent 65%);

@@ -46,9 +46,9 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-1 rounded-xl border border-clinic-border bg-white p-1">
+      <div className="flex flex-wrap border-b border-clinic-border">
         {SUBS.map((s) => (
-          <button key={s.k} onClick={() => setTab(s.k)} className={`rounded-lg px-3 py-1.5 text-[13px] font-normal transition-colors ${tab === s.k ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}>{s.label}</button>
+          <button key={s.k} onClick={() => setTab(s.k)} className={`-mb-px rounded-none border-b-2 px-3 py-1.5 text-[13px] font-normal transition-colors ${tab === s.k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}>{s.label}</button>
         ))}
       </div>
 
@@ -58,7 +58,7 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[760px] text-sm">
             <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-              <th className="px-4 py-3">N° Pago</th><th className="px-2 py-3">Plan</th><th className="px-2 py-3">Medio de pago</th><th className="px-2 py-3">N° Boleta</th><th className="px-2 py-3">Recepción</th><th className="px-2 py-3 text-right">Monto</th><th className="px-2 py-3"></th>
+              <th className="px-4 py-2">N° Pago</th><th className="px-2 py-2">Plan</th><th className="px-2 py-2">Medio de pago</th><th className="px-2 py-2">N° Boleta</th><th className="px-2 py-2">Recepción</th><th className="px-2 py-2 text-right">Monto</th><th className="px-2 py-2"></th>
             </tr></thead>
             <tbody className="divide-y divide-clinic-border">
               {pagos.map((p) => (
@@ -91,7 +91,7 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[520px] text-sm">
             <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-              <th className="px-4 py-3">N° Boleta</th><th className="px-2 py-3">Fecha</th><th className="px-2 py-3">Pago</th><th className="px-2 py-3 text-right">Monto</th>
+              <th className="px-4 py-2">N° Boleta</th><th className="px-2 py-2">Fecha</th><th className="px-2 py-2">Pago</th><th className="px-2 py-2 text-right">Monto</th>
             </tr></thead>
             <tbody className="divide-y divide-clinic-border">
               {boletas.map((d) => (
@@ -113,7 +113,7 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[520px] text-sm">
             <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-              <th className="px-4 py-3">Fecha</th><th className="px-2 py-3">Motivo</th><th className="px-2 py-3">Registrado por</th><th className="px-2 py-3 text-right">Monto</th>
+              <th className="px-4 py-2">Fecha</th><th className="px-2 py-2">Motivo</th><th className="px-2 py-2">Registrado por</th><th className="px-2 py-2 text-right">Monto</th>
             </tr></thead>
             <tbody className="divide-y divide-clinic-border">
               {devoluciones.map((d) => (
@@ -135,7 +135,7 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
         <Card className="overflow-x-auto p-0">
           <table className="w-full min-w-[520px] text-sm">
             <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-              <th className="px-4 py-3">Recepción</th><th className="px-2 py-3">Medio</th><th className="px-2 py-3">Anulado</th><th className="px-2 py-3 text-right">Monto</th>
+              <th className="px-4 py-2">Recepción</th><th className="px-2 py-2">Medio</th><th className="px-2 py-2">Anulado</th><th className="px-2 py-2 text-right">Monto</th>
             </tr></thead>
             <tbody className="divide-y divide-clinic-border">
               {eliminados.map((p) => (
