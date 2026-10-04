@@ -459,6 +459,8 @@ interface Ctx {
   removeWaitlist: (id: string) => void;
   /* — Ficha del paciente — */
   addPrescription: (patientId: string, rx: Prescription) => void;
+  /** Reemplaza una receta existente (se usa para anularla: las recetas no se borran). */
+  updatePrescription: (patientId: string, rx: Prescription) => void;
   addPatientFile: (patientId: string, f: PatientFileRec) => void;
   removePatientFile: (patientId: string, fileId: string) => void;
   mergePatients: (keepId: string, removeId: string) => void;
@@ -1223,6 +1225,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       /* — Ficha del paciente — */
       addPrescription: (patientId, rx) =>
         patchPatient(patientId, (p) => ({ ...p, prescriptions: [rx, ...(p.prescriptions ?? [])] })),
+      updatePrescription: (patientId, rx) =>
+        patchPatient(patientId, (p) => ({ ...p, prescriptions: (p.prescriptions ?? []).map((x) => (x.id === rx.id ? rx : x)) })),
       addPatientFile: (patientId, f) =>
         patchPatient(patientId, (p) => ({ ...p, files: [f, ...(p.files ?? [])] })),
       removePatientFile: (patientId, fileId) =>

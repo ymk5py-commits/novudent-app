@@ -219,8 +219,9 @@ cupo en la agenda.
    profesional, Morosidad, NPS, Panel de desempeño, Análisis de pacientes y 8 Excel.
    Faltan Resultados, Ventas por prestación y por categoría, Informe de recaudación
    diario, Estado de financiamientos y Derivación de pacientes (ver 03-reportes-y-crm.md).
-7. **Recetas**: ya hay plantillas e impresión (`PatientExtras.tsx`). Faltan enviar por
-   e-mail, duplicar, filtrar por tratamiento y «Mostrar anuladas».
+7. ~~**Recetas**~~ ✅ hecho el 4-oct-2026 (`lib/recetas.ts`, `PatientExtras.tsx`): plan de
+   tratamiento en la receta y filtro por tratamiento, Enviar por e-mail, Duplicar, Anular (no se
+   borra: registro clínico) y «Mostrar anuladas», además de las plantillas y la impresión.
 8. ~~**Link de confirmación de cita**~~ ✅ hecho el 4-oct-2026 (`lib/confirmacionCita.ts`,
    `/confirmar/{cid}/{token}`, `/api/citas/confirmar`): el paciente confirma o anula sin login
    desde WhatsApp o el correo, y la cita pasa a «Confirmado por WhatsApp/email» o «Anulado por

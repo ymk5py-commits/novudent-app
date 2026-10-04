@@ -574,6 +574,11 @@ export interface Prescription {
   dentistName: string;
   items: PrescriptionItem[];
   notes?: string;
+  /** Plan de tratamiento al que corresponde (para filtrar las recetas por tratamiento). */
+  budgetId?: string;
+  /** Anulada: no se borra (registro clínico), se oculta salvo «Mostrar anuladas». */
+  voidedAt?: string;
+  voidedBy?: string;
 }
 
 /* ===== Archivos clínicos del paciente (imágenes/documentos) ===== */

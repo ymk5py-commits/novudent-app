@@ -4,7 +4,7 @@ import Link from "next/link";
  *  Presupuestos · Recetas (plantillas + impresión) · Archivos (imágenes/documentos) · Ortodoncia */
 import { useRef, useState } from "react";
 import {
-  Plus, Printer, FileSpreadsheet, Pill, Upload, Trash2, ImageIcon, FileText, Braces, CircleCheck, Calendar, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download,
+  Plus, Printer, FileSpreadsheet, Pill, Upload, Trash2, ImageIcon, FileText, Braces, CircleCheck, Calendar, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, Copy, Ban,
 } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
@@ -12,6 +12,8 @@ import { budgetTotal, budgetPaid, patientBalance, BUDGET_STATUS_INFO } from "@/l
 import type { Patient, Prescription, PrescriptionItem, PatientFileRec, OrthoRecord } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Logotipo } from "@/components/Marca";
+import { EmailButton } from "@/components/EmailButton";
+import { anularReceta, baseDeDuplicado, recetaHtml, recetasVisibles } from "@/lib/recetas";
 
 /* ===================== PRESUPUESTOS ===================== */
 export function BudgetsTab({ patient }: { patient: Patient }) {
@@ -79,29 +81,80 @@ const RX_TEMPLATES: { name: string; items: PrescriptionItem[]; notes?: string }[
 ];
 
 export function RxTab({ patient }: { patient: Patient }) {
-  const { session, addPrescription } = useStore();
-  const [creating, setCreating] = useState(false);
+  const { db, session, addPrescription, updatePrescription } = useStore();
+  /** Formulario abierto: `{}` = receta nueva desde plantilla; con `base` = duplicado. */
+  const [form, setForm] = useState<null | { base?: RxBase }>(null);
   const [printing, setPrinting] = useState<Prescription | null>(null);
+  const [tratamiento, setTratamiento] = useState("todas");
+  const [mostrarAnuladas, setMostrarAnuladas] = useState(false);
   const canWrite = session ? can(session.role, "emr.write") : false;
   const list = patient.prescriptions ?? [];
+  const planes = db.budgets.filter((b) => b.patientId === patient.id && b.status !== "anulado");
+  const visibles = recetasVisibles(list, { tratamiento, mostrarAnuladas });
+  const anuladas = list.filter((r) => r.voidedAt).length;
+  const nombrePlan = (id?: string) => {
+    const b = id ? db.budgets.find((x) => x.id === id) : undefined;
+    return b ? `Plan #${b.id} · ${b.name?.trim() || (b.planType === "ortodoncia" ? "Ortodoncia" : "General")}` : undefined;
+  };
+  const clinica = db.clinics[0]?.name ?? "";
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-clinic-muted">Prescripciones con plantillas predefinidas e impresión.</p>
-        {canWrite && <Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Nueva receta</Btn>}
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="text-[16px] font-bold text-clinic-text">Recetas</h2>
+        <label className="ml-auto flex items-center gap-2 text-[13px] text-clinic-text">
+          <span className="text-clinic-muted">Tratamiento</span>
+          <select aria-label="Filtrar por tratamiento" className={`${inputCls} !w-auto`} value={tratamiento} onChange={(e) => setTratamiento(e.target.value)}>
+            <option value="todas">Todos</option>
+            <option value="sin">Sin plan de tratamiento</option>
+            {planes.map((b) => <option key={b.id} value={b.id}>{nombrePlan(b.id)}</option>)}
+          </select>
+        </label>
+        {anuladas > 0 && (
+          <label className="flex items-center gap-2 text-[13px] text-clinic-text">
+            <input type="checkbox" checked={mostrarAnuladas} onChange={(e) => setMostrarAnuladas(e.target.checked)} className="accent-azure-600" /> Mostrar anuladas ({anuladas})
+          </label>
+        )}
+        {canWrite && <Btn onClick={() => setForm({})}><Plus className="h-4 w-4" /> Nueva receta</Btn>}
       </div>
       {list.length === 0 ? (
         <Empty title="Sin recetas emitidas" desc={canWrite ? "Creá la primera con una plantilla." : "El dentista emite las recetas."} />
+      ) : visibles.length === 0 ? (
+        <Empty title="No hay recetas con ese filtro" desc="Cambiá el tratamiento o mostrá las anuladas." />
       ) : (
-        list.map((rx) => (
-          <Card key={rx.id} className="p-4">
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-clinic-muted">
+        visibles.map((rx) => (
+          <Card key={rx.id} className={`p-4 ${rx.voidedAt ? "opacity-60" : ""}`}>
+            <div className="flex flex-wrap items-center gap-2 text-[12px] text-clinic-muted">
               <Pill className="h-3.5 w-3.5 text-azure-600" />
               <span className="tabular-nums font-bold">{fmtDate(rx.date)}</span> · {rx.dentistName}
-              <button onClick={() => setPrinting(rx)} className="ml-auto inline-flex items-center gap-1 rounded-lg border border-clinic-border px-2.5 py-1 text-[11px] font-bold text-clinic-text hover:border-azure-300 hover:text-azure-700">
-                <Printer className="h-3 w-3" /> Imprimir
-              </button>
+              {nombrePlan(rx.budgetId) && <span>· {nombrePlan(rx.budgetId)}</span>}
+              {rx.voidedAt && <Badge tone="err">Anulada{rx.voidedBy ? ` por ${rx.voidedBy}` : ""}</Badge>}
+              <span className="ml-auto flex flex-wrap items-center gap-1.5">
+                {!rx.voidedAt && (
+                  <EmailButton
+                    to={patient.email}
+                    subject={`Tu receta — ${clinica}`}
+                    html={recetaHtml(rx, { clinica, paciente: patient.firstName, fecha: fmtDate(rx.date) })}
+                    label="Enviar"
+                  />
+                )}
+                <button onClick={() => setPrinting(rx)} className="inline-flex items-center gap-1 rounded border border-clinic-border px-2.5 py-1 text-[12px] font-bold text-clinic-text hover:border-azure-300 hover:text-azure-700">
+                  <Printer className="h-3 w-3" /> Imprimir
+                </button>
+                {canWrite && (
+                  <button onClick={() => setForm({ base: baseDeDuplicado(rx) })} className="inline-flex items-center gap-1 rounded border border-clinic-border px-2.5 py-1 text-[12px] font-bold text-clinic-text hover:border-azure-300 hover:text-azure-700">
+                    <Copy className="h-3 w-3" /> Duplicar
+                  </button>
+                )}
+                {canWrite && !rx.voidedAt && (
+                  <button
+                    onClick={() => { if (session && window.confirm("¿Anular esta receta? Queda en la ficha como anulada.")) updatePrescription(patient.id, anularReceta(rx, { now: new Date().toISOString(), by: session.name })); }}
+                    className="inline-flex items-center gap-1 rounded border border-clinic-border px-2.5 py-1 text-[12px] font-bold text-state-err hover:bg-state-errbg"
+                  >
+                    <Ban className="h-3 w-3" /> Anular
+                  </button>
+                )}
+              </span>
             </div>
             <ul className="mt-2 space-y-1">
               {rx.items.map((it, i) => (
@@ -115,10 +168,12 @@ export function RxTab({ patient }: { patient: Patient }) {
         ))
       )}
 
-      {creating && (
+      {form && (
         <RxForm
-          onClose={() => setCreating(false)}
-          onSave={(rx) => { addPrescription(patient.id, rx); setCreating(false); setPrinting(rx); }}
+          base={form.base}
+          planes={planes.map((b) => ({ id: b.id, label: nombrePlan(b.id)! }))}
+          onClose={() => setForm(null)}
+          onSave={(rx) => { addPrescription(patient.id, rx); setForm(null); setPrinting(rx); }}
         />
       )}
       {printing && <RxPrint rx={printing} patient={patient} onClose={() => setPrinting(null)} />}
@@ -126,27 +181,41 @@ export function RxTab({ patient }: { patient: Patient }) {
   );
 }
 
-function RxForm({ onClose, onSave }: { onClose: () => void; onSave: (rx: Prescription) => void }) {
-  const { session, db } = useStore();
-  const [items, setItems] = useState<PrescriptionItem[]>(RX_TEMPLATES[0].items.map((x) => ({ ...x })));
-  const [notes, setNotes] = useState(RX_TEMPLATES[0].notes ?? "");
+type RxBase = Pick<Prescription, "items" | "notes" | "budgetId">;
+
+function RxForm({ base, planes, onClose, onSave }: { base?: RxBase; planes: { id: string; label: string }[]; onClose: () => void; onSave: (rx: Prescription) => void }) {
+  const { session } = useStore();
+  const [items, setItems] = useState<PrescriptionItem[]>(() => (base?.items ?? RX_TEMPLATES[0].items).map((x) => ({ ...x })));
+  const [notes, setNotes] = useState(base ? base.notes ?? "" : RX_TEMPLATES[0].notes ?? "");
+  const [budgetId, setBudgetId] = useState(base?.budgetId ?? "");
   const setItem = (i: number, patch: Partial<PrescriptionItem>) => setItems((xs) => xs.map((x, ix) => (ix === i ? { ...x, ...patch } : x)));
 
   return (
-    <Modal title="Nueva receta" onClose={onClose} wide>
+    <Modal title={base ? "Nueva receta (duplicada)" : "Nueva receta"} onClose={onClose} wide>
       <div className="space-y-4">
-        <Field label="Plantilla">
-          <select
-            className={inputCls}
-            onChange={(e) => {
-              const t = RX_TEMPLATES.find((x) => x.name === e.target.value)!;
-              setItems(t.items.map((x) => ({ ...x })));
-              setNotes(t.notes ?? "");
-            }}
-          >
-            {RX_TEMPLATES.map((t) => <option key={t.name}>{t.name}</option>)}
-          </select>
-        </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Plantilla">
+            <select
+              className={inputCls}
+              defaultValue={base ? "" : RX_TEMPLATES[0].name}
+              onChange={(e) => {
+                const t = RX_TEMPLATES.find((x) => x.name === e.target.value);
+                if (!t) return;
+                setItems(t.items.map((x) => ({ ...x })));
+                setNotes(t.notes ?? "");
+              }}
+            >
+              {base && <option value="">Copia de la receta elegida</option>}
+              {RX_TEMPLATES.map((t) => <option key={t.name}>{t.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Plan de tratamiento (opcional)">
+            <select className={inputCls} value={budgetId} onChange={(e) => setBudgetId(e.target.value)}>
+              <option value="">Sin plan de tratamiento</option>
+              {planes.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+            </select>
+          </Field>
+        </div>
         <div className="space-y-2">
           {items.map((it, i) => (
             <div key={i} className="grid grid-cols-[1.4fr_1fr_1fr_1fr_32px] gap-2">
@@ -173,7 +242,8 @@ function RxForm({ onClose, onSave }: { onClose: () => void; onSave: (rx: Prescri
                 id: `rx_${Date.now()}`, date: new Date().toISOString(),
                 dentistId: session!.userId, dentistName: session!.name,
                 items: items.map((x) => ({ drug: x.drug.trim(), dose: x.dose.trim(), freq: x.freq.trim(), days: x.days.trim() })),
-                notes: notes.trim() || undefined,
+                ...(notes.trim() ? { notes: notes.trim() } : {}),
+                ...(budgetId ? { budgetId } : {}),
               })
             }
           >
