@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 const DOCS: Record<string, Record<string, unknown> | null> = {};
 vi.mock("@/lib/server/firestore-rest", () => ({
   getDocument: vi.fn(async (path: string) => DOCS[path] ?? null),
+  patchFields: vi.fn(async () => {}),
   isServerFirestoreConfigured: () => true,
 }));
 vi.mock("@/lib/server/auth", () => ({
@@ -21,6 +22,7 @@ vi.mock("@/lib/server/rate-limit", () => ({
 }));
 
 import { POST } from "./route";
+import { patchFields } from "@/lib/server/firestore-rest";
 
 const post = (body: unknown) =>
   new Request("http://x/api/notificaciones/cita", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }) as unknown as Parameters<typeof POST>[0];
@@ -60,6 +62,28 @@ describe("POST /api/notificaciones/cita", () => {
     expect(enviado.subject).toContain("Clínica Demo");
     expect(enviado.text).toContain("Dra. Sofía Benítez");
     expect(enviado.text).not.toContain("esto lo ignora");
+  });
+
+  it("la confirmación lleva el link para confirmar o anular, y la cita guarda su token", async () => {
+    DOCS["clinics/cl_1/appointments/a1"] = { patientId: "p1", dentistId: "u2", start: new Date(Date.now() + 3 * 86_400_000).toISOString(), status: "pendiente" };
+    vi.mocked(patchFields).mockClear();
+    await POST(post({ appointmentId: "a1", tipo: "confirmacion" }));
+    const enviado = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+    const [ruta, campos] = vi.mocked(patchFields).mock.calls[0] as unknown as [string, { confirmToken: string }];
+    expect(ruta).toBe("clinics/cl_1/appointments/a1");
+    expect(enviado.text).toContain(`/confirmar/cl_1/${campos.confirmToken}?v=mail`);
+    expect(enviado.html).toContain("Confirmar o anular mi cita");
+  });
+
+  it("si la cita ya tiene token lo reusa, y el aviso de estado no lleva link", async () => {
+    DOCS["clinics/cl_1/appointments/a1"] = { patientId: "p1", start: new Date(Date.now() + 3 * 86_400_000).toISOString(), status: "pendiente", confirmToken: "tok_ABCDEFGHIJKLmnop" };
+    vi.mocked(patchFields).mockClear();
+    await POST(post({ appointmentId: "a1", tipo: "confirmacion" }));
+    expect(patchFields).not.toHaveBeenCalled();
+    expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body)).text).toContain("/confirmar/cl_1/tok_ABCDEFGHIJKLmnop");
+    fetchMock.mockClear();
+    await POST(post({ appointmentId: "a1", tipo: "estado" }));
+    expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body)).text).not.toContain("/confirmar/");
   });
 
   it("un rol sin datos personales no le escribe al paciente", async () => {

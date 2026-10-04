@@ -52,6 +52,10 @@ describe("estadoDeCita", () => {
   it("si el estadoId ya no existe, cae al de fábrica del status", () => {
     expect(estadoDeCita({ status: "confirmada", estadoId: "borrado" }, lista).id).toBe("confirmada");
   });
+  it("si el status cambió por otro lado, manda el status y no el estadoId viejo", () => {
+    expect(estadoDeCita({ status: "completada", estadoId: "confirmado_whatsapp" }, lista).id).toBe("completada");
+    expect(estadoDeCita({ status: "pendiente", estadoId: "anulado_paciente" }, lista).label).toBe("No confirmado");
+  });
   it("sin estadoId usa el status", () => {
     expect(estadoDeCita({ status: "en_sala" }, lista).label).toBe("En sala de espera");
   });

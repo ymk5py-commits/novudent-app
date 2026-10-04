@@ -15,6 +15,8 @@ export interface DatosCorreoCita {
   inicio: string; // ISO
   estado: AppointmentStatus;
   zonaHoraria?: string;
+  /** Link público para confirmar o anular (lib/confirmacionCita). Solo en la confirmación. */
+  linkConfirmacion?: string;
 }
 
 const escapar = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -28,10 +30,14 @@ export function correoCita(tipo: TipoCorreoCita, d: DatosCorreoCita): { asunto: 
   const asunto = tipo === "confirmacion"
     ? `Tu cita en ${d.clinica}: ${cuando}`
     : `Tu cita en ${d.clinica} del ${fecha}: ${ESTADO_LABEL[d.estado].toLowerCase()}`;
+  const link = tipo === "confirmacion" ? d.linkConfirmacion : undefined;
   const cuerpo = tipo === "confirmacion"
-    ? [`Hola ${d.paciente}:`, `Te esperamos el ${cuando} en ${d.clinica}.`, ...detalle, "Si no podés venir, respondé este correo y te ayudamos a cambiar el horario."]
+    ? [`Hola ${d.paciente}:`, `Te esperamos el ${cuando} en ${d.clinica}.`, ...detalle, link ? "Confirmá o anulá tu cita desde el botón de abajo. Si querés otro horario, respondé este correo." : "Si no podés venir, respondé este correo y te ayudamos a cambiar el horario."]
     : [`Hola ${d.paciente}:`, `Tu cita del ${cuando} en ${d.clinica} quedó como «${ESTADO_LABEL[d.estado]}».`, ...detalle, "Ante cualquier duda, respondé este correo."];
-  const texto = cuerpo.join("\n\n");
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#051735">${cuerpo.map((p) => `<p>${escapar(p)}</p>`).join("")}<p style="color:#6b7a8f;font-size:12px">${escapar(d.clinica)} · enviado con Novudent</p><img src="${SITE_URL}/marca/novudent-logo.png" alt="Novudent" width="110" height="21" style="display:block;border:0"></div>`;
+  const texto = [...cuerpo, ...(link ? [`Confirmar o anular: ${link}`] : [])].join("\n\n");
+  const boton = link
+    ? `<p style="margin:20px 0"><a href="${escapar(link)}" style="display:inline-block;background:#0369C9;color:#ffffff;text-decoration:none;font-weight:700;padding:10px 18px;border-radius:4px">Confirmar o anular mi cita</a></p>`
+    : "";
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#051735">${cuerpo.map((p) => `<p>${escapar(p)}</p>`).join("")}${boton}<p style="color:#6b7a8f;font-size:12px">${escapar(d.clinica)} · enviado con Novudent</p><img src="${SITE_URL}/marca/novudent-logo.png" alt="Novudent" width="110" height="21" style="display:block;border:0"></div>`;
   return { asunto, texto, html };
 }

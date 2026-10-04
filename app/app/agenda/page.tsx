@@ -6,10 +6,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft, ChevronRight, CalendarDays, CalendarRange, List, MoreHorizontal, Eye, Pencil, Trash2, Plus, User, Video,
-  Hourglass, BellRing, Users, AlertTriangle, Printer, Search, Phone, ChevronDown, Mail, Check, MessageSquareText,
+  Hourglass, BellRing, Users, AlertTriangle, Printer, Search, Phone, ChevronDown, Mail, Check, MessageSquareText, MessageCircle, Link2,
 } from "lucide-react";
 import { newSignToken } from "@/lib/firma";
-import { useStore, fmtGs, fmtTime, fmtDate, fullName } from "@/lib/store";
+import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } from "@/lib/store";
+import { conLink, linkConfirmacion } from "@/lib/confirmacionCita";
 import { useAlcance } from "@/lib/useAlcance";
 import { estadoDeCita } from "@/lib/estadosCita";
 import { useEstadosCita } from "@/lib/useEstadosCita";
@@ -234,7 +235,7 @@ export default function AgendaPage() {
   const reagendar = (a: Appointment) => {
     // Pre-carga la cita anulada (paciente, profesional, tipo, box) en una nueva.
     setPreseleccion(undefined);
-    setEditing({ ...a, id: `a_${Date.now()}`, status: "pendiente", cancelReason: undefined, reminderSent: undefined, confirmedVia: undefined, videoToken: undefined });
+    setEditing({ ...a, id: `a_${Date.now()}`, status: "pendiente", estadoId: undefined, cancelReason: undefined, reminderSent: undefined, confirmedVia: undefined, videoToken: undefined, confirmToken: undefined, respondidaAt: undefined });
   };
   const toggleStatus = (s: string) =>
     setStatusFilter((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
@@ -626,8 +627,45 @@ export default function AgendaPage() {
                       >
                         <Mail className="h-4 w-4" /> Enviar al correo
                       </button>
+                      <button
+                        type="button"
+                        disabled={!p.phone}
+                        title={p.phone ? `Abre WhatsApp con ${p.phone}` : "El paciente no tiene teléfono cargado"}
+                        onClick={() => {
+                          const tok = live.confirmToken ?? newSignToken();
+                          if (!live.confirmToken) upsertAppointment({ ...live, confirmToken: tok });
+                          const tz = db.clinics[0]?.config.timezone || "America/Asuncion";
+                          const plantilla = db.clinics[0]?.config.reminderTemplate || "Hola {paciente} 👋 Te recordamos tu cita en {clinica} el {fecha} a las {hora}.";
+                          const mensaje = fillReminder(plantilla, {
+                            paciente: p.firstName,
+                            fecha: new Date(live.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long", timeZone: tz }),
+                            hora: new Date(live.start).toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz }),
+                            clinica: db.clinics[0]?.name ?? "la clínica",
+                          });
+                          window.open(waLink(p.phone, conLink(mensaje, linkConfirmacion(window.location.origin, live.clinicId, tok, "whatsapp"))), "_blank", "noopener,noreferrer");
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366]/10 px-3.5 py-2 text-xs font-bold text-[#128C7E] transition-colors hover:bg-[#25D366]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <MessageCircle className="h-4 w-4" /> Enviar por WhatsApp
+                      </button>
+                      <button
+                        type="button"
+                        title="El paciente confirma o anula desde este link, sin entrar a ningún lado"
+                        onClick={() => {
+                          const tok = live.confirmToken ?? newSignToken();
+                          if (!live.confirmToken) upsertAppointment({ ...live, confirmToken: tok });
+                          try { navigator.clipboard?.writeText(linkConfirmacion(window.location.origin, live.clinicId, tok, "whatsapp")); } catch { /* sin portapapeles */ }
+                          setAviso({ ok: true, texto: "Link de confirmación copiado." });
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-muted hover:text-clinic-text"
+                      >
+                        <Link2 className="h-4 w-4" /> Copiar link
+                      </button>
                       <button onClick={() => upsertAppointment({ ...live, reminderSent: !live.reminderSent })} className="rounded-xl border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-muted hover:text-clinic-text">{live.reminderSent ? "Marcar como no enviado" : "Marcar como enviado"}</button>
                     </div>
+                    {live.respondidaAt && (
+                      <p className="mt-2 text-[12px] text-clinic-muted">El paciente respondió desde el link el {fmtDate(live.respondidaAt)} a las {fmtTime(live.respondidaAt)}.</p>
+                    )}
                   </div>
                 )}
 

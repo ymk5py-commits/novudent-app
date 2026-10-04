@@ -221,8 +221,10 @@ cupo en la agenda.
    diario, Estado de financiamientos y Derivación de pacientes (ver 03-reportes-y-crm.md).
 7. **Recetas**: ya hay plantillas e impresión (`PatientExtras.tsx`). Faltan enviar por
    e-mail, duplicar, filtrar por tratamiento y «Mostrar anuladas».
-8. **Link de confirmación de cita** para el paciente (Confirmar / Anular desde WhatsApp o
-   e-mail). La validación de agendamientos online ya existe (aviso + «Ver y validar»).
+8. ~~**Link de confirmación de cita**~~ ✅ hecho el 4-oct-2026 (`lib/confirmacionCita.ts`,
+   `/confirmar/{cid}/{token}`, `/api/citas/confirmar`): el paciente confirma o anula sin login
+   desde WhatsApp o el correo, y la cita pasa a «Confirmado por WhatsApp/email» o «Anulado por
+   el paciente». En la agenda: «Enviar por WhatsApp» (plantilla + link) y «Copiar link».
 9. **Total caja** desglosado por medio con cantidad e imprimible. Apertura, cierre,
    saldo inicial, arqueo y diferencia ya existen.
 10. ~~**Gastos** con fecha de factura y fecha de pago~~ ✅ ya existía (`Expense.invoiceDate`,

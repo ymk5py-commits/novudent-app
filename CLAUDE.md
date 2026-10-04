@@ -118,6 +118,13 @@ Opciones del plan (`OpcionesPlan`): el financiamiento guarda `Budget.financiamie
 (descuenta lo pagado antes de generarlas). Fechas: `fmtDate` lee las YYYY-MM-DD en hora local
 (`parseFecha`); para «hoy» usar `fechaLocal()`, no `toISOString().slice(0, 10)`.
 
+**Confirmación de cita por link (oct-2026):** `Appointment.confirmToken` es la credencial del
+link público `/confirmar/{cid}/{token}` (patrón de `/firmar`: `/api/citas/confirmar` escribe con
+el usuario de servicio, 404 genérico, rate limit). La respuesta del paciente setea `status` +
+`estadoId` (confirmado_whatsapp/email, anulado_paciente). `estadoDeCita` solo respeta `estadoId`
+si su `base` coincide con el `status`: cambiar el `status` por otro camino nunca deja un
+estado viejo pintado.
+
 ## Diferenciadores (cross-repo con Botika)
 
 Monitor post-op + Negociación de presupuestos: contrato outbox con Botika

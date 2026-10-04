@@ -101,12 +101,14 @@ export function normalizarEstados(lista: readonly EstadoCita[]): EstadoCita[] {
   return out;
 }
 
-/** Estado de una cita: por `estadoId` si lo tiene y sigue existiendo; si no, el de fábrica
- *  de su `status`. Nunca devuelve undefined: una cita siempre se puede pintar. */
+/** Estado de una cita: por `estadoId` si lo tiene, sigue existiendo y corresponde a su
+ *  `status` actual; si no, el de fábrica de su `status`. Lo de «corresponde» importa: hay
+ *  caminos que cambian el `status` sin tocar `estadoId` (otra pantalla, el bot, reagendar),
+ *  y la cita no puede quedar mostrando el estado anterior. Nunca devuelve undefined. */
 export function estadoDeCita(a: { status: AppointmentStatus; estadoId?: string }, lista: readonly EstadoCita[] = ESTADOS_DEFAULT): EstadoCita {
   if (a.estadoId) {
     const e = lista.find((x) => x.id === a.estadoId);
-    if (e) return e;
+    if (e && e.base === a.status) return e;
   }
   return lista.find((x) => x.id === a.status) ?? ESTADOS_BASE.find((x) => x.id === a.status) ?? ESTADOS_BASE[0];
 }

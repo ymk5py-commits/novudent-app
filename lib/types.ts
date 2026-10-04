@@ -169,8 +169,13 @@ export interface Appointment {
   videoToken?: string;
   /** Confirmación de citas: recordatorio WhatsApp/email ya enviado */
   reminderSent?: boolean;
-  /** quién confirmó la cita (botika = automático por el bot) */
-  confirmedVia?: "botika" | "manual";
+  /** quién confirmó la cita (botika = automático por el bot; link = el paciente desde su link) */
+  confirmedVia?: "botika" | "manual" | "link";
+  /** Token del link público de confirmación (`/confirmar/{cid}/{token}`): el paciente
+   *  confirma o anula sin login. El token ES la credencial (lib/confirmacionCita). */
+  confirmToken?: string;
+  /** Cuándo respondió el paciente desde el link. */
+  respondidaAt?: string;
   /** Box/sillón asignado a la cita (módulo Box) */
   boxId?: string;
   /** Plan de tratamiento al que pertenece la cita (paridad Dentalink) */

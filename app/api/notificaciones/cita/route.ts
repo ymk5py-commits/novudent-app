@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
 import { requireMiembro } from "@/lib/server/require-feature";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
-import { getDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
-import { isValidId } from "@/lib/server/ids";
+import { getDocument, isServerFirestoreConfigured, patchFields } from "@/lib/server/firestore-rest";
+import { isValidId, isValidToken } from "@/lib/server/ids";
+import { linkConfirmacion as linkConfirmacionDe, puedeResponder } from "@/lib/confirmacionCita";
+import { newSignToken } from "@/lib/firma";
+import { SITE_URL } from "@/lib/site";
 import { can } from "@/lib/rbac";
 import { correoCita, type TipoCorreoCita } from "@/lib/correoCita";
 import type { AppointmentStatus, Role } from "@/lib/types";
@@ -72,6 +75,17 @@ export async function POST(req: NextRequest) {
     }
     const sucursal = cita.branchId ? await getDocument(`${base}/branches/${String(cita.branchId)}`) : null;
     const config = (clinica?.config ?? {}) as { timezone?: string; email?: string };
+    // Link para que el paciente confirme o anule (lib/confirmacionCita). La cita guarda su
+    // token; si todavía no tiene, se genera acá y se guarda solo ese campo.
+    let linkConfirmacion: string | undefined;
+    if (tipo === "confirmacion" && puedeResponder({ status: String(cita.status || ""), start: String(cita.start || "") }, new Date())) {
+      let token = String(cita.confirmToken || "");
+      if (!isValidToken(token)) {
+        token = newSignToken();
+        await patchFields(`${base}/appointments/${appointmentId}`, { confirmToken: token });
+      }
+      linkConfirmacion = linkConfirmacionDe(SITE_URL, yo.clinicId, token, "email");
+    }
     const correo = correoCita(tipo, {
       clinica: String(clinica?.name || "la clínica"),
       paciente: String(paciente.firstName || ""),
@@ -80,6 +94,7 @@ export async function POST(req: NextRequest) {
       inicio: String(cita.start || ""),
       estado: String(cita.status || "pendiente") as AppointmentStatus,
       zonaHoraria: config.timezone,
+      linkConfirmacion,
     });
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
