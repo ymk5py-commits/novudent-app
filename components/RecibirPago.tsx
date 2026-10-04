@@ -9,20 +9,24 @@ import { Wallet, MessageCircle, Plus, Trash2, AlertCircle } from "lucide-react";
 import { useStore, fmtGs, fmtDate } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, financialStatus } from "@/lib/budgets";
-import { installmentStatus, type InstallmentStatus } from "@/lib/financiamiento";
+import { cuotasDe, type InstallmentStatus } from "@/lib/financiamiento";
 import { comprobanteDe, repartirPago, siguienteNumero, type MedioPago } from "@/lib/pago";
 import type { Patient, Budget, PaymentMethod } from "@/lib/types";
+import { fechaLocal } from "@/lib/tareas";
 import { Card, Btn, Field, inputCls } from "@/components/ui";
 import { ComprobantePago } from "@/components/ComprobantePago";
 
 type MedioForm = { id: number; method: PaymentMethod; amount: string; checkNumber: string; checkBank: string; checkCashDate: string };
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+/** Hoy en la hora de la clínica (no UTC: de 21 a 24 h en Paraguay ya sería mañana). */
+const hoy = () => fechaLocal();
+/** El pie del financiamiento es la «cuota 0». */
+const nombreCuota = (n: number) => (n === 0 ? "Pie" : `Cuota #${n}`);
 /** «150.000», «150000» o «150000,50» → número. Vacío o basura → 0. */
 const num = (s: string) => { const n = Number(String(s).replace(/\./g, "").replace(",", ".").trim()); return Number.isFinite(n) && n > 0 ? n : 0; };
 const medioNuevo = (id: number): MedioForm => ({ id, method: "efectivo", amount: "", checkNumber: "", checkBank: "", checkCashDate: hoy() });
 
-export function RecibirPagoTab({ patient }: { patient: Patient }) {
+export function RecibirPagoTab({ patient, preseleccion }: { patient: Patient; preseleccion?: string | null }) {
   const { db, session, addPayment } = useStore();
   /* El permiso correcto es `payments.manage` (admin | asistente), el mismo que
    * usan las reglas de Firestore (`isStaff`) para dejar escribir en `payments`.
@@ -37,8 +41,12 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
   const pagables = db.budgets.filter((b) => b.patientId === patient.id && budgetBalance(b, db.payments) > 0);
   const conCuotas = db.budgets.filter((b) => b.patientId === patient.id && (b.schedule?.length ?? 0) > 0);
 
-  /** Monto a abonar por plan. Que el plan esté en el mapa = está seleccionado. */
-  const [montos, setMontos] = useState<Record<string, string>>({});
+  /** Monto a abonar por plan. Que el plan esté en el mapa = está seleccionado. Si se llegó
+   *  desde «Recaudar este tratamiento», ese plan entra seleccionado por su saldo. */
+  const [montos, setMontos] = useState<Record<string, string>>(() => {
+    const b = preseleccion ? pagables.find((x) => x.id === preseleccion) : undefined;
+    return b ? { [b.id]: String(Math.round(budgetBalance(b, db.payments))) } : {};
+  });
   /** Concepto propio de un plan (lo usa «Pagar cuota»). */
   const [conceptos, setConceptos] = useState<Record<string, string>>({});
   const [libreOn, setLibreOn] = useState(false);
@@ -125,7 +133,7 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
   /** «Pagar cuota» carga la cuota en el paso 1; el pago se confirma arriba, con comprobante. */
   const cargarCuota = (b: Budget, c: InstallmentStatus) => {
     setMontos((m) => ({ ...m, [b.id]: String(Math.round(Math.min(c.saldo, budgetBalance(b, db.payments)))) }));
-    setConceptos((x) => ({ ...x, [b.id]: `Cuota #${c.numero} — plan #${b.id}` }));
+    setConceptos((x) => ({ ...x, [b.id]: `${nombreCuota(c.numero)} — plan #${b.id}` }));
     setError(null);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -264,13 +272,13 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
         <div className="space-y-3">
           <h3 className="text-sm font-bold text-clinic-text">Por cuotas de financiamiento</h3>
           {conCuotas.map((b) => {
-            const cuotas = installmentStatus(b.schedule!, budgetPaid(b.id, db.payments));
+            const cuotas = cuotasDe(b, db.payments);
             const next = cuotas.find((c) => c.saldo > 0);
             return (
               <Card key={b.id} className="overflow-hidden p-0">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-clinic-border px-4 py-2.5">
-                  <span className="text-xs font-bold text-clinic-text">Plan #{b.id} · {b.planType === "ortodoncia" ? "Ortodoncia" : "General"} · {cuotas.length} cuotas</span>
-                  {next && <Btn variant="outline" onClick={() => cargarCuota(b, next)}><Wallet className="h-4 w-4" /> Pagar cuota #{next.numero} · {fmtGs(next.saldo)}</Btn>}
+                  <span className="text-xs font-bold text-clinic-text">Plan #{b.id} · {b.planType === "ortodoncia" ? "Ortodoncia" : "General"} · {cuotas.filter((c) => c.numero >= 1).length} cuotas{cuotas.some((c) => c.numero === 0) ? " + pie" : ""}</span>
+                  {next && <Btn variant="outline" onClick={() => cargarCuota(b, next)}><Wallet className="h-4 w-4" /> Pagar {next.numero === 0 ? "pie" : `cuota #${next.numero}`} · {fmtGs(next.saldo)}</Btn>}
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[460px] text-sm">
@@ -286,7 +294,7 @@ export function RecibirPagoTab({ patient }: { patient: Patient }) {
                     <tbody className="divide-y divide-clinic-border">
                       {cuotas.map((c) => (
                         <tr key={c.numero}>
-                          <td className="px-4 py-2 tabular-nums text-clinic-muted">#{c.numero}</td>
+                          <td className="px-4 py-2 tabular-nums text-clinic-muted">{nombreCuota(c.numero)}</td>
                           <td className="px-2 py-2 text-clinic-muted">{fmtDate(c.dueDate)}</td>
                           <td className="px-2 py-2 text-right tabular-nums">{fmtGs(c.amount)}</td>
                           <td className="px-2 py-2 text-right tabular-nums text-state-ok">{fmtGs(c.pagado)}</td>

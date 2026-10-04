@@ -8,7 +8,8 @@ import { useStore, fmtGs, fmtDate, fmtTime } from "@/lib/store";
 import { resizeToDataUrl } from "@/lib/image";
 import { SmileSimulator } from "@/components/SmileSimulator";
 import { can } from "@/lib/rbac";
-import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, financialStatus, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
+import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, budgetInteres, financialStatus, installmentValue, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
+import { PERIODICIDAD_LABEL } from "@/lib/financiamiento";
 import { orthoProgress } from "@/lib/ortho";
 import type { Patient, Budget, Payment, Appointment } from "@/lib/types";
 import { DEFAULT_ODONTOGRAM_STATUS } from "@/lib/types";
@@ -21,6 +22,7 @@ import { PrestacionesList } from "@/components/Prestaciones";
 import { BudgetForm } from "@/components/BudgetForm";
 import { useAlcance } from "@/lib/useAlcance";
 import { PlanPrintDocument } from "@/components/PlanPrintDocument";
+import { OpcionesPlan } from "@/components/OpcionesPlan";
 
 function planProgress(budget: Budget, patient: Patient): number {
   if (budget.planType === "ortodoncia" && patient.ortho?.active) return orthoProgress(patient.ortho).calendarPct;
@@ -29,7 +31,7 @@ function planProgress(budget: Budget, patient: Patient): number {
   return Math.round((budget.items.filter((i) => i.status === "realizado").length / total) * 100);
 }
 
-export function PlanTratamiento({ patient }: { patient: Patient }) {
+export function PlanTratamiento({ patient, onRecaudar }: { patient: Patient; onRecaudar?: (budgetId: string) => void }) {
   const { db, session, upsertBudget } = useStore();
   const alcance = useAlcance();
   // Dentista y asistente: solo los planes de sus doctores.
@@ -63,7 +65,7 @@ export function PlanTratamiento({ patient }: { patient: Patient }) {
     );
   }
   if (selId && budgets.some((b) => b.id === selId)) {
-    return <PlanDetalle patient={patient} budgets={budgets} selId={selId} onSelect={setSelId} onBack={() => setSelId(null)} />;
+    return <PlanDetalle patient={patient} budgets={budgets} selId={selId} onSelect={setSelId} onBack={() => setSelId(null)} onRecaudar={onRecaudar} />;
   }
   return <>{<PlanLista patient={patient} budgets={budgets} onOpen={setSelId} onNuevo={onNuevo} />}{nuevo}</>;
 }
@@ -171,8 +173,8 @@ function Col({ label, children }: { label: string; children: ReactNode }) {
 
 /* ---------- DETALLE (2 columnas) ---------- */
 function PlanDetalle({
-  patient, budgets, selId, onSelect, onBack,
-}: { patient: Patient; budgets: Budget[]; selId: string; onSelect: (id: string) => void; onBack: () => void }) {
+  patient, budgets, selId, onSelect, onBack, onRecaudar,
+}: { patient: Patient; budgets: Budget[]; selId: string; onSelect: (id: string) => void; onBack: () => void; onRecaudar?: (budgetId: string) => void }) {
   const { db } = useStore();
   const alcance = useAlcance();
   const hasIA = useClinicPlan().features.includes("ia");
@@ -196,6 +198,9 @@ function PlanDetalle({
             #{b.id}
           </button>
         ))}
+        <div className="ml-auto">
+          <OpcionesPlan budget={budget} patient={patient} onSelect={onSelect} onRecaudar={onRecaudar} />
+        </div>
       </div>
 
       <div className="grid min-w-0 gap-5 lg:grid-cols-[330px_minmax(0,1fr)]">
@@ -269,6 +274,17 @@ function PlanFinanciero({
           <div className="mt-1 tabular-nums text-3xl font-bold text-azure-600">{fmtGs(total)}</div>
         </div>
         <DescuentoRow budget={budget} />
+        {budget.financiamiento && (
+          <div className="mt-2 rounded border border-azure-100 bg-azure-50/60 px-3 py-2 text-xs text-clinic-text">
+            <div className="font-bold text-azure-700">Financiado</div>
+            <div className="text-clinic-muted">
+              {budget.financiamiento.pie > 0 && <>Pie {fmtGs(budget.financiamiento.pie)} · </>}
+              {budget.financiamiento.cuotas} cuota{budget.financiamiento.cuotas === 1 ? "" : "s"} {PERIODICIDAD_LABEL[budget.financiamiento.periodicidad].toLowerCase()}
+              {installmentValue(budget) !== null && <> de {fmtGs(installmentValue(budget)!)}</>}
+              {budgetInteres(budget) > 0 && <> · incluye {fmtGs(budgetInteres(budget))} de interés</>}
+            </div>
+          </div>
+        )}
         <div className="my-3 border-t border-clinic-border" />
         <DottedRow label="Realizado" value={fmtGs(realizado)} />
         <DottedRow label="Abonado" value={fmtGs(abonado)} />

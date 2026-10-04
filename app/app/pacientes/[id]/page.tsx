@@ -86,6 +86,8 @@ export default function PatientProfile() {
   const hasIA = useClinicPlan().features.includes("ia"); // Novudent IA: Plan Clínica+
   const alcance = useAlcance();
   const [tabElegida, setTab] = useState<SubTab>("resumen");
+  // «Recaudar este tratamiento» (Opciones del plan): abre Recibir pago con ese plan cargado.
+  const [planARecaudar, setPlanARecaudar] = useState<string | null>(null);
   // ?tab=… (desde el menú ⋮ del listado de pacientes): abre esa pestaña si existe.
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
@@ -436,8 +438,8 @@ export default function PatientProfile() {
       {tab === "comentarios" && <Reveal><PatientNotas patient={p} kind="comentario" /></Reveal>}
       {tab === "tareas" && <Reveal><TareasPaciente patient={p} /></Reveal>}
       {tab === "emails" && <Reveal><PatientNotas patient={p} kind="email" /></Reveal>}
-      {tab === "planes" && <Reveal><PlanTratamiento patient={p} /></Reveal>}
-      {tab === "recibir-pago" && <Reveal><RecibirPagoTab patient={p} /></Reveal>}
+      {tab === "planes" && <Reveal><PlanTratamiento patient={p} onRecaudar={(id) => { setPlanARecaudar(id); setTab("recibir-pago"); }} /></Reveal>}
+      {tab === "recibir-pago" && <Reveal><RecibirPagoTab patient={p} preseleccion={planARecaudar} /></Reveal>}
       {tab === "recetas" && <Reveal><RxTab patient={p} /></Reveal>}
 
       {/* ===== EVOLUCIONES ===== */}

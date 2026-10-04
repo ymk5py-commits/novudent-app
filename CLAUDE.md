@@ -110,6 +110,14 @@ y `Appointment.estadoId` apunta al estado configurable de `Clinic.config.estados
 (Configuración › Estados de cita). Para pintar una cita usar `estadoDeCita()` /
 `useEstadosCita()`, nunca `ESTADO_LABEL[status]` directo.
 
+**Pagos y financiamiento (oct-2026):** «Ingresar un pago» en 3 pasos (`lib/pago.ts`): cada
+cruce plan × medio es un `Payment` y todos comparten `receiptNumber` (= el comprobante).
+Opciones del plan (`OpcionesPlan`): el financiamiento guarda `Budget.financiamiento` y su
+`interes` **se suma en `budgetTotal`** sin descuento. Para mostrar el descuento usar
+`budgetDescuento(b)`, nunca `subtotal − total`; las cuotas se leen con `cuotasDe(b, payments)`
+(descuenta lo pagado antes de generarlas). Fechas: `fmtDate` lee las YYYY-MM-DD en hora local
+(`parseFecha`); para «hoy» usar `fechaLocal()`, no `toISOString().slice(0, 10)`.
+
 ## Diferenciadores (cross-repo con Botika)
 
 Monitor post-op + Negociación de presupuestos: contrato outbox con Botika

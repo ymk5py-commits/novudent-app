@@ -15,9 +15,21 @@ export function budgetSubtotal(b: Pick<Budget, "items">): number {
   return b.items.reduce((s, i) => s + i.price, 0);
 }
 
-/** Total con descuento (% manual o de convenio) */
-export function budgetTotal(b: Pick<Budget, "items" | "discountPct">): number {
-  return Math.round(budgetSubtotal(b) * (1 - (b.discountPct ?? 0) / 100));
+/** Interés del financiamiento por crédito (Opciones del plan › Financiamiento). */
+export function budgetInteres(b: Pick<Budget, "financiamiento">): number {
+  return Math.max(0, Math.round(b.financiamiento?.interes ?? 0));
+}
+
+/** Monto del descuento (% manual o de convenio) sobre las prestaciones. */
+export function budgetDescuento(b: Pick<Budget, "items" | "discountPct">): number {
+  const sub = budgetSubtotal(b);
+  return sub - Math.round(sub * (1 - (b.discountPct ?? 0) / 100));
+}
+
+/** Total con descuento (% manual o de convenio), más el interés del financiamiento si lo
+ *  hay. El interés va sin descuento: es lo que cuesta pagar en cuotas. */
+export function budgetTotal(b: Pick<Budget, "items" | "discountPct" | "financiamiento">): number {
+  return budgetSubtotal(b) - budgetDescuento(b) + budgetInteres(b);
 }
 
 /** Monto de los ítems ya realizados, con el descuento del presupuesto aplicado.
@@ -43,8 +55,11 @@ export function financialStatus(b: Budget, payments: Payment[]): { label: string
   return { label: "Hay saldo", tone: "ok" };
 }
 
-/** Valor de cada cuota pactada */
+/** Valor de cada cuota pactada. Si el plan tiene cuotas generadas, el de la primera cuota
+ *  regular (sin el pie); si no, el total dividido por las cuotas pactadas. */
 export function installmentValue(b: Budget): number | null {
+  const regulares = (b.schedule ?? []).filter((c) => c.numero >= 1);
+  if (regulares.length >= 2) return regulares[0].amount;
   if (!b.installments || b.installments < 2) return null;
   return Math.round(budgetTotal(b) / b.installments);
 }

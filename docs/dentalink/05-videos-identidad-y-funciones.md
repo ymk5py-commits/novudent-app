@@ -204,18 +204,30 @@ cupo en la agenda.
 2. ~~**Ingresar un pago en 3 pasos**~~ ✅ hecho el 4-oct-2026 (`lib/pago.ts`, `RecibirPago`,
    `ComprobantePago`): varios planes con monto editable, abono libre, varios medios en un pago,
    comprobante numerado imprimible y enviable por e-mail. Las cuotas se pagan por el mismo flujo.
-3. **Plan de tratamiento: Opciones ▾** (financiamiento por crédito con cuotas y
-   simulación, duplicar, finalizar, solicitar atención con otro profesional,
-   descuento por planilla) y envío del presupuesto por e-mail con historial.
+3. ~~**Plan de tratamiento: Opciones ▾**~~ ✅ hecho el 4-oct-2026 (`OpcionesPlan`,
+   `lib/planOpciones.ts`, `lib/financiamiento.ts`): financiamiento por crédito (pie, cuotas,
+   interés mensual, periodicidad, simulación en vivo, reemplazar o quitar), recaudar el plan,
+   enviar el presupuesto por e-mail en 3 versiones con historial de envíos, cambiar
+   profesional a cargo, duplicar, finalizar y reabrir. Queda afuera «descuento por
+   planilla» (convenios con descuento de sueldo, típico de Chile).
 4. ~~**Historial del paciente** como línea de tiempo~~ ✅ ya existía (`components/Historial.tsx`:
    filtro por tipo y mes, impresión).
 5. **Permisos granulares por área** con perfiles, copiar de otro usuario, sesiones y
-   bloqueos; 2FA.
-6. **Reportes gráficos**: 15 en Dentalink, 2 en Novudent (ver 03-reportes-y-crm.md).
-7. **Recetas** con plantillas y acciones (enviar, duplicar, imprimir).
-8. **Agendamientos online a validar** + página de confirmación de cita por link.
-9. **Total caja** desglosado por medio y transacciones, imprimible.
-10. **Gastos** con fecha de factura y fecha de pago separadas.
-11. **Pestaña «Pacientes de Ortodoncia»** y filtros Número / Tratamiento en Pacientes.
+   bloqueos; 2FA. Hoy hay 5 roles fijos (`lib/rbac.ts`), sin permisos por usuario.
+   El 2FA de Firebase necesita Identity Platform (plan Blaze); el proyecto es Spark.
+6. **Reportes gráficos**: Novudent tiene Flujo de caja, Producción y comisiones por
+   profesional, Morosidad, NPS, Panel de desempeño, Análisis de pacientes y 8 Excel.
+   Faltan Resultados, Ventas por prestación y por categoría, Informe de recaudación
+   diario, Estado de financiamientos y Derivación de pacientes (ver 03-reportes-y-crm.md).
+7. **Recetas**: ya hay plantillas e impresión (`PatientExtras.tsx`). Faltan enviar por
+   e-mail, duplicar, filtrar por tratamiento y «Mostrar anuladas».
+8. **Link de confirmación de cita** para el paciente (Confirmar / Anular desde WhatsApp o
+   e-mail). La validación de agendamientos online ya existe (aviso + «Ver y validar»).
+9. **Total caja** desglosado por medio con cantidad e imprimible. Apertura, cierre,
+   saldo inicial, arqueo y diferencia ya existen.
+10. ~~**Gastos** con fecha de factura y fecha de pago~~ ✅ ya existía (`Expense.invoiceDate`,
+    `payDate` y `cashSessionId`).
+11. ~~**Pestaña «Pacientes de Ortodoncia»**~~ ✅ existe como «Análisis de estudios
+    específicos» (renombrada a propósito en la revisión de Novum del 27-sep-2026).
 12. **Menú de usuario**: Mi perfil, contacto de soporte, **ID de soporte**.
-13. **Pie «Plataforma de soporte»** y pestaña «Videos 3D» (Novudent ya tiene /app/videos).
+13. **Pie «Plataforma de soporte»** (la sección Videos 3D ya existe en /app/videos).

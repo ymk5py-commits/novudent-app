@@ -531,6 +531,14 @@ export function fechaLocal(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** Una fecha de calendario (YYYY-MM-DD: vencimientos, cobro de cheques, gastos) se arma en
+ *  hora local. `new Date("2026-11-04")` la toma como medianoche UTC y en Paraguay (UTC−3)
+ *  se mostraba el 3. Un instante ISO completo se lee tal cual. */
+export function parseFecha(iso: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
+}
+
 /** Suma días a una fecha YYYY-MM-DD (aritmética de calendario, sin husos). */
 export function sumarDias(fecha: string, n: number): string {
   const d = new Date(`${fecha}T00:00:00Z`);

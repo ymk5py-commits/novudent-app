@@ -10,7 +10,7 @@ import { escapeHtml } from "@/lib/html";
 import { EmailButton } from "@/components/EmailButton";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { can } from "@/lib/rbac";
-import { budgetTotal, budgetSubtotal, budgetPaid, budgetBalance, installmentValue, BUDGET_STATUS_INFO } from "@/lib/budgets";
+import { budgetTotal, budgetSubtotal, budgetDescuento, budgetInteres, budgetPaid, budgetBalance, installmentValue, BUDGET_STATUS_INFO } from "@/lib/budgets";
 import type { Budget, BudgetItem, BudgetStatus } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
@@ -286,8 +286,9 @@ function BudgetDetail({ budget: b, onClose }: { budget: Budget; onClose: () => v
         <div className="space-y-1 rounded-xl border border-clinic-border p-4 text-sm">
           <div className="flex justify-between text-clinic-muted"><span>Subtotal</span><span className="tabular-nums">{fmtGs(budgetSubtotal(b))}</span></div>
           {b.discountPct ? (
-            <div className="flex justify-between text-clinic-muted"><span>Descuento {b.discountPct}%{b.convenio ? ` (${b.convenio})` : ""}</span><span className="tabular-nums">− {fmtGs(budgetSubtotal(b) - total)}</span></div>
+            <div className="flex justify-between text-clinic-muted"><span>Descuento {b.discountPct}%{b.convenio ? ` (${b.convenio})` : ""}</span><span className="tabular-nums">− {fmtGs(budgetDescuento(b))}</span></div>
           ) : null}
+          {budgetInteres(b) > 0 && <div className="flex justify-between text-clinic-muted"><span>Interés por financiamiento</span><span className="tabular-nums">{fmtGs(budgetInteres(b))}</span></div>}
           <div className="flex justify-between border-t border-clinic-border pt-2 text-base font-bold text-clinic-text"><span>Total</span><span className="tabular-nums">{fmtGs(total)}</span></div>
           {cuota && <div className="flex justify-between text-clinic-muted"><span>{b.installments} cuotas de</span><span className="tabular-nums font-bold">{fmtGs(cuota)}</span></div>}
           {(b.status === "aceptado" || b.status === "completado") && (

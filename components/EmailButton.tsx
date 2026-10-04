@@ -6,8 +6,10 @@ import { useState } from "react";
 import { currentIdToken } from "@/lib/firebase";
 import { Mail, Loader2, Check } from "lucide-react";
 
-export function EmailButton({ to, subject, html, label = "Enviar por email", disabled }: {
+export function EmailButton({ to, subject, html, label = "Enviar por email", disabled, onSent }: {
   to?: string; subject: string; html: string; label?: string; disabled?: boolean;
+  /** Se llama cuando el servidor confirma el envío (ej. para dejarlo en un historial). */
+  onSent?: () => void;
 }) {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [msg, setMsg] = useState<string | null>(null);
@@ -25,6 +27,7 @@ export function EmailButton({ to, subject, html, label = "Enviar por email", dis
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo enviar.");
       setState("sent");
+      onSent?.();
     } catch (e: any) { setState("error"); setMsg(e.message); }
   };
 

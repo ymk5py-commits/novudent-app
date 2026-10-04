@@ -56,6 +56,7 @@ import { submitToBilling, releaseFromHold } from "./billing";
 import { worstSeverity } from "./recovery";
 import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
 import { registrarFallo, resolverFallo, clasificarError } from "./write-errors";
+import { parseFecha } from "./tareas";
 
 const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
@@ -1567,8 +1568,10 @@ export function activeCurrency(): CurrencyCode {
 export function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
+/** Fecha corta (04-nov.). Las fechas de calendario YYYY-MM-DD se leen en hora local
+ *  (`parseFecha`): antes se mostraban un día antes en Paraguay. */
 export function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("es-PY", { day: "2-digit", month: "short" });
+  return parseFecha(iso).toLocaleDateString("es-PY", { day: "2-digit", month: "short" });
 }
 export function fullName(p: { firstName: string; lastName: string }) {
   return `${p.firstName} ${p.lastName}`;

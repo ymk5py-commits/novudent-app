@@ -409,6 +409,23 @@ export interface Installment {
   amount: number;
 }
 
+export type PeriodicidadCuotas = "mensual" | "quincenal" | "semanal";
+
+/** Condiciones con las que se generó el plan de cuotas de un presupuesto. */
+export interface FinanciamientoPlan {
+  pie: number;
+  cuotas: number;
+  interesMensualPct: number;
+  /** Interés total en moneda. Se suma al total del plan (sin descuento). */
+  interes: number;
+  montoFinanciado: number;
+  periodicidad: PeriodicidadCuotas;
+  /** Lo que el paciente ya había pagado al generar las cuotas: no se imputa a ninguna cuota. */
+  pagadoAntes: number;
+  generadoAt: string;
+  generadoBy: string;
+}
+
 export interface Budget {
   id: string;
   clinicId: string;
@@ -442,6 +459,9 @@ export interface Budget {
   patientComments?: string;
   /** Plan de cuotas de financiamiento (paridad Dentalink) */
   schedule?: Installment[];
+  /** Financiamiento por crédito generado desde Opciones del plan (lib/financiamiento).
+   *  Su `interes` se suma al total del plan, sin descuento. */
+  financiamiento?: FinanciamientoPlan;
   history: { at: string; action: string; by: string }[];
   /** Negociación de presupuesto abandonado (bot re-engancha al paciente) */
   negociacion?: {

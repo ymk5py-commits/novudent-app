@@ -3,7 +3,7 @@
 /** Hoja del plan de tratamiento. Se monta fuera del panel para que sus
  * animaciones, columnas y contenedores con overflow no recorten el PDF. */
 import { PrintLetterhead, PrintPortal } from "@/components/PrintDocument";
-import { budgetBalance, budgetPaid, budgetSubtotal, budgetTotal, installmentValue, BUDGET_STATUS_INFO } from "@/lib/budgets";
+import { budgetBalance, budgetDescuento, budgetInteres, budgetPaid, budgetSubtotal, budgetTotal, installmentValue, BUDGET_STATUS_INFO } from "@/lib/budgets";
 import { fmtGs, fullName } from "@/lib/store";
 import type { Budget, BudgetItem, Clinic, Patient, Payment } from "@/lib/types";
 
@@ -90,9 +90,10 @@ function Document({ budget, clinic, patient, professional, payments, showFinanci
             </div>
             <div className="plan-print-totals">
               <div><span>Subtotal</span><strong>{fmtGs(subtotal)}</strong></div>
-              {(budget.discountPct ?? 0) > 0 && <div><span>Descuento {budget.discountPct}%{budget.convenio ? ` · ${budget.convenio}` : ""}</span><strong>− {fmtGs(subtotal - total)}</strong></div>}
+              {(budget.discountPct ?? 0) > 0 && <div><span>Descuento {budget.discountPct}%{budget.convenio ? ` · ${budget.convenio}` : ""}</span><strong>− {fmtGs(budgetDescuento(budget))}</strong></div>}
+              {budgetInteres(budget) > 0 && <div><span>Interés por financiamiento</span><strong>{fmtGs(budgetInteres(budget))}</strong></div>}
               <div className="plan-print-grand-total"><span>Total del plan</span><strong>{fmtGs(total)}</strong></div>
-              {installment !== null && <div><span>Opción en {budget.installments} cuotas</span><strong>{fmtGs(installment)} / cuota</strong></div>}
+              {installment !== null && <div><span>{budget.financiamiento ? `Financiado${budget.financiamiento.pie > 0 ? ` · pie ${fmtGs(budget.financiamiento.pie)} +` : ":"} ${budget.financiamiento.cuotas} cuotas` : `Opción en ${budget.installments} cuotas`}</span><strong>{fmtGs(installment)} / cuota</strong></div>}
               {paid > 0 && <div><span>Abonado</span><strong>{fmtGs(paid)}</strong></div>}
               {paid > 0 && <div><span>Saldo pendiente</span><strong>{fmtGs(balance)}</strong></div>}
             </div>
