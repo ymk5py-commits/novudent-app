@@ -118,6 +118,11 @@ Opciones del plan (`OpcionesPlan`): el financiamiento guarda `Budget.financiamie
 (descuenta lo pagado antes de generarlas). Fechas: `fmtDate` lee las YYYY-MM-DD en hora local
 (`parseFecha`); para «hoy» usar `fechaLocal()`, no `toISOString().slice(0, 10)`.
 
+**Reportes gráficos (oct-2026):** `lib/reportes.ts` (puro, con tests) + `ReportesGraficos`
+(Reportes › «Reportes gráficos»). Los meses se agrupan en hora local (`mesLocal`); «ventas» =
+prestaciones realizadas con el descuento del plan (`realizadas()`). Permisos: alcanzan los 5
+roles (decisión del cliente, 4-oct-2026); no hay permisos por usuario.
+
 **Confirmación de cita por link (oct-2026):** `Appointment.confirmToken` es la credencial del
 link público `/confirmar/{cid}/{token}` (patrón de `/firmar`: `/api/citas/confirmar` escribe con
 el usuario de servicio, 404 genérico, rate limit). La respuesta del paciente setea `status` +

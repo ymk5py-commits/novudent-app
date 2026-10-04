@@ -168,6 +168,28 @@ export function CashflowAreaChart({ data }: { data: { d: string; cobrado: number
   );
 }
 
+/* ---------- dos series en barras (ventas vs costos por mes) ---------- */
+export function DosSeriesBarsChart({ data, nombres }: { data: { d: string; a: number; b: number }[]; nombres: [string, string] }) {
+  return (
+    <div className="h-60 w-full">
+      <ResponsiveContainer>
+        <BarChart data={data} margin={{ top: 8, right: 4, left: 4, bottom: 0 }} barCategoryGap="22%" barGap={2}>
+          <CartesianGrid vertical={false} stroke={GRID} />
+          <XAxis dataKey="d" axisLine={false} tickLine={false} tick={AXIS} dy={6} />
+          <YAxis
+            axisLine={false} tickLine={false} width={46} tick={AXIS}
+            tickFormatter={(v: number) => (Math.abs(v) >= 1_000_000 ? `${(v / 1_000_000).toLocaleString("es-PY", { maximumFractionDigits: 1 })}M` : `${Math.round(v / 1000)}k`)}
+          />
+          <Tooltip cursor={{ fill: "rgba(4,169,242,0.08)" }} content={<CardTooltip money />} />
+          <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, fontWeight: 700 }} />
+          <Bar dataKey="a" name={nombres[0]} fill="#0369C9" radius={[3, 3, 0, 0]} maxBarSize={26} animationDuration={900} />
+          <Bar dataKey="b" name={nombres[1]} fill="#F87171" radius={[3, 3, 0, 0]} maxBarSize={26} animationDuration={900} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 /* ---------- embudo de conversión (trapecios apilados, CSS) ---------- */
 export function FunnelChart({ stages }: { stages: { label: string; value: number; pct: number; color: string }[] }) {
   if (!stages.length || stages[0].value === 0) {

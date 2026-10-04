@@ -72,6 +72,7 @@ const NAV: NavTop[] = [
   {
     label: "Reportes", icon: BarChart3, children: [
       { href: "/app/reportes#desempeno", label: "Panel de desempeño", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/reportes#graficos", label: "Reportes gráficos", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
       { href: "/app/reportes#analisis", label: "Análisis de pacientes", icon: Users, perm: "billing.reports", feature: "reportes" },
       { href: "/app/reportes#excel", label: "Reportes Excel", icon: FileSpreadsheet, perm: "billing.reports", feature: "reportes" },
     ],

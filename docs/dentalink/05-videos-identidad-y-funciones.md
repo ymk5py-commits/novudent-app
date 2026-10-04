@@ -212,13 +212,15 @@ cupo en la agenda.
    planilla» (convenios con descuento de sueldo, típico de Chile).
 4. ~~**Historial del paciente** como línea de tiempo~~ ✅ ya existía (`components/Historial.tsx`:
    filtro por tipo y mes, impresión).
-5. **Permisos granulares por área** con perfiles, copiar de otro usuario, sesiones y
-   bloqueos; 2FA. Hoy hay 5 roles fijos (`lib/rbac.ts`), sin permisos por usuario.
-   El 2FA de Firebase necesita Identity Platform (plan Blaze); el proyecto es Spark.
-6. **Reportes gráficos**: Novudent tiene Flujo de caja, Producción y comisiones por
-   profesional, Morosidad, NPS, Panel de desempeño, Análisis de pacientes y 8 Excel.
-   Faltan Resultados, Ventas por prestación y por categoría, Informe de recaudación
-   diario, Estado de financiamientos y Derivación de pacientes (ver 03-reportes-y-crm.md).
+5. ~~**Permisos granulares por área**~~ ❌ descartado el 4-oct-2026: el cliente confirmó que
+   alcanzan los 5 roles fijos de `lib/rbac.ts` (roles v3 de la revisión de Novum del 27-sep).
+6. ~~**Reportes gráficos**~~ ✅ hecho el 4-oct-2026 (`lib/reportes.ts`, `ReportesGraficos`,
+   Reportes › «Reportes gráficos»): Resultados (devengado o percibido), Eficiencia por profesional
+   (ventas por hora atendida), Ventas por prestación, Ventas por categoría, Recaudación del día,
+   Estado de financiamientos (16 meses hacia adelante), Derivación de pacientes y Morosos por
+   antigüedad (30/60 días). Cada uno con explicación, gráfico, tabla y CSV. Se suman a Flujo de
+   caja, Producción por profesional, Morosidad, NPS y los Excel que ya existían. Gastos por
+   categoría ya estaba en Gastos › «Resumen por categoría».
 7. ~~**Recetas**~~ ✅ hecho el 4-oct-2026 (`lib/recetas.ts`, `PatientExtras.tsx`): plan de
    tratamiento en la receta y filtro por tratamiento, Enviar por e-mail, Duplicar, Anular (no se
    borra: registro clínico) y «Mostrar anuladas», además de las plantillas y la impresión.

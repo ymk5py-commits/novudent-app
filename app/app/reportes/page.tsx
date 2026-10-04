@@ -14,6 +14,7 @@ import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { ReportsIAPanel } from "@/components/NovudentIA";
 import { CashflowAreaChart, ProductionBarsChart } from "@/components/Charts";
 import { AnalisisConversion } from "@/components/AnalisisConversion";
+import { ReportesGraficos } from "@/components/ReportesGraficos";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 
 /** Descarga CSV con BOM UTF-8 (abre directo en Excel) */
@@ -31,7 +32,7 @@ const DAYS30 = 30 * 24 * 3600 * 1000;
 
 export default function ReportsPage() {
   const { db, session } = useStore();
-  const [tab, setTab] = useState<"desempeno" | "analisis" | "excel">("desempeno");
+  const [tab, setTab] = useState<"desempeno" | "graficos" | "analisis" | "excel">("desempeno");
   // Rango de los reportes de CRM (tareas de gestión): por defecto, el mes en curso.
   const [crmDesde, setCrmDesde] = useState(() => `${fechaLocal().slice(0, 7)}-01`);
   const [crmHasta, setCrmHasta] = useState(() => sumarDias(`${sumarDias(`${fechaLocal().slice(0, 7)}-01`, 32).slice(0, 7)}-01`, -1));
@@ -39,7 +40,7 @@ export default function ReportsPage() {
   useEffect(() => {
     const apply = () => {
       const h = window.location.hash.replace("#", "");
-      if (h === "desempeno" || h === "analisis" || h === "excel") setTab(h);
+      if (h === "desempeno" || h === "graficos" || h === "analisis" || h === "excel") setTab(h);
     };
     apply();
     window.addEventListener("hashchange", apply);
@@ -256,11 +257,12 @@ export default function ReportsPage() {
 
       {/* Sub-pestañas estilo Dentalink */}
       <div className="flex flex-wrap border-b border-clinic-border">
-        {([["desempeno", "Panel de desempeño"], ["analisis", "Análisis de pacientes"], ["excel", "Reportes Excel"]] as const).map(([k, label]) => (
+        {([["desempeno", "Panel de desempeño"], ["graficos", "Reportes gráficos"], ["analisis", "Análisis de pacientes"], ["excel", "Reportes Excel"]] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)} className={`-mb-px rounded-none border-b-2 px-3.5 py-2 text-[14px] font-normal transition-colors ${tab === k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}>{label}</button>
         ))}
       </div>
 
+      {tab === "graficos" && <ReportesGraficos />}
       {tab === "analisis" && <AnalisisConversion />}
 
       {tab === "desempeno" && (
