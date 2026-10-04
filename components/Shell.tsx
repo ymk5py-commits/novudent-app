@@ -21,6 +21,7 @@ import { PageTransition } from "@/components/motion";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import AvisoNoGuardado from "@/components/AvisoNoGuardado";
 import AyudaNovum from "@/components/AyudaNovum";
+import { MenuUsuario, PieSoporte } from "@/components/MenuUsuario";
 import { sinLeer } from "@/lib/chat";
 import { Logotipo } from "@/components/Marca";
 import { SaltarAlContenido } from "@/components/SaltarAlContenido";
@@ -148,7 +149,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   }).filter(Boolean) as NavTop[];
 
   const isActive = (href: string) => (href === "/app" ? pathname === "/app" : pathname.startsWith(href));
-  const initials = session.name.split(" ").map((w) => w[0]).slice(0, 2).join("");
   // Directos sin leer: el store los escucha en vivo, así el número se mueve en cualquier pantalla.
   const sinLeerChat = sinLeer(db.directMessages, session.userId);
   const badgeDe = (href: string) => (href === "/app/chat" ? sinLeerChat : 0);
@@ -279,14 +279,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             >
               <Headset className="h-4 w-4" aria-hidden /> <span className="hidden lg:inline">Ayuda</span>
             </button>
-            <span className="hidden text-right xl:block xl:whitespace-nowrap">
-              <span className="block text-xs font-bold leading-tight text-white">{session.name}</span>
-              <span className="block text-[11px] leading-tight text-white/75">{ROLE_LABEL[session.role]}</span>
-            </span>
-            <span className="hidden h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white ring-2 ring-white/40 sm:grid" style={{ background: me?.color ?? "#0369C9" }} aria-hidden>{initials}</span>
-            <button onClick={salir} aria-label="Cerrar sesión" data-tip="Cerrar sesión" data-tip-pos="down-left" className="hidden h-9 w-9 shrink-0 place-items-center rounded-xl text-white/80 transition-colors hover:bg-white/15 hover:text-white sm:grid">
-              <LogOut className="h-4 w-4" />
-            </button>
+            {/* Menú del usuario (Mi perfil · Ayuda · ID de soporte · Cerrar sesión), como el de Dentalink. */}
+            <MenuUsuario me={me} clinica={clinicName} onAyuda={abrirAyuda} onSalir={salir} />
           </div>
         </div>
         </div>
@@ -310,6 +304,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       {/* Fuera del <main> a propósito: es una barra fija al viewport. Dentro de
           PageTransition quedaría atrapada por su transform (contexto de
           apilamiento) y dejaría de posicionarse contra la ventana. */}
+      <PieSoporte clinica={clinicName} usuario={session.name} clinicId={session.clinicId} />
       <AvisoNoGuardado />
       {/* Botón flotante de ayuda, como el de soporte de Dentalink (abajo a la derecha). */}
       {!ayuda && (

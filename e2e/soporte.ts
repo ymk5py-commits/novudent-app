@@ -58,8 +58,14 @@ export async function entrarDemo(page: Page, usuario: string = USUARIOS_DEMO.adm
 /** Cierra la sesión. En el celular el botón vive en el menú lateral. */
 export async function cerrarSesion(page: Page) {
   const abrir = page.getByRole("button", { name: "Abrir menú" });
-  if (await abrir.isVisible()) await abrir.click();
-  await page.getByRole("button", { name: "Cerrar sesión" }).filter({ visible: true }).first().click();
+  if (await abrir.isVisible()) {
+    await abrir.click();
+    await page.getByRole("button", { name: "Cerrar sesión" }).filter({ visible: true }).first().click();
+    return;
+  }
+  // Escritorio: cerrar sesión vive en el menú del usuario (como en Dentalink).
+  await page.getByRole("button", { name: /^Menú de / }).click();
+  await page.getByRole("menuitem", { name: "Cerrar sesión" }).click();
 }
 
 /** Ninguna página tiene que obligar a scrollear de costado (sobre todo en el celular). */

@@ -53,9 +53,3 @@ export function respuestaCita(c: CitaMin, accion: AccionConfirmacion, canal: Can
     cambios: { status: "cancelada", estadoId: "anulado_paciente", cancelReason: "Anulada por el paciente desde el link de confirmación", respondidaAt: at },
   };
 }
-
-/** Suma el link al mensaje de recordatorio: en `{link}` si la plantilla lo tiene, si no al final. */
-export function conLink(mensaje: string, link: string): string {
-  if (mensaje.includes("{link}")) return mensaje.replaceAll("{link}", link);
-  return `${mensaje.trimEnd()}\n\nConfirmá o anulá tu cita acá: ${link}`;
-}

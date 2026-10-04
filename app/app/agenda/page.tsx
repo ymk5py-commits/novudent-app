@@ -6,11 +6,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft, ChevronRight, CalendarDays, CalendarRange, List, MoreHorizontal, Eye, Pencil, Trash2, Plus, User, Video,
-  Hourglass, BellRing, Users, AlertTriangle, Printer, Search, Phone, ChevronDown, Mail, Check, MessageSquareText, MessageCircle, Link2,
+  Hourglass, BellRing, Users, AlertTriangle, Printer, Search, Phone, ChevronDown, Mail, Check, MessageSquareText, Link2,
 } from "lucide-react";
 import { newSignToken } from "@/lib/firma";
-import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink, fillReminder } from "@/lib/store";
-import { conLink, linkConfirmacion } from "@/lib/confirmacionCita";
+import { useStore, fmtGs, fmtTime, fmtDate, fullName } from "@/lib/store";
+import { linkConfirmacion } from "@/lib/confirmacionCita";
 import { useAlcance } from "@/lib/useAlcance";
 import { estadoDeCita } from "@/lib/estadosCita";
 import { useEstadosCita } from "@/lib/useEstadosCita";
@@ -626,27 +626,6 @@ export default function AgendaPage() {
                         className="inline-flex items-center gap-1.5 rounded-xl bg-azure-50 px-3.5 py-2 text-xs font-bold text-azure-700 transition-colors hover:bg-azure-100 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Mail className="h-4 w-4" /> Enviar al correo
-                      </button>
-                      <button
-                        type="button"
-                        disabled={!p.phone}
-                        title={p.phone ? `Abre WhatsApp con ${p.phone}` : "El paciente no tiene teléfono cargado"}
-                        onClick={() => {
-                          const tok = live.confirmToken ?? newSignToken();
-                          if (!live.confirmToken) upsertAppointment({ ...live, confirmToken: tok });
-                          const tz = db.clinics[0]?.config.timezone || "America/Asuncion";
-                          const plantilla = db.clinics[0]?.config.reminderTemplate || "Hola {paciente} 👋 Te recordamos tu cita en {clinica} el {fecha} a las {hora}.";
-                          const mensaje = fillReminder(plantilla, {
-                            paciente: p.firstName,
-                            fecha: new Date(live.start).toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long", timeZone: tz }),
-                            hora: new Date(live.start).toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz }),
-                            clinica: db.clinics[0]?.name ?? "la clínica",
-                          });
-                          window.open(waLink(p.phone, conLink(mensaje, linkConfirmacion(window.location.origin, live.clinicId, tok, "whatsapp"))), "_blank", "noopener,noreferrer");
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366]/10 px-3.5 py-2 text-xs font-bold text-[#128C7E] transition-colors hover:bg-[#25D366]/20 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <MessageCircle className="h-4 w-4" /> Enviar por WhatsApp
                       </button>
                       <button
                         type="button"

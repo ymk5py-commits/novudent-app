@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canalDe, conLink, esTokenValido, linkConfirmacion, puedeResponder, respuestaCita } from "./confirmacionCita";
+import { canalDe, esTokenValido, linkConfirmacion, puedeResponder, respuestaCita } from "./confirmacionCita";
 import { newSignToken } from "./firma";
 
 const ahora = new Date("2026-10-04T12:00:00.000Z");
@@ -49,12 +49,5 @@ describe("respuestaCita", () => {
     expect(respuestaCita({ ...futura, status: "cancelada" }, "confirmar", "email", ahora)).toMatchObject({ ok: false, status: 409, error: expect.stringMatching(/anulada/) });
     expect(respuestaCita({ ...futura, status: "completada" }, "anular", "email", ahora)).toMatchObject({ ok: false, status: 409 });
     expect(respuestaCita({ ...futura, start: "2026-10-01T10:00:00.000Z" }, "confirmar", "email", ahora)).toMatchObject({ ok: false, status: 409 });
-  });
-});
-
-describe("conLink", () => {
-  it("usa {link} si la plantilla lo tiene; si no, lo suma al final", () => {
-    expect(conLink("Hola. Confirmá en {link} ¡Gracias!", "https://x/y")).toBe("Hola. Confirmá en https://x/y ¡Gracias!");
-    expect(conLink("Hola María ", "https://x/y")).toBe("Hola María\n\nConfirmá o anulá tu cita acá: https://x/y");
   });
 });

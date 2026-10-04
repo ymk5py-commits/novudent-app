@@ -5,30 +5,23 @@ import Link from "next/link";
  *  Cuentas por cobrar (morosidad) con recordatorio WhatsApp/Botika. */
 import { useState } from "react";
 import {
-  ShieldAlert, Plus, Wallet, TrendingDown, Trash2, MessageCircle, Banknote, CreditCard, Landmark, QrCode, Bot, Check, Lock, Unlock, Scale,
+  ShieldAlert, Plus, Wallet, TrendingDown, Trash2, MessageCircle, Banknote, CreditCard, Landmark, QrCode, Bot, Check, Lock, Unlock, Scale, Printer, Receipt,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName, waLink } from "@/lib/store";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { can } from "@/lib/rbac";
 import { budgetTotal, budgetBalance, patientBalance, PAYMENT_METHOD_LABEL, checkStatus } from "@/lib/budgets";
 import type { Payment, PaymentMethod, CashSession, Expense } from "@/lib/types";
+import { porMedio, totalesSesion } from "@/lib/caja";
+import { PrintLetterhead, PrintPortal } from "@/components/PrintDocument";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { Reveal } from "@/components/motion";
 
 const METHOD_ICON: Record<PaymentMethod, any> = { efectivo: Banknote, tarjeta: CreditCard, transferencia: Landmark, cheque: Landmark, qr: QrCode };
 
-/** Totales de una sesión: movimientos (pagos no anulados + gastos) en [apertura, cierre/ahora]. */
-function sessionTotals(s: CashSession, payments: Payment[], expenses: Expense[]) {
-  const from = s.openedAt;
-  const to = s.closedAt ?? new Date().toISOString();
-  const pays = payments.filter((p) => !p.voidedAt && p.date >= from && p.date <= to);
-  const exps = expenses.filter((e) => e.cashSessionId === s.id || (!e.cashSessionId && e.date >= from && e.date <= to));
-  const ingresos = pays.reduce((a, p) => a + p.amount, 0);
-  const egresos = exps.reduce((a, e) => a + e.amount, 0);
-  const efectivo = pays.filter((p) => p.method === "efectivo").reduce((a, p) => a + p.amount, 0);
-  return { pays, exps, ingresos, egresos, efectivo, acumulado: s.openingBalance + ingresos - egresos, expectedCash: s.openingBalance + efectivo - egresos };
-}
+/** Totales de una sesión (lib/caja): pagos no anulados + gastos en [apertura, cierre/ahora]. */
+const sessionTotals = (s: CashSession, payments: Payment[], expenses: Expense[]) => totalesSesion(s, payments, expenses);
 
 type Tab = "mi" | "abiertas" | "cerradas" | "cheques";
 
@@ -104,6 +97,7 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
   const store = useStore();
   const { db, session } = store;
   const [queued, setQueued] = useState<string[]>([]);
+  const [total, setTotal] = useState(false);
   const t = sessionTotals(s, db.payments, db.expenses);
   const isAdmin = session?.role === "admin";
 
@@ -116,8 +110,12 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
           <span className="inline-flex items-center gap-1.5 rounded-full bg-state-okbg px-2.5 py-1 text-xs font-bold text-state-ok"><span className="h-1.5 w-1.5 rounded-full bg-state-ok" /> Caja abierta</span>
           <span className="text-clinic-muted">{s.userName} · desde {fmtDate(s.openedAt)} {fmtTime(s.openedAt)}</span>
         </div>
-        <Btn variant="outline" onClick={onCerrar}><Unlock className="h-4 w-4" /> Cerrar caja</Btn>
+        <div className="flex flex-wrap gap-2">
+          <Btn variant="outline" onClick={() => setTotal(true)}><Receipt className="h-4 w-4" /> Total de caja</Btn>
+          <Btn variant="outline" onClick={onCerrar}><Unlock className="h-4 w-4" /> Cerrar caja</Btn>
+        </div>
       </Reveal>
+      {total && <TotalCajaModal s={s} onClose={() => setTotal(false)} />}
 
       <Reveal className="grid gap-3 sm:grid-cols-4">
         <Stat label="Saldo inicial" value={s.openingBalance} icon={Lock} tone="text-clinic-text" />
@@ -198,12 +196,13 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
 /* ===== Tabla de sesiones (abiertas / cerradas) ===== */
 function SesionesTable({ sessions, kind, onCerrar }: { sessions: CashSession[]; kind: "open" | "closed"; onCerrar?: (s: CashSession) => void }) {
   const { db } = useStore();
+  const [viendo, setViendo] = useState<CashSession | null>(null);
   if (sessions.length === 0) return <Empty title={kind === "open" ? "No hay cajas abiertas" : "No hay cajas cerradas"} desc={kind === "open" ? "Abrí una caja para empezar el turno." : "Las cajas cerradas con su arqueo aparecen acá."} />;
   return (
     <Card className="overflow-x-auto p-0">
       <table className="w-full min-w-[820px] text-sm">
         <thead><tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-          <th className="px-4 py-2">Usuario</th><th className="px-2 py-2">Apertura</th>{kind === "closed" && <th className="px-2 py-2">Cierre</th>}<th className="px-2 py-2 text-right">Saldo inicial</th><th className="px-2 py-2 text-right">Ingresos</th><th className="px-2 py-2 text-right">Egresos</th><th className="px-2 py-2 text-right">Acumulado</th>{kind === "closed" && <th className="px-2 py-2 text-right">Diferencia</th>}{kind === "open" && <th className="px-2 py-2"></th>}
+          <th className="px-4 py-2">Usuario</th><th className="px-2 py-2">Apertura</th>{kind === "closed" && <th className="px-2 py-2">Cierre</th>}<th className="px-2 py-2 text-right">Saldo inicial</th><th className="px-2 py-2 text-right">Ingresos</th><th className="px-2 py-2 text-right">Egresos</th><th className="px-2 py-2 text-right">Acumulado</th>{kind === "closed" && <th className="px-2 py-2 text-right">Diferencia</th>}<th className="px-2 py-2"></th>
         </tr></thead>
         <tbody className="divide-y divide-clinic-border">
           {sessions.map((s) => {
@@ -219,13 +218,103 @@ function SesionesTable({ sessions, kind, onCerrar }: { sessions: CashSession[]; 
                 <td className="px-2 py-2.5 text-right tabular-nums text-state-err">{fmtGs(t.egresos)}</td>
                 <td className="px-2 py-2.5 text-right tabular-nums font-bold text-clinic-text">{fmtGs(t.acumulado)}</td>
                 {kind === "closed" && <td className={`px-2 py-2.5 text-right tabular-nums font-bold ${diff === 0 ? "text-state-ok" : "text-state-err"}`}>{diff > 0 ? "+" : ""}{fmtGs(diff)}</td>}
-                {kind === "open" && <td className="px-2 py-2.5 text-right">{onCerrar && <Btn variant="outline" onClick={() => onCerrar(s)}><Unlock className="h-3.5 w-3.5" /> Cerrar</Btn>}</td>}
+                <td className="px-2 py-2.5 text-right">
+                  <span className="inline-flex gap-2">
+                    <Btn variant="outline" onClick={() => setViendo(s)}><Receipt className="h-3.5 w-3.5" /> Total</Btn>
+                    {kind === "open" && onCerrar && <Btn variant="outline" onClick={() => onCerrar(s)}><Unlock className="h-3.5 w-3.5" /> Cerrar</Btn>}
+                  </span>
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      {viendo && <TotalCajaModal s={viendo} onClose={() => setViendo(null)} />}
     </Card>
+  );
+}
+
+/* ===== Total de caja (paridad Dentalink «Total caja #N»), imprimible ===== */
+function TotalCajaModal({ s, onClose }: { s: CashSession; onClose: () => void }) {
+  const { db } = useStore();
+  const t = sessionTotals(s, db.payments, db.expenses);
+  const medios = porMedio(t.pays);
+  const clinic = db.clinics[0];
+  const desde = `${fmtDate(s.openedAt)} ${fmtTime(s.openedAt)}`;
+  const hasta = s.closedAt ? `${fmtDate(s.closedAt)} ${fmtTime(s.closedAt)}` : "abierta";
+  const nombre = (patientId: string) => { const p = db.patients.find((x) => x.id === patientId); return p ? fullName(p) : "—"; };
+
+  const cuerpo = (
+    <div className="space-y-4 text-[13px]">
+      <p className="text-clinic-muted">{s.userName} · desde {desde} · hasta {hasta}</p>
+      <table className="w-full">
+        <tbody className="divide-y divide-clinic-border">
+          {medios.length === 0 && <tr><td className="py-1.5 text-clinic-muted">Sin cobros en esta caja.</td><td /></tr>}
+          {medios.map((m) => (
+            <tr key={m.method}><td className="py-1.5 text-clinic-muted">{PAYMENT_METHOD_LABEL[m.method]} (cantidad: {m.cantidad})</td><td className="py-1.5 text-right tabular-nums">{fmtGs(m.total)}</td></tr>
+          ))}
+          <tr className="font-bold"><td className="py-1.5">Cobrado</td><td className="py-1.5 text-right tabular-nums">{fmtGs(t.ingresos)}</td></tr>
+          <tr><td className="py-1.5 text-clinic-muted">Saldo inicial</td><td className="py-1.5 text-right tabular-nums">{fmtGs(s.openingBalance)}</td></tr>
+          <tr><td className="py-1.5 text-clinic-muted">Gastos</td><td className="py-1.5 text-right tabular-nums text-state-err">− {fmtGs(t.egresos)}</td></tr>
+          <tr className="text-[15px] font-bold"><td className="py-2">Total caja <span className="text-[12px] font-normal text-clinic-muted">(saldo inicial + cobrado − gastos)</span></td><td className="py-2 text-right tabular-nums text-state-ok">{fmtGs(t.acumulado)}</td></tr>
+          <tr><td className="py-1.5 text-clinic-muted">Efectivo que tiene que haber en el cajón</td><td className="py-1.5 text-right tabular-nums">{fmtGs(t.expectedCash)}</td></tr>
+          {s.countedCash !== undefined && (
+            <tr><td className="py-1.5 text-clinic-muted">Efectivo contado al cierre · diferencia</td><td className={`py-1.5 text-right tabular-nums font-bold ${s.countedCash - t.expectedCash === 0 ? "text-state-ok" : "text-state-err"}`}>{fmtGs(s.countedCash)} · {s.countedCash - t.expectedCash > 0 ? "+" : ""}{fmtGs(s.countedCash - t.expectedCash)}</td></tr>
+          )}
+        </tbody>
+      </table>
+
+      <div>
+        <div className="mb-1 font-bold text-clinic-text">Transacciones de la caja</div>
+        {t.pays.length === 0 ? <p className="text-clinic-muted">Sin cobros.</p> : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px]">
+              <thead><tr className="border-b border-clinic-border text-left font-bold text-clinic-text"><th className="py-1.5 pr-2">Hora</th><th className="py-1.5 pr-2">Paciente</th><th className="py-1.5 pr-2">Medio de pago</th><th className="py-1.5 pr-2">Comprobante</th><th className="py-1.5 text-right">Monto</th></tr></thead>
+              <tbody className="divide-y divide-clinic-border">
+                {[...t.pays].sort((a, b) => a.date.localeCompare(b.date)).map((p) => (
+                  <tr key={p.id}>
+                    <td className="py-1.5 pr-2 tabular-nums text-clinic-muted">{fmtTime(p.date)}</td>
+                    <td className="py-1.5 pr-2">{nombre(p.patientId)}</td>
+                    <td className="py-1.5 pr-2 text-clinic-muted">{PAYMENT_METHOD_LABEL[p.method]}</td>
+                    <td className="py-1.5 pr-2 tabular-nums text-clinic-muted">{p.receiptNumber ? `N° ${p.receiptNumber}` : "—"}</td>
+                    <td className="py-1.5 text-right tabular-nums">{fmtGs(p.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {t.exps.length > 0 && (
+        <div>
+          <div className="mb-1 font-bold text-clinic-text">Gastos de la caja</div>
+          <table className="w-full">
+            <tbody className="divide-y divide-clinic-border">
+              {t.exps.map((e) => <tr key={e.id}><td className="py-1.5 pr-2 text-clinic-muted">{e.category}</td><td className="py-1.5 pr-2">{e.description}</td><td className="py-1.5 text-right tabular-nums text-state-err">− {fmtGs(e.amount)}</td></tr>)}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <Modal title="Total de caja" onClose={onClose} wide>
+      {cuerpo}
+      <div className="mt-4 flex justify-end gap-2 border-t border-clinic-border pt-3">
+        <Btn variant="outline" onClick={onClose}>Cerrar</Btn>
+        <Btn onClick={() => window.print()}><Printer className="h-4 w-4" /> Imprimir</Btn>
+      </div>
+      {clinic && (
+        <PrintPortal>
+          <div className="plan-print-root">
+            <PrintLetterhead clinic={clinic} label="TOTAL DE CAJA" />
+            <div className="mt-6">{cuerpo}</div>
+          </div>
+        </PrintPortal>
+      )}
+    </Modal>
   );
 }
 

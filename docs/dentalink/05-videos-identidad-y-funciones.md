@@ -224,12 +224,16 @@ cupo en la agenda.
 8. ~~**Link de confirmación de cita**~~ ✅ hecho el 4-oct-2026 (`lib/confirmacionCita.ts`,
    `/confirmar/{cid}/{token}`, `/api/citas/confirmar`): el paciente confirma o anula sin login
    desde WhatsApp o el correo, y la cita pasa a «Confirmado por WhatsApp/email» o «Anulado por
-   el paciente». En la agenda: «Enviar por WhatsApp» (plantilla + link) y «Copiar link».
-9. **Total caja** desglosado por medio con cantidad e imprimible. Apertura, cierre,
-   saldo inicial, arqueo y diferencia ya existen.
+   el paciente». Va en el correo de confirmación; en la agenda, «Copiar link» (para pegarlo en
+   WhatsApp). No hay botón de WhatsApp manual: la revisión de Novum del 27-sep lo sacó a propósito.
+9. ~~**Total caja**~~ ✅ hecho el 4-oct-2026 (`lib/caja.ts`, Caja › «Total de caja»): cobrado
+   por medio con su cantidad, saldo inicial, gastos, total, efectivo esperado, transacciones con
+   N° de comprobante; imprimible con membrete.
 10. ~~**Gastos** con fecha de factura y fecha de pago~~ ✅ ya existía (`Expense.invoiceDate`,
     `payDate` y `cashSessionId`).
 11. ~~**Pestaña «Pacientes de Ortodoncia»**~~ ✅ existe como «Análisis de estudios
     específicos» (renombrada a propósito en la revisión de Novum del 27-sep-2026).
-12. **Menú de usuario**: Mi perfil, contacto de soporte, **ID de soporte**.
-13. **Pie «Plataforma de soporte»** (la sección Videos 3D ya existe en /app/videos).
+12. ~~**Menú de usuario**~~ ✅ hecho el 4-oct-2026 (`MenuUsuario`): Mi perfil (datos, ID de
+    soporte, cambiar contraseña), Ayuda de Novum, ID de soporte y Cerrar sesión.
+13. ~~**Pie «Plataforma de soporte»**~~ ✅ hecho el 4-oct-2026 (`PieSoporte`): canales de
+    `NEXT_PUBLIC_SOPORTE_*` + ID de soporte.

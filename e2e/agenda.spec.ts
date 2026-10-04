@@ -75,8 +75,9 @@ test.describe("agenda del día", () => {
     await main(page).getByRole("button", { name: "No confirmado" }).first().click();
     const menu = page.getByRole("menu", { name: "Estado de la cita" });
     await expect(menu).toBeVisible();
-    // Va en un portal sobre <body>: no lo corta el scroll de la tabla.
-    expect(await menu.evaluate((el) => el.parentElement === document.body)).toBe(true);
+    // Va en un portal sobre <body> (envuelto en .app-portal, que le da la forma del panel):
+    // no lo corta el scroll de la tabla.
+    expect(await menu.evaluate((el) => el.closest(".app-portal")?.parentElement === document.body)).toBe(true);
     const items = menu.getByRole("menuitem");
     await expect(items.first()).toContainText("Notificar por mail");
     for (const estado of ["No confirmado", "Confirmado", "Atendido", "Atendiéndose", "En sala de espera", "No asiste", "Anulado"]) {

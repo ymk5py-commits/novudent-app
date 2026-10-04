@@ -391,7 +391,7 @@ export default function ConfigPage() {
       <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex items-center gap-2"><MessageSquareText className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Confirmación de citas — plantilla WhatsApp</h2></div>
-        <p className="mb-2 text-xs text-clinic-muted">Variables disponibles: <code className="tabular-nums">{"{paciente} {fecha} {hora} {clinica} {link}"}</code>. Se usa desde la Agenda al enviar recordatorios. <code>{"{link}"}</code> es el link para que el paciente confirme o anule; si no lo ponés, se agrega al final.</p>
+        <p className="mb-2 text-xs text-clinic-muted">Variables disponibles: <code className="tabular-nums">{"{paciente} {fecha} {hora} {clinica}"}</code>. Se usa desde la Agenda al enviar recordatorios.</p>
         <textarea
           rows={3}
           className={inputCls}
