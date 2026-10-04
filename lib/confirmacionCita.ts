@@ -34,7 +34,7 @@ export type Respuesta =
 
 /** Qué cambia en la cita según lo que respondió el paciente. `cambios: null` = no hay nada
  *  que escribir (confirmar algo ya confirmado). Una cita pasada, anulada o atendida no
- *  admite respuesta. */
+ *  admite respuesta. Si respondió, el aviso le llegó: queda `reminderSent`. */
 export function respuestaCita(c: CitaMin, accion: AccionConfirmacion, canal: CanalConfirmacion, ahora: Date): Respuesta {
   if (c.status === "cancelada") return { ok: false, error: "Esta cita ya está anulada.", status: 409 };
   if (!puedeResponder(c, ahora)) return { ok: false, error: "Esta cita ya no se puede confirmar ni anular desde el link. Comunicate con la clínica.", status: 409 };
@@ -44,12 +44,12 @@ export function respuestaCita(c: CitaMin, accion: AccionConfirmacion, canal: Can
     return {
       ok: true,
       resultado: "confirmada",
-      cambios: { status: "confirmada", estadoId: canal === "whatsapp" ? "confirmado_whatsapp" : "confirmado_email", confirmedVia: "link", respondidaAt: at },
+      cambios: { status: "confirmada", estadoId: canal === "whatsapp" ? "confirmado_whatsapp" : "confirmado_email", confirmedVia: "link", respondidaAt: at, reminderSent: true },
     };
   }
   return {
     ok: true,
     resultado: "anulada",
-    cambios: { status: "cancelada", estadoId: "anulado_paciente", cancelReason: "Anulada por el paciente desde el link de confirmación", respondidaAt: at },
+    cambios: { status: "cancelada", estadoId: "anulado_paciente", cancelReason: "Anulada por el paciente desde el link de confirmación", respondidaAt: at, reminderSent: true },
   };
 }

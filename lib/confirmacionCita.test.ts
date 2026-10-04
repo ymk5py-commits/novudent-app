@@ -34,7 +34,7 @@ describe("puedeResponder", () => {
 describe("respuestaCita", () => {
   it("confirmar deja el estado según el canal y quién respondió", () => {
     const r = respuestaCita(futura, "confirmar", "whatsapp", ahora);
-    expect(r).toEqual({ ok: true, resultado: "confirmada", cambios: { status: "confirmada", estadoId: "confirmado_whatsapp", confirmedVia: "link", respondidaAt: ahora.toISOString() } });
+    expect(r).toEqual({ ok: true, resultado: "confirmada", cambios: { status: "confirmada", estadoId: "confirmado_whatsapp", confirmedVia: "link", respondidaAt: ahora.toISOString(), reminderSent: true } });
     const m = respuestaCita(futura, "confirmar", "email", ahora);
     expect(m.ok && m.cambios?.estadoId).toBe("confirmado_email");
   });

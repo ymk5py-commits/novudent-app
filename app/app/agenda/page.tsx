@@ -615,7 +615,7 @@ export default function AgendaPage() {
                   <div className="rounded-xl border border-clinic-border p-3">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5 text-[13px] font-bold text-clinic-muted"><BellRing className="h-3.5 w-3.5" /> Confirmación de cita</span>
-                      {live.reminderSent ? <Badge tone="ok" tip="Ya se envió el recordatorio">Enviado</Badge> : <Badge tone="warn" tip="Aún sin recordatorio">Pendiente</Badge>}
+                      {live.respondidaAt ? <Badge tone="ok" tip="El paciente respondió desde el link">Respondió</Badge> : live.reminderSent ? <Badge tone="ok" tip="Ya se envió el recordatorio">Enviado</Badge> : <Badge tone="warn" tip="Aún sin recordatorio">Pendiente</Badge>}
                     </div>
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       <button
