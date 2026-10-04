@@ -55,11 +55,18 @@ desde `main`.
 
 ## Git / credenciales (IMPORTANTE)
 
-Repo: **`github.com/ymk5py-commits/novudent-app`**. La cuenta `gh` activa
-(`croman-coder`) **NO tiene acceso** → `git push` da 403. Para pushear:
+Repo: **`github.com/ymk5py-commits/novudent-app`** (público). La cuenta `gh` activa
+(`croman-coder`) **NO tiene acceso**. En la notebook de Croman (`croman-srpy`) hay una
+**deploy key con escritura solo en este repo** (`~/.ssh/id_ymk5py`, alias SSH `github-ymk5py`,
+agregada el 4-oct-2026) y el remote ya tiene el push apuntando ahí
+(`git remote set-url --push origin git@github-ymk5py:ymk5py-commits/novudent-app.git`):
+**`git push origin main` anda directo**, sin cambiar de cuenta. El fetch sigue por HTTPS.
+En otra máquina sin esa llave:
 ```
 gh auth switch --user ymk5py-commits && git push origin main && gh auth switch --user croman-coder
 ```
+Los deploys se verifican con el conector de Vercel (equipo `croman-mvp-s-projects`, proyecto
+`novudent-app`); no hace falta la CLI.
 Los commits ya quedan firmados como `ymk5py`. Trabajar en rama feature → merge a
 `main` (auto-deploy). Correr `npx tsc --noEmit && npx vitest run && npm run build`
 antes de mergear.
