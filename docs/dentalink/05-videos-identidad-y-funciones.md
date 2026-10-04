@@ -201,12 +201,14 @@ cupo en la agenda.
 
 1. ~~**Estados de cita configurables**~~ ✅ hecho el 3-oct-2026 (`lib/estadosCita.ts`,
    Configuración › Estados de cita: 7 base + 9 internos + propios, con color, anulación y tipo).
-2. **Ingresar un pago en 3 pasos** con varios medios en un pago, abono libre y
-   comprobante imprimible/enviable.
+2. ~~**Ingresar un pago en 3 pasos**~~ ✅ hecho el 4-oct-2026 (`lib/pago.ts`, `RecibirPago`,
+   `ComprobantePago`): varios planes con monto editable, abono libre, varios medios en un pago,
+   comprobante numerado imprimible y enviable por e-mail. Las cuotas se pagan por el mismo flujo.
 3. **Plan de tratamiento: Opciones ▾** (financiamiento por crédito con cuotas y
    simulación, duplicar, finalizar, solicitar atención con otro profesional,
    descuento por planilla) y envío del presupuesto por e-mail con historial.
-4. **Historial del paciente** como línea de tiempo (trazabilidad).
+4. ~~**Historial del paciente** como línea de tiempo~~ ✅ ya existía (`components/Historial.tsx`:
+   filtro por tipo y mes, impresión).
 5. **Permisos granulares por área** con perfiles, copiar de otro usuario, sesiones y
    bloqueos; 2FA.
 6. **Reportes gráficos**: 15 en Dentalink, 2 en Novudent (ver 03-reportes-y-crm.md).

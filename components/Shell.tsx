@@ -302,7 +302,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-[1440px] flex-1 scroll-mt-36 px-4 py-6 focus:outline-none sm:px-6 sm:py-8">
+      <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-[1440px] flex-1 scroll-mt-36 px-4 pb-24 pt-6 focus:outline-none sm:px-6 sm:pt-8">
         <SubscriptionBanner />
         <PageTransition>{children}</PageTransition>
       </main>
