@@ -9,7 +9,8 @@ import type { CampoDocumento, PlantillaDocumento, SeccionDocumento } from "./typ
  * capturas (Sí/No, Buena/Regular/Mala…) las puso Novudent.
  *
  * Los tres textos son BORRADORES de Novudent con indicaciones generales: `porRevisar` los
- * marca hasta que un odontólogo los revise y un administrador los confirme. */
+ * marca hasta que un odontólogo los revise y un administrador los confirme. Los textos no
+ * repiten título, paciente ni fecha: la hoja impresa y el correo ya los llevan en el encabezado. */
 
 const SI_NO = ["Sí", "No"];
 const BUENA_REGULAR_MALA = ["Buena", "Regular", "Mala"];
@@ -149,10 +150,7 @@ const CUIDADOS_EXODONCIA: PlantillaDocumento = {
   nombre: "Cuidados postoperatorios de exodoncia",
   tipo: "texto",
   porRevisar: true,
-  cuerpo: `CUIDADOS POSTOPERATORIOS DE EXODONCIA
-
-Paciente: {paciente}
-Fecha: {fecha} · Profesional: {profesional}
+  cuerpo: `Estimado/a {paciente}:
 
 Hoy le realizamos una extracción dental. Para que cicatrice bien y sin complicaciones, siga estas indicaciones:
 
@@ -175,10 +173,7 @@ const POST_BLANQUEAMIENTO: PlantillaDocumento = {
   nombre: "Indicaciones después del blanqueamiento",
   tipo: "texto",
   porRevisar: true,
-  cuerpo: `INDICACIONES DESPUÉS DEL BLANQUEAMIENTO DENTAL
-
-Paciente: {paciente}
-Fecha: {fecha} · Profesional: {profesional}
+  cuerpo: `Estimado/a {paciente}:
 
 Después del blanqueamiento los dientes quedan más porosos durante unas 48 horas y absorben con facilidad los colores. Para conservar el resultado y cuidar la sensibilidad:
 
@@ -200,10 +195,7 @@ const HIGIENE_CEPILLADO_ADULTOS: PlantillaDocumento = {
   nombre: "Higiene y cepillado en adultos",
   tipo: "texto",
   porRevisar: true,
-  cuerpo: `HIGIENE Y CEPILLADO EN ADULTOS
-
-Paciente: {paciente}
-Fecha: {fecha} · Profesional: {profesional}
+  cuerpo: `Estimado/a {paciente}:
 
 Una buena higiene diaria previene las caries y las enfermedades de las encías. Estas son las indicaciones para su caso:
 
