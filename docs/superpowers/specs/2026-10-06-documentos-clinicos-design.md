@@ -84,6 +84,7 @@ interface DocumentoClinico {
   cuerpo?: string;                         // texto final (con los datos reemplazados)
   valores?: Record<string, string | string[]>;  // campo.id → valor (casillas = string[])
   dentistId?: string;                      // profesional a cargo
+  porRevisar?: boolean;                    // snapshot de PlantillaDocumento.porRevisar
   estado: "pendiente" | "completado" | "anulado";
   createdAt: string; createdBy: string; createdByName: string;
   updatedAt?: string;
@@ -213,9 +214,15 @@ y en Configuración un botón «Marcar como revisada» (solo admin).
 - **Editor** (página completa dentro de la ficha, como Dentalink): título «Nuevo documento
   clínico» + nombre de la plantilla; cada sección con su barra azul y sus campos en grilla de
   cuatro columnas (una en el celular); barra fija abajo con **Descartar y volver**, **Guardar
-  borrador** y **Continuar**. Salir con cambios sin guardar pide confirmación
-  (`AvisoNoGuardado`). Los documentos de texto muestran el cuerpo con los datos del paciente ya
-  puestos, editable antes de guardar.
+  borrador** y **Continuar**. Salir con cambios sin guardar pide confirmación (`window.confirm`,
+  y el aviso del navegador si se cierra la pestaña). La barra queda pegada al borde de abajo
+  del contenido, con espacio a la derecha para no quedar tapada por el botón flotante de ayuda.
+  Los documentos de texto muestran el cuerpo con los datos del paciente ya puestos, editable
+  antes de guardar.
+- **Por revisar**: el documento creado desde una plantilla marcada «por revisar» guarda esa
+  marca (`porRevisar`). Se ve la etiqueta «Por revisar» en la lista y en el editor, y la hoja
+  impresa lleva «BORRADOR — pendiente de revisión por un odontólogo», para que un texto sin
+  revisar no le llegue al paciente sin que nadie lo note.
 - **Continuar** = completado + vista de impresión con membrete (`PrintDocument`): datos del
   paciente, profesional, fecha y solo los campos respondidos (las casillas como lista; una
   sección sin respuestas no se imprime). Desde ahí, **Enviar por correo** (`EmailButton`).
@@ -281,8 +288,9 @@ que ya está cubierto por su regla (solo admin escribe la config).
 | `lib/documentosClinicos.ts` (nuevo, puro) | `PLANTILLAS_DE_FABRICA`, `plantillasDeClinica`, `normalizarPlantillas`, `nuevoDocumento`, `camposVisibles` (solo mujeres), `respuestasParaImprimir`, `cuerpoConDatos`, `pendientesDe`, `documentosDelPaciente` (une `clinicalDocs` + `Patient.forms`) |
 | `lib/documentosClinicos.test.ts` | TDD de todo lo anterior |
 | `lib/types.ts` | `PlantillaDocumento`, `DocumentoClinico`, `Clinic.config.plantillasDocumento`, `SignatureDoc.budgetId/dentistId`, `DB.clinicalDocs` |
-| `lib/store.tsx` + `lib/seed.ts` | colección `clinicalDocs` (load, `add/update`), demo con una Historia Clínica completa y una pendiente |
-| `lib/camposPaciente.ts` | el alta crea la Historia Clínica pendiente en vez del «Anamnesis inicial» |
+| `lib/plantillasDocumento.ts` (nuevo) | solo datos: la Historia Clínica y los tres textos de fábrica |
+| `lib/store.tsx` + `lib/seed.ts` | colección `clinicalDocs`: carga (Firestore y local), `addClinicalDoc`/`updateClinicalDoc`, fusión de fichas (`mergePatients`), «Reiniciar demo» y siembra; demo con una Historia Clínica completa y dos pendientes |
+| `lib/camposPaciente.ts`, `app/app/pacientes/nuevo/page.tsx`, `components/DarCita.tsx` | el alta (de las dos pantallas que crean pacientes) deja una Historia Clínica pendiente en vez del «Anamnesis inicial» |
 | `components/DocumentosClinicos.tsx` | lista, modal de nuevo, editor, vista de impresión |
 | `components/Consentimientos.tsx` | modal «Crear nuevo consentimiento», plan, profesional, mostrar anulados |
 | `components/PlantillasDocumento.tsx` | editor de Configuración |
