@@ -240,3 +240,32 @@ cupo en la agenda.
     soporte, cambiar contraseña), Ayuda de Novum, ID de soporte y Cerrar sesión.
 13. ~~**Pie «Plataforma de soporte»**~~ ✅ hecho el 4-oct-2026 (`PieSoporte`): canales de
     `NEXT_PUBLIC_SOPORTE_*` + ID de soporte.
+
+## Pedidos de Novum del 6-oct-2026 (revisión con Aura Esthetic Center)
+
+Camila mandó capturas de la ficha de Aura en Dentalink y marcó «esto es lo que está mal»:
+
+14. ~~**Documentos ▾ en la Ficha clínica**~~ ✅ hecho el 6-oct-2026
+    (`MenuDocumentos`, `DocumentosClinicos`): un solo botón con **Consentimientos** y
+    **Documentos clínicos**, como Dentalink. «Formularios» y «Consentimientos» salieron de Datos
+    personales; `?tab=formularios` y `#formularios` siguen abriendo Documentos clínicos. Los
+    formularios que el paciente ya tenía (`Patient.forms`) se ven en la misma lista.
+15. ~~**Historia Clínica completa**~~ ✅ hecho el 6-oct-2026 (`lib/plantillasDocumento.ts`): las
+    nueve secciones de Aura (antecedentes patológicos, aparatos y sistemas, hereditarios,
+    signos vitales, no patológicos, odontológicos, parafunciones, exploración extraoral e
+    intraoral) con la ortografía corregida y las preguntas de embarazo solo para mujeres. Todo
+    paciente nuevo arranca con una pendiente. «Continuar» la completa y abre la vista para
+    imprimir con membrete o enviar por correo. Si debajo de «Espacios desdentados» Dentalink
+    tiene más secciones, falta esa captura (el editor de plantillas permite agregarlas).
+16. ~~**Editor de plantillas**~~ ✅ hecho el 6-oct-2026 (`PlantillasDocumento`, Configuración ›
+    Documentos clínicos): editar, duplicar, desactivar y crear plantillas propias (formulario o
+    texto). Los textos de indicaciones (cuidados de exodoncia, post-blanqueamiento, higiene y
+    cepillado) los redactó Novudent como **borradores «por revisar»**: un odontólogo tiene que
+    revisarlos y un administrador marcarlos como revisados; hasta entonces la hoja impresa lleva
+    la leyenda de borrador.
+17. ~~**Consentimiento con plan y profesional**~~ ✅ hecho el 6-oct-2026: «Crear nuevo
+    consentimiento» pide Tipo, Plan de tratamiento y Profesional a cargo, y la lista tiene
+    «Mostrar anulados».
+
+Pendientes de ese mismo pedido: campanita con panel de pendientes que lleve a cada paciente,
+«Mi agenda» en Inicio (tareas propias que se tachan solas, con IA) y el manual de procedimientos.

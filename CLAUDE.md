@@ -75,7 +75,7 @@ antes de mergear.
 
 - `firebase deploy --only firestore:rules` cada vez que se agrega una colección
   (cubre recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders,
-  settlements, boxes…).
+  settlements, boxes, **clinicalDocs**…).
 - Envs en Vercel: `GEMINI_API_KEY`, `FIREBASE_WEB_API_KEY`, `SERVICE_USER_EMAIL/
   PASSWORD`, `OWNER_PANEL_KEY`.
 
@@ -136,6 +136,18 @@ el usuario de servicio, 404 genérico, rate limit). La respuesta del paciente se
 `estadoId` (confirmado_whatsapp/email, anulado_paciente). `estadoDeCita` solo respeta `estadoId`
 si su `base` coincide con el `status`: cambiar el `status` por otro camino nunca deja un
 estado viejo pintado.
+
+**Documentos clínicos (oct-2026):** Ficha clínica › **Documentos ▾** (Consentimientos + Documentos
+clínicos, como Dentalink). Colección `clinicalDocs` (no va dentro del doc del paciente: ya lleva
+foto y EMR): `DocumentoClinico` guarda una **copia** de su plantilla, así editarla después no cambia
+lo ya hecho. Las plantillas viven en `Clinic.config.plantillasDocumento`; sin nada guardado,
+`plantillasDeClinica()` devuelve las de fábrica (`lib/plantillasDocumento.ts`: la Historia Clínica de
+Aura y tres textos «por revisar»). Lógica pura y con tests en `lib/documentosClinicos.ts`. Reglas:
+**un documento clínico no se borra, se anula**; `puedeEditarDocumentos` (admin, caja, recepción y
+dentista) es el espejo de la regla `clinicalDocs` de `firestore.rules` y hay un test que lo ata a la
+matriz de roles. **Todo conteo de pendientes sale de `pendientesPorPaciente()`** (documentos nuevos +
+los `Patient.forms` viejos): campana, Inicio, buscador y cabecera de la ficha. El alta de paciente
+usa `crearPaciente()` del store, que deja la Historia Clínica pendiente.
 
 ## Diferenciadores (cross-repo con Botika)
 
