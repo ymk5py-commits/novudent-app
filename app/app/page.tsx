@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useStore, fmtTime, fmtGs, fullName } from "@/lib/store";
 import { patientBalance } from "@/lib/budgets";
+import { pendientesPorPaciente } from "@/lib/documentosClinicos";
 import { can, ROLE_DESCRIPCION } from "@/lib/rbac";
 import { useAlcance } from "@/lib/useAlcance";
 import { Card, Badge, StatusBadge } from "@/components/ui";
@@ -75,7 +76,9 @@ export default function Dashboard() {
   const today = new Date();
   const isToday = (iso: string) => new Date(iso).toDateString() === today.toDateString();
   const todays = db.appointments.filter((a) => isToday(a.start) && a.status !== "cancelada" && alcance.veDoctor(a.dentistId)).sort((a, b) => a.start.localeCompare(b.start));
-  const pendingForms = db.patients.filter((p) => p.forms.some((f) => f.status === "pendiente")).length;
+  // Documentos clínicos pendientes (documentos nuevos + formularios viejos), por paciente.
+  const conPendientes = pendientesPorPaciente(db.patients, db.clinicalDocs);
+  const pendingForms = conPendientes.size;
   const onHold = db.billing.filter((b) => b.flags.includes("HOLD") || b.flags.includes("MGRHOLD")).length;
 
   /* semana actual */
@@ -193,7 +196,7 @@ export default function Dashboard() {
           .slice(0, 8)
       : [],
     formulariosPendientes: (can(session.role, "engagement.forms") ? db.patients : [])
-      .filter((p) => p.forms.some((f) => f.status === "pendiente"))
+      .filter((p) => conPendientes.has(p.id))
       .slice(0, 10)
       .map((p) => `${p.firstName} ${p.lastName}`),
     canceladasEstaSemana: cancelledWeek.length,
@@ -235,7 +238,7 @@ export default function Dashboard() {
       <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StaggerItem><SpikeStat label="Citas de hoy" value={todays.length} icon={CalendarDays} tone="azure" href="/app/agenda" /></StaggerItem>
         <StaggerItem><SpikeStat label={alcance.pacientes ? "Mis pacientes" : "Pacientes activos"} value={alcance.pacientes ? alcance.pacientes.size : db.patients.length} icon={Users} tone="green" href="/app/pacientes" /></StaggerItem>
-        {alcance.puede("engagement.forms") && <StaggerItem><SpikeStat label="Formularios pendientes" value={pendingForms} icon={FileText} tone={pendingForms > 0 ? "amber" : "green"} href="/app/pacientes" /></StaggerItem>}
+        {alcance.puede("engagement.forms") && <StaggerItem><SpikeStat label="Documentos pendientes" value={pendingForms} icon={FileText} tone={pendingForms > 0 ? "amber" : "green"} href="/app/pacientes" /></StaggerItem>}
         {alcance.puede("money.view") && <StaggerItem><SpikeStat label="Reclamos en retención" value={onHold} icon={PauseCircle} tone={onHold > 0 ? "red" : "green"} href="/app/facturacion" /></StaggerItem>}
       </Stagger>
 

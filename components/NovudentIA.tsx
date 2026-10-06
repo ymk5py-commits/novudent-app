@@ -18,6 +18,8 @@ import type { EmrNote, Patient } from "@/lib/types";
 import { Btn, Modal, Field, inputCls, Card } from "@/components/ui";
 import { currentIdToken } from "@/lib/firebase";
 import { useAlcance } from "@/lib/useAlcance";
+import { useStore } from "@/lib/store";
+import { pendientesPorPaciente } from "@/lib/documentosClinicos";
 
 /** POST a una ruta /api/ia/* con el Firebase ID token (cierra el proxy abierto). */
 async function iaFetch(url: string, payload: unknown): Promise<Response> {
@@ -283,6 +285,7 @@ export function PatientBriefButton({
   context: { appointments?: unknown[]; budgets?: unknown[]; billing?: unknown[] };
 }) {
   const alcance = useAlcance();
+  const { db } = useStore();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
@@ -304,7 +307,7 @@ export function PatientBriefButton({
         ...(personales ? { nacimiento: patient.birthDate || null, aseguradora: patient.insurer || null } : { edad }),
         nps: patient.nps || null,
         historialDesactualizado: patient.historyUpdatePending || false,
-        ...(alcance.puede("engagement.forms") ? { formulariosPendientes: patient.forms.filter((f) => f.status === "pendiente").length } : {}),
+        ...(alcance.puede("engagement.forms") ? { formulariosPendientes: pendientesPorPaciente([patient], db.clinicalDocs).get(patient.id) ?? 0 } : {}),
         evoluciones: (patient.emr || []).slice(0, 8).map((n) => ({
           fecha: n.createdAt.slice(0, 10),
           tipo: n.kind,
