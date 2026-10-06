@@ -95,10 +95,16 @@ test.describe("Recepcionista", () => {
     await expect(main(page)).not.toContainText("Deudas");
   });
 
-  test("abre los datos del paciente pero no la ficha clínica", async ({ page }) => {
+  test("abre los datos del paciente y los documentos clínicos, pero no el resto de la ficha clínica", async ({ page }) => {
     await page.goto("/app/pacientes/p1");
     await expect(main(page).getByRole("button", { name: "Datos personales" })).toBeVisible();
-    await expect(main(page).getByRole("button", { name: "Ficha clínica" })).toHaveCount(0);
+    // «Ficha clínica» le queda solo para los documentos (Historia Clínica y consentimientos, 6/10/2026):
+    // ni odontograma, ni evoluciones, ni antecedentes, ni recetas, ni radiografías.
+    await main(page).getByRole("button", { name: "Ficha clínica", exact: true }).click();
+    await expect(main(page).getByRole("button", { name: /^Documentos/ })).toBeVisible();
+    for (const oculta of ["Resumen", "Evoluciones", "Antecedentes médicos", "Odontograma", "Periodoncia", "Historial", "Radiografías", "Recetas"]) {
+      await expect(main(page).getByRole("button", { name: oculta, exact: true }), oculta).toHaveCount(0);
+    }
     // Ve los tratamientos, sin montos (revisión del 27/9/2026).
     await main(page).getByRole("button", { name: "Planes de tratamiento" }).click();
     await expect(main(page)).not.toContainText(MONTO);

@@ -82,7 +82,7 @@ export const ROLE_LABEL: Record<Role, string> = {
 export const ROLE_DESCRIPCION: Record<Role, string> = {
   admin: "Acceso completo, incluida la configuración de la clínica.",
   cashier: "Agenda de todos, datos del paciente, cobros y arqueo de caja. No ve reportes del negocio.",
-  receptionist: "Agenda de todos, datos del paciente para cargarlos o editarlos y sus tratamientos sin montos. No ve la ficha clínica.",
+  receptionist: "Agenda de todos, datos del paciente para cargarlos o editarlos y sus tratamientos sin montos. De la ficha clínica solo ve los documentos (Historia Clínica y consentimientos).",
   dentist: "Su agenda (solo lectura), sus planes de tratamiento y la ficha clínica de sus pacientes. No ve montos ni datos personales.",
   assistant: "La agenda, los planes y la ficha de los doctores que tenga asignados, en solo lectura. No ve montos ni datos personales.",
 };
