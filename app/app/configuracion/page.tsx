@@ -3,7 +3,7 @@ import Link from "next/link";
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, Image as ImageIcon, MapPin, CalendarClock, ListChecks, Clock, Ban, Power } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, FileText, Image as ImageIcon, MapPin, CalendarClock, ListChecks, Clock, Ban, Power } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
 import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
 import { can, ROLE_LABEL, ROLES, ROLE_DESCRIPCION } from "@/lib/rbac";
@@ -16,6 +16,7 @@ import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui
 import { useClinicPlan } from "@/components/PlanGate";
 import DentalinkImport from "@/components/DentalinkImport";
 import { EstadosCitaConfig } from "@/components/EstadosCitaConfig";
+import { PlantillasDocumento } from "@/components/PlantillasDocumento";
 import { resizeToDataUrl } from "@/lib/image";
 import { Reveal } from "@/components/motion";
 import { Logotipo } from "@/components/Marca";
@@ -152,6 +153,16 @@ export default function ConfigPage() {
         <div className="mb-3 flex items-center gap-2"><ListChecks className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Estados de cita</h2></div>
         <p className="mb-3 text-xs text-clinic-muted">Los estados que la recepción le pone a cada cita en la agenda. Podés renombrarlos, cambiarles el color, desactivar los internos y crear estados propios (ej. «Control 6 meses»).</p>
         <EstadosCitaConfig />
+      </Card>
+      </Reveal>
+
+      <span id="documentos-clinicos" className="block scroll-mt-24" aria-hidden="true" />
+      {/* Documentos clínicos (Historia Clínica y textos de indicaciones): las plantillas de la ficha del paciente */}
+      <Reveal>
+      <Card className="p-5">
+        <div className="mb-3 flex items-center gap-2"><FileText className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Documentos clínicos</h2></div>
+        <p className="mb-3 text-xs text-clinic-muted">Las plantillas que aparecen en Ficha clínica › Documentos › Documentos clínicos: la Historia Clínica y los textos de indicaciones. Podés editarlas, duplicarlas, desactivarlas o crear las tuyas. Los textos que trae Novudent son borradores: marcalos como revisados cuando un odontólogo los haya revisado.</p>
+        <PlantillasDocumento />
       </Card>
       </Reveal>
 

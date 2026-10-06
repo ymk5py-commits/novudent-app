@@ -65,6 +65,7 @@ const NAV: NavTop[] = [
       { href: "/app/configuracion#logotipo", label: "Logotipo", icon: ImageIcon, perm: "practice.config", section: "Configuración" },
       { href: "/app/configuracion#campos", label: "Campos del paciente", icon: ClipboardList, perm: "practice.config", section: "Configuración" },
       { href: "/app/configuracion#estados-cita", label: "Estados de cita", icon: ListChecks, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion#documentos-clinicos", label: "Documentos clínicos", icon: FileText, perm: "practice.config", section: "Configuración" },
       { href: "/app/integraciones", label: "Integraciones", icon: Bot, perm: "practice.config", feature: "integraciones", section: "Configuración" },
       { href: "/app/suscripcion", label: "Suscripción", icon: CreditCard, perm: "practice.config", section: "Configuración" },
       { href: "/app/configuracion", label: "Configuración general", icon: Settings, perm: "practice.config", section: "Configuración" },
