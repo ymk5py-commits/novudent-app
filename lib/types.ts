@@ -39,6 +39,9 @@ export interface Clinic {
     botika?: BotikaConfig;
     /** Plantillas de consentimiento informado configurables por la clínica */
     consentTemplates?: ConsentTemplate[];
+    /** Plantillas de documentos clínicos (Historia Clínica, textos de indicaciones…).
+     *  Sin nada guardado se usan las de fábrica (lib/plantillasDocumento.ts). */
+    plantillasDocumento?: PlantillaDocumento[];
     /** Config de campos del paciente: presente/requerido por contexto */
     patientFields?: Record<string, FieldConfig>;
     /** Estados de cita propios de la clínica (nombre, color, comportamiento). Sin esto, los de fábrica. */
@@ -613,8 +616,76 @@ export interface SignatureDoc {
   signedAt?: string;
   signedByName?: string;
   channel?: "consultorio" | "remoto";
+  /** Plan de tratamiento al que corresponde el consentimiento (opcional). */
+  budgetId?: string;
+  /** Profesional a cargo. Los consentimientos anteriores a octubre de 2026 no lo tienen. */
+  dentistId?: string;
   createdBy: string;
   createdAt: string;
+}
+
+/* ===== Documentos clínicos (Ficha clínica › Documentos ▾ › Documentos clínicos) =====
+ * Una PLANTILLA define qué se pregunta (formulario con secciones y campos) o qué se dice
+ * (texto con datos del paciente). Un DOCUMENTO es lo que se hizo con una plantilla para un
+ * paciente: guarda una COPIA de la plantilla, así editarla después no cambia lo ya hecho. */
+export type TipoCampoDocumento = "texto" | "parrafo" | "numero" | "seleccion" | "casillas";
+
+export interface CampoDocumento {
+  /** Estable: es la clave bajo la que se guarda el valor. No cambia al renombrar el rótulo. */
+  id: string;
+  etiqueta: string;
+  tipo: TipoCampoDocumento;
+  /** Opciones de «seleccion» (una) y «casillas» (varias). */
+  opciones?: string[];
+  /** «<Mujeres> …» de Dentalink: no se muestra si el paciente es de sexo M. */
+  soloMujeres?: boolean;
+}
+
+export interface SeccionDocumento {
+  id: string;
+  titulo: string;
+  campos: CampoDocumento[];
+}
+
+export interface PlantillaDocumento {
+  id: string;
+  nombre: string;
+  tipo: "formulario" | "texto";
+  secciones?: SeccionDocumento[];
+  /** Texto con {paciente} {documento} {fecha} {profesional} {clinica}. */
+  cuerpo?: string;
+  /** Borrador redactado por Novudent: tiene que revisarlo un odontólogo antes de usarlo. */
+  porRevisar?: boolean;
+  /** No aparece al crear un documento (los ya creados siguen intactos). */
+  inactiva?: boolean;
+}
+
+export type EstadoDocumento = "pendiente" | "completado" | "anulado";
+
+export interface DocumentoClinico {
+  id: string;
+  clinicId: string;
+  patientId: string;
+  plantillaId: string;
+  nombre: string;
+  tipo: "formulario" | "texto";
+  secciones?: SeccionDocumento[];
+  cuerpo?: string;
+  /** campo.id → valor (las casillas guardan la lista de opciones marcadas). */
+  valores?: Record<string, string | string[]>;
+  dentistId?: string;
+  porRevisar?: boolean;
+  estado: EstadoDocumento;
+  createdAt: string;
+  createdBy: string;
+  createdByName: string;
+  updatedAt?: string;
+  completedAt?: string;
+  /** Nombre de quien lo completó. */
+  completedBy?: string;
+  voidedAt?: string;
+  /** Nombre de quien lo anuló. Un documento clínico no se borra: se anula. */
+  voidedBy?: string;
 }
 
 /* ===== Análisis IA de radiografías ===== */
