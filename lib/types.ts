@@ -1135,6 +1135,8 @@ export interface DB {
   environmentalLogs: EnvironmentalLog[];
   eduVideos: EduVideo[];
   branches: Branch[];
+  /** Documentos clínicos del paciente (Historia Clínica, indicaciones…). Nunca se borran: se anulan. */
+  clinicalDocs: DocumentoClinico[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
   /** Suscripción SaaS de la clínica activa (subscriptions/{cid}, solo-lectura
    *  para el cliente). `null` = clínica anterior al cobro → grandfathered. */

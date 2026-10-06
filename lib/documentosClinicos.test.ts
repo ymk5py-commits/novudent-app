@@ -7,6 +7,7 @@ import {
 } from "./documentosClinicos";
 import { PLANTILLAS_DE_FABRICA } from "./plantillasDocumento";
 import { ROLES } from "./rbac";
+import { buildSeed } from "./seed";
 import type { DocumentoClinico, PatientForm, PlantillaDocumento } from "./types";
 
 const historia = () => PLANTILLAS_DE_FABRICA.find((p) => p.id === "historia_clinica")!;
@@ -439,5 +440,37 @@ describe("utilidades del editor de plantillas", () => {
     const original = ["a", "b"];
     mover(original, 0, 1);
     expect(original).toEqual(["a", "b"]);
+  });
+});
+
+describe("demo sembrada", () => {
+  const seed = buildSeed();
+
+  it("trae documentos clínicos válidos: ids únicos, de pacientes que existen y de la clínica demo", () => {
+    const ids = seed.clinicalDocs.map((d) => d.id);
+    expect(ids.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const d of seed.clinicalDocs) {
+      expect(seed.patients.some((p) => p.id === d.patientId)).toBe(true);
+      expect(d.clinicId).toBe("cl_demo");
+    }
+  });
+
+  it("el completado responde campos y opciones que existen en su plantilla", () => {
+    const completado = seed.clinicalDocs.find((d) => d.estado === "completado")!;
+    expect(completado.completedAt).toBeTruthy();
+    const campos = new Map(completado.secciones!.flatMap((s) => s.campos).map((c) => [c.id, c]));
+    const claves = Object.keys(completado.valores!);
+    expect(claves.length).toBeGreaterThan(5);
+    for (const k of claves) {
+      const campo = campos.get(k);
+      expect(campo, `el campo ${k} no existe en la plantilla`).toBeDefined();
+      const marcadas = ([] as string[]).concat(completado.valores![k]);
+      if (campo!.opciones) for (const m of marcadas) expect(campo!.opciones, `${k}: «${m}»`).toContain(m);
+    }
+  });
+
+  it("siguen siendo tres los pacientes con pendientes: p1 y p2 (documentos) y p4 (formulario viejo)", () => {
+    expect([...pendientesPorPaciente(seed.patients, seed.clinicalDocs).keys()].sort()).toEqual(["p1", "p2", "p4"]);
   });
 });

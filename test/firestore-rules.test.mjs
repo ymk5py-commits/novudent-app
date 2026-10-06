@@ -26,7 +26,7 @@ import { doc, getDoc, getDocs, collection, collectionGroup, setDoc, updateDoc, d
 const PROJECT_ID = "novudent-rules-test";
 let testEnv;
 
-/** Las 32 colecciones por clínica que escribe el store (loadFirestore en
+/** Las 34 colecciones por clínica que escribe el store (loadFirestore en
  *  lib/store.tsx) + `slotLocks`, que escribe la ruta de reservas online. Se usan
  *  para barrer el aislamiento colección por colección: alcanza con que UNA se
  *  escape para que se filtre historia clínica entre clínicas. */
@@ -37,7 +37,7 @@ const COLECCIONES_DE_CLINICA = [
   "campaigns", "labOrders", "settlements", "boxes", "patientNotes",
   "fiscalDocs", "cashSessions", "sterilizationCycles", "teamMessages",
   "surveys", "surveyResponses", "mgmtTasks", "environmentalLogs", "eduVideos",
-  "branches", "directMessages",
+  "branches", "directMessages", "clinicalDocs",
 ];
 
 /** Un mensaje directo bien formado, igual al que arma lib/chat.ts. `extra` pisa
@@ -81,6 +81,7 @@ before(async () => {
     await setDoc(doc(db, "clinics/clA/patients/pEmr"), { id: "pEmr", firstName: "Elena", lastName: "Ramos", phone: "0981", odontogram: { teeth: { 11: "sano" } }, emr: [{ id: "e1", note: "Evolución original del dentista" }] });
     await setDoc(doc(db, "clinics/clA/patients/pBorrable"), { id: "pBorrable", firstName: "Duplicado", lastName: "A fusionar" });
     await setDoc(doc(db, "clinics/clA/radiographs/rx1"), { id: "rx1", patientId: "pEmr", image: "data:image/jpeg;base64,AAA", findings: ["caries 26"] });
+    await setDoc(doc(db, "clinics/clA/clinicalDocs/cdSeed"), { id: "cdSeed", patientId: "pEmr", estado: "completado", nombre: "Historia Clínica" });
     await setDoc(doc(db, "clinics/clA/signatures/sig1"), { id: "sig1", patientId: "pEmr", status: "firmado", signature: "data:image/png;base64,AAA" });
     await setDoc(doc(db, "clinics/clA/billing/bil1"), { id: "bil1", patientId: "pEmr", status: "hold", amount: 500000 });
     await setDoc(doc(db, "clinics/clA/procedures/D0120"), { cpt: "D0120", description: "Consulta", price: 150000 });
@@ -109,6 +110,7 @@ before(async () => {
     await setDoc(doc(db, "clinics/clV/patients/pv"), { id: "pv", firstName: "Vito" });
     await setDoc(doc(db, "subscriptions/clV"), { clinicId: "clV", plan: "clinica", status: "past_due" });
     await setDoc(doc(db, "clinics/clV/users/dentV"), { id: "dentV", role: "dentist", active: true, clinicId: "clV", email: "dent@v.com" });
+    await setDoc(doc(db, "clinics/clV/clinicalDocs/cdV"), { id: "cdV", patientId: "pv", estado: "pendiente" });
     await setDoc(doc(db, "clinics/clV/directMessages/dmV"), directo({ id: "dmV", cid: "clV", de: "adminV", a: "dentV" }));
 
     // Clínica S: plan SOLO al día — para probar el gating de módulos premium
@@ -1040,4 +1042,43 @@ test("DIRECTOS: la demo sigue siendo el sandbox público de siempre", async () =
   // En la demo el remitente es un usuario de ejemplo (u1…), no el uid de la sesión anónima.
   await assertSucceeds(setDoc(doc(authed("visitante"), `${DM("cl_demo")}/dmDemo`), directo({ id: "dmDemo", cid: "cl_demo", de: "u1", a: "u2" })));
   await assertFails(setDoc(doc(anon(), `${DM("cl_demo")}/dmDemo2`), directo({ id: "dmDemo2", cid: "cl_demo", de: "u1", a: "u2" })));
+});
+
+/* ══ DOCUMENTOS CLÍNICOS (clinicalDocs) ══════════════════════════════════════════════
+ * Los edita quien gestiona formularios (admin, caja, recepción) o escribe la ficha (dentista).
+ * El asistente lee y no escribe. Nadie los borra desde el cliente: se anulan. Con la
+ * suscripción vencida se lee y no se escribe. El aislamiento entre clínicas lo barre la lista
+ * COLECCIONES_DE_CLINICA de arriba. */
+test("documentos clínicos: admin, caja, recepción y dentista escriben; el asistente no", async () => {
+  for (const uid of ["adminA", "cajaA", "recepA", "dentA"]) {
+    await assertSucceeds(setDoc(doc(authed(uid), `clinics/clA/clinicalDocs/cd_${uid}`), { id: `cd_${uid}`, patientId: "pEmr", estado: "pendiente" }));
+    await assertSucceeds(setDoc(doc(authed(uid), `clinics/clA/clinicalDocs/cd_${uid}`), { estado: "completado" }, { merge: true }));
+  }
+  await assertFails(setDoc(doc(authed("asisA"), "clinics/clA/clinicalDocs/cd_asis"), { id: "cd_asis", patientId: "pEmr", estado: "pendiente" }));
+  await assertFails(setDoc(doc(authed("asisA"), "clinics/clA/clinicalDocs/cdSeed"), { estado: "anulado" }, { merge: true }));
+});
+
+test("documentos clínicos: todos los miembros leen, y un desconocido no", async () => {
+  for (const uid of ["adminA", "cajaA", "recepA", "dentA", "asisA"]) {
+    await assertSucceeds(getDoc(doc(authed(uid), "clinics/clA/clinicalDocs/cdSeed")));
+  }
+  await assertFails(getDoc(doc(anon(), "clinics/clA/clinicalDocs/cdSeed")));
+  await assertFails(getDoc(doc(authed("adminB"), "clinics/clA/clinicalDocs/cdSeed")));
+});
+
+test("documentos clínicos: no se borran desde el cliente, ni el admin", async () => {
+  for (const uid of ["adminA", "recepA", "dentA", "asisA"]) {
+    await assertFails(deleteDoc(doc(authed(uid), "clinics/clA/clinicalDocs/cdSeed")));
+  }
+});
+
+test("documentos clínicos: con la suscripción vencida se lee y no se escribe", async () => {
+  await assertSucceeds(getDoc(doc(authed("adminV"), "clinics/clV/clinicalDocs/cdV")));
+  await assertFails(setDoc(doc(authed("adminV"), "clinics/clV/clinicalDocs/cdV2"), { id: "cdV2", patientId: "pv", estado: "pendiente" }));
+  await assertFails(setDoc(doc(authed("dentV"), "clinics/clV/clinicalDocs/cdV"), { estado: "completado" }, { merge: true }));
+});
+
+test("documentos clínicos: la demo es abierta para quien tiene sesión", async () => {
+  await assertSucceeds(setDoc(doc(authed("cualquiera"), "clinics/cl_demo/clinicalDocs/cd_demo_x"), { id: "cd_demo_x", patientId: "p1", estado: "pendiente" }));
+  await assertSucceeds(deleteDoc(doc(authed("cualquiera"), "clinics/cl_demo/clinicalDocs/cd_demo_x")));
 });
