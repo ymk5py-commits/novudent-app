@@ -32,7 +32,7 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, onClose, onGu
   /** `espera`: además (o en vez) de las citas, dejar al paciente en la lista de espera. */
   onGuardar: (citas: Appointment[], espera?: { patientId: string; motivo: string; preferencia: string }) => void;
 }) {
-  const { db, upsertPatient } = useStore();
+  const { db, session, crearPaciente } = useStore();
   const alcance = useAlcance();
   const hoy = medianoche(new Date());
 
@@ -285,7 +285,7 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, onClose, onGu
       {creandoPaciente && (
         <CrearPaciente
           onClose={() => setCreandoPaciente(false)}
-          onCreado={(p) => { upsertPatient(p); setPacienteId(p.id); setCreandoPaciente(false); }}
+          onCreado={(p) => { if (session) crearPaciente(p, { id: session.userId, name: session.name }); setPacienteId(p.id); setCreandoPaciente(false); }}
           clinicId={cita.clinicId}
         />
       )}

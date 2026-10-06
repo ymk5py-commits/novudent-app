@@ -155,6 +155,14 @@ describe("paciente menor de edad", () => {
   });
 });
 
+describe("alta de paciente", () => {
+  it("ya no crea el formulario «Anamnesis inicial»: la Historia Clínica pendiente la deja crearPaciente como documento clínico", () => {
+    const p = nuevoPaciente({ firstName: "A", lastName: "B" }, "cl", 1);
+    expect(p.forms).toEqual([]);
+    expect(p.emr).toEqual([]);
+  });
+});
+
 describe("código interno", () => {
   it("el siguiente es el mayor más uno", () => {
     expect(siguienteCodigo([])).toBe(1);
