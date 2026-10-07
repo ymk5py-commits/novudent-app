@@ -19,6 +19,8 @@ export interface OpcionesFoto {
   esperar?: number;
   /** Deja el botón flotante de Ayuda (por defecto se esconde: tapa la esquina). */
   conAyuda?: boolean;
+  /** Deja el foco y el mouse donde quedaron (por defecto se sacan: si no, queda un botón «apretado» o iluminado que no es el que se explica). */
+  conFoco?: boolean;
   /** Saca la ventana entera aunque haya recuadros resaltados (por defecto se recorta alrededor de lo resaltado). */
   pantalla?: boolean;
   /** Alto de la ventana para esta captura (por defecto 760 px). Para mostrar algo más alto que la pantalla. */

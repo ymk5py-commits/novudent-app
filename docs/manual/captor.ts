@@ -96,6 +96,12 @@ export class CaptorPW implements Captor {
     const { page } = this;
     await page.evaluate(() => document.fonts.ready);
     await this.pulir(!!o.conAyuda);
+    // Sin foco ni mouse encima: la captura no muestra un botón «apretado» o iluminado que no es el que se explica.
+    if (!o.conFoco) {
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur?.());
+      const v = page.viewportSize() ?? { width: 1280, height: ALTO };
+      await page.mouse.move(4, v.height - 4);
+    }
     await page.waitForTimeout(o.esperar ?? 450);
 
     const aMarcar = lista(o.resaltar);
@@ -117,12 +123,14 @@ export class CaptorPW implements Captor {
     // Lo que hay que mostrar tiene que estar a la vista antes de medirlo.
     if (primero) await primero.first().scrollIntoViewIfNeeded();
     let { marcas, recortes } = await medirSinScroll();
-    // Si lo que hay que mostrar no entra en la ventana (una tarjeta alta), se agranda la ventana lo que haga falta (hasta 3000 px):
-    // arriba del todo, así el menú fijo no tapa el borde de lo que se muestra.
+
+    // Si lo que hay que mostrar no entra en la ventana (una tarjeta alta), se agranda la ventana lo que haga falta (hasta 3000 px),
+    // arriba del todo: así el menú fijo de la página no tapa el borde de lo que se muestra.
     let vista = page.viewportSize() ?? { width: 1280, height: ALTO };
     const scrolleada = (await page.evaluate(() => window.scrollY)) > 0;
-    // El menú de arriba es fijo: si la página está scrolleada, lo que quede debajo de él (los primeros 124 px) saldría tapado.
-    const sobresale = () => [...marcas, ...recortes].some((c) => c.y + c.height > vista.height - 1 || c.y < -1 || (scrolleada && c.y < 124));
+    const lugarParaNumeros = marcas.length > 1 ? 30 : 0;
+    const sobresale = () => [...marcas, ...recortes].some((c) =>
+      c.y + c.height > vista.height - 1 || c.y < -1 || (scrolleada && c.y - margen - lugarParaNumeros < 124)); // 124 px: el menú fijo
     if (!o.alto && sobresale()) {
       await page.evaluate(() => window.scrollTo(0, 0));
       ({ marcas, recortes } = await medirSinScroll());
@@ -139,70 +147,106 @@ export class CaptorPW implements Captor {
       }
     }
 
-    if (marcas.length) {
-      await page.evaluate((marcas) => {
-        document.querySelectorAll("[data-manual-marca]").forEach((n) => n.remove());
-        // Todo lo que ocupa lugar en pantalla: cada renglón de texto y cada control. Un número no puede tapar nada de eso.
-        const ocupado: { left: number; right: number; top: number; bottom: number }[] = [];
-        const recorrido = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-        for (let n = recorrido.nextNode(); n; n = recorrido.nextNode()) {
-          const padre = n.parentElement;
-          if (!n.textContent?.trim() || !padre || padre.closest("[data-manual-marca]")) continue;
-          const est = getComputedStyle(padre);
-          if (est.visibility === "hidden" || est.display === "none") continue;
-          const rango = document.createRange();
-          rango.selectNodeContents(n);
-          for (const q of Array.from(rango.getClientRects())) if (q.width > 0 && q.height > 0) ocupado.push(q);
-        }
-        for (const el of Array.from(document.querySelectorAll("input, select, textarea, img, svg, button"))) {
-          if (el.closest("[data-manual-marca]")) continue;
-          const q = el.getBoundingClientRect();
-          if (q.width > 0 && q.height > 0) ocupado.push(q);
-        }
-        const libre = (x: number, y: number, lado: number) =>
-          !ocupado.some((q) => x < q.right + 3 && x + lado > q.left - 3 && y < q.bottom + 3 && y + lado > q.top - 3);
-        marcas.forEach((m, i) => {
-          const caja = document.createElement("div");
-          caja.setAttribute("data-manual-marca", "1");
-          caja.style.cssText = `position:fixed;left:${m.x - 4}px;top:${m.y - 4}px;width:${m.width + 8}px;height:${m.height + 8}px;border:3px solid #E5252A;border-radius:7px;box-shadow:0 0 0 2px rgba(255,255,255,.92);pointer-events:none;z-index:2147483646`;
-          document.body.appendChild(caja);
-          if (marcas.length > 1) {
-            const L = 24;
-            // Dónde poner el número: al costado, en una esquina de afuera… el primer lugar que no tape nada.
-            const candidatos: [number, number][] = [
-              [m.x - 36, m.y + m.height / 2 - L / 2],
-              [m.x - 24, m.y - 28],
-              [m.x + m.width, m.y - 28],
-              [m.x + m.width + 12, m.y + m.height / 2 - L / 2],
-              [m.x - 24, m.y + m.height + 4],
-              [m.x + m.width, m.y + m.height + 4],
-            ];
-            const enVentana = ([x, y]: [number, number]) => x >= 2 && y >= 2 && x + L <= window.innerWidth - 2 && y + L <= window.innerHeight - 2;
-            const [nx, ny] = candidatos.find((p) => enVentana(p) && libre(p[0], p[1], L))
-              ?? candidatos.find(enVentana)
-              ?? [m.x + 6, m.y + m.height / 2 - L / 2]; // último recurso: adentro del recuadro
-            const n = document.createElement("div");
-            n.setAttribute("data-manual-marca", "1");
-            n.textContent = String(i + 1);
-            n.style.cssText = `position:fixed;left:${nx}px;top:${ny}px;width:${L}px;height:${L}px;border-radius:50%;background:#E5252A;color:#fff;font:700 14px/${L}px Inter,Arial,sans-serif;text-align:center;box-shadow:0 0 0 2px #fff;pointer-events:none;z-index:2147483647`;
-            document.body.appendChild(n);
-          }
-        });
-      }, marcas);
-    }
+    // Se dibujan los recuadros y los números, y se anota dónde quedó cada número para recortar con lugar para ellos.
+    const numeros: Caja[] = marcas.length ? await page.evaluate(dibujarMarcas, marcas) : [];
 
-    // El recorte es la unión de lo que se pidió recortar y de lo resaltado, con margen (y lugar para el número).
-    const cajas = [...recortes, ...marcas];
+    // El recorte es la unión de lo que se pidió recortar, lo resaltado (con su borde) y los números, más el margen.
+    const BORDE = 8; // recuadro: 4 px de separación + 3 de borde + 1 de aire
+    const cajas: Caja[] = [
+      ...recortes,
+      ...marcas.map((m) => ({ x: m.x - BORDE, y: m.y - BORDE, width: m.width + 2 * BORDE, height: m.height + 2 * BORDE })),
+      ...numeros,
+    ];
     let clip: Caja | undefined;
     if (cajas.length && !o.pantalla) {
-      const extra = marcas.length > 1 ? 34 : 6; // lugar para los números, que van afuera del recuadro
-      const x0 = Math.max(0, Math.min(...cajas.map((c) => c.x)) - margen - extra);
-      const y0 = Math.max(0, Math.min(...cajas.map((c) => c.y)) - margen - (marcas.length > 1 ? 30 : 6));
-      const x1 = Math.min(vista.width, Math.max(...cajas.map((c) => c.x + c.width)) + margen + extra);
-      const y1 = Math.min(vista.height, Math.max(...cajas.map((c) => c.y + c.height)) + margen + 6);
+      const x0 = Math.max(0, Math.min(...cajas.map((c) => c.x)) - margen);
+      const y0 = Math.max(0, Math.min(...cajas.map((c) => c.y)) - margen);
+      const x1 = Math.min(vista.width, Math.max(...cajas.map((c) => c.x + c.width)) + margen);
+      const y1 = Math.min(vista.height, Math.max(...cajas.map((c) => c.y + c.height)) + margen);
       clip = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
     }
     await page.screenshot({ path: join(this.carpeta, `${nombre}.png`), type: "png", ...(clip ? { clip } : {}) });
     if (marcas.length) await page.evaluate(() => document.querySelectorAll("[data-manual-marca]").forEach((n) => n.remove()));
   }
+}
+
+/** Corre EN la página: dibuja un recuadro rojo sobre cada caja y, si son varias, un número al lado de cada una. El número se pone
+ *  donde no tape texto ni controles ni otro recuadro ni otro número; si no hay lugar libre, donde tape menos. Devuelve dónde quedó cada número. */
+function dibujarMarcas(marcas: { x: number; y: number; width: number; height: number }[]): { x: number; y: number; width: number; height: number }[] {
+  document.querySelectorAll("[data-manual-marca]").forEach((n) => n.remove());
+  type R = { left: number; right: number; top: number; bottom: number };
+  // Todo lo que ocupa lugar en pantalla: cada renglón de texto y cada control.
+  const ocupado: R[] = [];
+  const recorrido = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = recorrido.nextNode(); n; n = recorrido.nextNode()) {
+    const padre = n.parentElement;
+    if (!n.textContent?.trim() || !padre || padre.closest("[data-manual-marca]")) continue;
+    const est = getComputedStyle(padre);
+    if (est.visibility === "hidden" || est.display === "none") continue;
+    const rango = document.createRange();
+    rango.selectNodeContents(n);
+    for (const q of Array.from(rango.getClientRects())) if (q.width > 0 && q.height > 0) ocupado.push(q);
+  }
+  for (const el of Array.from(document.querySelectorAll("input, select, textarea, img, svg, button"))) {
+    if (el.closest("[data-manual-marca]")) continue;
+    const q = el.getBoundingClientRect();
+    if (q.width > 0 && q.height > 0) ocupado.push(q);
+  }
+  // Los recuadros rojos también ocupan lugar (para que un número no caiga encima del recuadro de otro elemento).
+  const recuadros: R[] = marcas.map((m) => ({ left: m.x - 8, right: m.x + m.width + 8, top: m.y - 8, bottom: m.y + m.height + 8 }));
+  const puestos: R[] = [];
+
+  const L = 24;
+  const solape = (a: R, b: R) => {
+    const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+    const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+    return w > 0 && h > 0 ? w * h : 0;
+  };
+  const margenDe = (x: number, y: number): R => ({ left: x - 3, right: x + L + 3, top: y - 3, bottom: y + L + 3 });
+  const dibujados: { x: number; y: number; width: number; height: number }[] = [];
+
+  marcas.forEach((m, i) => {
+    const caja = document.createElement("div");
+    caja.setAttribute("data-manual-marca", "1");
+    caja.style.cssText = `position:fixed;left:${m.x - 4}px;top:${m.y - 4}px;width:${m.width + 8}px;height:${m.height + 8}px;border:3px solid #E5252A;border-radius:7px;box-shadow:0 0 0 2px rgba(255,255,255,.92);pointer-events:none;z-index:2147483646`;
+    document.body.appendChild(caja);
+    if (marcas.length < 2) return;
+
+    const cy = m.y + m.height / 2 - L / 2;
+    const cx = m.x + m.width / 2 - L / 2;
+    const candidatos: [number, number][] = [
+      [m.x - 38, cy],                       // al costado izquierdo
+      [m.x - 26, m.y - 30],                 // esquina de arriba a la izquierda, afuera
+      [m.x + m.width + 2, m.y - 30],        // esquina de arriba a la derecha, afuera
+      [m.x + m.width + 14, cy],             // al costado derecho
+      [cx, m.y - 34],                       // arriba, al medio
+      [m.x - 26, m.y + m.height + 6],       // esquina de abajo a la izquierda
+      [m.x + m.width + 2, m.y + m.height + 6],
+      [cx, m.y + m.height + 8],             // abajo, al medio
+      [m.x - 62, cy],                       // más lejos, a la izquierda
+      [m.x + m.width + 38, cy],             // más lejos, a la derecha
+      [m.x + 6, cy],                        // último recurso: adentro del recuadro
+    ];
+    const enVentana = ([x, y]: [number, number]) => x >= 2 && y >= 2 && x + L <= window.innerWidth - 2 && y + L <= window.innerHeight - 2;
+    // Lo que tapa cada lugar: texto o controles (peso 1), otro recuadro rojo (peso 3) y otro número (peso 10).
+    const costo = ([x, y]: [number, number]) => {
+      const c = margenDe(x, y);
+      const propio = recuadros[i];
+      return ocupado.reduce((s, q) => s + solape(c, q), 0)
+        + 3 * recuadros.reduce((s, q, k) => s + (k === i ? 0 : solape(c, q)), 0)
+        + 3 * solape(c, { left: propio.left + 5, right: propio.right - 5, top: propio.top + 5, bottom: propio.bottom - 5 })
+        + 10 * puestos.reduce((s, q) => s + solape(c, q), 0);
+    };
+    const posibles = candidatos.filter(enVentana);
+    const [nx, ny] = (posibles.length ? posibles : candidatos).reduce((mejor, p) => (costo(p) < costo(mejor) ? p : mejor));
+    puestos.push(margenDe(nx, ny));
+
+    const n = document.createElement("div");
+    n.setAttribute("data-manual-marca", "1");
+    n.textContent = String(i + 1);
+    n.style.cssText = `position:fixed;left:${nx}px;top:${ny}px;width:${L}px;height:${L}px;border-radius:50%;background:#E5252A;color:#fff;font:700 14px/${L}px Inter,Arial,sans-serif;text-align:center;box-shadow:0 0 0 2px #fff;pointer-events:none;z-index:2147483647`;
+    document.body.appendChild(n);
+    dibujados.push({ x: nx - 2, y: ny - 2, width: L + 4, height: L + 4 });
+  });
+  return dibujados;
 }
