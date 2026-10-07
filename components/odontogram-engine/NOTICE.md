@@ -75,3 +75,19 @@ environment jsdom + `plugins: [react()]`), ver el `README.md` del repo origen.
   renombran solo degradés, patrones, `clipPath`, `mask` y `filter` (sufijo `--<pieza><o|l>`) y sus
   referencias; los ids de capas que maneja el motor no se tocan. Lo cubre
   `e2e/odontograma-realista.spec.ts` (falla si se saca el llamado).
+- Vistas incisales de incisivos y caninos (oct-2026). Las 12 casillas de la fila oclusal que el
+  motor dejaba vacías (`addPlaceholderTile` para 13…23 y 43…33) ahora muestran la pieza vista
+  desde incisal, con el mismo marfil y la misma escala que las oclusales: `public/odontogram/
+  teeth-svgs/11_occl.svg` (incisivos) y `13_occl.svg` (caninos), assets propios de Novudent con la
+  estructura de capas de `14_occl.svg` (base, variantes, `tooth-base`, leche, superficies, coronas,
+  carillas, puentes, implante, planes; sin onlays, así el motor las compone como vista frontal).
+  Vestibular arriba, mesial a la derecha: el motor las rota y espeja igual que su pieza. Una pieza
+  ausente, extraída o debajo de la encía deja la casilla vacía; un implante muestra la plataforma,
+  como en premolares y molares. En `odontogram.ts`: `TEMPLATES_OCCL`, `occlNos` y
+  `occlTemplateForTooth` suman las plantillas 11 y 13, y los conjuntos de casillas vacías quedan
+  sin piezas. Tocar la vista incisal elige la pieza y se resalta con ella, como la oclusal de una
+  muela; no lleva `role`/`tabindex` (el control accesible sigue siendo la casilla lateral). Efecto
+  colateral buscado: en el celular, las casillas vacías no tenían clase de arcada y al elegir una
+  sola arcada corrían la fila de abajo 6 columnas. En `index.css`, una regla
+  `.tooth-tile.occl-view.tpl-11/.tpl-13` les da 64×64 (si no, les ganaba la regla de su plantilla
+  lateral, 60×102). Lo cubren `lib/odontogram-svg.test.ts` y `e2e/odontograma-realista.spec.ts`.

@@ -72,6 +72,27 @@ const OCLUSAL = [
   "zircon-crown", "zircon-onlay", "emax", "emax-onlay", "fissure-sealing", "plan", "extraction-plan", "crown-needed",
 ];
 
+/** Vistas incisales de incisivos y caninos (11_occl/13_occl, de Novudent): las mismas capas por id
+ *  que las oclusales, menos las que no existen en una pieza de adelante (fisuras, sellado, onlays). */
+const INCISAL = [
+  "base", "bone-base", "gum-base", "tooth-variants", "tooth-crownprep", "tooth-crownprep-outer", "tooth-crownprep-inner",
+  "tooth-radix", "tooth-broken-mesial", "tooth-broken-distal", "tooth-broken-mesial-distal", "tooth-broken-incisal",
+  "tooth-broken-mesial-incisal", "tooth-broken-distal-incisal", "tooth-broken-mesial-distal-incisal", "tooth",
+  "tooth-base", "milktooth", "milktooth-base", "surfaces", "subcaries", "caries", "fillings", "defect",
+  ...["occlusal", "lingual", "buccal", "mesial", "distal"].flatMap((s) => [
+    `caries-${s}`, `subcaries-${s}`, `defect-${s}`,
+    ...["amalgam", "composite", "gic", "temporary"].map((m) => `filling-${m}-${s}`),
+  ]),
+  "amalgam", "composite", "gic", "temporary", "contact-point", "mesial-no-contact-point", "distal-no-contact-point",
+  "restorations", "implant", "implant-base", "implant-bar", "implant-healing-abutment", "implant-locator-screw",
+  "prosthesis-implant", "prosthesis-implant-crown", "prosthesis", "prosthesis-crown", "prosthesis-connector",
+  "telescope", "telescope-crown", "telescope-crown-inside", "telescope-crown-outside",
+  ...["zircon", "metal", "metal-ceramic", "gold", "emax", "gradia"].flatMap((m) => [m, `${m}-crown`, `${m}-bridge-connector`]),
+  "zircon-veneer", "gold-veneer", "emax-veneer", "gradia-veneer", "temporary-restorations", "temporary-crown",
+  "temporary-veneer", "temporary-bridge-connector", "ortho", "missing-closed", "plan", "extraction-plan",
+  "crown-needed", "crown-replace",
+];
+
 /** viewBox original (no se toca: la grilla y los márgenes dependen de él), capas
  *  críticas y cuántas capas con id traía el archivo de origen (no se borran ni renombran). */
 const PLANTILLAS: Record<string, { viewBox: string; capas: string[]; capasOriginales: number }> = {
@@ -81,6 +102,9 @@ const PLANTILLAS: Record<string, { viewBox: string; capas: string[]; capasOrigin
   "16": { viewBox: "0 0 42.9 70.9", capas: LATERAL, capasOriginales: 202 },
   "14_occl": { viewBox: "0 0 48.8 41.5", capas: [...OCLUSAL, "milktooth", "milktooth-base"], capasOriginales: 147 },
   "16_occl": { viewBox: "0 0 48.2 41.5", capas: OCLUSAL, capasOriginales: 143 },
+  // Nuevas: mismo viewBox que la oclusal del premolar, así se dibujan a la misma escala.
+  "11_occl": { viewBox: "0 0 48.8 41.5", capas: INCISAL, capasOriginales: 120 },
+  "13_occl": { viewBox: "0 0 48.8 41.5", capas: INCISAL, capasOriginales: 120 },
 };
 
 describe("plantillas SVG del odontograma", () => {
@@ -143,6 +167,12 @@ describe("plantillas SVG del odontograma", () => {
       });
     });
   }
+
+  it("las vistas incisales no traen onlays: el motor las trata como vista frontal de restauraciones", () => {
+    // applyStateToSvgSingle decide la vista con `[id$="-onlay"]`; un onlay acá haría que una
+    // corona de una pieza de adelante se compusiera como oclusal.
+    for (const nombre of ["11_occl", "13_occl"]) expect(leer(nombre).txt).not.toMatch(/id="[^"]*-onlay"/);
+  });
 
   it("ningún degradé, patrón ni clipPath repite id entre archivos (las plantillas se clonan en el mismo documento)", () => {
     const vistos = new Map<string, string>();

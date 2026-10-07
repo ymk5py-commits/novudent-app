@@ -26,6 +26,9 @@ const tooth14Url = "/odontogram/teeth-svgs/14.svg";
 const tooth16Url = "/odontogram/teeth-svgs/16.svg";
 const tooth14OcclUrl = "/odontogram/teeth-svgs/14_occl.svg";
 const tooth16OcclUrl = "/odontogram/teeth-svgs/16_occl.svg";
+// PATCH Novudent — vistas incisales de incisivos y caninos (ver NOTICE.md, «Parches de diseño»).
+const tooth11OcclUrl = "/odontogram/teeth-svgs/11_occl.svg";
+const tooth13OcclUrl = "/odontogram/teeth-svgs/13_occl.svg";
 /* Tooth SVG Test UI (v2) - vanilla JS */
 
 const TEMPLATES = {
@@ -35,6 +38,8 @@ const TEMPLATES = {
   16: tooth16Url,
 };
 const TEMPLATES_OCCL = {
+  11: tooth11OcclUrl, // PATCH Novudent
+  13: tooth13OcclUrl, // PATCH Novudent
   14: tooth14OcclUrl,
   16: tooth16OcclUrl,
 };
@@ -5086,7 +5091,7 @@ async function buildGrid(token: number){
   const tplCache = new Map();
   const occlCache = new Map();
   const tplNos = [11,13,14,16] as const;
-  const occlNos = [14,16] as const;
+  const occlNos = [11,13,14,16] as const; // PATCH Novudent: + vistas incisales
   await Promise.all([
     ...tplNos.map(async (tplNo) => {
       tplCache.set(tplNo, await loadSvg(TEMPLATES[tplNo]));
@@ -5157,6 +5162,9 @@ async function buildGrid(token: number){
   }
 
   function occlTemplateForTooth(toothNo: Any){
+    // PATCH Novudent — incisivos y caninos también tienen vista incisal (antes eran casillas vacías).
+    if([11,12,21,22,31,32,41,42].includes(toothNo)) return 11;
+    if([13,23,33,43].includes(toothNo)) return 13;
     if([14,15,24,25,34,35,44,45].includes(toothNo)) return 14;
     if([16,17,18,26,27,28,36,37,38,46,47,48].includes(toothNo)) return 16;
     return null;
@@ -5197,8 +5205,10 @@ async function buildGrid(token: number){
 
   const upperSide = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
   const lowerSide = [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
-  const upperOcclPlaceholders = new Set([13,12,11,21,22,23]);
-  const lowerOcclPlaceholders = new Set([43,42,41,31,32,33]);
+  // PATCH Novudent — ya no quedan casillas vacías: las 6 piezas de adelante de cada arcada
+  // tienen su vista incisal (antes: new Set([13,12,11,21,22,23]) y new Set([43,42,41,31,32,33])).
+  const upperOcclPlaceholders = new Set();
+  const lowerOcclPlaceholders = new Set();
 
   if(!initialized || token !== initToken) return;
   // PATCH Novudent — orden de filas de Dentalink: las coronas quedan por fuera y
