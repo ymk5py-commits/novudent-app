@@ -405,6 +405,13 @@ service cloud.firestore {
                  in ['admin', 'cashier', 'receptionist', 'dentist']);
         allow delete: if isService() || isDemoRW(cid);
       }
+      // Rutina del administrador (Inicio): un documento por casillero tildado, con id `${paso}__${periodo}`
+      // (lib/rutinaAdmin.ts). Lo tilda y lo destilda solo el administrador; los miembros lo leen (no es un dato
+      // sensible: qué paso y cuándo). Con la suscripción vencida se lee y no se escribe.
+      match /routineChecks/{docId} {
+        allow read: if isMember(cid) || isService() || isDemo(cid);
+        allow create, update, delete: if isService() || isDemoRW(cid) || (isAdmin(cid) && subActive(cid));
+      }
       // Módulos de paridad Dentalink (CRM, Laboratorios, Liquidaciones, Box/Sillones)
       match /crmCards/{docId}    {
         allow read:  if isMember(cid) || isService() || isDemo(cid);

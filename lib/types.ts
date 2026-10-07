@@ -1114,6 +1114,19 @@ export interface Branch {
   active?: boolean;
 }
 
+/** Un casillero tildado de la rutina del administrador (lib/rutinaAdmin.ts). El id es `${paso}__${periodo}`: tildar dos veces
+ *  es escribir el mismo documento, y destildar es borrarlo. Lo tilda el administrador (ver `routineChecks` en firestore.rules). */
+export interface RutinaCheck {
+  id: string;
+  paso: string;
+  /** El día (YYYY-MM-DD), el lunes de la semana (YYYY-MM-DD) o el mes (YYYY-MM). */
+  periodo: string;
+  hechoPor: string;
+  hechoPorNombre: string;
+  /** ISO. */
+  hechoEn: string;
+}
+
 export interface DB {
   clinics: Clinic[];
   users: User[];
@@ -1151,6 +1164,8 @@ export interface DB {
   branches: Branch[];
   /** Documentos clínicos del paciente (Historia Clínica, indicaciones…). Nunca se borran: se anulan. */
   clinicalDocs: DocumentoClinico[];
+  /** Casilleros tildados de la rutina del administrador. */
+  routineChecks: RutinaCheck[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
   /** Suscripción SaaS de la clínica activa (subscriptions/{cid}, solo-lectura
    *  para el cliente). `null` = clínica anterior al cobro → grandfathered. */

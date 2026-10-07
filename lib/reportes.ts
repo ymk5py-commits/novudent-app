@@ -221,10 +221,15 @@ export interface FilaMoroso { patient: Patient; deuda: number; hasta30: number; 
  *  el día en que se hizo la prestación. Es un aging de cuentas por cobrar clásico. */
 export function morososPorAntiguedad(patients: readonly Patient[], budgets: readonly Budget[], payments: readonly Payment[], hoy: string): FilaMoroso[] {
   const filas: FilaMoroso[] = [];
+  // Se agrupa una sola vez: con miles de pacientes, filtrar todos los planes y pagos por cada uno se hace eterno.
+  const hechasDe = new Map<string, Realizada[]>();
+  for (const x of realizadas(budgets)) hechasDe.set(x.budget.patientId, [...(hechasDe.get(x.budget.patientId) ?? []), x]);
+  const pagadoPor = new Map<string, number>();
+  for (const x of payments) if (!x.voidedAt) pagadoPor.set(x.patientId, (pagadoPor.get(x.patientId) ?? 0) + x.amount);
   for (const p of patients) {
-    const hechas = realizadas(budgets.filter((b) => b.patientId === p.id)).sort((a, b) => a.dia.localeCompare(b.dia));
+    const hechas = (hechasDe.get(p.id) ?? []).sort((a, b) => a.dia.localeCompare(b.dia));
     if (hechas.length === 0) continue;
-    let pagado = payments.filter((x) => x.patientId === p.id && !x.voidedAt).reduce((a, x) => a + x.amount, 0);
+    let pagado = pagadoPor.get(p.id) ?? 0;
     const f: FilaMoroso = { patient: p, deuda: 0, hasta30: 0, de30a60: 0, mas60: 0, diasMora: 0 };
     for (const x of hechas) {
       const cubierto = Math.min(pagado, x.monto);

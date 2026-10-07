@@ -86,6 +86,46 @@ const filaDeGrupos = (page: Page) => boton(page, "Ficha clínica").locator("xpat
 const pieDeSoporte = (page: Page) => page.getByText("Plataforma de soporte").locator("xpath=..");
 
 export const procedimientos: Procedimiento[] = [
+  /* ─── La rutina del administrador (Inicio) ─── */
+  {
+    id: "usar-la-rutina-del-administrador",
+    capitulo: "admin",
+    titulo: "Usar la rutina del administrador",
+    roles: ["admin"],
+    paraQue: "Para no olvidarte de lo que revisás todos los días (la caja, lo cobrado, los que deben, los cheques…) y llevar la cuenta de lo que hiciste esta semana y de lo que falta.",
+    antes: ["Entrás con el usuario de **Administrador**: la rutina es solo de la administración, los demás roles no la ven."],
+    pasos: [
+      { texto: "Entrá a **Inicio**: debajo de los números de colores está **Rutina del administrador**. En «Todos los días» figura lo que te toca revisar hoy, y cada renglón muestra el dato de la clínica (por ejemplo, quién dejó la caja abierta o cuántos reclamos hay en retención).", captura: "rutina" },
+      { texto: "Tocá el nombre de un renglón para ir a la pantalla donde se mira o se resuelve: la caja, los reportes, los cheques…" },
+      { texto: "Cuando ya lo revisaste, tildá el casillero de la izquierda. Queda guardado con tu nombre y la hora; si te equivocaste, tocalo de nuevo y se destilda.", captura: "tildar" },
+      { texto: "Arriba a la derecha, **Esta semana: N hechas · M faltan** cuenta lo que tildaste y lo que quedó sin tildar. Tocá «Ver la semana» para ver cada día; ahí también podés tildar un día que se te pasó.", captura: "semana" },
+      { texto: "«Revisar el desempeño de la semana» sale cada lunes. Y a fin de mes —desde el 25 hasta el 5 del mes siguiente— se suman «Liquidar a los profesionales» y «Cargar los gastos del mes»." },
+    ],
+    avisos: [
+      { tipo: "ojo", texto: "Cada día empieza de cero: lo que tildaste ayer no cuenta hoy. El de la semana se reinicia el lunes y los de fin de mes, cada mes." },
+      { tipo: "ojo", texto: "«Esta semana» cuenta desde el primer día que usaste la rutina: los días anteriores a tu primer casillero no figuran como faltantes." },
+      { tipo: "tip", texto: "Si la clínica es nueva, arriba de la lista aparece **Puesta en marcha**: «Crear usuarios» y «Definir servicios y aranceles» se marcan solos cuando ya cargaste a tu equipo y tus prestaciones." },
+      { tipo: "revisar", texto: "La rutina es la misma para todas las clínicas (caja, cobrado, deudores, implantes, retenciones y cheques cada día; el desempeño los lunes; liquidar y cargar gastos a fin de mes). Confirmar si falta algo o si conviene que cada clínica pueda editarla." },
+    ],
+    capturar: async (c) => {
+      const { page } = c;
+      await c.entrar("admin", "/app");
+      const titulo = page.getByRole("heading", { name: "Rutina del administrador" });
+      const card = titulo.locator("xpath=ancestor::div[contains(@class,'p-5')][1]");
+      await titulo.scrollIntoViewIfNeeded();
+      await c.foto("rutina", { recorte: card, resaltar: page.getByRole("region", { name: "Todos los días" }) });
+
+      const marcar = page.getByRole("button", { name: "Marcar como hecho: Revisar lo cobrado del día", exact: true });
+      const desmarcar = page.getByRole("button", { name: "Desmarcar: Revisar lo cobrado del día", exact: true });
+      await marcar.click();
+      await c.expect(desmarcar).toBeVisible();
+      await c.foto("tildar", { recorte: card, resaltar: desmarcar });
+
+      await page.getByRole("button", { name: "Ver la semana" }).click();
+      await c.expect(page.getByRole("region", { name: "La semana de la rutina" })).toBeVisible();
+      await c.foto("semana", { recorte: card, resaltar: [page.getByRole("status").filter({ hasText: "Esta semana:" }), page.getByRole("region", { name: "La semana de la rutina" })] });
+    },
+  },
   /* ─── Cobranza: prestación realizada (estaba en Dentista: hoy solo la administración puede marcarla) ─── */
   {
     id: "marcar-una-prestacion-realizada",

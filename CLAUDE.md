@@ -75,7 +75,7 @@ antes de mergear.
 
 - `firebase deploy --only firestore:rules` cada vez que se agrega una colección
   (cubre recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders,
-  settlements, boxes, **clinicalDocs**…).
+  settlements, boxes, **clinicalDocs**, **routineChecks**…).
 - Envs en Vercel: `GEMINI_API_KEY`, `FIREBASE_WEB_API_KEY`, `SERVICE_USER_EMAIL/
   PASSWORD`, `OWNER_PANEL_KEY`.
 
@@ -173,6 +173,23 @@ usuario anónimo no tiene `directory/{uid}`; es el cierre de la auditoría del 2
 cada uso cuesta. Mi agenda lo explica con `mensajeErrorIA`; para probar la IA de punta a punta hace falta una
 clínica real con el plan Clínica. **Al sumar una ruta en `app/api/ia/` hay que agregarla a la lista exacta de
 `ia-gating.exploits.test.ts`** (hoy son 10) y poner `requireFeature` antes de `generativelanguage`.
+
+**Rutina del administrador (oct-2026):** tarjeta en **Inicio** solo para el administrador (`practice.config`;
+`components/RutinaAdmin`), debajo de los números y arriba de Mi agenda. Es lo que revisa cada día (cierre de caja, lo cobrado,
+pacientes que deben, los que deben implantes, reclamos en retención, cheques), cada lunes (el desempeño de la semana) y a fin de
+mes (liquidar y cargar gastos: se ven desde el 25 hasta el 5 del mes siguiente). **Es una rutina fija**, la define Novum
+(`PASOS_RUTINA`), no se edita por clínica. A diferencia de la rutina de Mi agenda (que se tacha sola), acá lo que se tilda es una
+**revisión**: se guarda en la colección `routineChecks` (un documento por casillero y período, id determinístico
+`${paso}__${periodo}`: el día, el lunes de la semana o el mes; tildar = `setRutinaCheck(paso, periodo, true)`, destildar =
+borrar el documento) y se reinicia sola porque el período cambia. Cada renglón muestra el dato en vivo (`detalle`) y pide atención
+(`atencion`) cuando hay algo que mirar (caja abierta o con diferencia, cheques para cobrar, deudas de más de 60 días,
+retenciones). Lógica pura y con tests en `lib/rutinaAdmin.ts` (`pasosDeHoy`, `semanaDeRutina`, `deudaDeImplantes`,
+`pasosPuestaEnMarcha`). **«Esta semana: N hechas · M faltan» cuenta desde el primer día en que se usó la rutina** (los días
+anteriores al primer casillero figuran como «antes» y no castigan). Un implante es una prestación D60/D61 o con «implante» en el
+nombre; lo impago se calcula como los morosos (los pagos cubren primero lo más viejo). **Puesta en marcha**: sus pasos «Crear
+usuarios» y «Definir servicios» se marcan solos (`pasosPuestaEnMarcha`: hay más de un usuario / hay prestaciones) y la rutina
+muestra un aviso con los que faltan. La regla de Firestore `routineChecks` deja escribir solo al administrador (+ demo y servicio);
+**hay que publicar las reglas antes del código**.
 
 **Manual de procedimientos (oct-2026):** `docs/manual/` arma un PDF por rol con capturas reales de la demo
 (`npm run manual:capturas` + `npm run manual:pdf`; necesita WeasyPrint y poppler). El texto de cada procedimiento vive en

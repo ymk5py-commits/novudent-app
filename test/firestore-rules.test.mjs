@@ -26,7 +26,7 @@ import { doc, getDoc, getDocs, collection, collectionGroup, setDoc, updateDoc, d
 const PROJECT_ID = "novudent-rules-test";
 let testEnv;
 
-/** Las 34 colecciones por clínica que escribe el store (loadFirestore en
+/** Las 35 colecciones por clínica que escribe el store (loadFirestore en
  *  lib/store.tsx) + `slotLocks`, que escribe la ruta de reservas online. Se usan
  *  para barrer el aislamiento colección por colección: alcanza con que UNA se
  *  escape para que se filtre historia clínica entre clínicas. */
@@ -37,7 +37,7 @@ const COLECCIONES_DE_CLINICA = [
   "campaigns", "labOrders", "settlements", "boxes", "patientNotes",
   "fiscalDocs", "cashSessions", "sterilizationCycles", "teamMessages",
   "surveys", "surveyResponses", "mgmtTasks", "environmentalLogs", "eduVideos",
-  "branches", "directMessages", "clinicalDocs",
+  "branches", "directMessages", "clinicalDocs", "routineChecks",
 ];
 
 /** Un mensaje directo bien formado, igual al que arma lib/chat.ts. `extra` pisa
@@ -82,6 +82,7 @@ before(async () => {
     await setDoc(doc(db, "clinics/clA/patients/pBorrable"), { id: "pBorrable", firstName: "Duplicado", lastName: "A fusionar" });
     await setDoc(doc(db, "clinics/clA/radiographs/rx1"), { id: "rx1", patientId: "pEmr", image: "data:image/jpeg;base64,AAA", findings: ["caries 26"] });
     await setDoc(doc(db, "clinics/clA/clinicalDocs/cdSeed"), { id: "cdSeed", patientId: "pEmr", estado: "completado", nombre: "Historia Clínica" });
+    await setDoc(doc(db, "clinics/clA/routineChecks/caja__2026-10-01"), { id: "caja__2026-10-01", paso: "caja", periodo: "2026-10-01", hechoPor: "adminA", hechoPorNombre: "Admin A", hechoEn: "2026-10-01T12:00:00.000Z" });
     await setDoc(doc(db, "clinics/clA/signatures/sig1"), { id: "sig1", patientId: "pEmr", status: "firmado", signature: "data:image/png;base64,AAA" });
     await setDoc(doc(db, "clinics/clA/billing/bil1"), { id: "bil1", patientId: "pEmr", status: "hold", amount: 500000 });
     await setDoc(doc(db, "clinics/clA/procedures/D0120"), { cpt: "D0120", description: "Consulta", price: 150000 });
@@ -111,6 +112,7 @@ before(async () => {
     await setDoc(doc(db, "subscriptions/clV"), { clinicId: "clV", plan: "clinica", status: "past_due" });
     await setDoc(doc(db, "clinics/clV/users/dentV"), { id: "dentV", role: "dentist", active: true, clinicId: "clV", email: "dent@v.com" });
     await setDoc(doc(db, "clinics/clV/clinicalDocs/cdV"), { id: "cdV", patientId: "pv", estado: "pendiente" });
+    await setDoc(doc(db, "clinics/clV/routineChecks/caja__2026-10-01"), { id: "caja__2026-10-01", paso: "caja", periodo: "2026-10-01" });
     await setDoc(doc(db, "clinics/clV/directMessages/dmV"), directo({ id: "dmV", cid: "clV", de: "adminV", a: "dentV" }));
 
     // Clínica S: plan SOLO al día — para probar el gating de módulos premium
@@ -1081,4 +1083,49 @@ test("documentos clínicos: con la suscripción vencida se lee y no se escribe",
 test("documentos clínicos: la demo es abierta para quien tiene sesión", async () => {
   await assertSucceeds(setDoc(doc(authed("cualquiera"), "clinics/cl_demo/clinicalDocs/cd_demo_x"), { id: "cd_demo_x", patientId: "p1", estado: "pendiente" }));
   await assertSucceeds(deleteDoc(doc(authed("cualquiera"), "clinics/cl_demo/clinicalDocs/cd_demo_x")));
+});
+
+/* ══ RUTINA DEL ADMINISTRADOR (routineChecks) ════════════════════════════════════════
+ * Un documento por casillero tildado (`${paso}__${periodo}`). Lo tilda y lo destilda solo el
+ * administrador; todos los miembros leen. Con la suscripción vencida se lee y no se escribe. El
+ * aislamiento entre clínicas lo barre la lista COLECCIONES_DE_CLINICA de arriba. */
+const RC = (cid, id) => `clinics/${cid}/routineChecks/${id}`;
+const casillero = (id, extra = {}) => ({ id, paso: id.split("__")[0], periodo: id.split("__")[1], hechoPor: "adminA", hechoPorNombre: "Admin A", hechoEn: "2026-10-07T12:00:00.000Z", ...extra });
+
+test("rutina del administrador: el admin tilda, cambia y destilda", async () => {
+  await assertSucceeds(setDoc(doc(authed("adminA"), RC("clA", "cobrado__2026-10-07")), casillero("cobrado__2026-10-07")));
+  await assertSucceeds(setDoc(doc(authed("adminA"), RC("clA", "cobrado__2026-10-07")), { hechoPorNombre: "Otro" }, { merge: true }));
+  await assertSucceeds(deleteDoc(doc(authed("adminA"), RC("clA", "cobrado__2026-10-07"))));
+});
+
+test("rutina del administrador: caja, recepción, dentista y asistente no escriben ni destildan", async () => {
+  for (const uid of ["cajaA", "recepA", "dentA", "asisA"]) {
+    await assertFails(setDoc(doc(authed(uid), RC("clA", `deudores__${uid}`)), casillero(`deudores__${uid}`)));
+    await assertFails(setDoc(doc(authed(uid), RC("clA", "caja__2026-10-01")), { hechoPorNombre: "Pisado" }, { merge: true }));
+    await assertFails(deleteDoc(doc(authed(uid), RC("clA", "caja__2026-10-01"))));
+  }
+});
+
+test("rutina del administrador: todos los miembros leen, y un desconocido o de otra clínica no", async () => {
+  for (const uid of ["adminA", "cajaA", "recepA", "dentA", "asisA"]) {
+    await assertSucceeds(getDoc(doc(authed(uid), RC("clA", "caja__2026-10-01"))));
+  }
+  await assertFails(getDoc(doc(anon(), RC("clA", "caja__2026-10-01"))));
+  await assertFails(getDoc(doc(authed("adminB"), RC("clA", "caja__2026-10-01"))));
+});
+
+test("rutina del administrador: el admin de otra clínica no escribe en la mía", async () => {
+  await assertFails(setDoc(doc(authed("adminB"), RC("clA", "caja__2026-10-08")), casillero("caja__2026-10-08")));
+});
+
+test("rutina del administrador: con la suscripción vencida se lee y no se escribe", async () => {
+  await assertSucceeds(getDoc(doc(authed("adminV"), RC("clV", "caja__2026-10-01"))));
+  await assertFails(setDoc(doc(authed("adminV"), RC("clV", "caja__2026-10-02")), casillero("caja__2026-10-02")));
+  await assertFails(deleteDoc(doc(authed("adminV"), RC("clV", "caja__2026-10-01"))));
+});
+
+test("rutina del administrador: la demo es abierta para quien tiene sesión, no para un anónimo sin sesión", async () => {
+  await assertSucceeds(setDoc(doc(authed("cualquiera"), RC("cl_demo", "caja__2026-10-07")), casillero("caja__2026-10-07")));
+  await assertSucceeds(deleteDoc(doc(authed("cualquiera"), RC("cl_demo", "caja__2026-10-07"))));
+  await assertFails(setDoc(doc(anon(), RC("cl_demo", "caja__2026-10-08")), casillero("caja__2026-10-08")));
 });

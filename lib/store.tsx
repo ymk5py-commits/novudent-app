@@ -48,7 +48,7 @@ async function ensureAuth() {
 }
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, OdontogramStatus, OdontogramToothState, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic, OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, DirectMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo, Branch, CrmCard, Campaign, LabOrder, Settlement, Box, Subscription,
-  DocumentoClinico,
+  DocumentoClinico, RutinaCheck,
 } from "./types";
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
@@ -59,6 +59,7 @@ import { worstSeverity } from "./recovery";
 import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
 import { registrarFallo, resolverFallo, clasificarError } from "./write-errors";
 import { parseFecha } from "./tareas";
+import { idCheck, type PasoId } from "./rutinaAdmin";
 
 const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
@@ -89,7 +90,7 @@ function loadLocal(): DB {
     if (raw) {
       const guardada = JSON.parse(raw) as DB;
       // Un caché guardado antes del chat directo no trae la colección.
-      return { ...guardada, directMessages: guardada.directMessages ?? [], clinicalDocs: guardada.clinicalDocs ?? [] };
+      return { ...guardada, directMessages: guardada.directMessages ?? [], clinicalDocs: guardada.clinicalDocs ?? [], routineChecks: guardada.routineChecks ?? [] };
     }
   } catch {}
   const seed = buildSeed();
@@ -126,6 +127,7 @@ async function seedFirestore(seed: DB) {
   for (const v of seed.eduVideos) batch.set(doc(fsdb, "clinics", CLINIC_ID, "eduVideos", v.id), clean(v));
   for (const br of seed.branches) batch.set(doc(fsdb, "clinics", CLINIC_ID, "branches", br.id), clean(br));
   for (const cd of seed.clinicalDocs) batch.set(doc(fsdb, "clinics", CLINIC_ID, "clinicalDocs", cd.id), clean(cd));
+  for (const rc of seed.routineChecks) batch.set(doc(fsdb, "clinics", CLINIC_ID, "routineChecks", rc.id), clean(rc));
   await batch.commit();
 }
 
@@ -191,12 +193,13 @@ async function loadFirestore(): Promise<DB> {
     if (!uid || !yo || yo.active === false) return null;
     return leer(can(yo.role, "users.manage") ? ref : query(ref, where("participants", "array-contains", uid)));
   })();
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos, branches, directMessages, clinicalDocs] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos, branches, directMessages, clinicalDocs, routineChecks] = await Promise.all([
     usersP, col("patients"), col("appointments"), col("billing"), col("procedures"),
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
     col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"), col("sterilizationCycles"), col("teamMessages"), col("surveys"), col("surveyResponses"), col("mgmtTasks"), col("environmentalLogs"), col("eduVideos"), col("branches"),
     directosP,
     col("clinicalDocs"),
+    col("routineChecks"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -227,6 +230,7 @@ async function loadFirestore(): Promise<DB> {
     teamMessages: filas<TeamMessage>(teamMessages),
     directMessages: filas<DirectMessage>(directMessages),
     clinicalDocs: filas<DocumentoClinico>(clinicalDocs),
+    routineChecks: filas<RutinaCheck>(routineChecks),
     surveys: filas<Survey>(surveys),
     surveyResponses: filas<SurveyResponse>(surveyResponses),
     mgmtTasks: filas<MgmtTask>(mgmtTasks),
@@ -452,6 +456,8 @@ interface Ctx {
   upsertProcedure: (p: Procedure) => void;
   deleteProcedure: (cpt: string) => void;
   setOnboarding: (k: keyof DB["onboarding"], v: boolean) => void;
+  /* — Rutina del administrador: tildar o destildar un casillero (un documento por paso y período) — */
+  setRutinaCheck: (paso: PasoId, periodo: string, hecho: boolean) => void;
   /* — Presupuestos — */
   upsertBudget: (b: Budget) => void;
   deleteBudget: (id: string) => void;
@@ -1066,6 +1072,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           // Lo que escribieron los visitantes en el chat directo de la demo.
           delExtras("directMessages", db.directMessages.map((x) => x.id), seed.directMessages.map((x) => x.id));
           delExtras("clinicalDocs", db.clinicalDocs.map((x) => x.id), seed.clinicalDocs.map((x) => x.id));
+          delExtras("routineChecks", db.routineChecks.map((x) => x.id), seed.routineChecks.map((x) => x.id));
           seedFirestore(seed).catch(() => {});
         }
         persist(seed);
@@ -1210,6 +1217,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // Estado local desde `prev` (el último): con `next` armado sobre `db`, una acción encadenada pisaba a la anterior.
         persist((prev) => ({ ...prev, onboarding: { ...prev.onboarding, [k]: v } }));
         fsMeta(next);
+      },
+      setRutinaCheck: (paso, periodo, hecho) => {
+        const id = idCheck(paso, periodo);
+        if (!hecho) {
+          persist((prev) => ({ ...prev, routineChecks: prev.routineChecks.filter((x) => x.id !== id) }));
+          fsDelete("routineChecks", id);
+          return;
+        }
+        const c: RutinaCheck = { id, paso, periodo, hechoPor: session?.userId ?? "", hechoPorNombre: session?.name ?? "", hechoEn: new Date().toISOString() };
+        persist((prev) => ({ ...prev, routineChecks: [c, ...prev.routineChecks.filter((x) => x.id !== id)] }));
+        fsSave("routineChecks", id, c);
       },
       /* — Presupuestos — */
       upsertBudget: (b) => {

@@ -492,6 +492,7 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
     ],
     signatures: [],
     clinicalDocs: documentosDemo(),
+    routineChecks: [],
     crmCards: [],
     campaigns: [],
     labOrders: [],
