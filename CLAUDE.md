@@ -147,7 +147,10 @@ Aura y tres textos «por revisar»). Lógica pura y con tests en `lib/documentos
 dentista) es el espejo de la regla `clinicalDocs` de `firestore.rules` y hay un test que lo ata a la
 matriz de roles. **Todo conteo de pendientes sale de `pendientesPorPaciente()`** (documentos nuevos +
 los `Patient.forms` viejos): campana, Inicio, buscador y cabecera de la ficha. El alta de paciente
-usa `crearPaciente()` del store, que deja la Historia Clínica pendiente.
+usa `crearPaciente()` del store, que deja la Historia Clínica pendiente. **La campana** (`CampanaPendientes`)
+abre un panel con cada paciente pendiente y su link directo: lo arma `listaPendientes()` (`lib/pendientes.ts`);
+los filtros por link son `/app/pacientes?pendientes=documentos` y `/app/facturacion?filtro=en-retencion`
+(se leen en un efecto, no con `useSearchParams`).
 
 ## Diferenciadores (cross-repo con Botika)
 

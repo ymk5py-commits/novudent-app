@@ -267,5 +267,12 @@ Camila mandó capturas de la ficha de Aura en Dentalink y marcó «esto es lo qu
     consentimiento» pide Tipo, Plan de tratamiento y Profesional a cargo, y la lista tiene
     «Mostrar anulados».
 
-Pendientes de ese mismo pedido: campanita con panel de pendientes que lleve a cada paciente,
-«Mi agenda» en Inicio (tareas propias que se tachan solas, con IA) y el manual de procedimientos.
+18. ~~**Campanita con panel**~~ ✅ hecho el 6-oct-2026 (`CampanaPendientes`, `lib/pendientes.ts`):
+    antes decía «3 pendientes» y llevaba a la lista de pacientes sin decir cuáles. Ahora abre un
+    panel con cada paciente que tiene documentos clínicos pendientes (con el nombre del documento) y
+    cada fila abre su pestaña Documentos clínicos; las retenciones de facturación (solo quien ve
+    montos) abren Facturación ya filtrada. «Ver todos» abre Pacientes con el filtro «Con documentos
+    pendientes» (`?pendientes=documentos`), y las tarjetas de Inicio llevan al mismo lugar.
+
+Pendientes de ese mismo pedido: «Mi agenda» en Inicio (tareas propias que se tachan solas, con IA)
+y el manual de procedimientos.

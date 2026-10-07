@@ -250,7 +250,7 @@ test.describe("Alta de paciente y campana", () => {
 
   test("la campana cuenta pacientes con documentos pendientes y baja al completar uno", async ({ page }) => {
     await entrarDemo(page);
-    const leer = async () => Number(/\((\d+)\)/.exec((await page.getByRole("link", { name: /Ver pendientes/ }).getAttribute("aria-label")) ?? "")?.[1]);
+    const leer = async () => Number(/\((\d+)\)/.exec((await page.getByRole("button", { name: /Ver pendientes/ }).getAttribute("aria-label")) ?? "")?.[1]);
     await expect.poll(leer).toBeGreaterThanOrEqual(3); // p1 y p2 (documentos) y p4 (formulario viejo)
     const antes = await leer();
     await page.goto("/app/pacientes/p2?tab=documentos");

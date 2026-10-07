@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 /** Módulo de Facturación (sec. 3.3): flags de estado, transiciones y validación de códigos. */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Send, Unlock, Plus, AlertTriangle, History, Banknote, Lock, Flag, ShieldAlert } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
@@ -17,6 +17,13 @@ export default function BillingPage() {
   const [filter, setFilter] = useState<Filter>("todos");
   const [creating, setCreating] = useState(false);
   const [historyFor, setHistoryFor] = useState<BillingRecord | null>(null);
+
+  // Enlace de la campana y de Inicio (?filtro=en-retencion): abre la lista ya filtrada. Se lee en
+  // un efecto y no con useSearchParams para no obligar a la página entera a renderizar en el servidor.
+  useEffect(() => {
+    const f = new URLSearchParams(window.location.search).get("filtro");
+    if (f === "sin-enviar" || f === "en-retencion" || f === "facturado") setFilter(f);
+  }, []);
 
   if (!session) return null;
   /* Roles v3: Enviar a Cobro / pagos = admin + caja · Finalizar (Release) = admin */
