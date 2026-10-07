@@ -3,14 +3,13 @@ import Link from "next/link";
 /** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, UserCog, Users, Stethoscope, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, FileText, Image as ImageIcon, MapPin, CalendarClock, ListChecks, Clock, Ban, Power } from "lucide-react";
-import { useStore, fmtGs, fullName } from "@/lib/store";
+import { ShieldAlert, Plus, UserCog, Users, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, FileText, Image as ImageIcon, MapPin, ListChecks, Ban, Power } from "lucide-react";
+import { useStore, fullName } from "@/lib/store";
 import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
 import { can, ROLE_LABEL, ROLES, ROLE_DESCRIPCION } from "@/lib/rbac";
 import { planUserLimitError } from "@/lib/plan";
 import { PlazosTareas } from "@/components/tareas/PlazosTareas";
-import { anticipacionDe } from "@/lib/reserva-online";
-import type { Role, User, Procedure, BotikaConfig, ConsentTemplate, Branch, PaymentMethod } from "@/lib/types";
+import type { Role, User, BotikaConfig, ConsentTemplate, Branch, PaymentMethod } from "@/lib/types";
 import { PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
@@ -19,6 +18,10 @@ import { EstadosCitaConfig } from "@/components/EstadosCitaConfig";
 import { PlantillasDocumento } from "@/components/PlantillasDocumento";
 import { resizeToDataUrl } from "@/lib/image";
 import { Reveal } from "@/components/motion";
+import { PagoOnline } from "@/components/PagoOnline";
+import { AgendaOnline } from "@/components/AgendaOnline";
+import { ArancelPrecios } from "@/components/ArancelPrecios";
+import { BancosEntidades } from "@/components/BancosEntidades";
 import { Logotipo } from "@/components/Marca";
 
 const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> = {
@@ -28,11 +31,9 @@ const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> =
 };
 
 export default function ConfigPage() {
-  const { db, session, upsertProcedure, deleteProcedure, mergePatients, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, saveConsentTemplates, addBranch, updateBranch, deleteBranch } = useStore();
+  const { db, session, mergePatients, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, saveConsentTemplates, addBranch, updateBranch, deleteBranch } = useStore();
   const plan = useClinicPlan();
   const [addingUser, setAddingUser] = useState(false);
-  const [addingProc, setAddingProc] = useState(false);
-  const [editingProc, setEditingProc] = useState<Procedure | null>(null);
   const [mergeKeep, setMergeKeep] = useState(db.patients[0]?.id ?? "");
   const [mergeRemove, setMergeRemove] = useState("");
   // Deep-link desde el menú Administración (/app/configuracion#arancel) → scroll a la sección.
@@ -122,28 +123,13 @@ export default function ConfigPage() {
       <span id="pagos" className="block scroll-mt-24" aria-hidden="true" />
       {/* Pago online (configurable, sin guardar credenciales secretas) */}
       <Reveal>
-      <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><HandCoins className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Pago online</h2></div>
-        <p className="mb-3 text-xs text-clinic-muted">Pegá el <b>link de checkout de tu propia pasarela</b> (MercadoPago, Bancard, Pagopar, Stripe… la que uses) y, opcionalmente, tus datos de transferencia. Novudent arma una página de pago para enviarle al paciente por WhatsApp/email. No guardamos credenciales secretas — solo el link público que vos pegás.</p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Link de checkout de tu pasarela">
-            <input className={inputCls} defaultValue={clinic.config.payments?.checkoutUrl ?? ""} onBlur={(e) => updateClinicConfig({ payments: { ...clinic.config.payments, checkoutUrl: e.target.value.trim() || undefined } })} placeholder="https://link.mercadopago.com.ar/… o tu pasarela" />
-          </Field>
-          <Field label="Datos de transferencia (opcional)">
-            <input className={inputCls} defaultValue={clinic.config.payments?.bankInfo ?? ""} onBlur={(e) => updateClinicConfig({ payments: { ...clinic.config.payments, bankInfo: e.target.value.trim() || undefined } })} placeholder="Banco X · Cta 123456 · Titular …" />
-          </Field>
-        </div>
-      </Card>
+        <PagoOnline />
       </Reveal>
 
       <span id="agendamiento" className="block scroll-mt-24" aria-hidden="true" />
-      {/* Agendamiento online */}
+      {/* Agenda online: el link para compartir, su QR y la anticipación mínima, en un solo lugar */}
       <Reveal>
-      <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><CalendarClock className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Agendamiento online</h2></div>
-        <p className="mb-3 text-xs text-clinic-muted">Compartí este link en tu web, Instagram, WhatsApp o Facebook para que los pacientes reserven solos. Las reservas entran a la agenda como pendientes de validar.</p>
-        <BookingLink clinicId={db.clinics[0]?.id ?? ""} />
-      </Card>
+        <AgendaOnline />
       </Reveal>
 
       <span id="estados-cita" className="block scroll-mt-24" aria-hidden="true" />
@@ -468,43 +454,11 @@ export default function ConfigPage() {
       </Reveal>
 
       <Reveal>
-      <Card className="p-5">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div id="arancel" className="flex scroll-mt-24 items-center gap-2"><Stethoscope className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Servicios y aranceles</h2></div>
-          <Btn onClick={() => setAddingProc(true)}><Plus className="h-4 w-4" /> Agregar servicio</Btn>
-        </div>
-        {db.procedures.length === 0 ? (
-          <Empty title="Sin servicios" />
-        ) : (
-          <>
-          <p className="mb-2 text-xs font-semibold text-azure-700 sm:hidden">Deslizá la tabla para ver todos los aranceles →</p>
-          <div className="scroll-hint-shown min-w-0 max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="w-full min-w-[560px] text-sm">
-            <thead>
-              <tr className="border-b border-clinic-border text-left text-[13px] font-bold text-clinic-text">
-                <th className="py-2 pr-3">Código</th><th className="py-2 pr-3">Descripción</th><th className="py-2 text-right">Arancel</th><th className="py-2"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-clinic-border">
-              {db.procedures.map((p) => (
-                <tr key={p.cpt} className="hover:bg-clinic-bg/50">
-                  <td className="py-2.5 pr-3 tabular-nums font-bold text-clinic-text">{p.cpt}</td>
-                  <td className="py-2.5 pr-3">{p.description}</td>
-                  <td className="py-2.5 text-right tabular-nums">{fmtGs(p.price)}</td>
-                  <td className="py-2.5 pl-2 text-right">
-                    <span className="flex items-center justify-end gap-1">
-                      <button onClick={() => setEditingProc(p)} title="Editar servicio" className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-azure-50 hover:text-azure-700"><Pencil className="h-3.5 w-3.5" /></button>
-                      <button onClick={() => { if (confirm(`¿Eliminar el servicio ${p.cpt} — ${p.description}?`)) deleteProcedure(p.cpt); }} title="Eliminar servicio" className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err"><Trash2 className="h-3.5 w-3.5" /></button>
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-          </>
-        )}
-      </Card>
+        <ArancelPrecios />
+      </Reveal>
+
+      <Reveal>
+        <BancosEntidades />
       </Reveal>
 
       {/* Servicios adicionales */}
@@ -543,39 +497,6 @@ export default function ConfigPage() {
         templates={clinic.config.consentTemplates ?? []}
         onSave={saveConsentTemplates}
       />
-      </Reveal>
-
-      {/* Reserva online: con cuánta anticipación se puede tomar un turno. Antes
-          estaba hardcodeado ("mañana en adelante"); ahora la clínica decide, y el
-          cálculo usa SU zona horaria, no la del servidor. */}
-      <Reveal>
-      <Card className="p-5">
-        <div id="reserva-online" className="mb-1 flex scroll-mt-24 items-center gap-2"><Clock className="h-4 w-4 text-azure-600" /><h2 className="text-sm font-bold text-clinic-text">Reserva online</h2></div>
-        <p className="mt-1 text-xs text-clinic-muted">Con cuánta anticipación mínima puede el paciente tomar un turno desde la web.</p>
-        <div className="mt-4 max-w-sm">
-          <Field label="Anticipación mínima" hint={`Se calcula en la zona horaria de la clínica (${clinic.config.timezone || "sin configurar"}).`}>
-            <select
-              value={String(anticipacionDe(clinic.config))}
-              onChange={(e) => updateClinicConfig({ onlineBooking: { ...clinic.config.onlineBooking, minLeadHoras: Number(e.target.value) } })}
-              className={inputCls}
-            >
-              {/* El default (12) tiene que figurar en la lista aunque no sea una
-                  opción "de Dentalink": un <select> controlado cuyo value no
-                  matchea ninguna opción se renderiza en blanco. */}
-              <option value="0">Sin anticipación (hasta la hora del turno)</option>
-              <option value="1">1 hora</option>
-              <option value="2">2 horas</option>
-              <option value="4">4 horas</option>
-              <option value="8">8 horas</option>
-              <option value="12">12 horas</option>
-              <option value="24">24 horas</option>
-            </select>
-          </Field>
-        </div>
-        <p className="mt-3 text-[11px] text-clinic-muted">
-          Con <b>0</b> el paciente puede reservar para hoy mismo hasta la hora del turno. Con <b>24</b> necesita al menos un día completo de aviso.
-        </p>
-      </Card>
       </Reveal>
 
       {/* Plazos de las tareas automáticas: cuánto pasa desde el evento (deuda,
@@ -632,32 +553,7 @@ export default function ConfigPage() {
           }}
         />
       )}
-      {addingProc && (
-        <NewProc
-          onClose={() => setAddingProc(false)}
-          onSave={(p) => { upsertProcedure(p); setOnboarding("servicesDefined", true); setAddingProc(false); }}
-        />
-      )}
-      {editingProc && (
-        <NewProc
-          proc={editingProc}
-          onClose={() => setEditingProc(null)}
-          onSave={(p) => { upsertProcedure(p); setEditingProc(null); }}
-        />
-      )}
       {importing && <DentalinkImport onClose={() => setImporting(false)} />}
-    </div>
-  );
-}
-
-function BookingLink({ clinicId }: { clinicId: string }) {
-  const [copied, setCopied] = useState(false);
-  const url = typeof window !== "undefined" ? `${window.location.origin}/reservar/${clinicId}` : `/reservar/${clinicId}`;
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <code className="min-w-0 flex-1 truncate rounded-lg border border-clinic-border bg-clinic-bg px-3 py-2 text-xs text-clinic-text">{url}</code>
-      <button onClick={() => { try { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* sin portapapeles */ } }} className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-text hover:border-azure-300 hover:text-azure-700">{copied ? "Copiado" : "Copiar link"}</button>
-      <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-2 text-xs font-bold text-clinic-muted hover:text-clinic-text">Abrir</a>
     </div>
   );
 }
@@ -815,24 +711,6 @@ function ConsentTemplatesCard({ templates, onSave }: { templates: ConsentTemplat
         </div>
       )}
     </Card>
-  );
-}
-
-function NewProc({ proc, onClose, onSave }: { proc?: Procedure; onClose: () => void; onSave: (p: Procedure) => void }) {
-  const isEdit = !!proc;
-  const [f, setF] = useState<Procedure>(proc ?? { cpt: "", description: "", price: 0, defaultDx: [] });
-  return (
-    <Modal title={isEdit ? "Editar servicio" : "Agregar servicio"} onClose={onClose}>
-      <form
-        className="space-y-4"
-        onSubmit={(e) => { e.preventDefault(); onSave({ ...f, cpt: f.cpt.toUpperCase() }); }}
-      >
-        <Field label="Código (CPT/CDT)"><input required disabled={isEdit} className={inputCls} value={f.cpt} onChange={(e) => setF({ ...f, cpt: e.target.value })} placeholder="D2330" /></Field>
-        <Field label="Descripción"><input required className={inputCls} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
-        <Field label="Arancel (Gs)"><input type="number" min={0} required className={inputCls} value={f.price} onChange={(e) => setF({ ...f, price: +e.target.value })} /></Field>
-        <div className="flex justify-end gap-2"><Btn variant="outline" onClick={onClose}>Cancelar</Btn><Btn type="submit">{isEdit ? "Guardar" : "Crear servicio"}</Btn></div>
-      </form>
-    </Modal>
   );
 }
 

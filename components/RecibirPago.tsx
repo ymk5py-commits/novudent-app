@@ -4,6 +4,7 @@
  *  2) con qué — uno o varios medios en el mismo pago;
  *  3) comprobante — imprimible y enviable por correo.
  *  Abajo, las cuotas de financiamiento: «Pagar cuota» carga ese monto en el paso 1. */
+import { CampoBanco } from "@/components/CampoBanco";
 import { useMemo, useState } from "react";
 import { Wallet, MessageCircle, Plus, Trash2, AlertCircle } from "lucide-react";
 import { useStore, fmtGs, fmtDate } from "@/lib/store";
@@ -245,7 +246,7 @@ export function RecibirPagoTab({ patient, preseleccion }: { patient: Patient; pr
               {m.method === "cheque" && (
                 <div className="mt-3 grid gap-3 sm:grid-cols-3">
                   <Field label="N° de cheque"><input className={inputCls} value={m.checkNumber} onChange={(e) => setMedio(m.id, { checkNumber: e.target.value })} placeholder="00012345" /></Field>
-                  <Field label="Banco"><input className={inputCls} value={m.checkBank} onChange={(e) => setMedio(m.id, { checkBank: e.target.value })} placeholder="Banco Continental" /></Field>
+                  <Field label="Banco"><CampoBanco value={m.checkBank} onChange={(valor) => setMedio(m.id, { checkBank: valor })} /></Field>
                   <Field label="Fecha de cobro"><input type="date" className={inputCls} value={m.checkCashDate} onChange={(e) => setMedio(m.id, { checkCashDate: e.target.value })} /></Field>
                 </div>
               )}

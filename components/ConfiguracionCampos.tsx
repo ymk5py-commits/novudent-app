@@ -52,6 +52,18 @@ export function ConfiguracionCampos() {
         </div>
         {canEdit && <Btn disabled={!dirty} onClick={() => updateClinicConfig({ patientFields: local })}><Save className="h-4 w-4" /> Guardar</Btn>}
       </div>
+      <div className="rounded-xl border border-azure-100 bg-azure-50 p-3.5 text-xs leading-relaxed text-azure-800">
+        <p className="font-bold">¿Para qué sirve?</p>
+        <p className="mt-1">
+          Elegís qué datos de la ficha se piden <b>según dónde se crea el paciente</b>: al dar de alta uno nuevo (<b>Nuevo paciente</b>), al darle una
+          cita (<b>Al agendar</b>) y cuando reserva solo por internet (<b>Agenda online</b>). Cada dato tiene dos casillas:
+        </p>
+        <ul className="mt-1.5 list-disc space-y-0.5 pl-5">
+          <li><b>Presente</b>: el campo aparece en ese formulario.</li>
+          <li><b>Requerido</b>: no se puede guardar sin completarlo.</li>
+        </ul>
+        <p className="mt-1.5">Por ejemplo: si querés que la recepción siempre cargue el correo, tildá «Requerido» en «Nuevo paciente». Si en la agenda online no querés pedir la dirección, destildá «Presente». Los cambios valen para los pacientes nuevos; las fichas que ya existen no cambian.</p>
+      </div>
       {dirty && <p role="status" className="rounded-xl bg-state-warnbg px-3 py-2 text-xs font-semibold text-state-warn">Hay cambios sin guardar.</p>}
 
       <Card className="overflow-x-auto p-0">

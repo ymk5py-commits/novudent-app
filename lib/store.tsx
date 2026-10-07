@@ -454,6 +454,8 @@ interface Ctx {
   toggleFollowUp: (id: string) => void;
   upsertUser: (u: User) => void;
   upsertProcedure: (p: Procedure) => void;
+  /** Guarda varios servicios de una vez (carga en bloque, ajuste de precios): un solo cambio de estado y de caché local. */
+  upsertProcedures: (ps: Procedure[]) => void;
   deleteProcedure: (cpt: string) => void;
   setOnboarding: (k: keyof DB["onboarding"], v: boolean) => void;
   /* — Rutina del administrador: tildar o destildar un casillero (un documento por paso y período) — */
@@ -1207,6 +1209,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       upsertProcedure: (p) => {
         persist((prev) => ({ ...prev, procedures: prev.procedures.some((x) => x.cpt === p.cpt) ? prev.procedures.map((x) => (x.cpt === p.cpt ? p : x)) : [...prev.procedures, p] }));
         fsSave("procedures", p.cpt, p);
+      },
+      upsertProcedures: (ps) => {
+        if (ps.length === 0) return;
+        const nuevos = new Map(ps.map((p) => [p.cpt, p]));
+        persist((prev) => {
+          const existentes = new Set(prev.procedures.map((x) => x.cpt));
+          return { ...prev, procedures: [...prev.procedures.map((x) => nuevos.get(x.cpt) ?? x), ...[...nuevos.values()].filter((p) => !existentes.has(p.cpt))] };
+        });
+        for (const p of nuevos.values()) fsSave("procedures", p.cpt, p);
       },
       deleteProcedure: (cpt) => {
         persist((prev) => ({ ...prev, procedures: prev.procedures.filter((x) => x.cpt !== cpt) }));

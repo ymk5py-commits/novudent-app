@@ -1,5 +1,6 @@
 /* ===== Modelo de datos Novudent (sec. 4 del Documento Maestro) ===== */
 import type { CurrencyCode } from "./currency";
+import type { EntidadFinanciera } from "./bancos";
 
 /** Roles v3 (27/9/2026): la recepción se separa de la caja, y dentista y asistente
  *  quedan con lo clínico, sin montos ni datos personales (ver lib/rbac.ts). */
@@ -62,6 +63,8 @@ export interface Clinic {
     payments?: { checkoutUrl?: string; bankInfo?: string };
     /** Retención por medio de pago (módulo Reportes — ingreso neto). */
     paymentRetention?: PaymentRetention;
+    /** Bancos y entidades financieras de la clínica (Administración › Bancos y entidades financieras): se ofrecen al anotar un cheque. */
+    entidadesFinancieras?: EntidadFinanciera[];
   };
 }
 
