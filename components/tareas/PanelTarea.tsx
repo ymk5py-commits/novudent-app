@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, waLink } from "@/lib/store";
 import { useAlcance } from "@/lib/useAlcance";
+import { motivoCumplido } from "@/lib/tareasAuto";
 import { budgetBalance, BUDGET_STATUS_INFO } from "@/lib/budgets";
 import {
   RECONTACTO_OPCIONES, RESOLUCION_LABEL, baseRecontacto, detalleTarea, fechaCorta, fechaLarga, resumenGestion, sumarDias,
@@ -134,7 +135,7 @@ export function PanelTarea({
         {fila.estado === "sistema" && (
           <div role="status" className="rounded-xl border border-clinic-border bg-clinic-bg px-3.5 py-3">
             <p className="flex items-center gap-1.5 text-sm font-bold text-clinic-muted"><CheckCircle2 aria-hidden className="h-4 w-4" /> Completada por el sistema</p>
-            <p className="mt-0.5 text-xs text-clinic-text">{MOTIVO_SISTEMA[fila.type]}</p>
+            <p className="mt-0.5 text-xs text-clinic-text">{fila.autoCierre ? motivoCumplido(fila.autoCierre) : MOTIVO_SISTEMA[fila.type]}</p>
           </div>
         )}
       </div>

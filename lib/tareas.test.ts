@@ -1163,3 +1163,45 @@ describe("asignarTarea y nuevaPersonalizada", () => {
     expect(resumenGestion({ ...g, accion: "cerrar" }, false)).toBe("Caso cerrado · respuesta negativa del paciente");
   });
 });
+
+describe("tareas propias que se tachan solas (autoCierre)", () => {
+  const propia = (id: string, extra: Partial<MgmtTask> = {}) =>
+    manual(id, { patientId: "p1", dueDate: "2026-08-03", autoCierre: { evento: "pago", desde: HOY }, ...extra });
+
+  it("sin `cumplidas` la propia sigue pendiente: nadie le dijo que se cumplió", () => {
+    expect(filasDeTareas([], [propia("mt1")], HOY).map((x) => x.estado)).toEqual(["pendiente"]);
+  });
+
+  it("cumplida: una sola fila «sistema», con su mismo id y en su día", () => {
+    const f = filasDeTareas([], [propia("mt1")], HOY, new Set(["mt1"]));
+    expect(f).toHaveLength(1);
+    expect(f[0]).toMatchObject({ id: "mt1", estado: "sistema", fecha: "2026-08-03", status: "cerrada", autoCierre: { evento: "pago" } });
+  });
+
+  it("la cumplida no cuenta como atrasada aunque su día ya pasó", () => {
+    const vieja = propia("mt1", { dueDate: "2026-07-20" });
+    expect(bandejaDelDia(filasDeTareas([], [vieja], HOY), HOY, HOY).atrasadas).toHaveLength(1);
+    expect(bandejaDelDia(filasDeTareas([], [vieja], HOY, new Set(["mt1"])), HOY, HOY).atrasadas).toHaveLength(0);
+  });
+
+  it("las del sistema se esconden de «Tareas del día» salvo que se pidan", () => {
+    const f = filasDeTareas([], [propia("mt1")], HOY, new Set(["mt1"]));
+    expect(bandejaDelDia(f, "2026-08-03", HOY).delDia).toHaveLength(0);
+    expect(bandejaDelDia(f, "2026-08-03", HOY, false).delDia.map((x) => x.estado)).toEqual(["sistema"]);
+  });
+
+  it("una cerrada a mano figura como completada, no como del sistema, aunque la condición se cumpla", () => {
+    const cerrada = propia("mt1", {
+      status: "cerrada", resolution: "ejecutada",
+      gestiones: [{ fecha: HOY, at: AHORA, by: "u5", byName: "Laura", accion: "cerrar" }],
+    });
+    expect(filasDeTareas([], [cerrada], HOY, new Set(["mt1"])).map((x) => x.estado)).toEqual(["completada"]);
+  });
+
+  it("`nuevaPersonalizada` guarda el autoCierre solo si hay paciente", () => {
+    const base = { id: "mt9", clinicId: "c1", detalle: "Llamar por el presupuesto", fecha: "2026-12-01", createdBy: "u5", ahora: AHORA };
+    const autoCierre = { evento: "presupuesto" as const, desde: HOY, budgetId: "b1" };
+    expect(nuevaPersonalizada({ ...base, patientId: "p1", autoCierre })).toMatchObject({ autoCierre });
+    expect(nuevaPersonalizada({ ...base, autoCierre })).not.toHaveProperty("autoCierre");
+  });
+});

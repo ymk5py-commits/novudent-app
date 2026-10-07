@@ -175,3 +175,20 @@ describe("lineasDeTareas + reporteTareas (Reportes Excel → CRM)", () => {
     expect(resultadoGestion({ ...g, accion: "cerrar" })).toBe("Caso cerrado");
   });
 });
+
+describe("lineasDeTareas — propias que se tacharon solas", () => {
+  const propia: MgmtTask = {
+    id: "mt1", clinicId: "c1", type: "personalizada", title: "Llamar por el presupuesto", patientId: "p1", status: "pendiente",
+    dueDate: "2026-08-03", createdAt: "2026-07-28T10:00:00.000Z", autoCierre: { evento: "presupuesto", desde: "2026-07-28", budgetId: "b1" },
+  };
+
+  it("sin `cumplidas` figura pendiente", () => {
+    expect(lineasDeTareas([], [propia], HOY)[0].estado).toBe("Pendiente");
+  });
+
+  it("cumplida figura «Completada por el sistema» y deja de contar como a vencer", () => {
+    const lineas = lineasDeTareas([], [propia], HOY, new Set(["mt1"]));
+    expect(lineas[0].estado).toBe("Completada por el sistema");
+    expect(reporteTareas("a_vencer", lineas, { desde: "2026-08-01", hasta: "2026-08-31" }, { paciente: () => "Ana", usuario: () => "" })).toHaveLength(1); // solo el encabezado
+  });
+});

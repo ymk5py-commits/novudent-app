@@ -7,7 +7,7 @@
  *
  *  Módulo PURO: no importa React, ni Firestore, ni el store. Todo lo que necesita
  *  entra por parámetro y todo lo que produce sale por retorno. */
-import type { Appointment, Budget, MgmtTask, MgmtTaskType, Patient, Payment, TaskAccion, TaskDeadline, TaskDeadlines, TaskGestion } from "./types";
+import type { Appointment, AutoCierre, Budget, MgmtTask, MgmtTaskType, Patient, Payment, TaskAccion, TaskDeadline, TaskDeadlines, TaskGestion } from "./types";
 import { budgetTotal, checkStatus } from "./budgets";
 
 /** Plazos por defecto cuando la clínica no configuró los suyos. */
@@ -645,8 +645,11 @@ function resolucionDe(accion: TaskAccion, personalizada: boolean): MgmtTask["res
  *  - Sistema: el override huérfano (la condición se resolvió sola) que nadie
  *    había cerrado. Solo existe si alguien la había tomado —asignado, trabajado—:
  *    las que nadie tocó se resuelven sin dejar rastro, como decidió el diseño
- *    original (docs/superpowers/specs/2026-07-30-tareas-automaticas-design.md). */
-export function filasDeTareas(derivadas: DerivedTask[], guardadas: MgmtTask[], hoy: string): FilaTarea[] {
+ *    original (docs/superpowers/specs/2026-07-30-tareas-automaticas-design.md).
+ *    También lo es una propia con «se tacha sola cuando…» que ya se cumplió
+ *    (`cumplidas`, de `tareasCumplidas`): conserva el id de la pendiente, así el
+ *    panel no pierde la selección cuando el paciente paga. */
+export function filasDeTareas(derivadas: DerivedTask[], guardadas: MgmtTask[], hoy: string, cumplidas?: ReadonlySet<string>): FilaTarea[] {
   const porClave = new Map<string, MgmtTask>();
   for (const g of guardadas) if (g.derivedKey) porClave.set(g.derivedKey, g);
   const derivadaPorClave = new Map(derivadas.map((d) => [d.derivedKey, d]));
@@ -660,7 +663,13 @@ export function filasDeTareas(derivadas: DerivedTask[], guardadas: MgmtTask[], h
 
   for (const g of guardadas) {
     if (!g.derivedKey && g.status !== "cerrada") {
-      out.push({ ...g, fecha: mayor(g.dueDate ?? hoy, g.snoozedUntil), estado: "pendiente" });
+      const sola = cumplidas?.has(g.id) === true;
+      out.push({
+        ...g,
+        fecha: mayor(g.dueDate ?? hoy, g.snoozedUntil),
+        estado: sola ? "sistema" : "pendiente",
+        ...(sola ? { status: "cerrada" as const } : {}),
+      });
     }
     const d = g.derivedKey ? derivadaPorClave.get(g.derivedKey) : undefined;
     const gestiones = g.gestiones?.length ? g.gestiones : g.status === "cerrada" ? [gestionHeredada(g)] : [];
@@ -859,6 +868,8 @@ export function nuevaPersonalizada(o: {
   patientId?: string;
   patientName?: string;
   budgetId?: string;
+  /** «Se tacha sola cuando…»: solo tiene sentido con paciente. */
+  autoCierre?: AutoCierre;
   createdBy: string;
   ahora: string;
 }): MgmtTask {
@@ -873,6 +884,7 @@ export function nuevaPersonalizada(o: {
     patientName: o.patientName,
     title: detalle,
     budgetId: o.patientId ? o.budgetId || undefined : undefined,
+    autoCierre: o.patientId ? o.autoCierre : undefined,
     createdBy: o.createdBy,
     status: "pendiente",
     dueDate: o.fecha,

@@ -9,6 +9,7 @@ import { can } from "@/lib/rbac";
 import { budgetTotal, patientBalance, netAmount, retentionPct, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { Card, Btn, Badge, Field, inputCls } from "@/components/ui";
 import { derivarTareas, esFecha, fechaLocal, sumarDias } from "@/lib/tareas";
+import { tareasCumplidas } from "@/lib/tareasAuto";
 import { lineasDeTareas, reporteTareas, type LineaTarea } from "@/lib/tareas-reportes";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { ReportsIAPanel } from "@/components/NovudentIA";
@@ -206,7 +207,7 @@ export default function ReportsPage() {
       patients: db.patients, budgets: db.budgets, payments: db.payments, appointments: db.appointments,
       deadlines: db.clinics[0]?.config?.taskDeadlines,
     }, hoy);
-    const filas = reporteTareas(tipo, lineasDeTareas(derivadas, db.mgmtTasks, hoy), { desde: crmDesde, hasta: crmHasta }, {
+    const filas = reporteTareas(tipo, lineasDeTareas(derivadas, db.mgmtTasks, hoy, tareasCumplidas(db.mgmtTasks, { appointments: db.appointments, budgets: db.budgets, payments: db.payments })), { desde: crmDesde, hasta: crmHasta }, {
       paciente: (l: LineaTarea) => (l.patientId ? patientName(l.patientId) : l.patientName ?? "—"),
       usuario: (id?: string) => db.users.find((u) => u.id === id)?.name ?? "",
     });

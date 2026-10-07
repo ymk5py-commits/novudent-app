@@ -145,7 +145,7 @@ export interface LineaTarea {
 
 const mayor = (a: string, b?: string) => (b && b > a ? b : a);
 
-export function lineasDeTareas(derivadas: DerivedTask[], guardadas: MgmtTask[], hoy: string): LineaTarea[] {
+export function lineasDeTareas(derivadas: DerivedTask[], guardadas: MgmtTask[], hoy: string, cumplidas?: ReadonlySet<string>): LineaTarea[] {
   const porClave = new Map<string, MgmtTask>();
   for (const g of guardadas) if (g.derivedKey) porClave.set(g.derivedKey, g);
   const vivas = new Set(derivadas.map((d) => d.derivedKey));
@@ -167,7 +167,8 @@ export function lineasDeTareas(derivadas: DerivedTask[], guardadas: MgmtTask[], 
     out.push({
       type: g.type, patientId: g.patientId, patientName: g.patientName, title: g.title, detail: g.detail,
       generada: diaDe(g.createdAt), vence: mayor(g.dueDate ?? hoy, g.snoozedUntil),
-      estado: g.status === "cerrada" ? "Cerrada" : "Pendiente", resolution: g.status === "cerrada" ? g.resolution : undefined,
+      estado: g.status === "cerrada" ? "Cerrada" : cumplidas?.has(g.id) ? "Completada por el sistema" : "Pendiente",
+      resolution: g.status === "cerrada" ? g.resolution : undefined,
       assigneeId: g.assigneeId, ultima: ultima(g),
     });
   }
