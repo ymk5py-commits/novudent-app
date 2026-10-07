@@ -57,7 +57,7 @@ import { historiaClinicaPendiente, plantillasDeClinica } from "./documentosClini
 import { submitToBilling, releaseFromHold } from "./billing";
 import { worstSeverity } from "./recovery";
 import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
-import { registrarFallo, resolverFallo, clasificarError } from "./write-errors";
+import { registrarFallo, resolverFallo, clasificarError, vigilarEscritura } from "./write-errors";
 import { parseFecha } from "./tareas";
 import { idCheck, type PasoId } from "./rutinaAdmin";
 
@@ -487,7 +487,8 @@ interface Ctx {
   setOrtho: (patientId: string, ortho: OrthoRecord | null) => void;
   addOrthoControl: (patientId: string, c: { date: string; note: string; by: string }) => void;
   /* — Configuración — */
-  updateClinicConfig: (patch: Partial<Clinic["config"]>) => void;
+  /** `true` si se guardó (o no hay servidor); `false` si Firestore la rechazó (queda el aviso «No se guardó»). Se puede ignorar el resultado. */
+  updateClinicConfig: (patch: Partial<Clinic["config"]>) => Promise<boolean>;
   importPatients: (list: Patient[]) => void;
   /* — Integración Botika (outbox) — */
   addOutboxTask: (t: OutboxTask) => void;
@@ -580,6 +581,9 @@ const StoreCtx = createContext<Ctx | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<DB>(buildSeed);
+  // El estado más nuevo, para los reintentos de escrituras que reescriben un documento entero (ver `fsMeta`).
+  const dbRef = useRef(db);
+  useEffect(() => { dbRef.current = db; }, [db]);
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
   const [backend, setBackend] = useState<Backend>("connecting");
@@ -832,11 +836,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
     );
   }, []);
-  const fsMeta = useCallback((dbNow: DB) => {
-    if (backendRef.current !== "firebase") return;
+  /** Guarda el documento de la clínica (su configuración). Devuelve `true` si se guardó o si no hay servidor (modo local) y `false` si
+   *  Firestore la rechazó: en ese caso queda el aviso «No se guardó» (lib/write-errors.ts), igual que para cualquier otro documento.
+   *  Antes terminaba en un `.catch(() => {})`: un link de pago, un plazo o una plantilla se veían guardados y no lo estaban. El botón
+   *  «Reintentar» reescribe el estado de AHORA, no el de cuando falló: repetir el cuerpo viejo pisaría lo que se cambió después. */
+  const fsMeta = useCallback((dbNow: DB): Promise<boolean> => {
+    if (backendRef.current !== "firebase") return Promise.resolve(true);
     const c = dbNow.clinics[0];
-    if (!c) return;
-    setDoc(doc(fsdb, "clinics", c.id), clean({ ...c, onboarding: dbNow.onboarding }), { merge: true }).catch(() => {});
+    if (!c) return Promise.resolve(true);
+    const cuerpo = (d: DB) => clean({ ...d.clinics[0], onboarding: d.onboarding });
+    return vigilarEscritura({
+      coleccion: "clinics",
+      docId: c.id,
+      escribir: () => setDoc(doc(fsdb, "clinics", c.id), cuerpo(dbNow), { merge: true }),
+      reintentar: () => (dbRef.current.clinics[0] ? setDoc(doc(fsdb, "clinics", c.id), cuerpo(dbRef.current), { merge: true }) : Promise.resolve()),
+    });
   }, []);
 
   const value = useMemo<Ctx>(() => {
@@ -1325,7 +1339,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const next = { ...db, clinics: [nextClinic] };
         // Estado local desde `prev` (el último): con `next` armado sobre `db`, una acción encadenada pisaba a la anterior.
         persist((prev) => ({ ...prev, clinics: [{ ...prev.clinics[0], config: { ...prev.clinics[0].config, ...patch } }] }));
-        fsMeta(next);
+        return fsMeta(next);
       },
       importPatients: (list) => {
         persist((prev) => ({ ...prev, patients: [...prev.patients, ...list] }));
