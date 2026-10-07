@@ -12,7 +12,8 @@ import {
   derivarTareas, filasDeTareas, gestionarTarea, asignarTarea, nuevaPersonalizada, fechaLocal, mapaDeSaldos,
   type FilaTarea,
 } from "./tareas";
-import type { MgmtTask, TaskAccion } from "./types";
+import { reabrirTarea, tareasCumplidas } from "./tareasAuto";
+import type { AutoCierre, MgmtTask, TaskAccion } from "./types";
 
 export function useTareas() {
   const { db, session, addMgmtTask, updateMgmtTask, deleteMgmtTask } = useStore();
@@ -30,13 +31,20 @@ export function useTareas() {
     deadlines: db.clinics[0]?.config?.taskDeadlines,
   }, hoy), [db.patients, db.budgets, db.payments, db.appointments, db.clinics, hoy]);
 
+  // Las propias con «se tacha sola cuando…» (Mi agenda) cuya condición ya pasó: citas, planes y
+  // pagos se comparan acá, en cada lectura, igual que las automáticas.
+  const cumplidas = useMemo(
+    () => tareasCumplidas(db.mgmtTasks, { appointments: db.appointments, budgets: db.budgets, payments: db.payments }),
+    [db.mgmtTasks, db.appointments, db.budgets, db.payments],
+  );
+
   // Roles v3: sin plata no hay cobranza ni cheques; la captura es de quien
   // gestiona presupuestos; con alcance (dentista, asistente), solo sus tareas y
   // las de sus pacientes. Se filtra acá, una vez, para todas las pantallas.
   const filas = useMemo(
-    () => filasDeTareas(derivadas, db.mgmtTasks, hoy)
+    () => filasDeTareas(derivadas, db.mgmtTasks, hoy, cumplidas)
       .filter((f) => tipos.includes(f.type) && veTarea(f, session?.userId ?? "", alcance.pacientes)),
-    [derivadas, db.mgmtTasks, hoy, tipos, session?.userId, alcance.pacientes],
+    [derivadas, db.mgmtTasks, hoy, cumplidas, tipos, session?.userId, alcance.pacientes],
   );
 
   const saldos = useMemo(() => mapaDeSaldos(db.budgets, db.payments), [db.budgets, db.payments]);
@@ -52,6 +60,8 @@ export function useTareas() {
     tipos,
     derivadas,
     filas,
+    /** Ids de las propias que se tacharon solas (para los reportes). */
+    cumplidas,
     /** Saldo del paciente (solo para quien ve montos: el panel lo gatea). */
     saldoDe: (patientId?: string) => (patientId ? saldos.get(patientId) ?? 0 : 0),
     /** "Finalizar ▾". Devuelve el id de la fila ✓ que queda en la bandeja de hoy. */
@@ -67,9 +77,15 @@ export function useTareas() {
     asignar: (f: FilaTarea, assigneeId: string | undefined) => {
       guardar(asignarTarea(f, assigneeId, { ahora: new Date().toISOString(), clinicId: cid, doc: docDe(f) }));
     },
-    crearPersonalizada: (o: { detalle: string; fecha: string; patientId?: string; patientName?: string; budgetId?: string }): MgmtTask | null => {
+    /** Destilda una propia que se cerró con «Se ejecutó» (Mi agenda). */
+    reabrir: (f: FilaTarea) => {
+      // Las filas ✓ llevan `${idDelDoc}@${momento}`: el doc es lo que va antes de la arroba.
+      const doc = db.mgmtTasks.find((x) => x.id === f.id.split("@")[0]);
+      if (doc && !doc.derivedKey && doc.status === "cerrada") updateMgmtTask(reabrirTarea(doc, new Date().toISOString()));
+    },
+    crearPersonalizada: (o: { detalle: string; fecha: string; patientId?: string; patientName?: string; budgetId?: string; autoCierre?: AutoCierre }): MgmtTask | null => {
       if (!session) return null;
-      const t = nuevaPersonalizada({ ...o, id: `mt_${Date.now()}`, clinicId: cid, createdBy: session.userId, ahora: new Date().toISOString() });
+      const t = nuevaPersonalizada({ ...o, id: `mt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, clinicId: cid, createdBy: session.userId, ahora: new Date().toISOString() });
       addMgmtTask(t);
       return t;
     },

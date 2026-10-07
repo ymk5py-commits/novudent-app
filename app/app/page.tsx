@@ -17,6 +17,7 @@ import { useAlcance } from "@/lib/useAlcance";
 import { Card, Badge, StatusBadge } from "@/components/ui";
 import { Isologo } from "@/components/Marca";
 import { ContralorCard } from "@/components/NovudentIA";
+import { MiAgenda } from "@/components/agenda/MiAgenda";
 import { WeekBarsChart, StatusDonutChart } from "@/components/Charts";
 import { useClinicPlan } from "@/components/PlanGate";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
@@ -242,6 +243,9 @@ export default function Dashboard() {
         {alcance.puede("engagement.forms") && <StaggerItem><SpikeStat label="Documentos pendientes" value={pendingForms} icon={FileText} tone={pendingForms > 0 ? "amber" : "green"} href={HREF_DOCUMENTOS_PENDIENTES} /></StaggerItem>}
         {alcance.puede("money.view") && <StaggerItem><SpikeStat label="Reclamos en retención" value={onHold} icon={PauseCircle} tone={onHold > 0 ? "red" : "green"} href={HREF_RETENCIONES} /></StaggerItem>}
       </Stagger>
+
+      {/* ===== Mi agenda — lo que me toca hoy y esta semana ===== */}
+      <Reveal><MiAgenda /></Reveal>
 
       {/* ===== Contralor IA — parte del día ===== */}
       {plan.features.includes("ia") && <Reveal><ContralorCard pendientes={contralorPendientes} /></Reveal>}

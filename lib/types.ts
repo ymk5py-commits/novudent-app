@@ -1013,6 +1013,18 @@ export interface TaskGestion {
   instancia?: string;
 }
 
+/** «Se tacha sola cuando…» de una tarea propia con paciente (Mi agenda). No se guarda ningún
+ *  cierre: el motor (`lib/tareasAuto.ts`) compara con citas, planes y pagos en cada lectura. */
+export interface AutoCierre {
+  evento: "cita" | "presupuesto" | "pago";
+  /** Día local (YYYY-MM-DD) en que se creó la tarea: lo que pasó antes no la cumple. */
+  desde: string;
+  /** Evento «presupuesto»: el plan que el paciente tiene que aceptar. */
+  budgetId?: string;
+  /** Evento «cita»: las citas de ese día en adelante que el paciente ya tenía (no cuentan). */
+  previas?: string[];
+}
+
 /** Tarea de gestión (spec 3.2 / 6.5 / 7.2): bandeja de captura/control/cobranza/cita. */
 export type MgmtTaskType = "cita" | "captura" | "control" | "cobranza" | "cheque" | "personalizada";
 export interface MgmtTask {
@@ -1050,6 +1062,8 @@ export interface MgmtTask {
   /** Postergada hasta esta fecha (YYYY-MM-DD). Antes de ella la tarea no
    *  aparece en la bandeja del día ni cuenta como atrasada. */
   snoozedUntil?: string;
+  /** Solo en las manuales con paciente: qué espera para tacharse sola (ver `AutoCierre`). */
+  autoCierre?: AutoCierre;
 }
 
 /** Plazo de una regla automática: cuánto pasa desde el evento que la origina

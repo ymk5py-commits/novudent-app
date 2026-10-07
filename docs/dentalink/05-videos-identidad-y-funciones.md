@@ -274,5 +274,12 @@ Camila mandó capturas de la ficha de Aura en Dentalink y marcó «esto es lo qu
     montos) abren Facturación ya filtrada. «Ver todos» abre Pacientes con el filtro «Con documentos
     pendientes» (`?pendientes=documentos`), y las tarjetas de Inicio llevan al mismo lugar.
 
-Pendientes de ese mismo pedido: «Mi agenda» en Inicio (tareas propias que se tachan solas, con IA)
-y el manual de procedimientos.
+19. ~~**Mi agenda**~~ ✅ hecho el 6-oct-2026 (`components/agenda/MiAgenda`, `lib/miAgenda.ts`,
+    `lib/tareasAuto.ts`, `lib/agendaIA.ts`): tarjeta en Inicio con las tareas propias (alta rápida, tildar,
+    Hoy / Semana, barra de avance), las automáticas de la bandeja que le asignaron a la persona y la rutina del
+    día que se tacha sola (confirmar las citas de mañana, reservas online, documentos pendientes, cerrar la
+    caja, stock bajo). Con paciente, una tarea puede tacharse sola cuando agenda una cita, acepta el presupuesto
+    o paga. Con el plan de IA: **dictar la semana** (voz o texto, se revisa antes de guardar) y **resumen
+    semanal**. Spec y plan en `docs/superpowers/`.
+
+Pendiente de ese mismo pedido: el manual de procedimientos.

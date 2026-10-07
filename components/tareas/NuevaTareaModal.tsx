@@ -1,15 +1,18 @@
 "use client";
 /** "Nueva tarea personalizada" (paridad Dentalink): detalle*, fecha* y
  *  presupuesto de referencia. Se abre desde la bandeja (con buscador de
- *  paciente) o desde la ficha del paciente (con el paciente ya puesto). */
+ *  paciente), desde la ficha del paciente (con el paciente ya puesto) y desde
+ *  Mi agenda. Con paciente, además, la tarea puede «tacharse sola» cuando el
+ *  paciente agenda, acepta el presupuesto o paga (lib/tareasAuto.ts). */
 import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { useAlcance } from "@/lib/useAlcance";
 import { useTareas } from "@/lib/useTareas";
 import { BUDGET_STATUS_INFO } from "@/lib/budgets";
-import { esFecha } from "@/lib/tareas";
-import type { MgmtTask, Patient } from "@/lib/types";
+import { diaDe, esFecha } from "@/lib/tareas";
+import { crearAutoCierre, EVENTOS_AUTOCIERRE } from "@/lib/tareasAuto";
+import type { AutoCierre, MgmtTask, Patient } from "@/lib/types";
 import { Btn, Field, Modal, inputCls } from "@/components/ui";
 
 export function NuevaTareaModal({
@@ -32,6 +35,8 @@ export function NuevaTareaModal({
   const [detalle, setDetalle] = useState("");
   const [fecha, setFecha] = useState(fechaInicial >= hoy ? fechaInicial : hoy);
   const [budgetId, setBudgetId] = useState("");
+  const [evento, setEvento] = useState<"" | AutoCierre["evento"]>("");
+  const [planAuto, setPlanAuto] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // Mismo criterio que el buscador global: con alcance, solo sus pacientes, y
@@ -53,14 +58,25 @@ export function NuevaTareaModal({
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     : [];
 
+  // «Se tacha sola cuando acepte el presupuesto»: solo sirve un plan que todavía espera respuesta.
+  const presentados = presupuestos.filter((b) => b.status === "presentado");
+  const citasAgendadas = elegido
+    ? db.appointments.filter((a) => a.patientId === elegido.id && a.status !== "cancelada" && a.status !== "ausente" && diaDe(a.start) >= hoy).length
+    : 0;
+
   const crear = () => {
     if (!detalle.trim()) { setError("Escribí el detalle de la tarea."); return; }
     if (!esFecha(fecha) || fecha < hoy) { setError("Elegí una fecha de hoy en adelante."); return; }
+    if (elegido && evento === "presupuesto" && !planAuto) { setError("Elegí qué presupuesto tiene que aceptar."); return; }
+    const autoCierre = elegido && evento
+      ? crearAutoCierre({ evento, patientId: elegido.id, hoy, appointments: db.appointments, budgetId: planAuto || undefined })
+      : undefined;
     const t = crearPersonalizada({
       detalle, fecha,
       patientId: elegido?.id,
       patientName: elegido ? fullName(elegido) : undefined,
-      budgetId: budgetId || undefined,
+      budgetId: budgetId || (evento === "presupuesto" ? planAuto : "") || undefined,
+      autoCierre,
     });
     if (t) onCreada?.(t);
     onClose();
@@ -75,7 +91,7 @@ export function NuevaTareaModal({
             {elegido ? (
               <div className="flex items-center justify-between gap-2 rounded-xl border border-azure-300 bg-azure-50 px-3 py-2 text-sm font-bold text-clinic-text">
                 <span className="truncate">{fullName(elegido)}</span>
-                <button type="button" onClick={() => { setElegido(null); setBudgetId(""); }} aria-label="Quitar paciente" className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white">
+                <button type="button" onClick={() => { setElegido(null); setBudgetId(""); setEvento(""); setPlanAuto(""); }} aria-label="Quitar paciente" className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white">
                   <X className="h-4 w-4 text-clinic-muted" />
                 </button>
               </div>
@@ -117,6 +133,29 @@ export function NuevaTareaModal({
         <Field label="Fecha *">
           <input type="date" className={inputCls} min={hoy} value={fecha} onChange={(e) => { setFecha(e.target.value); setError(null); }} />
         </Field>
+        {elegido && (
+          <Field label="Se tacha sola cuando el paciente…" hint="Opcional: la tarea se marca hecha apenas pase.">
+            <select className={inputCls} value={evento} onChange={(e) => { setEvento(e.target.value as typeof evento); setPlanAuto(""); setError(null); }}>
+              <option value="">Nada: la marco yo</option>
+              {EVENTOS_AUTOCIERRE.filter((e) => e.id !== "presupuesto" || verPlanes).map((e) => <option key={e.id} value={e.id}>{e.label}</option>)}
+            </select>
+          </Field>
+        )}
+        {elegido && evento === "presupuesto" && (
+          presentados.length > 0 ? (
+            <Field label="¿Qué presupuesto tiene que aceptar? *">
+              <select className={inputCls} value={planAuto} onChange={(e) => { setPlanAuto(e.target.value); setError(null); }}>
+                <option value="">Elegí un presupuesto</option>
+                {presentados.map((b) => <option key={b.id} value={b.id}>Plan #{b.id} · {b.name ?? "Presupuesto"}</option>)}
+              </select>
+            </Field>
+          ) : (
+            <p className="rounded-xl bg-state-warnbg px-3 py-2 text-xs font-semibold text-state-warn">Este paciente no tiene presupuestos presentados esperando respuesta.</p>
+          )
+        )}
+        {elegido && evento === "cita" && citasAgendadas > 0 && (
+          <p className="text-xs text-clinic-muted">Ya tiene {citasAgendadas === 1 ? "una cita agendada" : `${citasAgendadas} citas agendadas`}: la tarea se tacha cuando agende OTRA.</p>
+        )}
         {presupuestos.length > 0 && (
           <Field label="Presupuesto de referencia" hint="Opcional: el plan del que habla la tarea.">
             <select className={inputCls} value={budgetId} onChange={(e) => setBudgetId(e.target.value)}>

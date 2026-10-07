@@ -54,7 +54,7 @@ falta, esa función responde 503 con un mensaje entendible.
 ### IA (Gemini)
 | Variable | Habilita |
 |---|---|
-| `GEMINI_API_KEY` | Las 8 rutas de IA. **Nunca exponerla al cliente ni loguearla** |
+| `GEMINI_API_KEY` | Las 10 rutas de IA. **Nunca exponerla al cliente ni loguearla** |
 | `GEMINI_VISION_MODEL` | Opcional — default `gemini-2.5-pro` |
 | `GEMINI_TEXT_MODEL` · `GEMINI_AUDIO_MODEL` · `GEMINI_IMAGE_MODEL` | Opcionales |
 

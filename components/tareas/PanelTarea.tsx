@@ -9,10 +9,11 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   AlertTriangle, CalendarDays, ChevronDown, CheckCircle2, ExternalLink, Mail, MessageCircle, MessageSquare,
-  Phone, RotateCcw, Tag, Trash2, User, CalendarClock, ClipboardList,
+  Phone, RotateCcw, Tag, Trash2, User, CalendarClock, ClipboardList, Sparkles,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, waLink } from "@/lib/store";
 import { useAlcance } from "@/lib/useAlcance";
+import { etiquetaAutoCierre, motivoCumplido } from "@/lib/tareasAuto";
 import { budgetBalance, BUDGET_STATUS_INFO } from "@/lib/budgets";
 import {
   RECONTACTO_OPCIONES, RESOLUCION_LABEL, baseRecontacto, detalleTarea, fechaCorta, fechaLarga, resumenGestion, sumarDias,
@@ -113,6 +114,9 @@ export function PanelTarea({
               <Link href={`/app/pacientes/${referencia.patientId}#planes`} className="text-azure-700 hover:underline">Plan #{referencia.id}{referencia.name ? ` · ${referencia.name}` : ""}</Link>
             </Linea>
           )}
+          {fila.estado === "pendiente" && fila.autoCierre && (
+            <Linea icono={Sparkles} etiqueta="Se tacha sola">{etiquetaAutoCierre(fila.autoCierre)}</Linea>
+          )}
           {fila.estado === "pendiente" && fila.fecha > hoy && (
             <Linea icono={CalendarClock} etiqueta="Fecha">Programada para el {fechaLarga(fila.fecha, hoy)}</Linea>
           )}
@@ -134,7 +138,7 @@ export function PanelTarea({
         {fila.estado === "sistema" && (
           <div role="status" className="rounded-xl border border-clinic-border bg-clinic-bg px-3.5 py-3">
             <p className="flex items-center gap-1.5 text-sm font-bold text-clinic-muted"><CheckCircle2 aria-hidden className="h-4 w-4" /> Completada por el sistema</p>
-            <p className="mt-0.5 text-xs text-clinic-text">{MOTIVO_SISTEMA[fila.type]}</p>
+            <p className="mt-0.5 text-xs text-clinic-text">{fila.autoCierre ? motivoCumplido(fila.autoCierre) : MOTIVO_SISTEMA[fila.type]}</p>
           </div>
         )}
       </div>

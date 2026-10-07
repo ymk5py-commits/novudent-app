@@ -152,6 +152,28 @@ abre un panel con cada paciente pendiente y su link directo: lo arma `listaPendi
 los filtros por link son `/app/pacientes?pendientes=documentos` y `/app/facturacion?filtro=en-retencion`
 (se leen en un efecto, no con `useSearchParams`).
 
+**Mi agenda (oct-2026):** tarjeta en **Inicio** (`components/agenda/MiAgenda`, la ven los 5 roles) con lo que le
+toca a quien entró, hoy o esta semana. **No hay una segunda lista de tareas**: las propias son `MgmtTask` tipo
+`personalizada` (las mismas de la bandeja `/app/tareas` y de la ficha); se tildan con `gestionar(fila, "cerrar")` y se
+destildan con `reabrir` (`reabrirTarea`). Lógica pura y con tests: `lib/miAgenda.ts` (`esMia`, `itemsDeTareas`,
+`rutinaDeHoy`, `armarAgenda`), `lib/tareasAuto.ts` y `lib/agendaIA.ts`. Una propia es mía si la creé y no la delegué o si
+me la asignaron; las automáticas de la bandeja solo aparecen si me las asignaron y son de solo lectura (cada cierre de una
+derivada significa algo —aceptó, rechazó— que acá no se elige). **La rutina del día** (confirmar las citas de mañana,
+reservas online, documentos pendientes, cerrar la caja, stock bajo) no se guarda: se calcula en cada lectura con los
+mismos permisos y planes que Inicio, así que se tacha sola. **`MgmtTask.autoCierre`** («se tacha sola cuando el paciente
+agende / acepte el presupuesto / pague», solo con paciente) también se DERIVA al leer: `tareasCumplidas` →
+`filasDeTareas(…, cumplidas)` la muestra «completada por el sistema» (en la bandeja y en los reportes); si el pago se anula
+o la cita se cancela, la tarea vuelve a pendiente. **IA** (plan `ia`): `/api/ia/agenda-semana` (dictar la semana, por voz o
+texto) devuelve PROPUESTAS que se revisan antes de guardar, y el nombre del paciente se empareja en el navegador
+(`emparejarPaciente`): ningún nombre de paciente viaja a Gemini. `/api/ia/agenda-resumen` recibe solo conteos
+(`resumenSemanaDatos`, sin nombres ni textos de tareas) y los montos solo si el rol tiene `billing.reports` (el servidor lo
+vuelve a controlar). **En la demo pública (`cl_demo`, sesión anónima de Firebase) TODAS las rutas de IA contestan 403**
+(«Tu cuenta no está asignada a ninguna clínica»): `requireFeature` pide ser miembro de una clínica y el
+usuario anónimo no tiene `directory/{uid}`; es el cierre de la auditoría del 23-ago y a propósito, porque
+cada uso cuesta. Mi agenda lo explica con `mensajeErrorIA`; para probar la IA de punta a punta hace falta una
+clínica real con el plan Clínica. **Al sumar una ruta en `app/api/ia/` hay que agregarla a la lista exacta de
+`ia-gating.exploits.test.ts`** (hoy son 10) y poner `requireFeature` antes de `generativelanguage`.
+
 ## Diferenciadores (cross-repo con Botika)
 
 Monitor post-op + Negociación de presupuestos: contrato outbox con Botika
