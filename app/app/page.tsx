@@ -182,7 +182,7 @@ export default function Dashboard() {
   const contralorPendientes = {
     fecha: today.toISOString().slice(0, 10),
     citasMananaSinConfirmar: tomorrowUnconfirmed.map((a) => ({
-      hora: a.start.slice(11, 16),
+      hora: fmtTime(a.start),
       paciente: (() => { const p = db.patients.find((x) => x.id === a.patientId); return p ? `${p.firstName} ${p.lastName}` : "—"; })(),
       titulo: a.title,
     })),

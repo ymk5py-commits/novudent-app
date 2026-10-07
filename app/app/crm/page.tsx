@@ -13,6 +13,7 @@ import { useStore, fmtDate, fmtGs, fullName, waLink } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, patientBalance } from "@/lib/budgets";
 import { campaignEmailRecipients, campaignMailto, MAX_CAMPAIGN_EMAILS } from "@/lib/campaign-mail";
+import { proximosCumpleanos } from "@/lib/cumpleanos";
 import type { CrmCard, CrmStage, Campaign, Patient } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
@@ -91,21 +92,7 @@ export default function CrmPage() {
   }, [db.patients, db.appointments]);
 
   /* Cumpleaños: pacientes que cumplen en los próximos 7 días */
-  const birthdays = useMemo(() => {
-    const now = new Date();
-    const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const list: { p: Patient; inDays: number; turns: number }[] = [];
-    for (const p of db.patients) {
-      if (!p.birthDate) continue;
-      const d = new Date(p.birthDate);
-      if (Number.isNaN(d.getTime())) continue;
-      let next = new Date(now.getFullYear(), d.getMonth(), d.getDate());
-      if (next < today0) next = new Date(now.getFullYear() + 1, d.getMonth(), d.getDate());
-      const inDays = Math.round((next.getTime() - today0.getTime()) / 86400000);
-      if (inDays <= 7) list.push({ p, inDays, turns: next.getFullYear() - d.getFullYear() });
-    }
-    return list.sort((a, b) => a.inDays - b.inDays);
-  }, [db.patients]);
+  const birthdays = useMemo(() => proximosCumpleanos(db.patients, new Date()), [db.patients]);
 
   /* Segmentador de pacientes (filtros combinables → lista de destinatarios) */
   const cities = useMemo(() => [...new Set(db.patients.map((p) => p.city).filter(Boolean) as string[])].sort(), [db.patients]);
