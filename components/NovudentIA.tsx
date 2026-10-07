@@ -22,7 +22,7 @@ import { useStore } from "@/lib/store";
 import { pendientesPorPaciente } from "@/lib/documentosClinicos";
 
 /** POST a una ruta /api/ia/* con el Firebase ID token (cierra el proxy abierto). */
-async function iaFetch(url: string, payload: unknown): Promise<Response> {
+export async function iaFetch(url: string, payload: unknown): Promise<Response> {
   const token = await currentIdToken();
   return fetch(url, {
     method: "POST",

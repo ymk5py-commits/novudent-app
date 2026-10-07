@@ -85,7 +85,7 @@ export function useTareas() {
     },
     crearPersonalizada: (o: { detalle: string; fecha: string; patientId?: string; patientName?: string; budgetId?: string; autoCierre?: AutoCierre }): MgmtTask | null => {
       if (!session) return null;
-      const t = nuevaPersonalizada({ ...o, id: `mt_${Date.now()}`, clinicId: cid, createdBy: session.userId, ahora: new Date().toISOString() });
+      const t = nuevaPersonalizada({ ...o, id: `mt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, clinicId: cid, createdBy: session.userId, ahora: new Date().toISOString() });
       addMgmtTask(t);
       return t;
     },
