@@ -53,6 +53,7 @@ Hace falta tener **WeasyPrint** (`python3 -m weasyprint`) y **poppler** (`pdfinf
   capitulo: "receptionist",                // dónde vive
   titulo: "Dar una cita",                  // empieza con un verbo
   roles: ["receptionist", "cashier", "admin"],   // quiénes lo hacen (aparece en el índice de cada uno)
+  verComo: ["assistant"],                        // (opcional) roles que no lo hacen pero cuya pantalla se muestra: «así la ve ella»
   paraQue: "Cuando un paciente pide un horario.",
   antes: ["El paciente ya tiene ficha."],
   pasos: [
@@ -67,11 +68,16 @@ Hace falta tener **WeasyPrint** (`python3 -m weasyprint`) y **poppler** (`pdfinf
 }
 ```
 
+- `capturar` entra con `c.entrar("rol", …)`: el validador exige que ese rol esté en `roles` o en `verComo` (si no, el manual enseñaría
+  la pantalla de quien no lo hace).
 - Marcas en el texto: `**negrita**`, `«Botón o menú»` (se dibuja como botón), `[[otro-id]]` (referencia con la página).
 - `c.foto(nombre, { resaltar, recorte, alto, pantalla, conAyuda })`: `resaltar` dibuja el recuadro rojo (con número si son varios) y
   `recorte` elige qué parte de la pantalla sale. Si lo que se muestra es más alto que la ventana, la ventana se agranda sola.
 - Cada paso con `captura` tiene que tener su `c.foto` con el mismo nombre, y al revés. `npm test` valida el texto; al armar el PDF se
   exige que no falte ni sobre ninguna imagen.
+
+Al recortar a un diálogo, `foto` pinta liso el fondo oscurecido mientras saca la imagen (si no, los bordes traen letras de la página de
+atrás cortadas por la mitad); con `pantalla: true` se deja el fondo como está.
 
 ### Reglas del manual
 
