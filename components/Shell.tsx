@@ -7,13 +7,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, Bell, CreditCard,
+  CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, CreditCard,
   FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown, Banknote, Handshake, Image as ImageIcon,
   Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star, ListChecks, Leaf, Video, MapPin, Headset,
 } from "lucide-react";
 import { useAlcance } from "@/lib/useAlcance";
 import { useStore, fullName } from "@/lib/store";
 import { pendientesPorPaciente } from "@/lib/documentosClinicos";
+import { CampanaPendientes } from "@/components/CampanaPendientes";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
 import { planOf, type PlanFeature } from "@/lib/plan";
 import { subscriptionPlanId } from "@/lib/subscription";
@@ -110,13 +111,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   // Pacientes con documentos clínicos pendientes (documentos nuevos + formularios viejos).
   const conPendientes = useMemo(() => pendientesPorPaciente(db.patients, db.clinicalDocs), [db.patients, db.clinicalDocs]);
-
-  const pendings = useMemo(() => {
-    // Documentos clínicos pendientes: los gestiona la recepción. Retenciones de facturación: quien ve montos.
-    const forms = alcance.puede("engagement.forms") ? conPendientes.size : 0;
-    const hold = alcance.puede("money.view") ? db.billing.filter((b) => b.flags.includes("HOLD") || b.flags.includes("MGRHOLD")).length : 0;
-    return forms + hold;
-  }, [db, alcance, conPendientes]);
 
   if (!ready || !session) {
     return (
@@ -256,21 +250,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <span className={`h-1.5 w-1.5 rounded-full ${backend === "firebase" ? "bg-emerald-300" : "bg-amber-300"}`} />
               {backend === "firebase" ? "En línea" : "Sin conexión"}
             </span>
-            {/* Campana de pendientes. El aria-label pisa el contenido del link, así que
-                el número del badge no se anunciaba: con lector de pantalla se oía
-                "Notificaciones" sin saber cuántos hay. Va el conteo en la etiqueta, y
-                dice "Ver pendientes" porque lleva a la lista de pacientes, no a un
-                panel de notificaciones. */}
-            <Link
-              href={pendings > 0 ? "/app/pacientes" : "#"}
-              data-tip={pendings > 0 ? `${pendings} pendiente(s): documentos y retenciones` : "Sin pendientes"}
-              data-tip-pos="down-left"
-              className="relative grid h-10 w-10 place-items-center rounded-xl border border-white/30 bg-white/10 text-white transition-colors hover:bg-white/20"
-              aria-label={pendings > 0 ? `Ver pendientes (${pendings})` : "Sin pendientes"}
-            >
-              <Bell className="h-[18px] w-[18px]" />
-              {pendings > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-state-err px-1 tabular-nums text-[11px] font-bold text-white">{pendings}</span>}
-            </Link>
+            {/* Campana de pendientes: el número y, al tocarla, el panel con cuáles son y a dónde ir. */}
+            <CampanaPendientes />
             {/* Ayuda de Novum («call center»): al lado del nombre. Desde md, que es donde
                 entra en la barra (el texto, desde lg); en el celular está en el menú,
                 junto al nombre. */}

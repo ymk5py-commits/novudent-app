@@ -11,6 +11,7 @@ import {
 import { useStore, fmtTime, fmtGs, fullName } from "@/lib/store";
 import { patientBalance } from "@/lib/budgets";
 import { pendientesPorPaciente } from "@/lib/documentosClinicos";
+import { HREF_DOCUMENTOS_PENDIENTES, HREF_RETENCIONES } from "@/lib/pendientes";
 import { can, ROLE_DESCRIPCION } from "@/lib/rbac";
 import { useAlcance } from "@/lib/useAlcance";
 import { Card, Badge, StatusBadge } from "@/components/ui";
@@ -238,8 +239,8 @@ export default function Dashboard() {
       <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StaggerItem><SpikeStat label="Citas de hoy" value={todays.length} icon={CalendarDays} tone="azure" href="/app/agenda" /></StaggerItem>
         <StaggerItem><SpikeStat label={alcance.pacientes ? "Mis pacientes" : "Pacientes activos"} value={alcance.pacientes ? alcance.pacientes.size : db.patients.length} icon={Users} tone="green" href="/app/pacientes" /></StaggerItem>
-        {alcance.puede("engagement.forms") && <StaggerItem><SpikeStat label="Documentos pendientes" value={pendingForms} icon={FileText} tone={pendingForms > 0 ? "amber" : "green"} href="/app/pacientes" /></StaggerItem>}
-        {alcance.puede("money.view") && <StaggerItem><SpikeStat label="Reclamos en retención" value={onHold} icon={PauseCircle} tone={onHold > 0 ? "red" : "green"} href="/app/facturacion" /></StaggerItem>}
+        {alcance.puede("engagement.forms") && <StaggerItem><SpikeStat label="Documentos pendientes" value={pendingForms} icon={FileText} tone={pendingForms > 0 ? "amber" : "green"} href={HREF_DOCUMENTOS_PENDIENTES} /></StaggerItem>}
+        {alcance.puede("money.view") && <StaggerItem><SpikeStat label="Reclamos en retención" value={onHold} icon={PauseCircle} tone={onHold > 0 ? "red" : "green"} href={HREF_RETENCIONES} /></StaggerItem>}
       </Stagger>
 
       {/* ===== Contralor IA — parte del día ===== */}

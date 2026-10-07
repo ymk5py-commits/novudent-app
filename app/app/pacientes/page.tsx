@@ -10,6 +10,7 @@ import { Search, Plus, MoreVertical, UserRound, Layers, Stethoscope, Receipt, Wa
 import { useStore, fullName } from "@/lib/store";
 import { patientBalance } from "@/lib/budgets";
 import { codigosFaltantes } from "@/lib/camposPaciente";
+import { pendientesPorPaciente } from "@/lib/documentosClinicos";
 import type { Patient } from "@/lib/types";
 import { Card, Btn, Badge, Empty } from "@/components/ui";
 import { Desplegable, ItemMenu } from "@/components/Desplegable";
@@ -28,6 +29,17 @@ export default function PatientsPage() {
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"lista" | "analisis" | "estudios" | "configuracion">("lista");
   const [estado, setEstado] = useState<"habilitados" | "deshabilitados" | "todos">("habilitados");
+  // «Con documentos pendientes»: lo activa la campana y la tarjeta de Inicio (?pendientes=documentos).
+  // Se lee en un efecto y no con useSearchParams para no obligar a la página a renderizar en el servidor.
+  const [soloPendientes, setSoloPendientes] = useState(false);
+  useEffect(() => {
+    setSoloPendientes(new URLSearchParams(window.location.search).get("pendientes") === "documentos");
+  }, []);
+  const conPendientes = useMemo(() => pendientesPorPaciente(db.patients, db.clinicalDocs), [db.patients, db.clinicalDocs]);
+  const quitarFiltroPendientes = () => {
+    setSoloPendientes(false);
+    window.history.replaceState(null, "", "/app/pacientes");
+  };
 
   // Código interno: los pacientes cargados antes de que existiera lo reciben la primera vez
   // que alguien de la recepción abre el listado (determinista: dos pantallas asignan lo mismo).
@@ -41,14 +53,16 @@ export default function PatientsPage() {
 
   const list = useMemo(() => {
     const t = q.trim().toLowerCase();
+    // Con el filtro de pendientes se muestran TODOS los que tienen algo pendiente (también los
+    // deshabilitados): el número de la campana los cuenta, y la lista tiene que coincidir.
     const propios = db.patients.filter((p) => alcance.vePaciente(p.id))
-      .filter((p) => estado === "todos" || (estado === "deshabilitados" ? p.disabled : !p.disabled));
+      .filter((p) => (soloPendientes ? conPendientes.has(p.id) : estado === "todos" || (estado === "deshabilitados" ? p.disabled : !p.disabled)));
     const xs = !t
       ? propios
       : propios.filter((p) => fullName(p).toLowerCase().includes(t) || String(p.code ?? "") === t
         || (verPersonales && (p.document.includes(t) || p.phone.includes(t) || (p.ruc ?? "").includes(t))));
     return [...xs].sort((a, b) => fullName(a).localeCompare(fullName(b)));
-  }, [db.patients, q, alcance, verPersonales, estado]);
+  }, [db.patients, q, alcance, verPersonales, estado, soloPendientes, conPendientes]);
 
   const TABS = ([
     { k: "lista", label: "Pacientes" },
@@ -97,6 +111,14 @@ export default function PatientsPage() {
 
       {tab === "lista" && (
         <Reveal className="space-y-4">
+          {soloPendientes && (
+            <div role="status" className="flex flex-wrap items-center gap-2 text-sm">
+              <Badge tone="warn">Con documentos pendientes</Badge>
+              <span className="text-clinic-muted">{list.length} paciente{list.length !== 1 ? "s" : ""}</span>
+              <button type="button" onClick={quitarFiltroPendientes} className="font-bold text-azure-700 hover:underline">Quitar filtro</button>
+            </div>
+          )}
+
           <div className="relative max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
             <input
@@ -109,8 +131,8 @@ export default function PatientsPage() {
 
           {list.length === 0 ? (
             <Empty
-              title={alcance.sinDoctores ? "Todavía no tenés doctores asignados" : "Sin resultados"}
-              desc={alcance.sinDoctores ? "Pedile al administrador que te asigne en Configuración → Usuarios." : verPersonales ? "Probá con otro nombre o número de documento." : "Probá con otro nombre."}
+              title={alcance.sinDoctores ? "Todavía no tenés doctores asignados" : soloPendientes && !q.trim() ? "No hay pacientes con documentos pendientes" : "Sin resultados"}
+              desc={alcance.sinDoctores ? "Pedile al administrador que te asigne en Configuración → Usuarios." : soloPendientes && !q.trim() ? "Cuando un paciente tenga un documento clínico pendiente va a aparecer acá." : verPersonales ? "Probá con otro nombre o número de documento." : "Probá con otro nombre."}
             />
           ) : (
             <>
