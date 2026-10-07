@@ -368,6 +368,21 @@ test.describe("Mi agenda — IA (simulada)", () => {
     await expect(page.getByLabel("Lo que tenés que hacer")).toHaveValue("hola"); // no se pierde lo escrito
   });
 
+  test("en la demo pública la IA contesta 403: se explica que ahí está apagada, no «tu cuenta no está asignada»", async ({ page }) => {
+    await entrarDemo(page);
+    const sinClinica = { status: 403, json: { ok: false, error: "Tu cuenta no está asignada a ninguna clínica." } };
+    await page.route("**/api/ia/agenda-semana", (r) => r.fulfill(sinClinica));
+    await page.route("**/api/ia/agenda-resumen", (r) => r.fulfill(sinClinica));
+    await abrirDictado(page);
+    await page.getByLabel("Lo que tenés que hacer").fill("el jueves pedir guantes");
+    await page.getByRole("button", { name: "Armar las tareas" }).click();
+    await expect(page.getByRole("dialog").getByText(/La IA no está activa en la demo pública/)).toBeVisible();
+    await expect(page.getByText(/no está asignada/)).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await abrirResumen(page);
+    await expect(page.getByRole("region", { name: "Resumen de la semana" }).getByText(/La IA no está activa en la demo pública/)).toBeVisible();
+  });
+
   test("el resumen semanal manda solo conteos: ni nombres de pacientes ni textos de tareas", async ({ page }) => {
     await entrarDemo(page);
     await agregar(page, "Llamar a Juan Ríos por su presupuesto");

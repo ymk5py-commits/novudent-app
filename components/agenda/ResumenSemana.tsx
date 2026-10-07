@@ -3,10 +3,12 @@
  *  cada vez que cambia la agenda (cada pedido es una llamada al modelo). */
 import { useEffect, useRef, useState } from "react";
 import { Loader2, RefreshCw, Sparkles } from "lucide-react";
-import type { DatosResumenSemana } from "@/lib/agendaIA";
+import { mensajeErrorIA, type DatosResumenSemana } from "@/lib/agendaIA";
+import { useStore, CLINICA_DEMO_ID } from "@/lib/store";
 import { iaFetch } from "@/components/NovudentIA";
 
 export function ResumenSemana({ datos }: { datos: DatosResumenSemana }) {
+  const { session } = useStore();
   const [estado, setEstado] = useState<"cargando" | "listo" | "error">("cargando");
   const [texto, setTexto] = useState("");
   const [error, setError] = useState("");
@@ -18,7 +20,7 @@ export function ResumenSemana({ datos }: { datos: DatosResumenSemana }) {
     try {
       const res = await iaFetch("/api/ia/agenda-resumen", { datos: ultimos.current });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || `Error ${res.status}`);
+      if (!res.ok || !data.ok) throw new Error(mensajeErrorIA(res.status, data.error, session?.clinicId === CLINICA_DEMO_ID));
       setTexto(String(data.resumen));
       setEstado("listo");
     } catch (e) {

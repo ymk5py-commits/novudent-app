@@ -167,7 +167,11 @@ o la cita se cancela, la tarea vuelve a pendiente. **IA** (plan `ia`): `/api/ia/
 texto) devuelve PROPUESTAS que se revisan antes de guardar, y el nombre del paciente se empareja en el navegador
 (`emparejarPaciente`): ningún nombre de paciente viaja a Gemini. `/api/ia/agenda-resumen` recibe solo conteos
 (`resumenSemanaDatos`, sin nombres ni textos de tareas) y los montos solo si el rol tiene `billing.reports` (el servidor lo
-vuelve a controlar). **Al sumar una ruta en `app/api/ia/` hay que agregarla a la lista exacta de
+vuelve a controlar). **En la demo pública (`cl_demo`, sesión anónima de Firebase) TODAS las rutas de IA contestan 403**
+(«Tu cuenta no está asignada a ninguna clínica»): `requireFeature` pide ser miembro de una clínica y el
+usuario anónimo no tiene `directory/{uid}`; es el cierre de la auditoría del 23-ago y a propósito, porque
+cada uso cuesta. Mi agenda lo explica con `mensajeErrorIA`; para probar la IA de punta a punta hace falta una
+clínica real con el plan Clínica. **Al sumar una ruta en `app/api/ia/` hay que agregarla a la lista exacta de
 `ia-gating.exploits.test.ts`** (hoy son 10) y poner `requireFeature` antes de `generativelanguage`.
 
 ## Diferenciadores (cross-repo con Botika)

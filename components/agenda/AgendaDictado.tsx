@@ -6,11 +6,11 @@
  *  las fichas que la persona ve. */
 import { useMemo, useState } from "react";
 import { Loader2, Mic, Sparkles, Square, X } from "lucide-react";
-import { useStore, fullName } from "@/lib/store";
+import { useStore, fullName, CLINICA_DEMO_ID } from "@/lib/store";
 import { useAlcance } from "@/lib/useAlcance";
 import { useTareas } from "@/lib/useTareas";
 import { useGrabadora } from "@/lib/useGrabadora";
-import { emparejarPaciente, parsearPropuestas, type PropuestaTarea } from "@/lib/agendaIA";
+import { emparejarPaciente, mensajeErrorIA, parsearPropuestas, type PropuestaTarea } from "@/lib/agendaIA";
 import { esFecha } from "@/lib/tareas";
 import { iaFetch } from "@/components/NovudentIA";
 import { Btn, Modal, inputCls } from "@/components/ui";
@@ -27,7 +27,7 @@ interface FilaPropuesta extends PropuestaTarea {
 }
 
 export function AgendaDictado({ onClose, onGuardadas }: { onClose: () => void; onGuardadas: (cuantas: number) => void }) {
-  const { db } = useStore();
+  const { db, session } = useStore();
   const alcance = useAlcance();
   const { hoy, crearPersonalizada } = useTareas();
   const [fase, setFase] = useState<Fase>("dictar");
@@ -45,7 +45,7 @@ export function AgendaDictado({ onClose, onGuardadas }: { onClose: () => void; o
     try {
       const res = await iaFetch("/api/ia/agenda-semana", { ...carga, hoy });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || `Error ${res.status}`);
+      if (!res.ok || !data.ok) throw new Error(mensajeErrorIA(res.status, data.error, session?.clinicId === CLINICA_DEMO_ID));
       // Se vuelve a validar acá: lo que llega de la red no se da por bueno.
       const propuestas = parsearPropuestas(data.tareas, hoy);
       if (propuestas.length === 0) throw new Error("No encontré tareas en lo que dijiste. Probá de nuevo.");

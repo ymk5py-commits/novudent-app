@@ -76,6 +76,15 @@ export function parsearPropuestas(raw: unknown, hoy: string): PropuestaTarea[] {
   return out;
 }
 
+/** Qué se le muestra a la persona cuando una ruta de IA contesta con error. En la demo pública las rutas de IA
+ *  siempre contestan 403 («Tu cuenta no está asignada a ninguna clínica»): la IA cuesta por uso y solo la abren
+ *  las cuentas de una clínica con el plan que la incluye. Ese mensaje, ahí, parece una falla de la persona o de la
+ *  app, así que se explica lo que pasa de verdad. */
+export function mensajeErrorIA(status: number, errorDelServidor: unknown, enDemo: boolean): string {
+  if (status === 403 && enDemo) return "La IA no está activa en la demo pública (cada uso tiene costo). En una clínica con el plan Clínica sí funciona.";
+  return typeof errorDelServidor === "string" && errorDelServidor ? errorDelServidor : `Error ${status}`;
+}
+
 /** Lo que se dijo, literal, según el modelo (para que la persona vea qué se entendió). */
 export function transcripcionDe(raw: unknown): string {
   const data = extraerJson(raw);

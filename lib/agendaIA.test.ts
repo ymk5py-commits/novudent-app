@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parsearPropuestas, emparejarPaciente, promptAgendaSemana, resumenSemanaDatos, transcripcionDe } from "./agendaIA";
+import { parsearPropuestas, emparejarPaciente, promptAgendaSemana, resumenSemanaDatos, transcripcionDe, mensajeErrorIA } from "./agendaIA";
 import { armarAgenda, type ItemAgenda } from "./miAgenda";
 import type { FilaTarea } from "./tareas";
 
@@ -215,5 +215,26 @@ describe("transcripcionDe", () => {
   });
   it("se topa en 4000 caracteres", () => {
     expect(transcripcionDe(JSON.stringify({ transcripcion: "x".repeat(5000) }))).toHaveLength(4000);
+  });
+});
+
+describe("mensajeErrorIA — lo que se le dice a la persona cuando la IA no responde", () => {
+  const SERVIDOR = "Tu cuenta no está asignada a ninguna clínica.";
+  it("en la demo pública un 403 explica que la IA está apagada ahí, no que la cuenta está mal", () => {
+    const m = mensajeErrorIA(403, SERVIDOR, true);
+    expect(m).toContain("demo pública");
+    expect(m).not.toContain("asignada");
+  });
+  it("fuera de la demo se ve lo que dijo el servidor (sin plan, suscripción vencida…)", () => {
+    expect(mensajeErrorIA(403, "Tu plan no incluye esta función.", false)).toBe("Tu plan no incluye esta función.");
+    expect(mensajeErrorIA(429, "Demasiadas solicitudes. Esperá un momento e intentá de nuevo.", true)).toContain("Demasiadas solicitudes");
+  });
+  it("un error que no es de acceso se muestra igual en la demo", () => {
+    expect(mensajeErrorIA(502, "El asistente de IA no está disponible en este momento.", true)).toContain("no está disponible");
+  });
+  it("sin mensaje del servidor, queda el código", () => {
+    expect(mensajeErrorIA(500, undefined, false)).toBe("Error 500");
+    expect(mensajeErrorIA(500, "", false)).toBe("Error 500");
+    expect(mensajeErrorIA(500, { raro: true }, false)).toBe("Error 500");
   });
 });
