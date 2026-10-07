@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   clasificarError, mensajeDe, registrarFallo, resolverFallo, limpiarFallos,
-  fallosActuales, suscribirFallos, reintentarTodo,
+  fallosActuales, suscribirFallos, reintentarTodo, vigilarEscritura,
 } from "./write-errors";
 
 const err = (code: string) => Object.assign(new Error(code), { code });
@@ -122,5 +122,67 @@ describe("reintentarTodo", () => {
     const r = await reintentarTodo();
     expect(r).toEqual({ ok: 0, fallaron: 0 });
     expect(fallosActuales()).toHaveLength(1);
+  });
+});
+
+describe("vigilarEscritura — guardar la configuración de la clínica no puede fallar en silencio", () => {
+  it("si sale bien devuelve true y no deja ningún aviso", async () => {
+    expect(await vigilarEscritura({ coleccion: "clinics", docId: "cl1", escribir: async () => {} })).toBe(true);
+    expect(fallosActuales()).toEqual([]);
+  });
+
+  it("si sale bien saca el aviso viejo de esa fila: lo que se reintentó después sí guardó", async () => {
+    registrarFallo({ coleccion: "clinics", docId: "cl1", causa: "conexion", detalle: "unavailable" }, AHORA);
+    registrarFallo({ coleccion: "patients", docId: "p1", causa: "conexion", detalle: "unavailable" }, AHORA);
+    await vigilarEscritura({ coleccion: "clinics", docId: "cl1", escribir: async () => {} });
+    expect(fallosActuales().map((f) => f.clave)).toEqual(["patients/p1"]);
+  });
+
+  it("si Firestore la rechaza devuelve false y deja el aviso con su causa", async () => {
+    const ok = await vigilarEscritura({ coleccion: "clinics", docId: "cl1", escribir: async () => { throw err("permission-denied"); } });
+    expect(ok).toBe(false);
+    const [f] = fallosActuales();
+    expect(f).toMatchObject({ clave: "clinics/cl1", causa: "permiso", detalle: "permission-denied", intentos: 1 });
+    expect(f.reintentar).toBeTypeOf("function");
+  });
+
+  it("un error que salta antes de mandar la escritura (ruta inválida) también queda avisado", async () => {
+    const ok = await vigilarEscritura({ coleccion: "clinics", docId: "cl1", escribir: () => { throw new Error("ruta inválida"); } });
+    expect(ok).toBe(false);
+    expect(fallosActuales()[0]).toMatchObject({ clave: "clinics/cl1", causa: "desconocido" });
+  });
+
+  it("nunca rechaza: se puede llamar sin esperar ni atajar nada", async () => {
+    await expect(vigilarEscritura({ coleccion: "clinics", docId: "cl1", escribir: async () => { throw err("unavailable"); } })).resolves.toBe(false);
+  });
+
+  it("la misma fila que vuelve a fallar suma un intento, no apila otro aviso", async () => {
+    const escribir = async () => { throw err("unavailable"); };
+    await vigilarEscritura({ coleccion: "clinics", docId: "cl1", escribir });
+    await vigilarEscritura({ coleccion: "clinics", docId: "cl1", escribir });
+    expect(fallosActuales()).toHaveLength(1);
+    expect(fallosActuales()[0].intentos).toBe(2);
+  });
+
+  it("el botón «Reintentar» corre la función de reintento propia (con lo último), no la escritura vieja", async () => {
+    const llamadas: string[] = [];
+    await vigilarEscritura({
+      coleccion: "clinics", docId: "cl1",
+      escribir: async () => { llamadas.push("la vieja"); throw err("unavailable"); },
+      reintentar: async () => { llamadas.push("la actual"); },
+    });
+    const r = await reintentarTodo();
+    expect(llamadas).toEqual(["la vieja", "la actual"]);
+    expect(r).toEqual({ ok: 1, fallaron: 0 });
+    expect(fallosActuales()).toEqual([]);
+  });
+
+  it("sin reintento propio, «Reintentar» repite la misma escritura", async () => {
+    let intento = 0;
+    await vigilarEscritura({ coleccion: "clinics", docId: "cl1", escribir: async () => { if (++intento === 1) throw err("unavailable"); } });
+    expect(fallosActuales()).toHaveLength(1);
+    await reintentarTodo();
+    expect(intento).toBe(2);
+    expect(fallosActuales()).toEqual([]);
   });
 });

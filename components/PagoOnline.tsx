@@ -15,7 +15,7 @@ export function PagoOnline() {
   // (un valor inicial copiado una sola vez dejaba el campo vacío aunque el link estuviera guardado).
   const [borradorUrl, setBorradorUrl] = useState<string | null>(null);
   const [borradorInfo, setBorradorInfo] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<"" | "guardado">("");
+  const [estado, setEstado] = useState<"" | "guardando" | "guardado" | "fallo">("");
   const url = borradorUrl ?? guardado?.checkoutUrl ?? "";
   const info = borradorInfo ?? guardado?.bankInfo ?? "";
 
@@ -24,13 +24,15 @@ export function PagoOnline() {
     (borradorUrl !== null && borradorUrl.trim() !== (guardado?.checkoutUrl ?? "")) ||
     (borradorInfo !== null && borradorInfo.trim() !== (guardado?.bankInfo ?? ""));
 
-  const guardar = () => {
+  const guardar = async () => {
     if (!link.ok) return;
+    setEstado("guardando");
     // Vacío se guarda como «» y no como «sin valor»: la base mezcla campo por campo y un campo ausente no borra el anterior.
-    updateClinicConfig({ payments: { checkoutUrl: link.url, bankInfo: info.trim() } });
+    const guardando = updateClinicConfig({ payments: { checkoutUrl: link.url, bankInfo: info.trim() } });
     setBorradorUrl(null);
     setBorradorInfo(null);
-    setAviso("guardado");
+    // «Guardado» recién cuando el servidor lo aceptó: si lo rechaza, además sale el aviso rojo de abajo con el botón de reintentar.
+    setEstado((await guardando) ? "guardado" : "fallo");
   };
 
   return (
@@ -46,7 +48,7 @@ export function PagoOnline() {
             className={inputCls}
             inputMode="url"
             value={url}
-            onChange={(e) => { setBorradorUrl(e.target.value); setAviso(""); }}
+            onChange={(e) => { setBorradorUrl(e.target.value); setEstado(""); }}
             aria-invalid={!link.ok}
             aria-describedby="pago-online-error"
             placeholder="https://link.mercadopago.com.py/…"
@@ -56,7 +58,7 @@ export function PagoOnline() {
           <textarea
             className={`${inputCls} min-h-[4.5rem]`}
             value={info}
-            onChange={(e) => { setBorradorInfo(e.target.value); setAviso(""); }}
+            onChange={(e) => { setBorradorInfo(e.target.value); setEstado(""); }}
             placeholder={"Banco Itaú · Cta. cte. 123456\nTitular: Clínica Sonrisa"}
           />
         </Field>
@@ -64,9 +66,13 @@ export function PagoOnline() {
       {!link.ok && <p id="pago-online-error" role="alert" className="mt-2 text-xs font-semibold text-state-err">{link.error}</p>}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Btn onClick={guardar} disabled={!sinGuardar || !link.ok}><Save aria-hidden className="h-3.5 w-3.5" /> Guardar</Btn>
-        {aviso === "guardado" && !sinGuardar && (
+        <Btn onClick={() => void guardar()} disabled={!sinGuardar || !link.ok}><Save aria-hidden className="h-3.5 w-3.5" /> Guardar</Btn>
+        {estado === "guardando" && <span role="status" className="text-xs font-semibold text-clinic-muted">Guardando…</span>}
+        {estado === "guardado" && !sinGuardar && (
           <span role="status" className="inline-flex items-center gap-1 text-xs font-semibold text-state-ok"><Check aria-hidden className="h-3.5 w-3.5" /> Guardado</span>
+        )}
+        {estado === "fallo" && (
+          <span role="alert" className="text-xs font-semibold text-state-err">No se pudo guardar en el servidor: lo que escribiste sigue acá. Mirá el aviso de abajo para reintentar.</span>
         )}
         {sinGuardar && <span role="status" className="text-xs font-semibold text-state-warn">Hay cambios sin guardar.</span>}
         {link.ok && link.url && !sinGuardar && (

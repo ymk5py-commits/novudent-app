@@ -148,3 +148,35 @@ export async function reintentarTodo(): Promise<{ ok: number; fallaron: number }
   }
   return { ok, fallaron };
 }
+
+/** Manda una escritura a Firestore y deja el resultado en el registro, para que no se pierda en silencio: si falla queda el aviso
+ *  «No se guardó» (con su causa y el botón de reintentar); si sale bien se saca el aviso viejo de esa fila.
+ *
+ *  Es lo que ya hacía `fsSave` para cada documento; se lo agrega acá para el documento de la clínica (su configuración), que
+ *  terminaba en un `.catch(() => {})`: un link de pago, un plazo o una plantilla se veían guardados y no lo estaban.
+ *
+ *  `reintentar` es lo que corre el botón del aviso. Para un documento que se reescribe entero conviene que arme el cuerpo con el
+ *  estado de AHORA: repetir el cuerpo viejo pisaría los cambios hechos después. Sin él se repite la misma escritura.
+ *  Devuelve `true` si se guardó y `false` si no; nunca rechaza, así que se puede llamar sin esperar ni atajar nada. */
+export async function vigilarEscritura(args: {
+  coleccion: string;
+  docId: string;
+  escribir: () => Promise<unknown>;
+  reintentar?: () => Promise<unknown>;
+}): Promise<boolean> {
+  const { coleccion, docId, escribir } = args;
+  const reintento = args.reintentar ?? escribir;
+  try {
+    await escribir();
+    resolverFallo(`${coleccion}/${docId}`);
+    return true;
+  } catch (e) {
+    registrarFallo({
+      coleccion, docId,
+      causa: clasificarError(e),
+      detalle: (e as { code?: string } | null)?.code ?? String(e),
+      reintentar: async () => { await reintento(); },
+    });
+    return false;
+  }
+}
