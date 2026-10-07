@@ -100,7 +100,7 @@ function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (
                     {appts.slice(0, 3).map((a) => (
                       <div key={a.id} className="flex items-center gap-1 truncate text-[11px] text-clinic-muted">
                         <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: estadoDe(a).color }} />
-                        <span className="truncate">{a.start.slice(11, 16)} {a.title || "Cita"}</span>
+                        <span className="truncate">{fmtTime(a.start)} {a.title || "Cita"}</span>
                       </div>
                     ))}
                     {appts.length > 3 && <div className="text-[11px] font-bold text-azure-700">+{appts.length - 3} más</div>}

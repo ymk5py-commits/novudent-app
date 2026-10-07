@@ -4,7 +4,7 @@ import Link from "next/link";
  *  tasa de aceptación de presupuestos, morosidad y reportes descargables (Excel/CSV). */
 import { useEffect, useMemo, useState } from "react";
 import { ShieldAlert, Download, TrendingUp, TrendingDown, Scale, FileSpreadsheet, Percent, Bot, Star } from "lucide-react";
-import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
+import { useStore, fmtGs, fmtDate, fmtTime, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, patientBalance, netAmount, retentionPct, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { Card, Btn, Badge, Field, inputCls } from "@/components/ui";
@@ -178,7 +178,7 @@ export default function ReportsPage() {
         ["Fecha", "Hora", "Paciente", "Profesional", "Título", "Estado", "Importe Gs"],
         ...db.appointments.map((a) => {
           const d = db.users.find((u) => u.id === a.dentistId);
-          return [a.start.slice(0, 10), a.start.slice(11, 16), patientName(a.patientId), d?.name ?? "", a.title, a.status, a.amount - a.discount];
+          return [fechaLocal(new Date(a.start)), fmtTime(a.start), patientName(a.patientId), d?.name ?? "", a.title, a.status, a.amount - a.discount];
         }),
       ],
     },

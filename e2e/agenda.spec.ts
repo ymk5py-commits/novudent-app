@@ -93,7 +93,9 @@ test.describe("agenda del día", () => {
 
   test("la demo no marca como enviado un correo que no salió", async ({ page }) => {
     const antes = (await leerDB(page)).appointments.map((a: { id: string; reminderSent?: boolean }) => [a.id, a.reminderSent]);
-    await main(page).getByRole("button", { name: "Acciones de la cita" }).first().click();
+    // La primera fila del día cambia con el día de la semana (la demo siembra citas de varios pacientes y casi
+    // ninguno tiene correo): se elige a María González, que sí lo tiene, venga la fila que venga.
+    await main(page).getByRole("row").filter({ hasText: /González/i }).getByRole("button", { name: "Acciones de la cita" }).first().click();
     await page.getByRole("menuitem", { name: "Ver" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Enviar al correo" }).click();
     await expect(page.getByText("En la demo no se envían correos; la cita no se marcó como notificada.")).toBeVisible();
@@ -133,6 +135,18 @@ test.describe("filtros", () => {
     await main(page).getByLabel("Filtrar por profesional").selectOption({ label: "Dr. Diego Martínez" });
     await expect(main(page)).toContainText("Control + limpieza");
     await expect(main(page)).not.toContainText("Resina pieza 16");
+  });
+});
+
+test.describe("vista Mensual", () => {
+  test("cada cita sale a la misma hora que en la Diaria (la de la clínica, no la UTC)", async ({ page, isMobile }) => {
+    test.skip(isMobile, "la grilla mensual se prueba en escritorio");
+    await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+    await conCitaDeHoy(page); // «Control E2E», hoy a las 10:00 hora de Asunción
+    await main(page).getByRole("button", { name: "Mensual" }).click();
+    // Las citas se guardan en UTC: antes la celda cortaba el texto ISO y mostraba 13:00.
+    await expect(main(page).getByText("10:00 Control E2E")).toBeVisible();
+    await expect(main(page).getByText("13:00 Control E2E")).toHaveCount(0);
   });
 });
 
