@@ -147,6 +147,16 @@ export class CaptorPW implements Captor {
       }
     }
 
+    // Un recorte dentro de un diálogo deja ver, en sus bordes, pedazos de la pantalla de atrás oscurecida (letras cortadas por la
+    // mitad): se pinta el fondo liso mientras se saca la foto. Con `pantalla` el fondo oscurecido es justo lo que se quiere ver.
+    let fondoLiso = false;
+    if (!o.pantalla) {
+      for (const l of [...aRecortar, ...aMarcar]) {
+        if (await l.first().evaluate((el) => !!el.closest('[role="dialog"]'))) { fondoLiso = true; break; }
+      }
+    }
+    if (fondoLiso) await page.evaluate(aplanarFondoDeDialogos, true);
+
     // Se dibujan los recuadros y los números, y se anota dónde quedó cada número para recortar con lugar para ellos.
     const numeros: Caja[] = marcas.length ? await page.evaluate(dibujarMarcas, marcas) : [];
 
@@ -167,6 +177,17 @@ export class CaptorPW implements Captor {
     }
     await page.screenshot({ path: join(this.carpeta, `${nombre}.png`), type: "png", ...(clip ? { clip } : {}) });
     if (marcas.length) await page.evaluate(() => document.querySelectorAll("[data-manual-marca]").forEach((n) => n.remove()));
+    if (fondoLiso) await page.evaluate(aplanarFondoDeDialogos, false);
+  }
+}
+
+/** Corre EN la página: pinta (o devuelve a como estaba) el fondo oscurecido que rodea a cada diálogo abierto. */
+function aplanarFondoDeDialogos(aplanar: boolean): void {
+  for (const d of Array.from(document.querySelectorAll('[role="dialog"]'))) {
+    const fondo = d.parentElement;
+    if (!fondo || fondo.getAttribute("role") !== "presentation") continue;
+    fondo.style.background = aplanar ? "#EEF2F8" : "";
+    fondo.style.backdropFilter = aplanar ? "none" : "";
   }
 }
 
