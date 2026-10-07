@@ -166,9 +166,19 @@ describe("campos extra (Pacientes → Configuración, columna «Agenda online»)
     ]);
   });
 
-  it("sin configuración no pide nada extra", async () => {
+  it("sin configuración pide solo el email, obligatorio (la reserva crea la ficha del paciente)", async () => {
     const j = await (await GET(req(`http://x/api/reservas?clinicId=cl_demo&date=${MANANA}`))).json();
-    expect(j.campos).toEqual([]);
+    expect(j.campos).toEqual([{ key: "email", label: "Email", tipo: "email", requerido: true }]);
+  });
+
+  it("sin configuración, una reserva sin email se rechaza sin tomar el turno; con email entra", async () => {
+    const sin = await POST(post(turno));
+    expect(sin.status).toBe(400);
+    expect((await sin.json()).error).toMatch(/Email/);
+    expect(createIfAbsent).not.toHaveBeenCalled();
+    const con = await POST(post({ ...turno, extras: { email: "ana@correo.com" } }));
+    expect(con.status).toBe(200);
+    expect(docPaciente()).toMatchObject({ email: "ana@correo.com" });
   });
 
   it("si falta un extra requerido rechaza la reserva sin tomar el turno", async () => {

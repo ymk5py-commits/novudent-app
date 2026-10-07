@@ -8,8 +8,8 @@ import type { Page } from "@playwright/test";
 const main = (page: Page) => page.locator("main");
 
 /** Obligatorios por defecto (revisión de Novum): nombre, apellido, CI, fecha de nacimiento,
- *  sexo, género y teléfono. */
-async function completarObligatorios(zona: import("@playwright/test").Locator, datos: { nombre: string; apellido: string; ci: string; tel: string; nacimiento?: string }) {
+ *  sexo, género, teléfono y email (este último desde el 7/10/2026: los avisos salen por correo). */
+async function completarObligatorios(zona: import("@playwright/test").Locator, datos: { nombre: string; apellido: string; ci: string; tel: string; nacimiento?: string; email?: string | null }) {
   await zona.getByLabel("Nombre legal *").fill(datos.nombre);
   await zona.getByLabel("Apellidos *").fill(datos.apellido);
   await zona.getByLabel("Cédula / DNI *").fill(datos.ci);
@@ -17,6 +17,7 @@ async function completarObligatorios(zona: import("@playwright/test").Locator, d
   await zona.getByLabel("Sexo *").selectOption("F");
   await zona.getByLabel("Género *").selectOption("nd");
   await zona.getByLabel("Teléfono móvil *").fill(datos.tel);
+  if (datos.email !== null) await zona.getByLabel("Email *").fill(datos.email ?? "paciente@correo.com"); // null: la clínica apagó el campo
 }
 
 test.describe("alta de paciente (página completa)", () => {
@@ -26,7 +27,7 @@ test.describe("alta de paciente (página completa)", () => {
     await page.goto("/app/pacientes");
     await main(page).getByRole("button", { name: "Nuevo paciente" }).click();
     await page.waitForURL("**/app/pacientes/nuevo");
-    for (const campo of ["Nombre legal *", "Apellidos *", "Cédula / DNI *", "Fecha de nacimiento *", "Sexo *", "Género *", "Teléfono móvil *", "Email", "Barrio", "RUC", "Razón social", "Referido por (de quién)"]) {
+    for (const campo of ["Nombre legal *", "Apellidos *", "Cédula / DNI *", "Fecha de nacimiento *", "Sexo *", "Género *", "Teléfono móvil *", "Email *", "Barrio", "RUC", "Razón social", "Referido por (de quién)"]) {
       await expect(main(page).getByText(campo, { exact: true })).toBeVisible();
     }
     await expect(main(page).getByLabel("Género *").locator("option", { hasText: "Prefiero no decirlo" })).toHaveCount(1);
@@ -46,7 +47,7 @@ test.describe("alta de paciente (página completa)", () => {
     await page.goto("/app/pacientes/nuevo");
     await expect(main(page).getByText("Email", { exact: true })).toHaveCount(0);
     await expect(main(page).getByLabel("Empleador *")).toHaveAttribute("required", "");
-    await completarObligatorios(main(page), { nombre: "Rosa", apellido: "Campos", ci: "7.777.777", tel: "0981 777 777" });
+    await completarObligatorios(main(page), { nombre: "Rosa", apellido: "Campos", ci: "7.777.777", tel: "0981 777 777", email: null }); // este test apagó el email
     await main(page).getByLabel("Empleador *").fill("Clínica Sur");
     await main(page).locator("#foto-paciente").setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64") });
     await expect(main(page).getByAltText("Foto del paciente")).toBeVisible();

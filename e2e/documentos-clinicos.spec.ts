@@ -232,6 +232,7 @@ test.describe("Alta de paciente y campana", () => {
     await main(page).getByLabel("Sexo *").selectOption("F");
     await main(page).getByLabel("Género *").selectOption("nd");
     await main(page).getByLabel("Teléfono móvil *").fill("0981 777 777");
+    await main(page).getByLabel("Email *").fill("rosa.campos@correo.com");
     await main(page).getByRole("button", { name: "Crear paciente" }).click();
     await page.waitForURL(/\/app\/pacientes\/p_/);
 

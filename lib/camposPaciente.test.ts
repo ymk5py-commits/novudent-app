@@ -22,8 +22,8 @@ describe("catálogo", () => {
 });
 
 describe("sin configuración guardada, se pide lo de la revisión de Novum", () => {
-  it("nuevo paciente: obligatorios nombre, apellido, CI, fecha de nacimiento, sexo, género y teléfono", () => {
-    expect(req("nuevo")).toEqual(["nombreLegal", "apellidos", "documento", "fechaNacimiento", "sexo", "genero", "telefonoMovil"]);
+  it("nuevo paciente: obligatorios nombre, apellido, CI, fecha de nacimiento, sexo, género, teléfono y email", () => {
+    expect(req("nuevo")).toEqual(["nombreLegal", "apellidos", "documento", "fechaNacimiento", "sexo", "genero", "telefonoMovil", "email"]);
     for (const k of ["email", "barrio", "direccion", "ruc", "razonSocial", "convenio", "actividad", "referencia", "codigoReferido", "apoderado", "dniRepLegal", "parentesco"]) {
       expect(pres("nuevo")).toContain(k);
     }
@@ -35,9 +35,17 @@ describe("sin configuración guardada, se pide lo de la revisión de Novum", () 
     expect(req("agenda")).toEqual(req("nuevo"));
   });
 
-  it("agenda online: nombre, apellidos, CI y WhatsApp", () => {
-    expect(pres("online")).toEqual(["nombreLegal", "apellidos", "documento", "telefonoMovil"]);
-    expect(req("online")).toEqual(["nombreLegal", "apellidos", "documento", "telefonoMovil"]);
+  it("agenda online: nombre, apellidos, CI, WhatsApp y email (la reserva crea la ficha del paciente)", () => {
+    expect(pres("online")).toEqual(["nombreLegal", "apellidos", "documento", "telefonoMovil", "email"]);
+    expect(req("online")).toEqual(["nombreLegal", "apellidos", "documento", "telefonoMovil", "email"]);
+  });
+
+  it("el email es obligatorio por defecto pero la clínica puede soltarlo (no es un campo fijo)", () => {
+    const config = { email: { required: { nuevo: false, agenda: false, online: false } } };
+    for (const ctx of ["nuevo", "agenda", "online"] as const) {
+      expect(req(ctx, config)).not.toContain("email");
+      expect(camposDe(config, ctx).find((c) => c.key === "email")).toMatchObject({ presente: true, requerido: false, fijo: false });
+    }
   });
 });
 
@@ -86,8 +94,8 @@ describe("validación", () => {
   it("faltantes devuelve los requeridos vacíos (los espacios no cuentan)", () => {
     const campos = camposDe(undefined, "nuevo");
     expect(faltantes(campos, { nombreLegal: "Ana", apellidos: "  ", documento: "123", telefonoMovil: "" }))
-      .toEqual(["Apellidos", "Fecha de nacimiento", "Sexo", "Género", "Teléfono móvil"]);
-    const completo = { nombreLegal: "Ana", apellidos: "Paz", documento: "123", telefonoMovil: "0981", fechaNacimiento: "1990-04-12", sexo: "F", genero: "F" };
+      .toEqual(["Apellidos", "Fecha de nacimiento", "Sexo", "Género", "Teléfono móvil", "Email"]);
+    const completo = { nombreLegal: "Ana", apellidos: "Paz", documento: "123", telefonoMovil: "0981", email: "ana@correo.com", fechaNacimiento: "1990-04-12", sexo: "F", genero: "F" };
     expect(faltantes(campos, completo)).toEqual([]);
   });
 
@@ -117,8 +125,8 @@ describe("validación", () => {
 });
 
 describe("extrasOnline (lo que la página pública pide además de nombre, CI y WhatsApp)", () => {
-  it("sin configuración no hay extras", () => {
-    expect(extrasOnline(undefined)).toEqual([]);
+  it("sin configuración el único extra es el email, obligatorio", () => {
+    expect(extrasOnline(undefined)).toEqual([{ key: "email", label: "Email", tipo: "email", requerido: true }]);
   });
 
   it("devuelve solo lo público: clave, etiqueta, tipo y si es requerido", () => {
@@ -142,7 +150,7 @@ describe("paciente menor de edad", () => {
   it("si es menor, el responsable es obligatorio aunque la clínica no lo haya marcado", () => {
     const config = { apoderado: { present: { nuevo: false } }, dniRepLegal: { present: { nuevo: false } }, parentesco: { present: { nuevo: false } } };
     const campos = camposDe(config, "nuevo");
-    const base = { nombreLegal: "Leo", apellidos: "Paz", documento: "9", telefonoMovil: "0981", sexo: "M", genero: "M" };
+    const base = { nombreLegal: "Leo", apellidos: "Paz", documento: "9", telefonoMovil: "0981", email: "leo@correo.com", sexo: "M", genero: "M" };
     expect(faltantes(campos, { ...base, fechaNacimiento: "2015-05-05" })).toEqual(["Responsable", "CI del responsable", "Qué es del paciente"]);
     expect(faltantes(campos, { ...base, fechaNacimiento: "1990-05-05" })).toEqual([]);
     expect(datosPaciente(campos, { ...base, fechaNacimiento: "2015-05-05", apoderado: "Ana Paz", dniRepLegal: "123", parentesco: "Madre" }))
