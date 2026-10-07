@@ -172,7 +172,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "Con el rol de Recepcionista no aparece «Recibir pago» ni se ven montos: cobrar es de Recepción y caja y del administrador." },
       { tipo: "tip", texto: "Para dejar plata a favor del paciente sin plan (una seña, un adelanto), tildá «Ingresar abono libre» y escribí el monto. Para cobrar un plan puntual, también podés entrar desde el plan de tratamiento: «Opciones» › «Recaudar este tratamiento» abre **Recibir pago** con ese plan ya tildado." },
       { tipo: "tip", texto: "Si el plan está en cuotas, al pie de **Recibir pago** hay una tabla **Por cuotas de financiamiento** con el botón «Pagar cuota #…»: carga esa cuota en el paso 1. Cómo se arman: [[armar-las-cuotas-de-un-plan]]." },
-      { tipo: "revisar", texto: "Un pago ingresado desde la ficha queda fechado a las 12:00 del día elegido: antes del mediodía todavía no aparece en **Movimientos de la caja** ni suma en el **Total de caja**, y en una caja abierta después de las 12:00 no aparece nunca (el saldo del paciente sí baja). Pedir a desarrollo que use la hora real del cobro y sacar este aviso cuando esté corregido." },
+      { tipo: "error", texto: "Un pago ingresado desde la ficha queda fechado a las 12:00 del día elegido: antes del mediodía todavía no aparece en **Movimientos de la caja** ni suma en el **Total de caja**, y en una caja abierta después de las 12:00 no aparece nunca (el saldo del paciente sí baja). Tendría que quedar con la hora real del cobro." },
       { tipo: "revisar", texto: "No probé el botón «Link de pago (WhatsApp)» ni el envío del comprobante por e-mail: dependen de WhatsApp, del correo de la clínica y de su configuración de cobro online." },
     ],
     capturar: async (c) => {
@@ -462,12 +462,12 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Cuando el paciente dice que sí, tocá «Marcar aceptado»: pasa a **Aceptado**. Desde ese momento la tarjeta muestra lo **pagado** y el **saldo**, y el paciente entra en **Cuentas por cobrar**.", captura: "aceptar" },
     ],
     avisos: [
-      { tipo: "ojo", texto: "Después de «Guardar», la tarjeta del presupuesto nuevo puede no aparecer enseguida (queda un hueco en la lista). El presupuesto ya está guardado: recargá la página (F5) y vas a verlo." },
+      { tipo: "error", texto: "Después de «Guardar», la tarjeta del presupuesto nuevo puede no aparecer enseguida (queda un hueco en la lista). El presupuesto ya está guardado: recargá la página (F5) y vas a verlo." },
       { tipo: "ojo", texto: "«Presentar» y «Marcar aceptado» solo cambian el estado: no le mandan nada al paciente. Entregarlo o enviarlo es el paso de «Detalle»." },
       { tipo: "ojo", texto: "«Editar» existe solo en **Borrador**. «Anular» (en Borrador y Presentado) no pide confirmación y un presupuesto anulado no se puede reactivar desde esta pantalla." },
       { tipo: "tip", texto: "Un presupuesto **Presentado** sin ningún pago genera en **Tareas** la tarea «Presupuesto presentado sin aceptar», para hacerle seguimiento al paciente; al aceptarlo, esa tarea desaparece sola y, si queda saldo, el sistema arma la de cobranza («Saldo pendiente de pago»)." },
       { tipo: "revisar", texto: "«Marcar aceptado» no pide firma ni deja constancia de cómo aceptó el paciente (firmado, por WhatsApp). Confirmar si la clínica necesita registrarlo." },
-      { tipo: "revisar", texto: "Hoy, al editar un borrador con «Editar» y guardarlo, el plan pierde su nombre (por ejemplo «Blanqueamiento dental») y otros datos que el formulario no muestra. Pedir a desarrollo que lo corrija." },
+      { tipo: "error", texto: "Al editar un borrador con «Editar» y guardarlo, el plan pierde su nombre (por ejemplo «Blanqueamiento dental») y otros datos que el formulario no muestra. Tendría que conservarlos." },
     ],
     capturar: async (c) => {
       const { page } = c;

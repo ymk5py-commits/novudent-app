@@ -417,7 +417,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "Si salís de la pantalla sin tocar «Guardar plantillas», se pierden los cambios." },
       { tipo: "ojo", texto: "El atajo «Documentos y consentimientos» del menú abre esta pantalla pero no baja hasta **Plantillas de consentimiento**: bajá a mano." },
       { tipo: "tip", texto: "Las plantillas se usan desde la ficha del paciente: [[completar-la-historia-clinica]] y [[pedir-un-consentimiento]]." },
-      { tipo: "revisar", texto: "Después de tocar «Guardar plantillas», la barra «Descartar / Guardar plantillas» no se va y no aparece el cartel «Plantillas guardadas», aunque los cambios ya quedaron guardados: la barra recién desaparece al recargar la pantalla. Es un defecto de la pantalla: avisar a desarrollo." },
+      { tipo: "error", texto: "Después de tocar «Guardar plantillas», la barra «Descartar / Guardar plantillas» no se va y no aparece el cartel «Plantillas guardadas», aunque los cambios ya quedaron guardados: la barra recién desaparece al recargar la pantalla. Tendría que irse al guardar." },
       { tipo: "revisar", texto: "Los tres textos de indicaciones que trae Novudent son borradores generales: un odontólogo de la clínica tiene que revisarlos antes de marcarlos como revisados y dárselos a un paciente." },
       { tipo: "revisar", texto: "Los dos consentimientos de ejemplo son textos tipo: confirmar con el asesor legal de cada clínica antes de usarlos." },
     ],
@@ -506,7 +506,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "Si el paciente es menor de edad, al cargar su fecha de nacimiento se piden los datos del responsable y son obligatorios, aunque los hayas sacado de la lista." },
       { tipo: "tip", texto: "Solo el administrador puede cambiar esta tabla: los demás roles la ven con las casillas bloqueadas." },
       { tipo: "revisar", texto: "Lo que se pide de fábrica (nombre, apellidos, CI, fecha de nacimiento, sexo, género y teléfono móvil como obligatorios) salió de la revisión de Novum del 27/9/2026. Confirmar que sigue siendo lo que se quiere ofrecer a las clínicas nuevas." },
-      { tipo: "revisar", texto: "El atajo «Campos del paciente» del menú Administración hoy no lleva a esta tabla: abre Configuración general. Por eso el paso 1 entra por **Pacientes**." },
+      { tipo: "error", texto: "El atajo «Campos del paciente» del menú Administración no lleva a esta tabla: abre Configuración general. Por eso el paso 1 entra por **Pacientes**." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -787,7 +787,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "El primer desplegable viene con la primera ficha de la lista ya elegida: cambiala siempre por la que querés mantener." },
       { tipo: "ojo", texto: "No pasan a la ficha que se mantiene: los datos personales de la duplicada (teléfono, correo, convenio, foto), sus alertas médicas de la cabecera, las recetas, el tratamiento de ortodoncia, la lista de espera, las tareas ni los mensajes automáticos de WhatsApp. Antes de fusionar, pasá a mano lo que haga falta." },
       { tipo: "ojo", texto: "Si las dos fichas tenían la Historia Clínica pendiente, la que queda va a tener dos: anulá la que sobre desde Documentos clínicos ([[completar-la-historia-clinica]])." },
-      { tipo: "revisar", texto: "Hoy la fusión pierde las recetas y el tratamiento de ortodoncia de la ficha duplicada y deja sueltas su lista de espera, sus tareas y sus mensajes automáticos (en la lista de espera aparece una fila sin nombre). Hay que decidir con desarrollo si deben pasar a la ficha que se mantiene." },
+      { tipo: "error", texto: "La fusión pierde las recetas y el tratamiento de ortodoncia de la ficha duplicada y deja sueltas su lista de espera, sus tareas y sus mensajes automáticos (en la lista de espera aparece una fila sin nombre). Tendrían que pasar a la ficha que se mantiene." },
     ],
     capturar: async (c) => {
       const { page } = c;

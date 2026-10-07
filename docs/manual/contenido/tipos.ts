@@ -42,8 +42,9 @@ export interface Captor {
 }
 
 export interface Aviso {
-  /** «ojo»: lo que puede salir mal · «tip»: un atajo · «revisar»: lo que hay que confirmar con Angel y Camila. */
-  tipo: "ojo" | "tip" | "revisar";
+  /** «ojo»: lo que puede salir mal · «tip»: un atajo · «revisar»: lo que hay que confirmar con Angel y Camila ·
+   *  «error»: algo de la app que no funciona como debería (no es una decisión: es para el equipo de desarrollo; se saca cuando se corrige). */
+  tipo: "ojo" | "tip" | "revisar" | "error";
   texto: string;
 }
 

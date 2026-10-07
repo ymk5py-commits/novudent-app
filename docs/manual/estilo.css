@@ -86,6 +86,8 @@ strong { font-weight: 700; color: var(--tinta); }
 .aviso-tip .aviso-titulo { color: var(--azul); }
 .aviso-revisar { background: #FFFBD6; border: 0.4mm dashed #CA9A04; border-left: 1.3mm solid #CA9A04; }
 .aviso-revisar .aviso-titulo { color: #92710A; }
+.aviso-error { background: #FDECEC; border-color: #DC2626; }
+.aviso-error .aviso-titulo { color: #B91C1C; }
 
 /* Apéndices */
 .apendice { break-before: page; }

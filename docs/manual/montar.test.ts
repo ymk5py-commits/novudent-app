@@ -202,6 +202,28 @@ describe("montarHtml", () => {
     expect(html).toContain('class="aviso aviso-revisar"');
     expect(html).toContain('class="aviso aviso-ojo"');
   });
+  it("los «Error conocido» van en su propio apéndice, aparte de «Puntos para revisar»", () => {
+    const html = montarHtml(entrada([
+      cap("todos"),
+      cap("receptionist", [proc({ id: "a", titulo: "Dar una cita", avisos: [
+        { tipo: "error", texto: "La tarjeta nueva no aparece hasta recargar." },
+        { tipo: "revisar", texto: "Confirmar el horario de atención." },
+      ] })]),
+      cap("cashier"), cap("dentist"), cap("assistant"), cap("admin"),
+    ]));
+    expect(html).toContain('<aside class="aviso aviso-error"><span class="aviso-titulo">Error conocido</span> La tarjeta nueva no aparece hasta recargar.</aside>');
+    expect(html).toContain('href="#apendice-errores"'); // en el índice
+    const revisar = html.slice(html.indexOf('id="apendice-revisar"'), html.indexOf('id="apendice-errores"'));
+    expect(revisar).toContain("Confirmar el horario de atención.");
+    expect(revisar).not.toContain("La tarjeta nueva no aparece");
+    const errores = html.slice(html.indexOf('id="apendice-errores"'));
+    expect(errores).toContain("La tarjeta nueva no aparece hasta recargar.");
+    expect(errores).toContain('href="#proc-a"');
+    expect(errores).not.toContain("Confirmar el horario de atención.");
+  });
+  it("sin errores conocidos lo dice", () => {
+    expect(montarHtml(entrada(base))).toContain("No hay errores conocidos.");
+  });
   it("la negrita dentro de un aviso es negrita: solo el título del aviso lleva el estilo de título", () => {
     const html = montarHtml(entrada([
       cap("todos"),

@@ -60,7 +60,7 @@ Hace falta tener **WeasyPrint** (`python3 -m weasyprint`) y **poppler** (`pdfinf
     { texto: "Entrá a **Agenda** y tocá «Dar cita».", captura: "agenda" },
     { texto: "Elegí al paciente y el horario." },
   ],
-  avisos: [{ tipo: "ojo" | "tip" | "revisar", texto: "…" }],
+  avisos: [{ tipo: "ojo" | "tip" | "revisar" | "error", texto: "…" }],
   capturar: async (c) => {
     await c.entrar("receptionist", "/app/agenda");
     await c.foto("agenda", { resaltar: c.page.getByRole("button", { name: "Dar cita" }) });
@@ -68,6 +68,10 @@ Hace falta tener **WeasyPrint** (`python3 -m weasyprint`) y **poppler** (`pdfinf
 }
 ```
 
+- Avisos: `ojo` (lo que puede salir mal), `tip` (un atajo o una función de otro plan), `revisar` (lo que Angel y Camila tienen que
+  confirmar: reglas de negocio, textos clínicos o legales, lo que no se pudo verificar; se junta en «Puntos para revisar») y `error`
+  (un defecto de la app: algo que no funciona como debería; se junta en «Errores conocidos de la app», es para desarrollo, y se saca
+  cuando se corrige). Un defecto que además pide un cuidado de quien usa la app lleva también un `ojo`.
 - `capturar` entra con `c.entrar("rol", …)`: el validador exige que ese rol esté en `roles` o en `verComo` (si no, el manual enseñaría
   la pantalla de quien no lo hace).
 - Marcas en el texto: `**negrita**`, `«Botón o menú»` (se dibuja como botón), `[[otro-id]]` (referencia con la página).

@@ -150,7 +150,7 @@ export interface Entrada {
   css: string;
 }
 
-const AVISO_TITULO: Record<Aviso["tipo"], string> = { ojo: "Ojo", tip: "Tip", revisar: "Para revisar" };
+const AVISO_TITULO: Record<Aviso["tipo"], string> = { ojo: "Ojo", tip: "Tip", revisar: "Para revisar", error: "Error conocido" };
 
 const quienLoHace = (p: Procedimiento) => p.roles.map((r) => ROLE_LABEL[r]).join(" · ");
 
@@ -218,6 +218,7 @@ ${capitulos.map((c) => `<p class="idx-cap"><a href="#cap-${c.id}">${esc(c.titulo
 <ul>${c.procedimientos.map((p) => `<li><a href="#proc-${p.id}">${esc(p.titulo)}</a></li>`).join("")}</ul>`).join("\n")}
 <p class="idx-cap"><a href="#apendice-permisos">Qué puede hacer cada rol</a></p>
 <p class="idx-cap"><a href="#apendice-revisar">Puntos para revisar</a></p>
+<p class="idx-cap"><a href="#apendice-errores">Errores conocidos de la app</a></p>
 </nav>`;
 
   const filasPermisos = CLAVES_PERMISO.map((k) =>
@@ -239,6 +240,14 @@ ${filasPermisos}
     `<li><a class="ref" href="#proc-${p.id}">${esc(p.titulo)}</a> — ${m(a.texto)}</li>`).join("\n")}</ol>`}
 </section>`;
 
+  const porError = todos.flatMap((p) => (p.avisos ?? []).filter((a) => a.tipo === "error").map((a) => ({ p, a })));
+  const apendiceErrores = `<section class="apendice" id="apendice-errores">
+  <h1 class="capitulo-titulo">Errores conocidos de la app</h1>
+  <p class="intro">Cosas que no funcionan como deberían y que se encontraron al armar este manual. No son decisiones para confirmar: son para el equipo de desarrollo, y el aviso se saca del procedimiento cuando se corrige.</p>
+  ${porError.length === 0 ? "<p>No hay errores conocidos.</p>" : `<ol class="revisar-lista">${porError.map(({ p, a }) =>
+    `<li><a class="ref" href="#proc-${p.id}">${esc(p.titulo)}</a> — ${m(a.texto)}</li>`).join("\n")}</ol>`}
+</section>`;
+
   const comoUsar = `<section class="como-usar">
   <h1 class="sin-capitulo">Cómo usar este manual</h1>
   <p>Cada capítulo explica, paso a paso y con capturas de la clínica de demostración, lo que hace una persona con su rol. Empezá por <strong>Para todos</strong> y seguí con el capítulo de tu rol; al principio de cada uno vas a ver qué podés y qué no podés hacer.</p>
@@ -248,6 +257,7 @@ ${filasPermisos}
     <li>El recuadro rojo de las capturas marca lo que hay que tocar; si hay varios, llevan número.</li>
     <li><strong>Ojo</strong> avisa de lo que puede salir mal, y <strong>Tip</strong> de un atajo.</li>
     <li>Un recuadro amarillo, <strong>Para revisar</strong>, marca lo que este borrador deja por confirmar.</li>
+    <li>Un recuadro rojo, <strong>Error conocido</strong>, marca algo de la app que no funciona como debería: es un aviso para el equipo de desarrollo y se saca cuando se corrige.</li>
     <li>Los nombres, fechas y montos de las capturas son de ejemplo (clínica de demostración).</li>
   </ul>
 </section>`;
@@ -277,6 +287,7 @@ ${indice}
 ${cuerpo}
 ${apendicePermisos}
 ${apendiceRevisar}
+${apendiceErrores}
 </body>
 </html>
 `;

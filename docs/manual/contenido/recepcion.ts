@@ -331,7 +331,6 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "Los **Estados** solo filtran las vistas del día (**Diaria** y **Diaria global**). En **Semanal** y **Mensual** se filtra por profesional y sucursal, que se eligen arriba de la grilla." },
       { tipo: "ojo", texto: "Si no ves una cita que esperabas, revisá los filtros: el día puede estar bien y la cita estar oculta por un estado destildado. «Marcar todos» los vuelve a prender." },
       { tipo: "tip", texto: "El número que está junto al título **Agenda** (por ejemplo, 5 citas) cuenta las citas de la vista que estás mirando: las del día, la semana o el mes." },
-      { tipo: "revisar", texto: "En la vista **Mensual**, la hora que sale junto a cada cita está corrida 3 horas respecto de la Diaria y la Semanal (una cita de las 09:00 aparece a las 12:00). Parece un error de la app: hasta que se corrija, tomá las horas de la vista Diaria o Semanal." },
     ],
     capturar: async (c) => {
       const { page } = c;
