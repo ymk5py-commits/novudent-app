@@ -1,0 +1,103 @@
+/* Hoja de estilo del manual (WeasyPrint). Marca: navy + azul de Novudent, Montserrat para títulos e Inter para el texto. */
+:root { --navy:#051735; --tinta:#032253; --azul:#086BCD; --celeste:#04A9F2; --texto:#1F2937; --suave:#6B7280; --linea:#D9E0EA; --fondo:#F3F6FB; }
+
+@page { size: A4; margin: 24mm 17mm 21mm 17mm;
+  @top-left { content: "Novudent · Manual de procedimientos"; font: 600 7.5pt Montserrat, sans-serif; color: #6B7280; vertical-align: bottom; padding-bottom: 3mm; }
+  @top-right { content: string(capitulo); font: 600 7.5pt Montserrat, sans-serif; color: #086BCD; vertical-align: bottom; padding-bottom: 3mm; }
+  @bottom-left { content: "BORRADOR · para revisión"; font: 600 7pt Montserrat, sans-serif; color: #B45309; vertical-align: top; padding-top: 3mm; }
+  @bottom-right { content: counter(page); font: 600 8pt Inter, sans-serif; color: #6B7280; vertical-align: top; padding-top: 3mm; }
+}
+@page portada { margin: 0; background: #051735; @top-left { content: none; } @top-right { content: none; } @bottom-left { content: none; } @bottom-right { content: none; } }
+
+html { font-family: Inter, "DejaVu Sans", sans-serif; font-size: 9.6pt; line-height: 1.5; color: var(--texto); }
+body { margin: 0; }
+h1, h2, h3, h4 { font-family: Montserrat, Inter, sans-serif; color: var(--tinta); margin: 0; }
+a { color: inherit; text-decoration: none; }
+p { margin: 0 0 2.2mm; }
+ul, ol { margin: 0; padding: 0; }
+
+/* Portada */
+.portada { page: portada; break-after: page; color: #fff; padding: 62mm 24mm 0; height: 235mm; }
+.portada .logo svg { width: 92mm; height: auto; }
+.titulo-portada { color: #fff; font-size: 34pt; font-weight: 800; line-height: 1.08; margin: 34mm 0 5mm; letter-spacing: -0.2pt; }
+.sub-portada { color: #A9C4E8; font-size: 13pt; margin: 0 0 30mm; max-width: 120mm; line-height: 1.4; }
+.borrador { display: inline-block; font: 700 9pt Montserrat, sans-serif; color: #051735; background: #F6C945; padding: 1.6mm 4mm; border-radius: 1mm; }
+
+/* Cómo usar, índice */
+.sin-capitulo { string-set: capitulo ""; font-size: 20pt; margin-bottom: 6mm; }
+.como-usar { margin-bottom: 12mm; }
+.como-usar h3 { margin: 6mm 0 2mm; font-size: 11pt; }
+.leyenda { padding-left: 5mm; }
+.leyenda li { margin-bottom: 2mm; }
+.indice { break-after: page; }
+.indice ul { list-style: none; margin: 0 0 3mm 5mm; }
+.indice li, .indice .idx-cap { margin: 0; line-height: 1.55; }
+.indice .idx-cap { font: 700 9.5pt Montserrat, sans-serif; color: var(--tinta); margin-top: 2.5mm; }
+.indice a::after { content: leader(".") " " target-counter(attr(href), page); color: var(--suave); font-weight: 400; }
+
+/* Capítulos */
+.capitulo-titulo { font-size: 27pt; font-weight: 800; line-height: 1.1; string-set: capitulo content(); margin: 0 0 5mm; padding-bottom: 3mm; border-bottom: 1.2mm solid var(--azul); break-before: page; }
+.capitulo .intro, .apendice .intro { font-size: 10.5pt; color: #374151; max-width: 150mm; }
+.hoja-rol { margin-top: 5mm; }
+.hoja-rol h2 { font-size: 15pt; margin-bottom: 2mm; }
+.hoja-rol h3 { font-size: 9.6pt; margin: 4mm 0 1.5mm; }
+.desc-rol { color: var(--suave); }
+.menu-rol { background: var(--fondo); border-radius: 1.2mm; padding: 2mm 3mm; margin: 2mm 0 4mm; }
+.dos-col::after { content: ""; display: block; clear: both; }
+.dos-col > div { float: left; width: 48%; }
+.dos-col > div + div { float: right; }
+.hoja-rol ul { list-style: none; }
+.hoja-rol ul.si li, .hoja-rol ul.no li { position: relative; padding: 0.4mm 0 0.4mm 5mm; font-size: 8.8pt; line-height: 1.4; }
+.hoja-rol ul.si li::before { content: "✓"; position: absolute; left: 0; color: #0E9F6E; font-weight: 700; }
+.hoja-rol ul.no li::before { content: "—"; position: absolute; left: 0; color: #9CA3AF; }
+.hoja-rol ul.no li { color: #6B7280; }
+.indice-rol { column-count: 2; column-gap: 8mm; }
+.indice-rol li { padding: 0.5mm 0; break-inside: avoid; }
+
+/* Procedimientos */
+.proc { break-before: page; }
+.capitulo > .intro + .proc { break-before: auto; margin-top: 9mm; }
+.proc-cab { break-after: avoid; margin-bottom: 4mm; }
+.quien { font: 700 7.5pt Montserrat, sans-serif; text-transform: uppercase; letter-spacing: 0.4pt; color: var(--azul); margin: 0 0 1mm; }
+.proc h2 { font-size: 18pt; font-weight: 800; line-height: 1.15; margin-bottom: 2mm; }
+.para-que { font-size: 10.2pt; color: #374151; margin: 0; }
+.antes { background: var(--fondo); border-radius: 1.4mm; padding: 2.4mm 4mm; margin-bottom: 4mm; break-inside: avoid; }
+.antes h4 { font-size: 8.4pt; text-transform: uppercase; letter-spacing: 0.3pt; margin-bottom: 1mm; }
+.antes ul { padding-left: 4.5mm; }
+.antes li { margin: 0.4mm 0; }
+.pasos { list-style: none; margin: 3mm 0 2mm; }
+.paso { position: relative; padding-left: 11mm; margin-bottom: 5mm; break-inside: avoid; }
+.num { position: absolute; left: 0; top: 0; width: 7mm; height: 7mm; border-radius: 50%; background: var(--azul); color: #fff; font: 700 9pt Montserrat, sans-serif; text-align: center; line-height: 7mm; }
+.paso p { margin: 0.6mm 0 0; }
+figure { margin: 2.6mm 0 0; }
+figure img { display: block; border: 0.3mm solid #C9D3E3; border-radius: 1.2mm; }
+figure.falta { padding: 6mm; text-align: center; border: 0.4mm dashed #E5252A; color: #E5252A; font-weight: 600; }
+strong { font-weight: 700; color: var(--tinta); }
+.boton { display: inline-block; white-space: nowrap; background: #EAF1FB; border: 0.25mm solid #B5C9E8; border-radius: 1mm; padding: 0 1.5mm; font-weight: 600; color: var(--tinta); font-size: 0.95em; line-height: 1.35; }
+.ref { color: var(--azul); font-weight: 600; }
+.ref::after { content: " (pág. " target-counter(attr(href), page) ")"; color: var(--suave); font-weight: 400; font-size: 0.9em; }
+
+/* Avisos */
+.aviso { break-inside: avoid; margin: 3mm 0; padding: 2.4mm 4mm; border-left: 1.3mm solid; border-radius: 1mm; }
+.aviso-titulo { display: block; font: 700 7.6pt Montserrat, sans-serif; text-transform: uppercase; letter-spacing: 0.4pt; margin-bottom: 0.6mm; }
+.aviso-ojo { background: #FFF6E5; border-color: #F59E0B; }
+.aviso-ojo .aviso-titulo { color: #B45309; }
+.aviso-tip { background: #EAF4FF; border-color: var(--azul); }
+.aviso-tip .aviso-titulo { color: var(--azul); }
+.aviso-revisar { background: #FFFBD6; border: 0.4mm dashed #CA9A04; border-left: 1.3mm solid #CA9A04; }
+.aviso-revisar .aviso-titulo { color: #92710A; }
+.aviso-error { background: #FDECEC; border-color: #DC2626; }
+.aviso-error .aviso-titulo { color: #B91C1C; }
+
+/* Apéndices */
+.apendice { break-before: page; }
+.apendice .capitulo-titulo { break-before: auto; }
+table.permisos { width: 100%; border-collapse: collapse; font-size: 8.4pt; margin-top: 3mm; }
+table.permisos th, table.permisos td { border-bottom: 0.2mm solid #E3E8F0; padding: 1.5mm 1.6mm; }
+table.permisos thead th { font: 700 7.4pt Montserrat, sans-serif; color: var(--tinta); text-align: center; vertical-align: bottom; }
+table.permisos tbody th { text-align: left; font-weight: 400; width: 44%; }
+table.permisos td { text-align: center; width: 11.2%; }
+table.permisos td.si { color: #0E9F6E; font-weight: 700; }
+table.permisos td.no { color: #C0C7D2; }
+.revisar-lista { padding-left: 6mm; }
+.revisar-lista li { margin-bottom: 2.2mm; break-inside: avoid; }

@@ -24,3 +24,6 @@ firestore-debug.log
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Manual de procedimientos: capturas, HTML y PDF se regeneran (npm run manual:capturas && npm run manual:pdf)
+/docs/manual/salida/
