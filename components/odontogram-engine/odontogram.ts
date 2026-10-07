@@ -317,6 +317,35 @@ function svgGetById(root: Any, id: Any){
   return root.getElementById ? root.getElementById(id) : $("#"+id, root);
 }
 
+// PATCH Novudent — ids de pintura únicos por clon (ver NOTICE.md, «Parches de diseño»).
+// Cada plantilla se clona una vez por pieza, así que sus degradés, patrones y clipPaths
+// quedan con el MISMO id repetido en el documento y `url(#id)` resuelve contra el
+// primero. Si ese primer clon está dentro de un `display:none` (en el celular, el selector
+// de arcada oculta la fila de arriba), Chrome no lo pinta y las piezas de la otra arcada se
+// quedan sin relleno. Se renombran solo los servidores de pintura y sus referencias; los
+// ids de las capas que maneja el motor (`tooth-base`, `caries-*`, …) no se tocan.
+const PAINT_SERVERS = "linearGradient[id],radialGradient[id],pattern[id],clipPath[id],mask[id],filter[id]";
+const PAINT_REFS = '[style*="url("],[fill*="url("],[stroke*="url("],[clip-path],[mask],[filter],[href^="#"]';
+function scopePaintServerIds(svgRoot: Any, suffix: string){
+  const renamed = new Map();
+  for(const n of svgRoot.querySelectorAll(PAINT_SERVERS)){
+    const id = n.getAttribute("id");
+    renamed.set(id, `${id}--${suffix}`);
+    n.setAttribute("id", `${id}--${suffix}`);
+  }
+  if(!renamed.size) return;
+  const fix = (v: string) => v.replace(/url\(\s*(["']?)#([^"')\s]+)\1\s*\)/g,
+    (m: string, _q: string, id: string) => (renamed.has(id) ? `url(#${renamed.get(id)})` : m));
+  for(const n of svgRoot.querySelectorAll(PAINT_REFS)){
+    for(const attr of ["style", "fill", "stroke", "clip-path", "mask", "filter"]){
+      const v = n.getAttribute(attr);
+      if(v && v.includes("url(")) n.setAttribute(attr, fix(v));
+    }
+    const href = n.getAttribute("href");
+    if(href && renamed.has(href.slice(1))) n.setAttribute("href", `#${renamed.get(href.slice(1))}`);
+  }
+}
+
 // ---- App state ----
 const toothState = new Map(); // toothNo -> state
 const toothSvgRoot = new Map(); // toothNo -> [svg elements]
@@ -5073,6 +5102,7 @@ async function buildGrid(token: number){
     const tpl = view === "occl" ? occlCache.get(tplNo) : tplCache.get(tplNo);
     if(!tpl) return;
     const svg = tpl.cloneNode(true);
+    scopePaintServerIds(svg, `${toothNo}${view === "occl" ? "o" : "l"}`); // PATCH Novudent
     if(rot === 180) rotate180(svg);
     if(mirror) mirrorVertical(svg);
 
