@@ -74,7 +74,9 @@ export function PlantillasDocumento() {
       {lista.length === 0 ? (
         <Empty title="Sin plantillas" desc="Sin plantillas no se pueden crear documentos clínicos. Agregá una o volvé a las de fábrica." />
       ) : (
-        <div className="overflow-x-auto">
+        // `relative`: el texto oculto («Acciones», sr-only) es position:absolute y, sin un contenedor
+        // posicionado, se escapa del scroll y estira todo el documento en pantallas angostas.
+        <div className="relative overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
               <tr className="border-b border-clinic-border text-left font-bold text-clinic-text">

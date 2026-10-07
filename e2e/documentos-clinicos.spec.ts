@@ -1,4 +1,4 @@
-import { test, expect, entrarDemo, leerDB, USUARIOS_DEMO } from "./soporte";
+import { test, expect, entrarDemo, leerDB, sinScrollHorizontal, USUARIOS_DEMO } from "./soporte";
 import type { Page } from "@playwright/test";
 
 /* Documentos clínicos (Ficha clínica › Documentos ▾): la Historia Clínica de Aura, los textos de
@@ -294,6 +294,17 @@ test.describe("Configuración › Documentos clínicos", () => {
     await expect(page.getByRole("heading", { name: "Control mensual" })).toBeVisible();
     await expect(page.getByLabel("Observaciones del control")).toBeVisible();
     await expect(page.getByRole("note")).toHaveCount(0); // no es un borrador por revisar
+  });
+
+  test("la tabla de plantillas no ensancha la página en 320 px", async ({ page }) => {
+    // El texto oculto de la columna «Acciones» (sr-only, position:absolute) se escapaba del scroll de
+    // la tabla y estiraba el documento unos píxeles recién cuando el layout se asentaba.
+    await page.setViewportSize({ width: 320, height: 700 });
+    await entrarDemo(page);
+    await page.goto("/app/configuracion#documentos-clinicos");
+    await expect(page.getByRole("button", { name: "Nueva plantilla de documento" })).toBeVisible();
+    await page.waitForTimeout(2500);
+    await sinScrollHorizontal(page);
   });
 
   test("el administrador ve «Documentos clínicos» en el menú de Configuración", async ({ page }) => {
