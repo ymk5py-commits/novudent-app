@@ -71,7 +71,8 @@ function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (
   for (let i = 0; i < startWeekday; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(y, m, d));
   while (cells.length % 7 !== 0) cells.push(null);
-  const monthLabel = first.toLocaleDateString("es-PY", { month: "long", year: "numeric" });
+  const mesYAnio = first.toLocaleDateString("es-PY", { month: "long", year: "numeric" });
+  const monthLabel = mesYAnio.charAt(0).toUpperCase() + mesYAnio.slice(1); // «octubre de 2026» → «Octubre de 2026» (con CSS `capitalize` salía «Octubre De 2026»)
   const WD = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
   return (
@@ -80,7 +81,7 @@ function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (
         <button onClick={() => setDay(new Date(y, m - 1, 1))} className="grid h-9 w-9 place-items-center rounded-xl border border-clinic-border bg-white hover:bg-clinic-bg" aria-label="Mes anterior"><ChevronLeft className="h-4 w-4" /></button>
         <button onClick={() => setDay(new Date())} className="rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-azure-600 hover:bg-clinic-bg">Este mes</button>
         <button onClick={() => setDay(new Date(y, m + 1, 1))} className="grid h-9 w-9 place-items-center rounded-xl border border-clinic-border bg-white hover:bg-clinic-bg" aria-label="Mes siguiente"><ChevronRight className="h-4 w-4" /></button>
-        <span className="ml-1 text-sm font-bold capitalize text-clinic-text">{monthLabel}</span>
+        <span className="ml-1 text-sm font-bold text-clinic-text">{monthLabel}</span>
       </div>
       <div className="overflow-hidden rounded-2xl border border-clinic-border bg-white">
         <div className="grid grid-cols-7 border-b border-clinic-border bg-clinic-bg/50 text-center text-[13px] font-semibold text-clinic-muted">
@@ -282,7 +283,7 @@ export default function AgendaPage() {
       <Reveal className="flex flex-wrap items-center gap-2 print:hidden">
         <div className="flex items-center gap-2">
           <h1 className="text-[16px] font-bold text-clinic-text">Agenda</h1>
-          <span className="rounded-full bg-azure-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-azure-700">{headerCount} citas</span>
+          <span className="rounded-full bg-azure-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-azure-700">{headerCount} {headerCount === 1 ? "cita" : "citas"}</span>
         </div>
         <div className="flex flex-wrap items-center border-b border-clinic-border">
           {TABS.map(([k, label, Icon]) => (
@@ -597,7 +598,7 @@ export default function AgendaPage() {
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Estado</span><StatusBadge status={live.status} estadoId={live.estadoId} /></div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Paciente</span>{p ? <Link className="font-bold text-azure-600 hover:underline" href={`/app/pacientes/${p.id}`}>{fullName(p)}</Link> : "—"}</div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Dentista</span><span className="font-semibold">{d?.name ?? "—"}</span></div>
-                <div className="flex items-center justify-between"><span className="text-clinic-muted">Horario</span><span className="tabular-nums text-xs">{new Date(live.start).toLocaleString("es-PY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} → {fmtTime(live.end)}</span></div>
+                <div className="flex items-center justify-between"><span className="text-clinic-muted">Horario</span><span className="tabular-nums text-xs">{new Date(live.start).toLocaleDateString("es-PY", { day: "2-digit", month: "short" })}, {fmtTime(live.start)} → {fmtTime(live.end)}</span></div>
                 {verMontos && <div className="flex items-center justify-between"><span className="text-clinic-muted">Total a cobrar</span><span className="tabular-nums font-bold">{fmtGs(live.amount - live.discount)}</span></div>}
                 {live.notes && <p className="rounded-xl bg-clinic-bg p-3 text-clinic-text">{live.notes}</p>}
 

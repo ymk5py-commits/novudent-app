@@ -117,6 +117,14 @@ test.describe("agenda del día", () => {
     await expect(ver).not.toContainText("WhatsApp");
   });
 
+  test("el detalle de la cita muestra las dos horas en 24 h, no «02:00 p. m. → 14:30»", async ({ page }) => {
+    await main(page).getByRole("row").filter({ hasText: /González/i }).getByRole("button", { name: "Acciones de la cita" }).first().click();
+    await page.getByRole("menuitem", { name: "Ver" }).click();
+    const horario = page.getByRole("dialog").getByText("Horario").locator("..");
+    await expect(horario).toContainText(/\d{2}:\d{2} → \d{2}:\d{2}/);
+    await expect(horario).not.toContainText(/[ap]\. ?m\./i);
+  });
+
   test("imprimir muestra la agenda (antes salía la hoja en blanco)", async ({ page }) => {
     await page.emulateMedia({ media: "print" });
     await expect(page.locator(".print-area")).toBeVisible();
@@ -135,6 +143,23 @@ test.describe("filtros", () => {
     await main(page).getByLabel("Filtrar por profesional").selectOption({ label: "Dr. Diego Martínez" });
     await expect(main(page)).toContainText("Control + limpieza");
     await expect(main(page)).not.toContainText("Resina pieza 16");
+  });
+});
+
+test.describe("textos de la agenda", () => {
+  test.beforeEach(async ({ page }) => { await entrarDemo(page, USUARIOS_DEMO.recepcionista); await page.goto("/app/agenda"); });
+
+  test("el contador dice «1 cita» en singular", async ({ page }) => {
+    await main(page).getByRole("button", { name: "Reprogramación" }).click(); // la demo trae una sola cita anulada
+    await expect(main(page).getByText("1 cita", { exact: true })).toBeVisible();
+    await expect(main(page).getByText("1 citas", { exact: true })).toHaveCount(0);
+  });
+
+  test("el mes de la vista Mensual sale «Octubre de 2026», no «Octubre De 2026»", async ({ page, isMobile }) => {
+    test.skip(isMobile, "la grilla mensual se prueba en escritorio");
+    await main(page).getByRole("button", { name: "Mensual" }).click();
+    const mes = new Date().toLocaleDateString("es-PY", { month: "long", year: "numeric", timeZone: "America/Asuncion" });
+    await expect(main(page).getByText(mes[0].toUpperCase() + mes.slice(1), { exact: true })).toBeVisible();
   });
 });
 
