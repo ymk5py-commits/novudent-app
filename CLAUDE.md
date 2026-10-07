@@ -179,7 +179,7 @@ clínica real con el plan Clínica. **Al sumar una ruta en `app/api/ia/` hay que
 `docs/manual/contenido/*.ts` (datos tipados + cómo sacar sus capturas con Playwright, con el botón a tocar marcado en rojo); los
 permisos del apéndice salen de `lib/rbac.ts` y `npm test` se rompe si un permiso nuevo no está explicado en `docs/manual/permisos.ts`.
 **Si cambiás una pantalla, un botón o un permiso que el manual explica, volvé a correr las capturas**: una captura que ya no
-encuentra su botón falla, que es justamente el aviso. El manual de agosto (`generar-manual.py`) sigue siendo el del dueño.
+encuentra su botón falla, que es justamente el aviso. El manual de agosto (`generar-manual.py`) sigue siendo el del dueño. Los avisos son `ojo` / `tip` / `revisar` (decisiones para Angel y Camila) / `error` (un defecto de la app: va al apéndice «Errores conocidos» y se saca el aviso cuando se corrige); `verComo` muestra la pantalla de otro rol; el captor falla si una captura muestra texto prohibido (otro sistema, el pie de soporte, localhost) y se tapa con `ocultar`. La lista de bugs que encontró el proceso, con dónde están, es `docs/manual/hallazgos-de-la-app.md`.
 
 ## Diferenciadores (cross-repo con Botika)
 
