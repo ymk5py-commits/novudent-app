@@ -676,7 +676,7 @@ export const procedimientos: Procedimiento[] = [
     titulo: "Atender una reserva que entra por la web",
     roles: ["receptionist", "cashier", "admin"],
     paraQue: "Cuando un paciente reserva solo, con el link de la clínica (web, Instagram, WhatsApp): la cita entra a la agenda sin confirmar y la recepción la tiene que validar.",
-    antes: ["La clínica comparte su link de reserva: lo copia la administración desde **Configuración › Agendamiento online**."],
+    antes: ["La clínica comparte su link de reserva: lo copia la administración desde **Administración › Agenda online** (ahí también está su código QR, para imprimirlo en la recepción)."],
     pasos: [
       { texto: "El paciente abre el link, elige el día, el profesional y el horario, y deja nombre, apellido, CI, WhatsApp y email. Al final toca «Confirmar reserva» y ve «¡Reserva recibida!».", captura: "pagina" },
       { texto: "La reserva entra a la agenda como «No confirmado», con la marca «Online» junto al nombre. Arriba de la tabla, un cartel verde avisa «Hay N agendamiento(s) online que deben ser validados» y trae el enlace «Ver y validar».", captura: "cartel" },
@@ -687,7 +687,7 @@ export const procedimientos: Procedimiento[] = [
     avisos: [
       { tipo: "ojo", texto: "Al confirmar una cita desde «Ver y validar», sale de la tabla porque ya no está sin confirmar: tocá «Marcar todos», en **Estados**, para volver a ver todas las citas del día." },
       { tipo: "ojo", texto: "El cartel vale para el día que tenés abierto: una reserva para otro día no se ve hasta que vas a ese día. **Mi agenda**, en Inicio, te recuerda con «Validar las reservas online» cuántas hay por validar: [[usar-mi-agenda]]." },
-      { tipo: "tip", texto: "El paciente puede reservar hasta 30 días adelante, de lunes a sábado. Con cuánta anticipación mínima lo define la administración, en **Configuración › Reserva online**." },
+      { tipo: "tip", texto: "El paciente puede reservar hasta 30 días adelante, de lunes a sábado. Con cuánta anticipación mínima lo define la administración, en **Administración › Agenda online**, en «Anticipación mínima»." },
       { tipo: "revisar", texto: "No pude hacer una reserva real: en la demo, la página del paciente avisa «Reservas online no configuradas» al elegir un día. Los pasos 2 a 5 se hicieron con la cita online que trae la demo en la agenda." },
       { tipo: "revisar", texto: "Si el paciente no tenía ficha, el sistema la crea con lo que dejó (nombre, apellido, CI, WhatsApp y email); si ya la tenía, usa la existente por su CI. Por cómo está hecha la pantalla, la Historia Clínica de quien reserva por la web no queda pendiente sola, a diferencia de cuando lo cargás vos: no pude comprobarlo sin el servicio de reservas." },
       { tipo: "revisar", texto: "El WhatsApp de «te llega un mensaje para confirmar» depende de la integración de la clínica. Confirmar si está activa en cada caso." },

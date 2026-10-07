@@ -276,16 +276,22 @@ export const procedimientos: Procedimiento[] = [
     paraQue: "Para tener cargada la lista de prestaciones con su precio. De ahí salen los precios de los planes de tratamiento y de los presupuestos.",
     pasos: [
       { texto: "Entrá a **Administración** y elegí «Arancel de precios».", captura: "menu" },
-      { texto: "En **Servicios y aranceles** ves cada prestación con su código, su descripción y su precio. Para sumar una, tocá «Agregar servicio».", captura: "tabla" },
-      { texto: "Escribí el **Código**, la **Descripción** y el **Arancel (Gs)**, y tocá «Crear servicio».", captura: "modal" },
+      { texto: "En **Arancel de precios** ves cada prestación con su código, su descripción, su categoría y su precio. Arriba están el buscador (por código, nombre o categoría) y el filtro por categoría. Para sumar una, tocá «Agregar servicio».", captura: "tabla" },
+      { texto: "Escribí el **Código**, la **Descripción** y el **Arancel (Gs)**, y tocá «Crear servicio». En **Categoría** podés dejar «Automática»: se deduce del código.", captura: "modal" },
       { texto: "La prestación nueva queda al final de la lista.", captura: "fila" },
-      { texto: "Para corregir un precio o una descripción, tocá el lápiz de su fila, cambiá lo que haga falta y tocá «Guardar». El código no se puede cambiar.", captura: "editar" },
+      { texto: "Para corregir un precio, hacé clic en el precio de su fila, escribí el nuevo y apretá **Enter**: se guarda y pasás al precio de la fila de abajo (con **Esc** cancelás). Así se cargan muchos precios seguidos.", captura: "editar" },
+      { texto: "Para cambiar la descripción o la categoría, tocá el lápiz de su fila, corregí y tocá «Guardar». El código no se puede cambiar." },
+      { texto: "Para subir o bajar todos los precios a la vez, tocá «Ajustar precios», escribí el porcentaje (10 sube un 10 %; -5 baja un 5 %) y, si querés, a qué múltiplo redondear. Ves cómo queda cada precio antes de guardar; tocá «Aplicar».", captura: "ajuste" },
+      { texto: "Si te equivocaste, «Deshacer» (arriba de la tabla) devuelve los precios como estaban. Si pusiste un filtro de categoría, el ajuste puede ser solo para lo que estás viendo." },
+      { texto: "Para cargar muchos servicios de una vez, tocá «Cargar desde Excel», pegá las filas de tu planilla (código, descripción, categoría si querés, y precio) o elegí un archivo CSV. Ves qué pasaría con cada fila —nueva, cambia, sin cambios o con error— y recién al tocar «Aplicar» se guarda.", captura: "carga" },
+      { texto: "«Descargar» baja el arancel actual en una planilla: sirve de modelo para armar la carga, o para editarlo en Excel y volver a subirlo." },
       { texto: "Para sacar una prestación, tocá el tachito de su fila y aceptá la pregunta." },
       { texto: "Desde ese momento, al armar un plan de tratamiento o un presupuesto la prestación aparece en la lista con su precio: [[armar-un-plan-de-tratamiento]]." },
     ],
     avisos: [
       { tipo: "ojo", texto: "Cambiar un precio no cambia los planes ya armados: cada plan guarda el precio del momento en que se agregó la prestación. Al eliminar una prestación pasa lo mismo: los planes que la usan no se tocan, solo deja de ofrecerse para los nuevos." },
-      { tipo: "ojo", texto: "Si escribís un código que ya existe, el servicio nuevo reemplaza al anterior en lugar de sumarse." },
+      { tipo: "ojo", texto: "No se puede crear un servicio con un código que ya existe: la pantalla avisa y hay que cambiarle el precio al que está. En la carga desde Excel, un código que ya existe se actualiza (precio, y descripción o categoría si las traés)." },
+      { tipo: "ojo", texto: "«Deshacer» solo devuelve los precios que siguen como los dejó el ajuste, y se pierde al salir de la pantalla, al hacer otro ajuste o una carga desde Excel. Los precios que cambiaste a mano después no se pisan." },
       { tipo: "tip", texto: "Los reportes agrupan las prestaciones por categoría a partir del código. Cargalas con los códigos de la nomenclatura CDT (D0…, D1…, D2…) y quedan bien agrupadas; se guardan en mayúsculas." },
     ],
     capturar: async (c) => {
@@ -294,10 +300,10 @@ export const procedimientos: Procedimiento[] = [
       await c.entrar("admin", "/app");
       await irPorElMenu(c, "Arancel de precios", "menu");
 
-      const arancel = tarjeta(page, "Servicios y aranceles");
+      const arancel = tarjeta(page, "Arancel de precios");
       await colocar(page, arancel);
       const agregar = arancel.getByRole("button", { name: "Agregar servicio" });
-      await c.foto("tabla", { recorte: arancel, margen: 4, resaltar: agregar });
+      await c.foto("tabla", { recorte: arancel, alto: 1000, margen: 4, resaltar: agregar });
 
       await agregar.click();
       const modal = page.getByRole("dialog", { name: "Agregar servicio" });
@@ -317,14 +323,32 @@ export const procedimientos: Procedimiento[] = [
       await colocar(page, anterior);
       await c.foto("fila", { recorte: [anterior, nueva], margen: 6, resaltar: nueva });
 
-      // Se corrige el precio de la profilaxis (D1110).
+      // Se corrige el precio de la profilaxis (D1110) en la misma fila: clic en el precio, escribir y Enter.
       const profilaxis = arancel.getByRole("row", { name: /D1110/ });
-      await profilaxis.getByRole("button", { name: "Editar servicio" }).click();
-      const edicion = page.getByRole("dialog", { name: "Editar servicio" });
-      await edicion.getByLabel("Arancel (Gs)").fill("270000");
-      await c.foto("editar", { recorte: edicion, margen: 4, resaltar: [edicion.getByLabel("Arancel (Gs)"), edicion.getByRole("button", { name: "Guardar" })] });
-      await edicion.getByRole("button", { name: "Guardar" }).click();
+      await colocar(page, profilaxis);
+      await profilaxis.getByRole("button", { name: /Cambiar el arancel de/ }).click();
+      const campoPrecio = profilaxis.getByRole("textbox", { name: /Arancel de/ });
+      await campoPrecio.fill("270000");
+      await c.foto("editar", { recorte: profilaxis, margen: 6, resaltar: campoPrecio, conFoco: true }); // con foco: sacarlo guardaría el precio y cerraría el campo
+      await campoPrecio.press("Enter");
+      await page.keyboard.press("Escape"); // Enter pasa al precio de la fila de abajo: se lo cierra sin cambiarlo
       await c.expect(arancel.getByRole("row", { name: /D1110/ })).toContainText("270.000");
+
+      // Ajustar un porcentaje a todos: se ve cómo queda y se cancela (el resto del guion espera los precios de arriba).
+      await arancel.getByRole("button", { name: "Ajustar precios" }).click();
+      const ajuste = page.getByRole("dialog", { name: "Ajustar precios" });
+      await ajuste.getByLabel("Porcentaje").fill("5");
+      await c.expect(ajuste).toContainText("Cambian");
+      await c.foto("ajuste", { recorte: ajuste, alto: 1000, margen: 4, resaltar: [ajuste.getByLabel("Porcentaje"), ajuste.getByRole("button", { name: /Aplicar a/ })] });
+      await ajuste.getByRole("button", { name: "Cancelar" }).click();
+
+      // Cargar filas pegadas de Excel: también se cancela después de mostrar la vista previa.
+      await arancel.getByRole("button", { name: "Cargar desde Excel" }).click();
+      const carga = page.getByRole("dialog", { name: "Cargar precios desde Excel" });
+      await carga.getByLabel("Filas de la planilla").fill("D1110\tProfilaxis (adulto)\t270000\nD1351\tSellante de fosas y fisuras\t120000\nD2330\tResina compuesta — 1 superficie\t450000");
+      await c.expect(carga).toContainText("nuevo");
+      await c.foto("carga", { recorte: carga, alto: 1000, margen: 4, resaltar: [carga.getByLabel("Filas de la planilla"), carga.getByRole("button", { name: /Aplicar/ })] });
+      await carga.getByRole("button", { name: "Cancelar" }).click();
 
       // El tachito saca la prestación (con pregunta).
       await nueva.getByRole("button", { name: "Eliminar servicio" }).click();
@@ -497,7 +521,7 @@ export const procedimientos: Procedimiento[] = [
     roles: ["admin"],
     paraQue: "Para decidir qué datos se piden al cargar un paciente, al dar una cita y en la reserva online, y cuáles son obligatorios.",
     pasos: [
-      { texto: "Entrá a **Pacientes** (menú de arriba) y tocá la pestaña **Configuración**.", captura: "pestana" },
+      { texto: "Entrá a **Administración › Campos del paciente**: te lleva a **Pacientes**, a la pestaña **Configuración**. Arriba de la tabla, el recuadro «¿Para qué sirve?» explica las casillas con ejemplos.", captura: "pestana" },
       { texto: "La tabla cruza cada **campo** con tres lugares: **Nuevo paciente**, **Al agendar** y **Agenda online**. En cada lugar hay dos casillas: **Presente** (se pide) y **Requerido** (es obligatorio).", captura: "tabla" },
       { texto: "Tildá o destildá las casillas que quieras cambiar. Si hacés obligatorio un campo, queda también presente; si lo sacás de la lista, deja de ser obligatorio.", captura: "tilde" },
       { texto: "Tocá «Guardar». Mientras no lo hagas, arriba dice «Hay cambios sin guardar».", captura: "guardar" },
@@ -510,7 +534,6 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "tip", texto: "Solo el administrador puede cambiar esta tabla: los demás roles la ven con las casillas bloqueadas." },
       { tipo: "tip", texto: "De fábrica el **Email** es obligatorio en los tres lugares (desde el 7/10/2026): los avisos al paciente (confirmación de cita, comprobantes, documentos) salen por correo. Si la clínica atiende a pacientes sin correo, acá se puede soltar la casilla **Requerido** del email." },
       { tipo: "revisar", texto: "Lo que se pide de fábrica (nombre, apellidos, CI, fecha de nacimiento, sexo, género, teléfono móvil y email como obligatorios) salió de la revisión de Novum del 27/9/2026 y del pedido del 7/10/2026 (email). Confirmar que sigue siendo lo que se quiere ofrecer a las clínicas nuevas, y si el email tiene que ser un campo que la clínica no pueda soltar." },
-      { tipo: "error", texto: "El atajo «Campos del paciente» del menú Administración no lleva a esta tabla: abre Configuración general. Por eso el paso 1 entra por **Pacientes**." },
     ],
     capturar: async (c) => {
       const { page } = c;

@@ -724,7 +724,7 @@ export const procedimientos: Procedimiento[] = [
       "Cada profesional tiene cargado su porcentaje de comisión, en **Administración › Usuarios y profesionales**.",
     ],
     pasos: [
-      { texto: "Entrá a **Cobranza › Liquidaciones**. Elegí el período con **Desde** y **Hasta**; al entrar viene el mes en curso. Arriba ves las comisiones del período, lo que queda pendiente de pago y cuántas liquidaciones hay en el histórico.", captura: "periodo" },
+      { texto: "Entrá a **Administración › Liquidaciones**. Elegí el período con **Desde** y **Hasta**; al entrar viene el mes en curso. Arriba ves las comisiones del período, lo que queda pendiente de pago y cuántas liquidaciones hay en el histórico.", captura: "periodo" },
       { texto: "En **Producción por profesional** aparece una fila por profesional con su **Producción**, el **% Comisión**, el **Sueldo base** y lo **A liquidar**, que es el sueldo base más la producción por el porcentaje.", captura: "tabla" },
       { texto: "La **Producción** sale de las citas del profesional que quedaron en estado «Atendido» dentro del período: suma el importe de cada cita menos su descuento. Abajo de cada monto dice «calc.» con la cifra calculada." },
       { texto: "Si hace falta ajustar algo, cambiá la **Producción**, el **% Comisión** o el **Sueldo base** de esa fila: lo **A liquidar** se recalcula al instante.", captura: "ajuste" },
@@ -928,7 +928,7 @@ export const procedimientos: Procedimiento[] = [
     roles: ["admin"],
     paraQue: "Para saber qué opinan los pacientes: armás una encuesta de satisfacción o de recomendación (NPS), le pasás el link al paciente y leés las respuestas en esta misma pantalla.",
     pasos: [
-      { texto: "Entrá a **Administración › Encuestas y NPS** y tocá «Nueva encuesta». A la izquierda están las encuestas que ya hay, con su cantidad de respuestas.", captura: "lista" },
+      { texto: "Entrá a **CRM › Encuestas y NPS** y tocá «Nueva encuesta». A la izquierda están las encuestas que ya hay, con su cantidad de respuestas.", captura: "lista" },
       { texto: "Escribí el **Título** y elegí el **Tipo**: «Satisfacción» (puntajes de 1 a 5) o «NPS» (una pregunta de 0 a 10: ¿qué tan probable es que nos recomiende?).", captura: "formulario" },
       { texto: "Armá las preguntas. Con «+ Puntaje», «+ NPS» o «+ Texto» sumás una; en cada una escribís lo que va a leer el paciente y elegís el **Tipo de respuesta**. Tocá «Guardar encuesta».", captura: "preguntas" },
       { texto: "Tocá «Copiar link» en la tarjeta de la encuesta y mandáselo al paciente (por WhatsApp o correo). Lo abre sin usuario ni contraseña, responde y toca «Enviar respuesta».", captura: "link" },
