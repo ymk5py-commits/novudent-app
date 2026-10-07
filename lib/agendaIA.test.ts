@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parsearPropuestas, emparejarPaciente, promptAgendaSemana, resumenSemanaDatos } from "./agendaIA";
+import { parsearPropuestas, emparejarPaciente, promptAgendaSemana, resumenSemanaDatos, transcripcionDe } from "./agendaIA";
 import { armarAgenda, type ItemAgenda } from "./miAgenda";
 import type { FilaTarea } from "./tareas";
 
@@ -190,5 +190,18 @@ describe("resumenSemanaDatos — lo que sale del navegador hacia el resumen sema
   it("la producción solo viaja si el rol ve montos", () => {
     expect(resumenSemanaDatos({ ...base, produccionSemanaGs: 4_500_000 })).not.toHaveProperty("produccionSemanaGs");
     expect(resumenSemanaDatos({ ...base, verMontos: true, produccionSemanaGs: 4_500_000 }).produccionSemanaGs).toBe(4_500_000);
+  });
+});
+
+describe("transcripcionDe", () => {
+  it("saca lo que se dijo del JSON del modelo, venga como venga", () => {
+    expect(transcripcionDe('{"tareas":[],"transcripcion":"pedir guantes"}')).toBe("pedir guantes");
+    expect(transcripcionDe("```json\n" + '{"transcripcion":"  hola  "}' + "\n```")).toBe("hola");
+  });
+  it("sin transcripción, o con basura, queda vacía", () => {
+    for (const raw of ['{"tareas":[]}', "no sé", "", null, '{"transcripcion":5}']) expect(transcripcionDe(raw)).toBe("");
+  });
+  it("se topa en 4000 caracteres", () => {
+    expect(transcripcionDe(JSON.stringify({ transcripcion: "x".repeat(5000) }))).toHaveLength(4000);
   });
 });

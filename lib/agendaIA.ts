@@ -76,6 +76,12 @@ export function parsearPropuestas(raw: unknown, hoy: string): PropuestaTarea[] {
   return out;
 }
 
+/** Lo que se dijo, literal, según el modelo (para que la persona vea qué se entendió). */
+export function transcripcionDe(raw: unknown): string {
+  const data = extraerJson(raw);
+  return esObjeto(data) && typeof data.transcripcion === "string" ? data.transcripcion.trim().slice(0, 4000) : "";
+}
+
 /** Sin tildes, en minúscula y sin signos: «Pérez, José» y «perez jose» son lo mismo. */
 const normalizar = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, " ");
 const palabras = (s: string) => normalizar(s).split(/\s+/).filter(Boolean);
