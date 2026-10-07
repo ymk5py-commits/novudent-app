@@ -104,13 +104,15 @@ const BASE: { presentes: CampoKey[]; requeridos: CampoKey[] } = {
     "apoderado", "dniRepLegal", "parentesco", "ruc", "razonSocial", "convenio",
     "actividad", "referencia", "codigoReferido",
   ],
-  requeridos: ["nombreLegal", "apellidos", "documento", "fechaNacimiento", "sexo", "genero", "telefonoMovil"],
+  requeridos: ["nombreLegal", "apellidos", "documento", "fechaNacimiento", "sexo", "genero", "telefonoMovil", "email"],
 };
-/** Lo que se pide si la clínica no configuró nada (revisión de Novum, 27/9/2026). */
+/** Lo que se pide si la clínica no configuró nada (revisión de Novum, 27/9/2026; el email obligatorio, 7/10/2026: los avisos al
+ *  paciente salen por correo). No es un campo fijo: la clínica puede soltarlo en «Campos del paciente». */
 const POR_DEFECTO: Record<FieldContext, { presentes: CampoKey[]; requeridos: CampoKey[] }> = {
   nuevo: BASE,
   agenda: BASE,
-  online: { presentes: FIJOS.online, requeridos: FIJOS.online },
+  // La reserva online también crea la ficha del paciente: sin correo no habría a dónde avisarle.
+  online: { presentes: [...FIJOS.online, "email"], requeridos: [...FIJOS.online, "email"] },
   checkin: BASE,
 };
 

@@ -39,6 +39,7 @@ test("pacientes: dar de alta un paciente y encontrarlo por su CI", async ({ page
   await m.getByLabel("Sexo *").selectOption("M");
   await m.getByLabel("Género *").selectOption("M");
   await m.getByLabel("Teléfono móvil *").fill("+595 981 000 000");
+  await m.getByLabel("Email *").fill("prueba.automatica@correo.com");
   await m.getByRole("button", { name: "Crear paciente" }).click();
   await page.waitForURL(/\/app\/pacientes\/p_/);
   await page.goto("/app/pacientes");

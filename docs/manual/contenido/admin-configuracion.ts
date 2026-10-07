@@ -508,7 +508,8 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "Sacar un campo del formulario no borra el dato de los pacientes que ya lo tienen: solo deja de pedirse." },
       { tipo: "ojo", texto: "Si el paciente es menor de edad, al cargar su fecha de nacimiento se piden los datos del responsable y son obligatorios, aunque los hayas sacado de la lista." },
       { tipo: "tip", texto: "Solo el administrador puede cambiar esta tabla: los demás roles la ven con las casillas bloqueadas." },
-      { tipo: "revisar", texto: "Lo que se pide de fábrica (nombre, apellidos, CI, fecha de nacimiento, sexo, género y teléfono móvil como obligatorios) salió de la revisión de Novum del 27/9/2026. Confirmar que sigue siendo lo que se quiere ofrecer a las clínicas nuevas." },
+      { tipo: "tip", texto: "De fábrica el **Email** es obligatorio en los tres lugares (desde el 7/10/2026): los avisos al paciente (confirmación de cita, comprobantes, documentos) salen por correo. Si la clínica atiende a pacientes sin correo, acá se puede soltar la casilla **Requerido** del email." },
+      { tipo: "revisar", texto: "Lo que se pide de fábrica (nombre, apellidos, CI, fecha de nacimiento, sexo, género, teléfono móvil y email como obligatorios) salió de la revisión de Novum del 27/9/2026 y del pedido del 7/10/2026 (email). Confirmar que sigue siendo lo que se quiere ofrecer a las clínicas nuevas, y si el email tiene que ser un campo que la clínica no pueda soltar." },
       { tipo: "error", texto: "El atajo «Campos del paciente» del menú Administración no lleva a esta tabla: abre Configuración general. Por eso el paso 1 entra por **Pacientes**." },
     ],
     capturar: async (c) => {
@@ -522,10 +523,11 @@ export const procedimientos: Procedimiento[] = [
       const tabla = page.getByRole("table", { name: "Campos del paciente por contexto" });
       await c.foto("tabla", { recorte: [page.getByRole("heading", { name: "Configuración de campos del paciente" }), tabla.locator("tbody tr").nth(7)], margen: 4, resaltar: [tabla.getByRole("columnheader", { name: "Nuevo paciente" }), tabla.getByRole("columnheader", { name: "Al agendar" }), tabla.getByRole("columnheader", { name: "Agenda online" })] });
 
-      const requeridoEmail = page.getByLabel("Email: requerido en Nuevo paciente");
-      await requeridoEmail.check();
-      await c.expect(page.getByLabel("Email: presente en Nuevo paciente")).toBeChecked();
-      await c.foto("tilde", { recorte: [page.getByRole("heading", { name: "Configuración de campos del paciente" }), requeridoEmail.locator("xpath=ancestor::tr[1]")], margen: 4, resaltar: [page.getByLabel("Email: presente en Nuevo paciente"), requeridoEmail] });
+      // El ejemplo es «Barrio»: el email ya viene obligatorio de fábrica y no serviría para mostrar el cambio.
+      const requeridoBarrio = page.getByLabel("Barrio: requerido en Nuevo paciente");
+      await requeridoBarrio.check();
+      await c.expect(page.getByLabel("Barrio: presente en Nuevo paciente")).toBeChecked();
+      await c.foto("tilde", { recorte: [page.getByRole("heading", { name: "Configuración de campos del paciente" }), requeridoBarrio.locator("xpath=ancestor::tr[1]")], margen: 4, resaltar: [page.getByLabel("Barrio: presente en Nuevo paciente"), requeridoBarrio] });
 
       const guardar = page.getByRole("button", { name: "Guardar" });
       await c.foto("guardar", { recorte: [page.getByRole("heading", { name: "Configuración de campos del paciente" }), page.getByRole("status")], margen: 4, resaltar: guardar });
@@ -533,13 +535,13 @@ export const procedimientos: Procedimiento[] = [
       await c.expect(guardar).toBeDisabled();
 
       await c.ir("/app/pacientes/nuevo");
-      const email = page.getByLabel("Email *");
-      await c.expect(email).toBeVisible();
+      const barrio = page.getByLabel("Barrio *");
+      await c.expect(barrio).toBeVisible();
       // El campo es obligatorio: el navegador no deja crear al paciente hasta completarlo (no se ve en la captura: es un globito del navegador).
-      await c.expect(email).toHaveAttribute("required", "");
+      await c.expect(barrio).toHaveAttribute("required", "");
       await page.getByRole("button", { name: "Crear paciente" }).click();
       await c.expect(page).toHaveURL(/\/app\/pacientes\/nuevo/);
-      await c.foto("nuevo", { recorte: [page.getByText("Contacto y domicilio", { exact: true }), page.getByLabel("Teléfono móvil *").locator("xpath=ancestor::label[1]"), email.locator("xpath=ancestor::label[1]")], margen: 4, resaltar: email });
+      await c.foto("nuevo", { recorte: [page.getByText("Contacto y domicilio", { exact: true }), page.getByLabel("Teléfono móvil *").locator("xpath=ancestor::label[1]"), barrio.locator("xpath=ancestor::label[1]")], margen: 4, resaltar: barrio });
     },
   },
 
@@ -806,6 +808,7 @@ export const procedimientos: Procedimiento[] = [
       await principal.getByLabel("Sexo *").selectOption("F");
       await principal.getByLabel("Género *").selectOption("F");
       await principal.getByLabel("Teléfono móvil *").fill("0981 111 112");
+      await principal.getByLabel("Email *").fill("maria.gonzalez@example.com");
       await principal.getByRole("button", { name: "Crear paciente" }).click();
       await page.waitForURL(/\/app\/pacientes\/p_/);
       await c.ir("/app");
