@@ -3,10 +3,11 @@
  *  (cumplimiento regulatorio, spec Dentalink 8.7). Bitácora con indicadores
  *  químico/biológico, método, lote y responsable. */
 import { useMemo, useState } from "react";
+import { can } from "@/lib/rbac";
 import { useStore, fmtDate } from "@/lib/store";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
-import { ShieldCheck, Plus, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { ShieldCheck, Plus, Pencil, Trash2, AlertTriangle, ShieldAlert } from "lucide-react";
 import type { SterilizationCycle } from "@/lib/types";
 
 const METHOD_LABEL: Record<SterilizationCycle["method"], string> = {
@@ -20,7 +21,7 @@ function indTone(v?: string): "ok" | "err" | "warn" | "muted" {
   return v === "ok" ? "ok" : v === "fail" ? "err" : v === "pendiente" ? "warn" : "muted";
 }
 
-export default function EsterilizacionPage() {
+function Esterilizacion() {
   const { db, addSterilizationCycle, updateSterilizationCycle, deleteSterilizationCycle } = useStore();
   const ym = new Date().toISOString().slice(0, 7);
   const [mes, setMes] = useState(ym);
@@ -209,4 +210,20 @@ function CicloForm({ cycle, users, onClose, onSave }: {
       </div>
     </Modal>
   );
+}
+
+/** Roles v3: es de la administración (`practice.config`), como el resto de «Gestión». El menú la esconde, pero quien escribía la
+ *  URL registraba, editaba y borraba igual. */
+export default function EsterilizacionPage() {
+  const { session } = useStore();
+  if (!session || !can(session.role, "practice.config")) {
+    return (
+      <Card className="p-10 text-center">
+        <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
+        <p className="mt-1 text-sm text-clinic-muted">El registro de esterilización lo maneja el <b>Administrador</b>.</p>
+      </Card>
+    );
+  }
+  return <Esterilizacion />;
 }

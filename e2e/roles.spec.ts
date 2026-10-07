@@ -132,6 +132,31 @@ test.describe("Recepción y caja", () => {
   });
 });
 
+/* Esterilización y Registro ambiental son de la administración (practice.config): el menú las esconde, pero quien escribía la URL
+   registraba, editaba y borraba igual. Se probaron con otras pantallas de gestión que sí decían «Acceso denegado». */
+test.describe("Esterilización y Registro ambiental", () => {
+  const RUTAS = ["/app/esterilizacion", "/app/ambiental"];
+  for (const [quien, usuario] of [
+    ["la recepcionista", USUARIOS_DEMO.recepcionista], ["Recepción y caja", USUARIOS_DEMO.caja],
+    ["el dentista", USUARIOS_DEMO.dentista], ["la asistente", USUARIOS_DEMO.asistente],
+  ] as const) {
+    test(`${quien} no entra escribiendo la URL`, async ({ page, isMobile }) => {
+      test.skip(isMobile, "el acceso por URL se prueba en escritorio");
+      await entrarDemo(page, usuario);
+      await denegadas(page, RUTAS);
+    });
+  }
+  test("el administrador sí entra", async ({ page, isMobile }) => {
+    test.skip(isMobile, "el acceso por URL se prueba en escritorio");
+    await entrarDemo(page, USUARIOS_DEMO.admin);
+    for (const ruta of RUTAS) {
+      await page.goto(ruta);
+      await expect(main(page), ruta).not.toContainText("Acceso denegado");
+      await expect(main(page), ruta).toContainText(ruta.endsWith("esterilizacion") ? "Esterilización" : "Registro ambiental");
+    }
+  });
+});
+
 test.describe("Administrador", () => {
   test.beforeEach(async ({ page, isMobile }) => {
     test.skip(isMobile, "el menú lateral se prueba en escritorio");
