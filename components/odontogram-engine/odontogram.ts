@@ -26,6 +26,9 @@ const tooth14Url = "/odontogram/teeth-svgs/14.svg";
 const tooth16Url = "/odontogram/teeth-svgs/16.svg";
 const tooth14OcclUrl = "/odontogram/teeth-svgs/14_occl.svg";
 const tooth16OcclUrl = "/odontogram/teeth-svgs/16_occl.svg";
+// PATCH Novudent — vistas incisales de incisivos y caninos (ver NOTICE.md, «Parches de diseño»).
+const tooth11OcclUrl = "/odontogram/teeth-svgs/11_occl.svg";
+const tooth13OcclUrl = "/odontogram/teeth-svgs/13_occl.svg";
 /* Tooth SVG Test UI (v2) - vanilla JS */
 
 const TEMPLATES = {
@@ -35,6 +38,8 @@ const TEMPLATES = {
   16: tooth16Url,
 };
 const TEMPLATES_OCCL = {
+  11: tooth11OcclUrl, // PATCH Novudent
+  13: tooth13OcclUrl, // PATCH Novudent
   14: tooth14OcclUrl,
   16: tooth16OcclUrl,
 };
@@ -315,6 +320,35 @@ function mirrorVertical(svgRoot: Any){
 
 function svgGetById(root: Any, id: Any){
   return root.getElementById ? root.getElementById(id) : $("#"+id, root);
+}
+
+// PATCH Novudent — ids de pintura únicos por clon (ver NOTICE.md, «Parches de diseño»).
+// Cada plantilla se clona una vez por pieza, así que sus degradés, patrones y clipPaths
+// quedan con el MISMO id repetido en el documento y `url(#id)` resuelve contra el
+// primero. Si ese primer clon está dentro de un `display:none` (en el celular, el selector
+// de arcada oculta la fila de arriba), Chrome no lo pinta y las piezas de la otra arcada se
+// quedan sin relleno. Se renombran solo los servidores de pintura y sus referencias; los
+// ids de las capas que maneja el motor (`tooth-base`, `caries-*`, …) no se tocan.
+const PAINT_SERVERS = "linearGradient[id],radialGradient[id],pattern[id],clipPath[id],mask[id],filter[id]";
+const PAINT_REFS = '[style*="url("],[fill*="url("],[stroke*="url("],[clip-path],[mask],[filter],[href^="#"]';
+function scopePaintServerIds(svgRoot: Any, suffix: string){
+  const renamed = new Map();
+  for(const n of svgRoot.querySelectorAll(PAINT_SERVERS)){
+    const id = n.getAttribute("id");
+    renamed.set(id, `${id}--${suffix}`);
+    n.setAttribute("id", `${id}--${suffix}`);
+  }
+  if(!renamed.size) return;
+  const fix = (v: string) => v.replace(/url\(\s*(["']?)#([^"')\s]+)\1\s*\)/g,
+    (m: string, _q: string, id: string) => (renamed.has(id) ? `url(#${renamed.get(id)})` : m));
+  for(const n of svgRoot.querySelectorAll(PAINT_REFS)){
+    for(const attr of ["style", "fill", "stroke", "clip-path", "mask", "filter"]){
+      const v = n.getAttribute(attr);
+      if(v && v.includes("url(")) n.setAttribute(attr, fix(v));
+    }
+    const href = n.getAttribute("href");
+    if(href && renamed.has(href.slice(1))) n.setAttribute("href", `#${renamed.get(href.slice(1))}`);
+  }
 }
 
 // ---- App state ----
@@ -5057,7 +5091,7 @@ async function buildGrid(token: number){
   const tplCache = new Map();
   const occlCache = new Map();
   const tplNos = [11,13,14,16] as const;
-  const occlNos = [14,16] as const;
+  const occlNos = [11,13,14,16] as const; // PATCH Novudent: + vistas incisales
   await Promise.all([
     ...tplNos.map(async (tplNo) => {
       tplCache.set(tplNo, await loadSvg(TEMPLATES[tplNo]));
@@ -5073,6 +5107,7 @@ async function buildGrid(token: number){
     const tpl = view === "occl" ? occlCache.get(tplNo) : tplCache.get(tplNo);
     if(!tpl) return;
     const svg = tpl.cloneNode(true);
+    scopePaintServerIds(svg, `${toothNo}${view === "occl" ? "o" : "l"}`); // PATCH Novudent
     if(rot === 180) rotate180(svg);
     if(mirror) mirrorVertical(svg);
 
@@ -5127,6 +5162,9 @@ async function buildGrid(token: number){
   }
 
   function occlTemplateForTooth(toothNo: Any){
+    // PATCH Novudent — incisivos y caninos también tienen vista incisal (antes eran casillas vacías).
+    if([11,12,21,22,31,32,41,42].includes(toothNo)) return 11;
+    if([13,23,33,43].includes(toothNo)) return 13;
     if([14,15,24,25,34,35,44,45].includes(toothNo)) return 14;
     if([16,17,18,26,27,28,36,37,38,46,47,48].includes(toothNo)) return 16;
     return null;
@@ -5167,8 +5205,10 @@ async function buildGrid(token: number){
 
   const upperSide = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
   const lowerSide = [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
-  const upperOcclPlaceholders = new Set([13,12,11,21,22,23]);
-  const lowerOcclPlaceholders = new Set([43,42,41,31,32,33]);
+  // PATCH Novudent — ya no quedan casillas vacías: las 6 piezas de adelante de cada arcada
+  // tienen su vista incisal (antes: new Set([13,12,11,21,22,23]) y new Set([43,42,41,31,32,33])).
+  const upperOcclPlaceholders = new Set();
+  const lowerOcclPlaceholders = new Set();
 
   if(!initialized || token !== initToken) return;
   // PATCH Novudent — orden de filas de Dentalink: las coronas quedan por fuera y

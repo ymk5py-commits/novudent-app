@@ -328,6 +328,10 @@ select:focus{
 .tooth-tile.tpl-14 .tooth-svg svg{width:68px;height:116px}
 .tooth-tile.tpl-11 .tooth-svg svg,
 .tooth-tile.tpl-13 .tooth-svg svg{width:60px;height:102px}
+/* PATCH Novudent — las vistas incisales (incisivos y caninos) miden lo mismo que la oclusal del
+   molar (64×64); sin esto les ganaría la regla de su plantilla lateral (.tpl-11/.tpl-13, 60×102). */
+.tooth-tile.occl-view.tpl-11 .tooth-svg svg,
+.tooth-tile.occl-view.tpl-13 .tooth-svg svg{width:64px;height:64px}
 .tooth-tile.wisdom-hidden{opacity:.45; pointer-events:none}
 .tooth-tile.wisdom-hidden .tooth-svg svg{opacity:0}
 .tooth-tile.occl-hidden{display:none !important}

@@ -58,3 +58,36 @@ environment jsdom + `plugins: [react()]`), ver el `README.md` del repo origen.
   (`.tooth-tile:after{inset:-2px}`) en las piezas del borde; además el overlay de puentes
   (`position:absolute; inset:0`) pasaría a medir la caja visible en vez del contenido scrolleable.
   Hay un comentario en la regla para que no se vuelva a agregar.
+- `public/odontogram/teeth-svgs/*.svg` (arte del upstream, oct-2026): las piezas dejan de ser una
+  silueta gris plana. Esmalte marfil con degradé (más cálido en el cuello, translúcido en el borde
+  incisal), raíz color dentina que oscurece hacia el ápice, unión amelocementaria, volumen y
+  reflejos; las vistas oclusales con el mismo marfil y fisuras marrones. Cada silueta (natural,
+  rota, radix, tallada, debajo de la encía, de leche) se pinta con un `<pattern>`, así el sombreado
+  sigue a todas las variantes; el brillo de la corona natural (`tooth-base-beauty`) suma una sombra
+  interior recortada al contorno. La resina y la obturación provisoria llevan un borde fino para
+  leerse sobre el marfil. **No cambian** `viewBox`, ids ni `data-active`: el contrato lo cuida
+  `lib/odontogram-svg.test.ts`. Los ids nuevos llevan prefijo por archivo (`og11-…`, `og14o-…`).
+- `odontogram.ts` (`scopePaintServerIds`, llamado en `addTile`): ids de pintura únicos por clon.
+  Cada plantilla se clona una vez por pieza, y `url(#id)` resuelve contra el **primer** elemento
+  del documento con ese id; si ese clon queda dentro de un `display:none`, Chrome no lo pinta y las
+  demás piezas se quedan sin relleno. Pasaba en el celular: el selector de arcada oculta la fila de
+  arriba y las piezas de abajo (ya las oclusales de premolares y molares) perdían el degradé. Se
+  renombran solo degradés, patrones, `clipPath`, `mask` y `filter` (sufijo `--<pieza><o|l>`) y sus
+  referencias; los ids de capas que maneja el motor no se tocan. Lo cubre
+  `e2e/odontograma-realista.spec.ts` (falla si se saca el llamado).
+- Vistas incisales de incisivos y caninos (oct-2026). Las 12 casillas de la fila oclusal que el
+  motor dejaba vacías (`addPlaceholderTile` para 13…23 y 43…33) ahora muestran la pieza vista
+  desde incisal, con el mismo marfil y la misma escala que las oclusales: `public/odontogram/
+  teeth-svgs/11_occl.svg` (incisivos) y `13_occl.svg` (caninos), assets propios de Novudent con la
+  estructura de capas de `14_occl.svg` (base, variantes, `tooth-base`, leche, superficies, coronas,
+  carillas, puentes, implante, planes; sin onlays, así el motor las compone como vista frontal).
+  Vestibular arriba, mesial a la derecha: el motor las rota y espeja igual que su pieza. Una pieza
+  ausente, extraída o debajo de la encía deja la casilla vacía; un implante muestra la plataforma,
+  como en premolares y molares. En `odontogram.ts`: `TEMPLATES_OCCL`, `occlNos` y
+  `occlTemplateForTooth` suman las plantillas 11 y 13, y los conjuntos de casillas vacías quedan
+  sin piezas. Tocar la vista incisal elige la pieza y se resalta con ella, como la oclusal de una
+  muela; no lleva `role`/`tabindex` (el control accesible sigue siendo la casilla lateral). Efecto
+  colateral buscado: en el celular, las casillas vacías no tenían clase de arcada y al elegir una
+  sola arcada corrían la fila de abajo 6 columnas. En `index.css`, una regla
+  `.tooth-tile.occl-view.tpl-11/.tpl-13` les da 64×64 (si no, les ganaba la regla de su plantilla
+  lateral, 60×102). Lo cubren `lib/odontogram-svg.test.ts` y `e2e/odontograma-realista.spec.ts`.

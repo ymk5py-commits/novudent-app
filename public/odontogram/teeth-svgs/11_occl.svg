@@ -1,0 +1,323 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Novudent (oct-2026): vista incisal para el odontograma de React Odontogram Modul (Zoltan Dul, MIT). Mismas capas por id que 14_occl.svg, de donde reusa la base, el implante, los conectores de puente, los puntos de contacto y los planes. Vestibular arriba, mesial a la derecha. -->
+<svg xmlns="http://www.w3.org/2000/svg" id="incisor_x5F_incisal" version="1.1" viewBox="0 0 48.8 41.5">
+  <style>
+    [data-active="0"] { display: none; }
+  </style>
+  <defs>
+    <radialGradient id="og11o-base" cx=".5" cy=".42" r=".6">
+      <stop offset="0" stop-color="#f7f2e8" />
+      <stop offset="0.55" stop-color="#f3ecde" />
+      <stop offset="0.85" stop-color="#e9dcc4" />
+      <stop offset="1" stop-color="#d9c7a6" />
+    </radialGradient>
+    <radialGradient id="og11o-leche" cx=".5" cy=".42" r=".6">
+      <stop offset="0" stop-color="#fcfbf8" />
+      <stop offset="0.55" stop-color="#f8f6f1" />
+      <stop offset="0.85" stop-color="#efe9de" />
+      <stop offset="1" stop-color="#e2dacb" />
+    </radialGradient>
+    <radialGradient id="og11o-fosa">
+      <stop offset="0" stop-color="#6b4e2e" stop-opacity="0.26" />
+      <stop offset="0.6" stop-color="#6b4e2e" stop-opacity="0.12" />
+      <stop offset="1" stop-color="#6b4e2e" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="og11o-luz">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.85" />
+      <stop offset="0.5" stop-color="#fff" stop-opacity="0.4" />
+      <stop offset="1" stop-color="#fff" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="og11o-dentina" cx=".5" cy=".5" r=".6">
+      <stop offset="0" stop-color="#ecdcb8" />
+      <stop offset="0.6" stop-color="#e5d1a6" />
+      <stop offset="1" stop-color="#d5bc8b" />
+    </radialGradient>
+    <radialGradient id="og11o-munon" cx=".5" cy=".5" r=".6">
+      <stop offset="0" stop-color="#eadab5" />
+      <stop offset="1" stop-color="#dcc595" />
+    </radialGradient>
+    <linearGradient id="og11o-borde" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f6f6" />
+      <stop offset="1" stop-color="#dfe5e8" />
+    </linearGradient>
+    <radialGradient id="og11o-metal-ceramica" cx="24.5" cy="21.8" fx="24.5" fy="21.8" r="16" gradientTransform="translate(0 42.6) scale(1 -1)" gradientUnits="userSpaceOnUse" data-active="1">
+      <stop offset="0" stop-color="#feff5f" data-active="1" />
+      <stop offset="0" stop-color="#f9fc60" data-active="1" />
+      <stop offset=".2" stop-color="#edf564" data-active="1" />
+      <stop offset=".4" stop-color="#d8ea6b" data-active="1" />
+      <stop offset=".5" stop-color="#bbd975" data-active="1" />
+      <stop offset=".6" stop-color="#95c482" data-active="1" />
+      <stop offset=".8" stop-color="#68ab91" data-active="1" />
+      <stop offset=".9" stop-color="#328da3" data-active="1" />
+      <stop offset="1" stop-color="#0071b5" data-active="1" />
+      </radialGradient>
+    <radialGradient id="og11o-emax" cx="24.9" cy="-1029.2" fx="24.9" fy="-1029.2" r="15.9" gradientTransform="translate(0 -1008.4804) scale(1 -1)" gradientUnits="userSpaceOnUse" data-active="1">
+      <stop offset="0" stop-color="#fff" data-active="1" />
+      <stop offset="0" stop-color="#fdf3ea" data-active="1" />
+      <stop offset=".2" stop-color="#f9d8b9" data-active="1" />
+      <stop offset=".3" stop-color="#f5c18f" data-active="1" />
+      <stop offset=".4" stop-color="#f2ae6c" data-active="1" />
+      <stop offset=".6" stop-color="#f09f52" data-active="1" />
+      <stop offset=".7" stop-color="#ef953f" data-active="1" />
+      <stop offset=".9" stop-color="#ee8f33" data-active="1" />
+      <stop offset="1" stop-color="#ee8d30" data-active="1" />
+      </radialGradient>
+    <linearGradient id="og11o-implante-barra" x1="24.5" y1="-4082.2" x2="24.5" y2="-4103.4" gradientTransform="translate(0 -4072.468) scale(1 -1)" gradientUnits="userSpaceOnUse" data-active="1">
+      <stop offset="0" stop-color="#c8c9c9" data-active="1" />
+      <stop offset="1" stop-color="#828282" data-active="1" />
+      </linearGradient>
+    <linearGradient id="og11o-implante-tornillo" x1="16.3" y1="2118.9" x2="32.7" y2="2118.9" gradientTransform="translate(0 -2098.7732)" gradientUnits="userSpaceOnUse" data-active="1">
+      <stop offset=".3" stop-color="#cf0" stop-opacity=".5" data-active="1" />
+      <stop offset="1" stop-color="#b4c500" data-active="1" />
+      </linearGradient>
+    <clipPath id="og11o-contorno">
+      <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" />
+    </clipPath>
+    <clipPath id="og11o-sin-mesial">
+      <polygon points="0.0,0.0 33.5,0.0 33.5,6.2 35.2,11.2 33.0,14.0 34.8,16.5 32.3,19.2 33.6,21.7 31.1,25.4 31.1,41.5 0.0,41.5" />
+    </clipPath>
+    <clipPath id="og11o-sin-distal">
+      <polygon points="48.8,0.0 15.3,0.0 15.3,6.2 13.6,11.2 15.8,14.0 14.0,16.5 16.5,19.2 15.2,21.7 17.7,25.4 17.7,41.5 48.8,41.5" />
+    </clipPath>
+    <clipPath id="og11o-sin-mesial-distal">
+      <polygon points="15.3,0.0 33.5,0.0 33.5,6.2 35.2,11.2 33.0,14.0 34.8,16.5 32.3,19.2 33.6,21.7 31.1,25.4 31.1,41.5 17.7,41.5 17.7,25.4 15.2,21.7 16.5,19.2 14.0,16.5 15.8,14.0 13.6,11.2 15.3,6.2" />
+    </clipPath>
+  </defs>
+  <g id="base" data-active="1">
+    <path id="bone-base" d="M48.3,39.5s-3.2.7-6.3.5-5.1,0-5.9,0c-2.3-.2-5.9-.3-9.4-.2-3.9,0-8.2.9-11.1.9s-3.3,0-4.9-.2c-4-.3-5.8-.7-5.8-.7-1.8-.3-4.5.7-4.5-.6V2.7l5.5-.5,15.8-1.1h19.1l7.7.4v40h0v-2h-.1Z" data-active="1" style="fill: #fdecc5;" />
+    <g id="gum-base" data-active="1">
+      <path id="gum-line-2" d="M11.3,2.4c7.9-.2,31-1.1,33.5-.6,2.5.5,2.1.4,3.2,0s1.2-1.2,0-1.5-3.6-.3-6.4-.2c-5.3.2-11.1.6-13.4.8-6.1.5-6.7.5-13.2.5s-7.7-.5-12.6-.1c-5,.4-.9,1.4.2,1.4,4.9,0,5.3,0,8.7-.3Z" data-active="1" style="fill: #f79f9a;" />
+      <path id="gum-line-1" d="M37.5,39.2c-7.9,0-30.7.6-33.2,0s-2-.4-3.1,0-1.2,1.2,0,1.5c1.3.3,3.6.4,6.4.3,5.3,0,11-.4,13.4-.6,6-.4,6.7-.4,13.1-.3,4.6,0,7.7.6,12.5.3s.9-1.4-.3-1.5c-4.9-.2-5.3,0-8.6,0h0s0,.3,0,.3Z" data-active="1" style="fill: #f79f9a;" />
+      </g>
+    </g>
+  <g id="tooth-variants" data-active="1">
+    <g id="tooth-broken-mesial" data-active="1" style="display: none;">
+      <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" clip-path="url(#og11o-sin-mesial)" style="fill: url(#og11o-base); stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <polyline points="33.5,6.2 35.2,11.2 33.0,14.0 34.8,16.5 32.3,19.2 33.6,21.7 31.1,25.4" clip-path="url(#og11o-contorno)" style="fill: none; stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      </g>
+    <g id="tooth-broken-distal" data-active="1" style="display: none;">
+      <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" clip-path="url(#og11o-sin-distal)" style="fill: url(#og11o-base); stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <polyline points="15.3,6.2 13.6,11.2 15.8,14.0 14.0,16.5 16.5,19.2 15.2,21.7 17.7,25.4" clip-path="url(#og11o-contorno)" style="fill: none; stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      </g>
+    <g id="tooth-broken-mesial-distal" data-active="1" style="display: none;">
+      <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" clip-path="url(#og11o-sin-mesial-distal)" style="fill: url(#og11o-base); stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <polyline points="33.5,6.2 35.2,11.2 33.0,14.0 34.8,16.5 32.3,19.2 33.6,21.7 31.1,25.4" clip-path="url(#og11o-contorno)" style="fill: none; stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <polyline points="15.3,6.2 13.6,11.2 15.8,14.0 14.0,16.5 16.5,19.2 15.2,21.7 17.7,25.4" clip-path="url(#og11o-contorno)" style="fill: none; stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      </g>
+    <g id="tooth-broken-incisal" data-active="1" style="display: none;">
+      <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: url(#og11o-base); stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <path d="M12.43,16.04C17.56,12.16 31.70,11.59 36.94,14.56C31.70,15.24 18.02,16.04 12.43,16.04Z" style="fill: url(#og11o-dentina); stroke: #9a8570; stroke-width: .45px;" />
+      </g>
+    <g id="tooth-broken-mesial-incisal" data-active="1" style="display: none;">
+      <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" clip-path="url(#og11o-sin-mesial)" style="fill: url(#og11o-base); stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <polyline points="33.5,6.2 35.2,11.2 33.0,14.0 34.8,16.5 32.3,19.2 33.6,21.7 31.1,25.4" clip-path="url(#og11o-contorno)" style="fill: none; stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <path d="M12.43,16.04C17.56,12.16 31.70,11.59 36.94,14.56C31.70,15.24 18.02,16.04 12.43,16.04Z" clip-path="url(#og11o-sin-mesial)" style="fill: url(#og11o-dentina); stroke: #9a8570; stroke-width: .45px;" />
+      </g>
+    <g id="tooth-broken-distal-incisal" data-active="1" style="display: none;">
+      <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" clip-path="url(#og11o-sin-distal)" style="fill: url(#og11o-base); stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <polyline points="15.3,6.2 13.6,11.2 15.8,14.0 14.0,16.5 16.5,19.2 15.2,21.7 17.7,25.4" clip-path="url(#og11o-contorno)" style="fill: none; stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <path d="M12.43,16.04C17.56,12.16 31.70,11.59 36.94,14.56C31.70,15.24 18.02,16.04 12.43,16.04Z" clip-path="url(#og11o-sin-distal)" style="fill: url(#og11o-dentina); stroke: #9a8570; stroke-width: .45px;" />
+      </g>
+    <g id="tooth-broken-mesial-distal-incisal" data-active="1" style="display: none;">
+      <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" clip-path="url(#og11o-sin-mesial-distal)" style="fill: url(#og11o-base); stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <polyline points="33.5,6.2 35.2,11.2 33.0,14.0 34.8,16.5 32.3,19.2 33.6,21.7 31.1,25.4" clip-path="url(#og11o-contorno)" style="fill: none; stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <polyline points="15.3,6.2 13.6,11.2 15.8,14.0 14.0,16.5 16.5,19.2 15.2,21.7 17.7,25.4" clip-path="url(#og11o-contorno)" style="fill: none; stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <path d="M12.43,16.04C17.56,12.16 31.70,11.59 36.94,14.56C31.70,15.24 18.02,16.04 12.43,16.04Z" clip-path="url(#og11o-sin-mesial-distal)" style="fill: url(#og11o-dentina); stroke: #9a8570; stroke-width: .45px;" />
+      </g>
+    <g id="tooth-crownprep" data-active="1" style="display: none;">
+      <path id="tooth-crownprep-outer" d="M11.06,14.44C13.93,9.31 34.87,8.50 37.95,13.42C39.18,15.26 38.56,17.73 36.71,19.99C34.05,23.26 30.76,27.37 28.50,29.83C26.66,31.89 22.55,32.09 20.50,30.04C18.04,27.58 14.75,23.68 12.29,20.60C10.45,18.34 10.04,16.08 11.06,14.44Z" data-active="1" style="fill: url(#og11o-dentina); stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <path id="tooth-crownprep-inner" d="M15.51,16.50C17.42,13.08 31.38,12.53 33.43,15.81C34.25,17.04 33.84,18.69 32.61,20.19C30.83,22.38 28.64,25.11 27.14,26.76C25.91,28.12 23.17,28.26 21.80,26.89C20.16,25.25 17.97,22.65 16.33,20.60C15.10,19.09 14.82,17.59 15.51,16.50Z" data-active="1" style="fill: url(#og11o-munon); stroke: #9a8570; stroke-width: .45px; stroke-linejoin: round;" />
+      </g>
+    <g id="tooth-radix" data-active="1" style="display: none;">
+      <path d="M14.62,16.43C16.72,12.66 32.08,12.06 34.33,15.67C35.24,17.03 34.78,18.83 33.43,20.49C31.48,22.89 29.07,25.90 27.41,27.71C26.06,29.22 23.05,29.37 21.54,27.86C19.73,26.05 17.32,23.20 15.52,20.94C14.17,19.28 13.87,17.63 14.62,16.43Z" style="fill: url(#og11o-dentina); stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <ellipse cx="24.51" cy="20.37" rx="1.82" ry="1.48" style="fill: #b08a5a; stroke: #8c6a44; stroke-width: .3px;" />
+      </g>
+    </g>
+  <g id="tooth" data-active="1">
+    <g id="tooth-base" data-active="1">
+      <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: url(#og11o-base); stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <g clip-path="url(#og11o-contorno)">
+        <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: none; stroke: #6b4e2e; stroke-opacity: 0.03; stroke-width: 4.4px; stroke-linejoin: round;" />
+        <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: none; stroke: #6b4e2e; stroke-opacity: 0.035; stroke-width: 3.6px; stroke-linejoin: round;" />
+        <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: none; stroke: #6b4e2e; stroke-opacity: 0.04; stroke-width: 2.9px; stroke-linejoin: round;" />
+        <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: none; stroke: #6b4e2e; stroke-opacity: 0.045; stroke-width: 2.2px; stroke-linejoin: round;" />
+        <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: none; stroke: #6b4e2e; stroke-opacity: 0.05; stroke-width: 1.6px; stroke-linejoin: round;" />
+        <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: none; stroke: #6b4e2e; stroke-opacity: 0.055; stroke-width: 1.0px; stroke-linejoin: round;" />
+      </g>
+      <path d="M15.74,16.72C20.52,14.33 29.19,13.99 33.75,16.15C31.24,20.26 28.05,24.93 25.65,27.55C24.74,28.58 23.83,28.58 22.92,27.55C20.52,24.82 17.79,20.60 15.74,16.72Z" style="fill: url(#og11o-fosa); opacity: .9;" />
+      <ellipse cx="16.42" cy="23.22" rx="8.17" ry="1.5" transform="rotate(52.9 16.42 23.22)" style="fill: url(#og11o-luz); opacity: .75;" />
+      <ellipse cx="32.61" cy="22.99" rx="8.17" ry="1.5" transform="rotate(127.0 32.61 22.99)" style="fill: url(#og11o-luz); opacity: .75;" />
+      <ellipse cx="24.51" cy="29.49" rx="4.79" ry="2.96" style="fill: url(#og11o-luz); opacity: .8;" />
+      <path d="M10.95,13.76C15.51,9.88 32.84,9.31 38.08,12.62 L37.74,14.10C32.61,10.91 16.19,11.48 11.18,15.24Z" style="fill: url(#og11o-borde); opacity: .9;" />
+      <path d="M10.95,13.76C15.51,9.88 32.84,9.31 38.08,12.62" style="fill: none; stroke: #fff; stroke-opacity: .8; stroke-width: .5px; stroke-linecap: round;" />
+      <path d="M11.18,15.24C16.19,11.48 32.61,10.91 37.74,14.10" style="fill: none; stroke: #7a5b3e; stroke-opacity: .5; stroke-width: .45px; stroke-linecap: round;" />
+      <ellipse cx="19.61" cy="11.25" rx="7.3" ry="1.48" transform="rotate(-4 19.61 11.25)" style="fill: url(#og11o-luz); opacity: 0.7;" />
+      <ellipse cx="27.82" cy="10.91" rx="4.79" ry="1.03" transform="rotate(2 27.82 10.91)" style="fill: url(#og11o-luz); opacity: 0.5;" />
+      </g>
+    </g>
+  <g id="milktooth" data-active="1" style="display: none;">
+    <g id="milktooth-base" data-active="1">
+      <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: url(#og11o-leche); stroke: #9a8570; stroke-width: .6px; stroke-linejoin: round;" />
+      <g clip-path="url(#og11o-contorno)">
+        <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: none; stroke: #6b4e2e; stroke-opacity: 0.03; stroke-width: 4.4px; stroke-linejoin: round;" />
+        <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: none; stroke: #6b4e2e; stroke-opacity: 0.035; stroke-width: 3.6px; stroke-linejoin: round;" />
+        <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: none; stroke: #6b4e2e; stroke-opacity: 0.04; stroke-width: 2.9px; stroke-linejoin: round;" />
+        <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: none; stroke: #6b4e2e; stroke-opacity: 0.045; stroke-width: 2.2px; stroke-linejoin: round;" />
+        <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: none; stroke: #6b4e2e; stroke-opacity: 0.05; stroke-width: 1.6px; stroke-linejoin: round;" />
+        <path d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" style="fill: none; stroke: #6b4e2e; stroke-opacity: 0.055; stroke-width: 1.0px; stroke-linejoin: round;" />
+      </g>
+      <path d="M15.74,16.72C20.52,14.33 29.19,13.99 33.75,16.15C31.24,20.26 28.05,24.93 25.65,27.55C24.74,28.58 23.83,28.58 22.92,27.55C20.52,24.82 17.79,20.60 15.74,16.72Z" style="fill: url(#og11o-fosa); opacity: .6;" />
+      <ellipse cx="16.42" cy="23.22" rx="8.17" ry="1.5" transform="rotate(52.9 16.42 23.22)" style="fill: url(#og11o-luz); opacity: .75;" />
+      <ellipse cx="32.61" cy="22.99" rx="8.17" ry="1.5" transform="rotate(127.0 32.61 22.99)" style="fill: url(#og11o-luz); opacity: .75;" />
+      <ellipse cx="24.51" cy="29.49" rx="4.79" ry="2.96" style="fill: url(#og11o-luz); opacity: .8;" />
+      <path d="M10.95,13.76C15.51,9.88 32.84,9.31 38.08,12.62 L37.74,14.10C32.61,10.91 16.19,11.48 11.18,15.24Z" style="fill: url(#og11o-borde); opacity: .9;" />
+      <path d="M10.95,13.76C15.51,9.88 32.84,9.31 38.08,12.62" style="fill: none; stroke: #fff; stroke-opacity: .8; stroke-width: .5px; stroke-linecap: round;" />
+      <path d="M11.18,15.24C16.19,11.48 32.61,10.91 37.74,14.10" style="fill: none; stroke: #7a5b3e; stroke-opacity: .5; stroke-width: .45px; stroke-linecap: round;" />
+      <ellipse cx="19.61" cy="11.25" rx="7.3" ry="1.48" transform="rotate(-4 19.61 11.25)" style="fill: url(#og11o-luz); opacity: 0.7;" />
+      <ellipse cx="27.82" cy="10.91" rx="4.79" ry="1.03" transform="rotate(2 27.82 10.91)" style="fill: url(#og11o-luz); opacity: 0.5;" />
+      </g>
+    </g>
+  <g id="surfaces" data-active="1">
+    <g id="subcaries" data-active="1">
+      <path id="subcaries-occlusal" d="M12.43,16.04C17.56,12.16 31.70,11.59 36.94,14.56C31.70,15.24 18.02,16.04 12.43,16.04Z" data-active="1" style="display: none; fill: none; stroke: #000; stroke-miterlimit: 10; stroke-width: 1.2px;" />
+      <path id="subcaries-lingual" d="M18.70,23.79C22.12,22.20 26.91,22.20 30.33,23.79C29.42,26.98 27.59,30.18 24.63,32.00C21.66,30.18 19.61,26.98 18.70,23.79Z" data-active="1" style="display: none; fill: none; stroke: #000; stroke-miterlimit: 10; stroke-width: 1.2px;" />
+      <path id="subcaries-buccal" d="M11.86,14.10C15.74,9.20 33.29,8.63 37.74,12.96C32.38,11.48 16.88,11.71 11.86,14.10Z" data-active="1" style="display: none; fill: none; stroke: #000; stroke-miterlimit: 10; stroke-width: 1.2px;" />
+      <path id="subcaries-mesial" d="M34.66,16.04C37.17,14.67 39.68,15.13 39.45,17.18C38.31,19.69 35.12,23.34 32.38,26.53C31.47,23.79 31.92,19.46 34.66,16.04Z" data-active="1" style="display: none; fill: none; stroke: #000; stroke-miterlimit: 10; stroke-width: 1.2px;" />
+      <path id="subcaries-distal" d="M14.14,16.27C11.63,14.90 9.12,15.36 9.35,17.41C10.49,19.92 13.68,23.56 16.42,26.76C17.33,24.02 16.88,19.69 14.14,16.27Z" data-active="1" style="display: none; fill: none; stroke: #000; stroke-miterlimit: 10; stroke-width: 1.2px;" />
+      </g>
+    <g id="caries" data-active="1">
+      <path id="caries-occlusal" d="M24.40,12.96C26.45,12.28 30.33,12.39 31.70,13.19C32.38,13.76 31.01,14.44 28.96,14.56C27.14,14.67 24.86,14.56 24.17,13.99C23.83,13.65 23.94,13.19 24.40,12.96Z" data-active="1" style="display: none; fill: #0a1018; stroke: #000; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="caries-lingual" d="M22.12,24.70C23.49,23.68 25.77,23.79 26.91,24.93C27.82,26.07 27.14,27.90 25.54,28.58C24.17,29.15 22.58,28.58 21.89,27.21C21.44,26.30 21.55,25.27 22.12,24.70Z" data-active="1" style="display: none; fill: #0a1018; stroke: #000; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="caries-buccal" d="M16.65,11.48C18.70,10.11 22.35,9.88 24.17,10.80C25.08,11.48 23.72,12.39 21.89,12.62C20.07,12.85 17.56,12.96 16.65,12.39C16.19,12.05 16.19,11.82 16.65,11.48Z" data-active="1" style="display: none; fill: #0a1018; stroke: #000; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="caries-mesial" d="M35.80,16.04C37.17,15.58 38.31,16.27 37.85,17.64C37.40,19.23 36.03,20.83 34.89,21.51C33.98,21.97 33.52,20.83 33.98,19.23C34.32,17.86 34.89,16.50 35.80,16.04Z" data-active="1" style="display: none; fill: #0a1018; stroke: #000; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="caries-distal" d="M13.00,16.27C11.63,15.81 10.49,16.50 10.95,17.86C11.40,19.46 12.77,21.06 13.91,21.74C14.82,22.20 15.28,21.06 14.82,19.46C14.48,18.09 13.91,16.72 13.00,16.27Z" data-active="1" style="display: none; fill: #0a1018; stroke: #000; stroke-miterlimit: 10; stroke-width: .5px;" />
+      </g>
+    <g id="fillings" data-active="1">
+      <g id="amalgam" data-active="1">
+        <path id="filling-amalgam-occlusal" d="M12.43,16.04C17.56,12.16 31.70,11.59 36.94,14.56C31.70,15.24 18.02,16.04 12.43,16.04Z" data-active="1" style="display: none; fill: #a0a0a0; stroke: #c8c8c8; stroke-miterlimit: 10;" />
+        <path id="filling-amalgam-lingual" d="M18.70,23.79C22.12,22.20 26.91,22.20 30.33,23.79C29.42,26.98 27.59,30.18 24.63,32.00C21.66,30.18 19.61,26.98 18.70,23.79Z" data-active="1" style="display: none; fill: #a0a0a0; stroke: #c8c8c8; stroke-miterlimit: 10;" />
+        <path id="filling-amalgam-buccal" d="M11.86,14.10C15.74,9.20 33.29,8.63 37.74,12.96C32.38,11.48 16.88,11.71 11.86,14.10Z" data-active="1" style="display: none; fill: #a0a0a0; stroke: #c8c8c8; stroke-miterlimit: 10;" />
+        <path id="filling-amalgam-mesial" d="M34.66,16.04C37.17,14.67 39.68,15.13 39.45,17.18C38.31,19.69 35.12,23.34 32.38,26.53C31.47,23.79 31.92,19.46 34.66,16.04Z" data-active="1" style="display: none; fill: #a0a0a0; stroke: #c8c8c8; stroke-miterlimit: 10;" />
+        <path id="filling-amalgam-distal" d="M14.14,16.27C11.63,14.90 9.12,15.36 9.35,17.41C10.49,19.92 13.68,23.56 16.42,26.76C17.33,24.02 16.88,19.69 14.14,16.27Z" data-active="1" style="display: none; fill: #a0a0a0; stroke: #c8c8c8; stroke-miterlimit: 10;" />
+        </g>
+      <g id="composite" data-active="1">
+        <path id="filling-composite-occlusal" d="M12.43,16.04C17.56,12.16 31.70,11.59 36.94,14.56C31.70,15.24 18.02,16.04 12.43,16.04Z" data-active="1" style="display: none; fill: #fdf1a0; stroke: #c6aa3a; stroke-miterlimit: 10; stroke-width: .45px;" />
+        <path id="filling-composite-lingual" d="M18.70,23.79C22.12,22.20 26.91,22.20 30.33,23.79C29.42,26.98 27.59,30.18 24.63,32.00C21.66,30.18 19.61,26.98 18.70,23.79Z" data-active="1" style="display: none; fill: #fdf1a0; stroke: #c6aa3a; stroke-miterlimit: 10; stroke-width: .45px;" />
+        <path id="filling-composite-buccal" d="M11.86,14.10C15.74,9.20 33.29,8.63 37.74,12.96C32.38,11.48 16.88,11.71 11.86,14.10Z" data-active="1" style="display: none; fill: #fdf1a0; stroke: #c6aa3a; stroke-miterlimit: 10; stroke-width: .45px;" />
+        <path id="filling-composite-mesial" d="M34.66,16.04C37.17,14.67 39.68,15.13 39.45,17.18C38.31,19.69 35.12,23.34 32.38,26.53C31.47,23.79 31.92,19.46 34.66,16.04Z" data-active="1" style="display: none; fill: #fdf1a0; stroke: #c6aa3a; stroke-miterlimit: 10; stroke-width: .45px;" />
+        <path id="filling-composite-distal" d="M14.14,16.27C11.63,14.90 9.12,15.36 9.35,17.41C10.49,19.92 13.68,23.56 16.42,26.76C17.33,24.02 16.88,19.69 14.14,16.27Z" data-active="1" style="display: none; fill: #fdf1a0; stroke: #c6aa3a; stroke-miterlimit: 10; stroke-width: .45px;" />
+        </g>
+      <g id="gic" data-active="1">
+        <path id="filling-gic-occlusal" d="M12.43,16.04C17.56,12.16 31.70,11.59 36.94,14.56C31.70,15.24 18.02,16.04 12.43,16.04Z" data-active="1" style="display: none; fill: #f9ae94; stroke: #f99; stroke-miterlimit: 10;" />
+        <path id="filling-gic-lingual" d="M18.70,23.79C22.12,22.20 26.91,22.20 30.33,23.79C29.42,26.98 27.59,30.18 24.63,32.00C21.66,30.18 19.61,26.98 18.70,23.79Z" data-active="1" style="display: none; fill: #f9ae94; stroke: #f99; stroke-miterlimit: 10;" />
+        <path id="filling-gic-buccal" d="M11.86,14.10C15.74,9.20 33.29,8.63 37.74,12.96C32.38,11.48 16.88,11.71 11.86,14.10Z" data-active="1" style="display: none; fill: #f9ae94; stroke: #f99; stroke-miterlimit: 10;" />
+        <path id="filling-gic-mesial" d="M34.66,16.04C37.17,14.67 39.68,15.13 39.45,17.18C38.31,19.69 35.12,23.34 32.38,26.53C31.47,23.79 31.92,19.46 34.66,16.04Z" data-active="1" style="display: none; fill: #f9ae94; stroke: #f99; stroke-miterlimit: 10;" />
+        <path id="filling-gic-distal" d="M14.14,16.27C11.63,14.90 9.12,15.36 9.35,17.41C10.49,19.92 13.68,23.56 16.42,26.76C17.33,24.02 16.88,19.69 14.14,16.27Z" data-active="1" style="display: none; fill: #f9ae94; stroke: #f99; stroke-miterlimit: 10;" />
+        </g>
+      <g id="temporary" data-active="1">
+        <path id="filling-temporary-occlusal" d="M12.43,16.04C17.56,12.16 31.70,11.59 36.94,14.56C31.70,15.24 18.02,16.04 12.43,16.04Z" data-active="1" style="display: none; fill: #fff; stroke: #a8a097; stroke-miterlimit: 10; stroke-width: .45px;" />
+        <path id="filling-temporary-lingual" d="M18.70,23.79C22.12,22.20 26.91,22.20 30.33,23.79C29.42,26.98 27.59,30.18 24.63,32.00C21.66,30.18 19.61,26.98 18.70,23.79Z" data-active="1" style="display: none; fill: #fff; stroke: #a8a097; stroke-miterlimit: 10; stroke-width: .45px;" />
+        <path id="filling-temporary-buccal" d="M11.86,14.10C15.74,9.20 33.29,8.63 37.74,12.96C32.38,11.48 16.88,11.71 11.86,14.10Z" data-active="1" style="display: none; fill: #fff; stroke: #a8a097; stroke-miterlimit: 10; stroke-width: .45px;" />
+        <path id="filling-temporary-mesial" d="M34.66,16.04C37.17,14.67 39.68,15.13 39.45,17.18C38.31,19.69 35.12,23.34 32.38,26.53C31.47,23.79 31.92,19.46 34.66,16.04Z" data-active="1" style="display: none; fill: #fff; stroke: #a8a097; stroke-miterlimit: 10; stroke-width: .45px;" />
+        <path id="filling-temporary-distal" d="M14.14,16.27C11.63,14.90 9.12,15.36 9.35,17.41C10.49,19.92 13.68,23.56 16.42,26.76C17.33,24.02 16.88,19.69 14.14,16.27Z" data-active="1" style="display: none; fill: #fff; stroke: #a8a097; stroke-miterlimit: 10; stroke-width: .45px;" />
+        </g>
+      <g id="defect" data-active="1">
+        <polygon id="defect-occlusal" points="23.2 14.3 22.6 13.8 23.4 13.4 25.1 13.4 26.0 13.9 25.2 14.4 23.2 14.3" style="display: none; fill: #f5ff15; stroke: #2e3192; stroke-miterlimit: 10; stroke-width: .5px;" data-active="1" />
+        <polygon id="defect-lingual" points="23.2 27.0 22.6 26.5 23.4 26.1 25.1 26.1 26.0 26.6 25.2 27.1 23.2 27.0" style="display: none; fill: #f5ff15; stroke: #2e3192; stroke-miterlimit: 10; stroke-width: .5px;" data-active="1" />
+        <polygon id="defect-buccal" points="23.2 11.0 22.6 10.5 23.4 10.1 25.1 10.1 26.0 10.6 25.2 11.1 23.2 11.0" style="display: none; fill: #f5ff15; stroke: #2e3192; stroke-miterlimit: 10; stroke-width: .5px;" data-active="1" />
+        <polygon id="defect-mesial" points="34.8 18.5 34.2 18.0 35.0 17.6 36.7 17.6 37.6 18.1 36.8 18.6 34.8 18.5" style="display: none; fill: #f5ff15; stroke: #2e3192; stroke-miterlimit: 10; stroke-width: .5px;" data-active="1" />
+        <polygon id="defect-distal" points="11.6 18.8 11.0 18.2 11.8 17.9 13.5 17.9 14.4 18.4 13.6 18.9 11.6 18.8" style="display: none; fill: #f5ff15; stroke: #2e3192; stroke-miterlimit: 10; stroke-width: .5px;" data-active="1" />
+        </g>
+      </g>
+    <g id="contact-point" data-active="1">
+      <g id="mesial-no-contact-point" data-active="1" style="display: none;">
+        <path d="M37.1,15.5c.7,3,1.7,6.3,2.7,9.4" data-active="1" style="fill: none; stroke: #aaa; stroke-miterlimit: 10; stroke-width: .5px;" />
+        <path d="M36.9,25.4c.6-1.8.8-3,1.3-4.5.6-1.7,1-3.4,1.5-5.3" data-active="1" style="fill: none; stroke: #aaa; stroke-miterlimit: 10; stroke-width: .5px;" />
+        </g>
+      <g id="distal-no-contact-point" data-active="1" style="display: none;">
+        <path d="M9.4,16.4c.7,3.1,1.7,6.4,2.7,9.7" data-active="1" style="fill: none; stroke: #aaa; stroke-miterlimit: 10; stroke-width: .5px;" />
+        <path d="M9.2,26.2c.7-1.8.8-2.9,1.3-4.3.6-1.6,1.1-3.3,1.5-5.1" data-active="1" style="fill: none; stroke: #aaa; stroke-miterlimit: 10; stroke-width: .5px;" />
+        </g>
+      </g>
+    </g>
+  <g id="restorations" data-active="1">
+    <g id="implant" data-active="1" style="display: none;">
+      <g id="implant-base" data-active="1">
+        <path d="M25.8,34.9h-2.8l-.7-2.2c-.8-.2-1.5-.3-2.3-.7l-1.8,1.6-2.4-1.4.6-2.3c-.6-.5-1.2-1.1-1.7-1.7l-2.3.6-1.4-2.4,1.6-1.8c-.3-.8-.5-1.5-.7-2.3l-2.2-.7v-2.8l2.2-.7c.2-.8.4-1.5.7-2.3l-1.6-1.8,1.4-2.4,2.3.6c.5-.6,1-1.1,1.7-1.7l-.6-2.4,2.4-1.4,1.7,1.6c.8-.3,1.5-.5,2.3-.6l.7-2.2h2.8l.6,2.2c.8.2,1.5.3,2.3.6l1.8-1.6,2.4,1.4-.6,2.3c.6.5,1.1,1,1.7,1.7l2.3-.6,1.4,2.4-1.6,1.7c.3.8.5,1.5.7,2.3l2.2.7v2.8l-2.2.7c-.2.8-.4,1.6-.7,2.3l1.6,1.8-1.4,2.4-2.3-.6c-.5.6-1,1.1-1.7,1.6l.6,2.4-2.4,1.4-1.8-1.6c-.8.3-1.5.5-2.3.6l-.6,2.2v.3s.1,0,0,0h0Z" data-active="1" style="fill: #145d2a;" />
+        <path d="M26.3,32.2h-.2l-.6,2.1h-2.1l-.6-2s0-.2-.2-.2c-.9,0-1.8-.4-2.6-.7l-1.7,1.6-1.8-1,.5-2.3c-.8-.6-1.4-1.3-2-2l-2.3.6-1-1.8,1.6-1.7c-.4-.9-.6-1.8-.8-2.8l-2.1-.7v-2.1l2-.6c.2,0,.2-.1.2-.3.1-.9.4-1.7.7-2.6l-1.6-1.7,1-1.8,2.3.6c.6-.7,1.3-1.4,2-2l-.6-2.3,1.8-1,1.6,1.5s.2.1.3,0c.9-.3,1.7-.5,2.7-.7l.7-2.2h2.1l.6,2c0,.1,0,.2.2.2.9.1,1.8.4,2.6.7l1.7-1.6,1.8,1.1-.6,2.3c.8.6,1.4,1.3,2,2l2.3-.6,1,1.8-1.6,1.7c.4.9.6,1.8.8,2.8l2.1.7v2.1l-2,.6s0,.1-.2.2c0,.9-.4,1.7-.7,2.5s0,.2,0,.2l1.5,1.6-1,1.8-2.3-.6c-.6.7-1.3,1.4-2,2l.6,2.3-1.8,1-1.7-1.6c-.9.3-1.7.6-2.6.7h0s0,.2,0,.2Z" data-active="1" style="fill: #c8c8c8;" />
+        <circle cx="24.5" cy="20.2" r="9.4" data-active="1" style="fill: #eaeaea; stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+        <circle cx="24.5" cy="20.2" r="5.8" data-active="1" style="fill: #fff; stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+        </g>
+      <path id="implant-bar" d="M1.8,15.5c-3.4,7.4-1,15.6,2.9,15.1,8.2.8,27.3,0,36.3,0s6.5-2.3,7.5-8.5c.6-3.7,0-7.1-1.4-9.3-2.6-3.4-6.5-2.8-9.6-3.1-5.2,0-9.5,0-14.3.6-5.3.6-10.4,0-15.5.8-2.1,0-4.5,1.1-6,4h0v.6-.2s.1,0,.1,0Z" data-active="1" style="fill: url(#og11o-implante-barra);" />
+      <circle id="implant-healing-abutment" cx="24.4" cy="20.3" r="11.4" data-active="1" style="fill: #475563; stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <circle id="implant-locator-screw" cx="24.5" cy="20.2" r="8.2" data-active="1" style="fill: url(#og11o-implante-tornillo); isolation: isolate; opacity: .8; stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+      </g>
+    <g id="prosthesis-implant" data-active="1">
+      <path id="prosthesis-implant-gum" d="M48.6,23.2c-2.6,8.1-13,3.2-19,3.7-7.9-.9-20.9,4.1-26.5-2.6-1.9-2.8-3.2-7.5-.7-10.3,4.9-4.3,18.5-3.9,25.7-3.7,8.2.6,23.5-.7,20.5,12.7v.4h0s0-.2,0-.2Z" data-active="1" style="display: none; fill: #f9ae94; stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="prosthesis-implant-crown" d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" data-active="1" style="display: none; fill: #f9ae94; stroke: #000; stroke-miterlimit: 10;" />
+      </g>
+    <g id="prosthesis" data-active="1">
+      <path id="prosthesis-connector" d="M48.6,23.2c-2.6,8.1-13,3.2-19,3.7-7.9-.9-20.9,4.1-26.5-2.6-1.9-2.8-3.2-7.5-.7-10.3,4.9-4.3,18.5-3.9,25.7-3.7,8.2.6,23.5-.7,20.5,12.7v.4h0s0-.2,0-.2Z" data-active="1" style="display: none; fill: #f9ae94; stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="prosthesis-crown" d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" data-active="1" style="display: none; fill: #f9ae94; stroke: #000; stroke-miterlimit: 10;" />
+      </g>
+    <g id="telescope" data-active="1">
+      <path id="telescope-bridge-connector" d="M48.6,23.2c-2.7,8.1-13.2,3.2-19.3,3.7-8.1-.9-21.3,4.1-27-2.6-2-2.8-3.3-7.5-.7-10.3,5-4.3,18.8-3.9,26.1-3.7,8.4.6,24-.7,20.9,12.7v.4h0s0-.2,0-.2Z" data-active="1" style="display: none; fill: #0051bf; stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <g id="telescope-crown" data-active="1" style="display: none;">
+        <path id="telescope-crown-outside" d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" data-active="1" style="fill: #0051bf; stroke: #000; stroke-miterlimit: 10;" />
+        <path id="telescope-crown-inside" d="M13.73,15.68C16.03,11.57 32.77,10.92 35.24,14.85C36.22,16.33 35.73,18.30 34.25,20.11C32.12,22.73 29.49,26.01 27.68,27.99C26.21,29.63 22.92,29.79 21.28,28.15C19.31,26.18 16.68,23.06 14.72,20.60C13.24,18.79 12.91,16.99 13.73,15.68Z" data-active="1" style="fill: #a0a0a0; stroke: #000; stroke-miterlimit: 10;" />
+        </g>
+      </g>
+    <g id="zircon" data-active="1">
+      <path id="zircon-bridge-connector" d="M48.6,23.2c-2.7,8.1-13.3,3.2-19.4,3.7-8.1-.9-21.4,4.1-27.1-2.6-2-2.8-3.3-7.5-.7-10.3,5-4.3,18.9-3.9,26.2-3.7,8.4.6,24.1-.7,21,12.7v.4h0s0-.2,0-.2Z" data-active="1" style="display: none; fill: #feffbf; stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="zircon-crown" d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" data-active="1" style="display: none; fill: #feffbf; stroke: #000; stroke-miterlimit: 10;" />
+      <path id="zircon-veneer" d="M10.49,13.76C14.14,8.63 33.98,7.95 38.54,12.51C39.22,13.19 39.33,14.22 38.76,15.01C32.61,12.62 17.33,12.96 10.49,15.58C9.92,14.90 10.04,14.22 10.49,13.76Z" data-active="1" style="display: none; fill: #feffbf; stroke: #000; stroke-miterlimit: 10;" />
+      </g>
+    <g id="metal" data-active="1">
+      <path id="metal-bridge-connector" d="M46.9,23.2c-2.5,8.1-12.4,3.2-18.1,3.7-7.6-.9-20,4.1-25.3-2.6-1.8-2.8-3.1-7.5-.7-10.3,4.7-4.3,17.6-3.9,24.5-3.7,7.9.6,22.5-.7,19.6,12.7v.4h0s0-.2,0-.2Z" data-active="1" style="display: none; fill: #0051bf; stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="metal-crown" d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" data-active="1" style="display: none; fill: #0051bf; stroke: #000; stroke-miterlimit: 10;" />
+      </g>
+    <g id="metal-ceramic" data-active="1">
+      <path id="metal-ceramic-bridge-connector" d="M46.9,23.2c-2.5,8.1-12.4,3.2-18.1,3.7-7.6-.9-20,4.1-25.3-2.6-1.8-2.8-3.1-7.5-.7-10.3,4.7-4.3,17.6-3.9,24.5-3.7,7.9.6,22.5-.7,19.6,12.7v.4h0s0-.2,0-.2Z" data-active="1" style="display: none; fill: url(#og11o-metal-ceramica); stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="metal-ceramic-crown" d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" data-active="1" style="display: none; fill: url(#og11o-metal-ceramica); stroke: #000; stroke-miterlimit: 10;" />
+      </g>
+    <g id="gold" data-active="1">
+      <path id="gold-bridge-connector" d="M47.5,23.1c-2.6,8.1-12.7,3.2-18.5,3.7-7.7-.9-20.4,4.1-25.9-2.6-1.9-2.8-3.2-7.5-.7-10.2,4.8-4.3,18-3.9,25.1-3.7,8,.6,23-.7,20,12.6v.4h0v-.2Z" data-active="1" style="display: none; fill: #ece614; stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="gold-crown" d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" data-active="1" style="display: none; fill: #ece614; stroke: #000; stroke-miterlimit: 10;" />
+      <path id="gold-veneer" d="M10.49,13.76C14.14,8.63 33.98,7.95 38.54,12.51C39.22,13.19 39.33,14.22 38.76,15.01C32.61,12.62 17.33,12.96 10.49,15.58C9.92,14.90 10.04,14.22 10.49,13.76Z" data-active="1" style="display: none; fill: #ece614; stroke: #000; stroke-miterlimit: 10;" />
+      </g>
+    <g id="emax" data-active="1">
+      <path id="emax-bridge-connector" d="M47.5,23.1c-2.6,8.1-12.7,3.2-18.5,3.7-7.7-.9-20.4,4.1-25.9-2.6-1.9-2.8-3.2-7.5-.7-10.2,4.8-4.3,18-3.9,25.1-3.7,8,.6,23-.7,20,12.6v.4h0v-.2Z" data-active="1" style="display: none; fill: url(#og11o-emax); stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="emax-crown" d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" data-active="1" style="display: none; fill: url(#og11o-emax); stroke: #000; stroke-miterlimit: 10;" />
+      <path id="emax-veneer" d="M10.49,13.76C14.14,8.63 33.98,7.95 38.54,12.51C39.22,13.19 39.33,14.22 38.76,15.01C32.61,12.62 17.33,12.96 10.49,15.58C9.92,14.90 10.04,14.22 10.49,13.76Z" data-active="1" style="display: none; fill: url(#og11o-emax); stroke: #000; stroke-miterlimit: 10;" />
+      </g>
+    <g id="gradia" data-active="1">
+      <path id="gradia-bridge-connector" d="M47.5,23.1c-2.6,8.1-12.7,3.2-18.5,3.7-7.7-.9-20.4,4.1-25.9-2.6-1.9-2.8-3.2-7.5-.7-10.2,4.8-4.3,18-3.9,25.1-3.7,8,.6,23-.7,20,12.6v.4h0v-.2Z" data-active="1" style="display: none; fill: #55ff98; stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="gradia-crown" d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" data-active="1" style="display: none; fill: #55ff98; stroke: #000; stroke-miterlimit: 10;" />
+      <path id="gradia-veneer" d="M10.49,13.76C14.14,8.63 33.98,7.95 38.54,12.51C39.22,13.19 39.33,14.22 38.76,15.01C32.61,12.62 17.33,12.96 10.49,15.58C9.92,14.90 10.04,14.22 10.49,13.76Z" data-active="1" style="display: none; fill: #55ff98; stroke: #000; stroke-miterlimit: 10;" />
+      </g>
+    <g id="temporary-restorations" data-active="1">
+      <path id="temporary-bridge-connector" d="M47.5,23.1c-2.6,8.1-12.7,3.2-18.5,3.7-7.7-.9-20.4,4.1-25.9-2.6-1.9-2.8-3.2-7.5-.7-10.2,4.8-4.3,18-3.9,25.1-3.7,8,.6,23-.7,20,12.6v.4h0v-.2Z" data-active="1" style="display: none; fill: #fffffb; stroke: #1b3f1c; stroke-miterlimit: 10; stroke-width: .5px;" />
+      <path id="temporary-crown" d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" data-active="1" style="display: none; fill: #fff; stroke: #000; stroke-miterlimit: 10;" />
+      <path id="temporary-veneer" d="M10.49,13.76C14.14,8.63 33.98,7.95 38.54,12.51C39.22,13.19 39.33,14.22 38.76,15.01C32.61,12.62 17.33,12.96 10.49,15.58C9.92,14.90 10.04,14.22 10.49,13.76Z" data-active="1" style="display: none; fill: #fff; stroke: #000; stroke-miterlimit: 10;" />
+      </g>
+    </g>
+  <g id="ortho" data-active="1">
+    <g id="missing-closed" data-active="1" style="display: none;">
+      <path d="M7.8,4.3c21.7,10.1,19.3,22.9,0,33.3" data-active="1" style="fill: none; stroke: #000; stroke-miterlimit: 10; stroke-width: 2px;" />
+      <path d="M41,36.8c-21.8-9.9-19.7-22.8-.6-33.3" data-active="1" style="fill: none; stroke: #000; stroke-miterlimit: 10; stroke-width: 2px;" />
+      </g>
+    </g>
+  <g id="plan" data-active="1">
+    <g id="extraction-plan" data-active="1" style="display: none;">
+      <path d="M9.1,38.2c1.6-2.5,33.3-32,34.3-33.3" data-active="1" style="fill: none; stroke: #b70000; stroke-miterlimit: 10; stroke-width: 3px;" />
+      <path d="M9.6,5.2c3.2,2.2,23.4,24.4,27.6,29.8.7.9,1.4,1.9,2.4,2.7" data-active="1" style="fill: none; stroke: #b70000; stroke-miterlimit: 10; stroke-width: 3px;" />
+      </g>
+    <g id="crown-needed" data-active="1" style="display: none;">
+      <path id="crown-needed-shape" d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" data-active="1" style="fill: #c83014; stroke: #000; stroke-miterlimit: 10;" />
+      <path id="crown-needed-path" d="M0.0,40L16.0,4 M4.0,40L20.0,4 M8.0,40L24.0,4 M12.0,40L28.0,4 M16.0,40L32.0,4 M20.0,40L36.0,4 M24.0,40L40.0,4 M28.0,40L44.0,4 M32.0,40L48.0,4 M36.0,40L52.0,4 M40.0,40L56.0,4" clip-path="url(#og11o-contorno)" data-active="1" style="fill: none; stroke: #feffbf; stroke-width: 1.4px;" />
+      </g>
+    <g id="crown-replace" data-active="1" style="display: none;">
+      <path id="crown-replace-shape" d="M9.58,13.76C12.77,8.06 36.03,7.15 39.45,12.62C40.82,14.67 40.13,17.41 38.08,19.92C35.12,23.56 31.47,28.12 28.96,30.86C26.91,33.14 22.35,33.37 20.07,31.09C17.33,28.35 13.68,24.02 10.95,20.60C8.90,18.09 8.44,15.58 9.58,13.76Z" data-active="1" style="fill: none; stroke: #c83014; stroke-miterlimit: 10; stroke-width: 3px;" />
+      </g>
+    </g>
+</svg>
