@@ -647,6 +647,22 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
   .consent-print-signature strong { margin-top: 2mm; color: #102747; font-size: 10pt; }
   .consent-print-signature span:last-child { color: #697d94; font-size: 8pt; }
   .consent-print-ending .plan-print-footer { margin-top: 3mm; }
+  /* Documentos clínicos (Historia Clínica, indicaciones): título, datos del paciente y solo lo respondido. */
+  .docclin-print-intro { margin-top: 6mm; }
+  .docclin-print-intro h1 { max-width: 155mm; margin: 0 0 4mm; color: #051735; font-family: var(--font-jost), Arial, sans-serif; font-size: 20pt; font-weight: 700; line-height: 1.16; overflow-wrap: anywhere; }
+  .docclin-print-borrador { margin: 0 0 4mm; padding: 2mm 3mm; border: 1px solid #d97706; color: #92400e; font-size: 8.5pt; font-weight: 800; letter-spacing: .04em; }
+  .docclin-print-meta { display: flex; flex-wrap: wrap; gap: 4mm 14mm; padding: 4mm 0; border-top: 1px solid #dce7f0; border-bottom: 1px solid #dce7f0; }
+  .docclin-print-meta > div { display: flex; flex-direction: column; min-width: 45mm; }
+  .docclin-print-meta span { color: #697d94; font-size: 7pt; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .docclin-print-meta strong { margin-top: 1mm; color: #102747; font-size: 9pt; }
+  .docclin-print-seccion { margin-top: 6mm; }
+  .docclin-print-seccion h2 { margin: 0 0 2mm; padding-left: 2.5mm; border-left: 1.2mm solid #0369c9; color: #0369c9; font-size: 8.5pt; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; break-after: avoid; }
+  .docclin-print-filas { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  .docclin-print-filas tr { break-inside: avoid; }
+  .docclin-print-filas th, .docclin-print-filas td { padding: 1.2mm 2mm 1.2mm 0; vertical-align: top; text-align: left; border-bottom: 1px solid #eef3f8; overflow-wrap: anywhere; }
+  .docclin-print-filas th { width: 42%; color: #5b6d84; font-weight: 600; }
+  .docclin-print-filas td { color: #102747; }
+  .docclin-print-cuerpo { margin-top: 6mm; color: #223954; font-size: 9.5pt; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 }
 
 /* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V3

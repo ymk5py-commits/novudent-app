@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAlcance } from "@/lib/useAlcance";
 import { useStore, fullName } from "@/lib/store";
+import { pendientesPorPaciente } from "@/lib/documentosClinicos";
 import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
 import { planOf, type PlanFeature } from "@/lib/plan";
 import { subscriptionPlanId } from "@/lib/subscription";
@@ -64,6 +65,7 @@ const NAV: NavTop[] = [
       { href: "/app/configuracion#logotipo", label: "Logotipo", icon: ImageIcon, perm: "practice.config", section: "Configuración" },
       { href: "/app/configuracion#campos", label: "Campos del paciente", icon: ClipboardList, perm: "practice.config", section: "Configuración" },
       { href: "/app/configuracion#estados-cita", label: "Estados de cita", icon: ListChecks, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion#documentos-clinicos", label: "Documentos clínicos", icon: FileText, perm: "practice.config", section: "Configuración" },
       { href: "/app/integraciones", label: "Integraciones", icon: Bot, perm: "practice.config", feature: "integraciones", section: "Configuración" },
       { href: "/app/suscripcion", label: "Suscripción", icon: CreditCard, perm: "practice.config", section: "Configuración" },
       { href: "/app/configuracion", label: "Configuración general", icon: Settings, perm: "practice.config", section: "Configuración" },
@@ -106,12 +108,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       .slice(0, 6);
   }, [q, db.patients, alcance]);
 
+  // Pacientes con documentos clínicos pendientes (documentos nuevos + formularios viejos).
+  const conPendientes = useMemo(() => pendientesPorPaciente(db.patients, db.clinicalDocs), [db.patients, db.clinicalDocs]);
+
   const pendings = useMemo(() => {
-    // Formularios pendientes: los gestiona la recepción. Retenciones de facturación: quien ve montos.
-    const forms = alcance.puede("engagement.forms") ? db.patients.filter((p) => p.forms.some((f) => f.status === "pendiente")).length : 0;
+    // Documentos clínicos pendientes: los gestiona la recepción. Retenciones de facturación: quien ve montos.
+    const forms = alcance.puede("engagement.forms") ? conPendientes.size : 0;
     const hold = alcance.puede("money.view") ? db.billing.filter((b) => b.flags.includes("HOLD") || b.flags.includes("MGRHOLD")).length : 0;
     return forms + hold;
-  }, [db, alcance]);
+  }, [db, alcance, conPendientes]);
 
   if (!ready || !session) {
     return (
@@ -228,7 +233,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   <Link key={p.id} href={`/app/pacientes/${p.id}`} onClick={() => setQ("")} className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-clinic-bg">
                     <span className="font-semibold text-clinic-text">{fullName(p)}</span>
                     <span className="flex items-center gap-2 text-clinic-muted">
-                      {p.forms.some((f) => f.status === "pendiente") && <FileText className="h-3.5 w-3.5 text-state-warn" />}
+                      {conPendientes.has(p.id) && <FileText className="h-3.5 w-3.5 text-state-warn" />}
                       {p.historyUpdatePending && <ClipboardList className="h-3.5 w-3.5 text-state-info" />}
                       {alcance.puede("patients.personal") && <>CI {p.document}</>}
                     </span>
@@ -258,7 +263,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 panel de notificaciones. */}
             <Link
               href={pendings > 0 ? "/app/pacientes" : "#"}
-              data-tip={pendings > 0 ? `${pendings} pendiente(s): formularios y retenciones` : "Sin pendientes"}
+              data-tip={pendings > 0 ? `${pendings} pendiente(s): documentos y retenciones` : "Sin pendientes"}
               data-tip-pos="down-left"
               className="relative grid h-10 w-10 place-items-center rounded-xl border border-white/30 bg-white/10 text-white transition-colors hover:bg-white/20"
               aria-label={pendings > 0 ? `Ver pendientes (${pendings})` : "Sin pendientes"}

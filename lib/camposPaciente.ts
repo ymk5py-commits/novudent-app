@@ -223,9 +223,9 @@ export function nuevoPaciente(datos: Partial<Patient>, clinicId: string, ahora =
     lastName: datos.lastName ?? "",
     document: datos.document ?? "",
     phone: datos.phone ?? "",
-    forms: [
-      { id: `f_${ahora}`, templateName: "Anamnesis inicial", status: "pendiente", fields: [{ label: "Alergias", value: "" }, { label: "Medicación actual", value: "" }, { label: "Antecedentes", value: "" }] },
-    ],
+    // La Historia Clínica pendiente la deja `crearPaciente` (store) como documento clínico: ya no se
+    // crea el formulario «Anamnesis inicial» de tres campos.
+    forms: [],
     historyUpdatePending: false,
     emr: [],
   };

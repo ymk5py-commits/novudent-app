@@ -392,6 +392,19 @@ service cloud.firestore {
         allow create, update: if canWritePremium(cid, ['clinica','cadena']) && (isRecepcion(cid) || isService() || isDemoRW(cid));
         allow delete: if isService() || isDemoRW(cid);
       }
+      // Documentos clínicos (Historia Clínica y demás documentos del paciente). Los edita quien
+      // gestiona formularios (admin, caja, recepción) o escribe la ficha (dentista); el asistente
+      // solo lee. Es el espejo de `puedeEditarDocumentos` (lib/documentosClinicos.ts): si cambia
+      // la matriz de roles hay que cambiar las dos. Con la suscripción vencida se lee y no se
+      // escribe. No se borran desde la app (se anulan); el borrado es solo para "Reiniciar demo".
+      match /clinicalDocs/{docId} {
+        allow read: if isMember(cid) || isService() || isDemo(cid);
+        allow create, update: if isService() || isDemoRW(cid)
+          || (isMember(cid) && subActive(cid)
+              && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role
+                 in ['admin', 'cashier', 'receptionist', 'dentist']);
+        allow delete: if isService() || isDemoRW(cid);
+      }
       // Módulos de paridad Dentalink (CRM, Laboratorios, Liquidaciones, Box/Sillones)
       match /crmCards/{docId}    {
         allow read:  if isMember(cid) || isService() || isDemo(cid);

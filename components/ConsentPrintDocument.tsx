@@ -3,13 +3,13 @@
 import { PrintLetterhead, PrintPortal } from "@/components/PrintDocument";
 import type { Clinic, SignatureDoc } from "@/lib/types";
 
-type Props = { clinic: Clinic; doc: SignatureDoc; patientName: string };
+type Props = { clinic: Clinic; doc: SignatureDoc; patientName: string; profesional?: string; plan?: string };
 
 const signedDate = (iso?: string) => iso
   ? new Date(iso).toLocaleString("es-PY", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
   : "—";
 
-export function ConsentPrintDocument({ clinic, doc, patientName }: Props) {
+export function ConsentPrintDocument({ clinic, doc, patientName, profesional, plan }: Props) {
   return (
     <PrintPortal>
       <div className="plan-print-root" aria-hidden="true" data-testid="consent-print-document">
@@ -22,6 +22,8 @@ export function ConsentPrintDocument({ clinic, doc, patientName }: Props) {
             <div className="consent-print-meta">
               <div><span>Paciente</span><strong>{patientName}</strong></div>
               <div><span>Fecha de firma</span><strong>{signedDate(doc.signedAt)}</strong></div>
+              {profesional && <div><span>Profesional a cargo</span><strong>{profesional}</strong></div>}
+              {plan && <div><span>Plan de tratamiento</span><strong>{plan}</strong></div>}
             </div>
           </header>
 

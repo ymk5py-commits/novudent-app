@@ -48,10 +48,12 @@ async function ensureAuth() {
 }
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, OdontogramStatus, OdontogramToothState, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic, OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, DirectMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo, Branch, CrmCard, Campaign, LabOrder, Settlement, Box, Subscription,
+  DocumentoClinico,
 } from "./types";
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
 import { can } from "./rbac";
+import { historiaClinicaPendiente, plantillasDeClinica } from "./documentosClinicos";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { worstSeverity } from "./recovery";
 import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
@@ -85,7 +87,7 @@ function loadLocal(): DB {
     if (raw) {
       const guardada = JSON.parse(raw) as DB;
       // Un caché guardado antes del chat directo no trae la colección.
-      return { ...guardada, directMessages: guardada.directMessages ?? [] };
+      return { ...guardada, directMessages: guardada.directMessages ?? [], clinicalDocs: guardada.clinicalDocs ?? [] };
     }
   } catch {}
   const seed = buildSeed();
@@ -121,6 +123,7 @@ async function seedFirestore(seed: DB) {
   for (const e of seed.environmentalLogs) batch.set(doc(fsdb, "clinics", CLINIC_ID, "environmentalLogs", e.id), clean(e));
   for (const v of seed.eduVideos) batch.set(doc(fsdb, "clinics", CLINIC_ID, "eduVideos", v.id), clean(v));
   for (const br of seed.branches) batch.set(doc(fsdb, "clinics", CLINIC_ID, "branches", br.id), clean(br));
+  for (const cd of seed.clinicalDocs) batch.set(doc(fsdb, "clinics", CLINIC_ID, "clinicalDocs", cd.id), clean(cd));
   await batch.commit();
 }
 
@@ -186,11 +189,12 @@ async function loadFirestore(): Promise<DB> {
     if (!uid || !yo || yo.active === false) return null;
     return leer(can(yo.role, "users.manage") ? ref : query(ref, where("participants", "array-contains", uid)));
   })();
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos, branches, directMessages] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos, branches, directMessages, clinicalDocs] = await Promise.all([
     usersP, col("patients"), col("appointments"), col("billing"), col("procedures"),
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
     col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"), col("sterilizationCycles"), col("teamMessages"), col("surveys"), col("surveyResponses"), col("mgmtTasks"), col("environmentalLogs"), col("eduVideos"), col("branches"),
     directosP,
+    col("clinicalDocs"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -220,6 +224,7 @@ async function loadFirestore(): Promise<DB> {
     sterilizationCycles: filas<SterilizationCycle>(sterilizationCycles),
     teamMessages: filas<TeamMessage>(teamMessages),
     directMessages: filas<DirectMessage>(directMessages),
+    clinicalDocs: filas<DocumentoClinico>(clinicalDocs),
     surveys: filas<Survey>(surveys),
     surveyResponses: filas<SurveyResponse>(surveyResponses),
     mgmtTasks: filas<MgmtTask>(mgmtTasks),
@@ -420,6 +425,8 @@ interface Ctx {
   upsertAppointment: (a: Appointment) => void;
   deleteAppointment: (id: string) => void;
   upsertPatient: (p: Patient) => void;
+  /** Alta de un paciente nuevo: lo guarda y le deja la Historia Clínica pendiente (si la clínica la tiene). */
+  crearPaciente: (p: Patient, por: { id: string; name: string }) => void;
   completeForm: (patientId: string, formId: string, fields: { label: string; value: string }[], completedAt: string) => void;
   addEmrNote: (patientId: string, note: EmrNote) => void;
   /** Flujo clipboard: marca la actualización de historial médico como recibida con fecha de envío */
@@ -530,6 +537,9 @@ interface Ctx {
   addSignature: (s: SignatureDoc) => void;
   updateSignature: (s: SignatureDoc) => void;
   deleteSignature: (id: string) => void;
+  /* — Documentos clínicos (no se borran: se anulan con updateClinicalDoc) — */
+  addClinicalDoc: (d: DocumentoClinico) => void;
+  updateClinicalDoc: (d: DocumentoClinico) => void;
   /** Guarda las plantillas de consentimiento en el config de la clínica */
   saveConsentTemplates: (list: ConsentTemplate[]) => void;
   /* — CRM (embudo de pacientes) — */
@@ -1030,6 +1040,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           delExtras("mgmtTasks", db.mgmtTasks.map((x) => x.id), seed.mgmtTasks.map((x) => x.id));
           // Lo que escribieron los visitantes en el chat directo de la demo.
           delExtras("directMessages", db.directMessages.map((x) => x.id), seed.directMessages.map((x) => x.id));
+          delExtras("clinicalDocs", db.clinicalDocs.map((x) => x.id), seed.clinicalDocs.map((x) => x.id));
           seedFirestore(seed).catch(() => {});
         }
         persist(seed);
@@ -1045,6 +1056,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       upsertPatient: (p) => {
         persist((prev) => ({ ...prev, patients: prev.patients.some((x) => x.id === p.id) ? prev.patients.map((x) => (x.id === p.id ? p : x)) : [...prev.patients, p] }));
         fsSave("patients", p.id, p);
+      },
+      crearPaciente: (p, por) => {
+        // Id determinístico: si la pantalla guarda dos veces el mismo alta, no se duplica la Historia Clínica.
+        const hc = historiaClinicaPendiente({
+          id: `cd_${p.id}_hc`, clinicId: p.clinicId, patientId: p.id,
+          plantillas: plantillasDeClinica(db.clinics[0]?.config), by: por, now: new Date().toISOString(),
+        });
+        persist((prev) => ({
+          ...prev,
+          patients: prev.patients.some((x) => x.id === p.id) ? prev.patients.map((x) => (x.id === p.id ? p : x)) : [...prev.patients, p],
+          ...(hc ? { clinicalDocs: [hc, ...prev.clinicalDocs.filter((x) => x.id !== hc.id)] } : {}),
+        }));
+        fsSave("patients", p.id, p);
+        if (hc) fsSave("clinicalDocs", hc.id, hc);
       },
       mergePatients: (keepId, removeId) => {
         if (keepId === removeId) return;
@@ -1070,6 +1095,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const labOrders = reassign("labOrders", db.labOrders);
         const patientNotes = reassign("patientNotes", db.patientNotes);
         const fiscalDocs = reassign("fiscalDocs", db.fiscalDocs);
+        const clinicalDocs = reassign("clinicalDocs", db.clinicalDocs);
         // Fusiona los datos embebidos en la ficha que se mantiene.
         const merged: Patient = {
           ...keep,
@@ -1085,7 +1111,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           } : undefined,
         };
         const patients = db.patients.filter((p) => p.id !== removeId).map((p) => (p.id === keepId ? merged : p));
-        persist((prev) => ({ ...prev, patients, appointments, billing, budgets, payments, signatures, radiographs, recoveryMonitors, crmCards, labOrders, patientNotes, fiscalDocs }));
+        persist((prev) => ({ ...prev, patients, appointments, billing, budgets, payments, signatures, radiographs, recoveryMonitors, crmCards, labOrders, patientNotes, fiscalDocs, clinicalDocs }));
         fsSave("patients", keepId, merged);
         fsDelete("patients", removeId);
       },
@@ -1458,6 +1484,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       deleteSignature: (id: string) => {
         persist((prev) => ({ ...prev, signatures: prev.signatures.filter((x) => x.id !== id) }));
         fsDelete("signatures", id);
+      },
+      addClinicalDoc: (d: DocumentoClinico) => {
+        persist((prev) => ({ ...prev, clinicalDocs: [d, ...prev.clinicalDocs] }));
+        fsSave("clinicalDocs", d.id, d);
+      },
+      updateClinicalDoc: (d: DocumentoClinico) => {
+        persist((prev) => ({ ...prev, clinicalDocs: prev.clinicalDocs.map((x) => (x.id === d.id ? d : x)) }));
+        fsSave("clinicalDocs", d.id, d);
       },
       saveConsentTemplates: (list: ConsentTemplate[]) => {
         // Mismo mecanismo que `updateClinicConfig`: actualiza el config de la

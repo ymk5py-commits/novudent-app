@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams } from "next/navigation";
 import {
-  FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, CheckCircle2, Smile,
+  FileText, ClipboardList, Pencil, CalendarDays, Receipt, Stethoscope, Lock, Plus, Smile,
   Pill, FolderOpen, Activity, ScanLine, FileSignature, Camera, AlertTriangle, HeartPulse, User, Wallet, Layers, MessageSquare, CheckSquare, Mail, Sparkles,
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName } from "@/lib/store";
@@ -28,6 +28,9 @@ import { HistorialTimeline } from "@/components/Historial";
 import { FacturacionPaciente } from "@/components/FacturacionPaciente";
 import { PatientNotas } from "@/components/PatientNotas";
 import { TareasPaciente } from "@/components/tareas/TareasPaciente";
+import { DocumentosClinicos } from "@/components/DocumentosClinicos";
+import { MenuDocumentos } from "@/components/MenuDocumentos";
+import { pendientesPorPaciente, puedeVerDocumentos } from "@/lib/documentosClinicos";
 import { VoiceNoteButton, PatientBriefButton } from "@/components/NovudentIA";
 import { useClinicPlan } from "@/components/PlanGate";
 import Periodontogram from "@/components/Periodontogram";
@@ -35,14 +38,14 @@ import RecoveryCard from "@/components/RecoveryCard";
 import { Reveal } from "@/components/motion";
 
 type SubTab =
-  | "datos" | "citas" | "comentarios" | "tareas" | "emails" | "formularios" | "archivos" | "consentimientos"
+  | "datos" | "citas" | "comentarios" | "tareas" | "emails" | "archivos" | "consentimientos" | "documentos"
   | "resumen" | "evoluciones" | "antecedentes" | "odontograma" | "periodoncia" | "historial" | "radiografias" | "copilot" | "recetas"
   | "planes" | "facturacion" | "recibir-pago";
 
 type GroupDef = { key: string; label: string; tabs: { key: SubTab; label: string; icon: any }[] };
 
 const TODAS_LAS_PESTANAS = new Set<SubTab>([
-  "datos", "citas", "comentarios", "tareas", "emails", "formularios", "archivos", "consentimientos",
+  "datos", "citas", "comentarios", "tareas", "emails", "archivos", "consentimientos", "documentos",
   "resumen", "evoluciones", "antecedentes", "odontograma", "periodoncia", "historial", "radiografias", "copilot", "recetas",
   "planes", "facturacion", "recibir-pago",
 ]);
@@ -54,9 +57,7 @@ const GROUPS: GroupDef[] = [
     { key: "comentarios", label: "Comentarios", icon: MessageSquare },
     { key: "tareas", label: "Tareas de gestión", icon: CheckSquare },
     { key: "emails", label: "Emails", icon: Mail },
-    { key: "formularios", label: "Formularios", icon: FileText },
     { key: "archivos", label: "Archivos", icon: FolderOpen },
-    { key: "consentimientos", label: "Consentimientos", icon: FileSignature },
   ] },
   { key: "ficha-clinica", label: "Ficha clínica", tabs: [
     { key: "resumen", label: "Resumen", icon: Stethoscope },
@@ -68,6 +69,9 @@ const GROUPS: GroupDef[] = [
     { key: "radiografias", label: "Radiografías", icon: ScanLine },
     { key: "copilot", label: "Copilot IA", icon: Sparkles },
     { key: "recetas", label: "Recetas", icon: Pill },
+    // Se muestran juntas bajo «Documentos ▾» (MenuDocumentos), como en Dentalink.
+    { key: "documentos", label: "Documentos clínicos", icon: FileText },
+    { key: "consentimientos", label: "Consentimientos", icon: FileSignature },
   ] },
   { key: "planes", label: "Planes de tratamiento", tabs: [
     { key: "planes", label: "Plan de tratamiento", icon: Layers },
@@ -80,6 +84,12 @@ const GROUPS: GroupDef[] = [
   ] },
 ];
 
+/** Las dos pestañas que se agrupan bajo «Documentos ▾». */
+const PESTANAS_DE_DOCUMENTOS = new Set<SubTab>(["documentos", "consentimientos"]);
+
+/** Enlaces viejos: «Formularios» ahora vive en Documentos clínicos. */
+const clavePestana = (k: string) => (k === "formularios" ? "documentos" : k);
+
 export default function PatientProfile() {
   const { id } = useParams<{ id: string }>();
   const { db, session, completeForm, addEmrNote, addPerioSession, setOdontogram, markHistoryUpdate, upsertPatient } = useStore();
@@ -90,7 +100,7 @@ export default function PatientProfile() {
   const [planARecaudar, setPlanARecaudar] = useState<string | null>(null);
   // ?tab=… (desde el menú ⋮ del listado de pacientes): abre esa pestaña si existe.
   useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("tab");
+    const t = clavePestana(new URLSearchParams(window.location.search).get("tab") ?? "");
     if (t && GROUPS.some((g) => g.tabs.some((x) => x.key === t))) setTab(t as SubTab);
   }, []);
   const [fillingForm, setFillingForm] = useState<PatientForm | null>(null);
@@ -102,7 +112,7 @@ export default function PatientProfile() {
   // Enlace directo a una pestaña (#planes desde "Ir al tratamiento" de la bandeja
   // de tareas, #tareas…). Si el rol no la ve, cae en la primera que sí.
   useEffect(() => {
-    const h = window.location.hash.slice(1);
+    const h = clavePestana(window.location.hash.slice(1));
     if (TODAS_LAS_PESTANAS.has(h as SubTab)) setTab(h as SubTab);
   }, []);
 
@@ -127,7 +137,8 @@ export default function PatientProfile() {
       case "datos": case "citas": case "comentarios": case "emails": return verPersonales;
       // Las tareas de gestión son de todos (tasks.use): cada uno ve las suyas y las de sus pacientes.
       case "tareas": return alcance.puede("tasks.use");
-      case "formularios": case "consentimientos": return alcance.puede("engagement.forms");
+      case "documentos": return puedeVerDocumentos(session.role);
+      case "consentimientos": return alcance.puede("engagement.forms");
       case "archivos": return verPersonales || alcance.puede("emr.read");
       case "planes": return alcance.puede("plans.view");
       case "facturacion": return verMontos;
@@ -146,8 +157,9 @@ export default function PatientProfile() {
   }
   const tab: SubTab = puedeVerPestana(tabElegida) ? tabElegida : (grupos[0]?.tabs[0]?.key ?? "resumen");
 
-  const pendingForms = p.forms.filter((f) => f.status === "pendiente");
+  const nPendientes = pendientesPorPaciente([p], db.clinicalDocs).get(p.id) ?? 0;
   const canForms = can(session.role, "engagement.forms");
+  const verDocumentos = puedeVerDocumentos(session.role);
   const canEditPatient = verPersonales || can(session.role, "emr.write");
   const age = p.birthDate ? Math.max(0, Math.floor((Date.now() - new Date(p.birthDate).getTime()) / 31557600000)) : null;
   const onPhoto = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -236,8 +248,8 @@ export default function PatientProfile() {
               billing: verMontos ? bills.slice(0, 6).map((b) => ({ flags: b.flags, total: recordTotal(b) })) : [],
             }}
           />}
-          {pendingForms.length > 0 && canForms && (
-            <button onClick={() => setTab("formularios")} data-tip="Formularios pendientes — clic para gestionar" className="grid h-9 w-9 place-items-center rounded-xl bg-state-warnbg">
+          {nPendientes > 0 && verDocumentos && (
+            <button onClick={() => setTab("documentos")} data-tip="Documentos clínicos pendientes — clic para gestionar" className="grid h-9 w-9 place-items-center rounded-xl bg-state-warnbg">
               <FileText className="h-5 w-5 text-state-warn" />
             </button>
           )}
@@ -288,9 +300,8 @@ export default function PatientProfile() {
         </div>
         {activeGroup.tabs.length > 1 && (
           <div className="flex flex-wrap items-end border-b border-clinic-border px-1">
-            {activeGroup.tabs.map((t) => {
+            {activeGroup.tabs.filter((t) => !PESTANAS_DE_DOCUMENTOS.has(t.key)).map((t) => {
               const active = t.key === tab;
-              const badge = t.key === "formularios" ? pendingForms.length : 0;
               return (
                 <button
                   key={t.key}
@@ -300,10 +311,15 @@ export default function PatientProfile() {
                   }`}
                 >
                   <t.icon className="h-4 w-4" /> {t.label}
-                  {badge > 0 && <span className="ml-0.5 rounded-full bg-state-warn px-1.5 text-[11px] font-bold text-white">{badge}</span>}
                 </button>
               );
             })}
+            <MenuDocumentos
+              opciones={activeGroup.tabs.filter((t) => PESTANAS_DE_DOCUMENTOS.has(t.key)).map((t) => ({ key: t.key, label: t.label }))}
+              actual={tab}
+              onElegir={(k) => setTab(k as SubTab)}
+              pendientes={nPendientes}
+            />
           </div>
         )}
       </Reveal>
@@ -507,44 +523,8 @@ export default function PatientProfile() {
       {tab === "copilot" && <Reveal>{hasIA ? <ClinicalCopilot patient={p} /> : <Empty title="Clinical Copilot" desc="Disponible en el plan Clínica o superior." />}</Reveal>}
       {tab === "consentimientos" && <Reveal><ConsentimientosTab patient={p} /></Reveal>}
 
-      {/* ===== FORMULARIOS (Engagement) ===== */}
-      {tab === "formularios" && (
-        <Reveal className="space-y-4">
-          {!canForms && (
-            <p className="rounded-xl bg-clinic-bg p-3 text-sm text-clinic-muted">
-              <Lock className="mr-1 inline h-3.5 w-3.5" /> Tu rol no gestiona formularios (permiso de Administrador/Asistente). Vista de solo lectura.
-            </p>
-          )}
-          {p.forms.length === 0 ? (
-            <Empty title="Sin formularios asignados" />
-          ) : (
-            <Card className="divide-y divide-clinic-border">
-              {p.forms.map((f) => (
-                <div key={f.id} className="flex items-center gap-4 px-5 py-3.5">
-                  <span className={`grid h-9 w-9 place-items-center rounded-xl ${f.status === "pendiente" ? "bg-state-warnbg" : "bg-state-okbg"}`}>
-                    {f.status === "pendiente" ? <FileText className="h-4 w-4 text-state-warn" /> : <CheckCircle2 className="h-4 w-4 text-state-ok" />}
-                  </span>
-                  <span className="flex-1">
-                    <span className="block text-sm font-bold text-clinic-text">{f.templateName}</span>
-                    <span className="block text-xs text-clinic-muted">
-                      {f.status === "pendiente" ? "Pendiente de completar" : `Completado el ${f.completedAt}`}
-                    </span>
-                  </span>
-                  {f.status === "pendiente" ? (
-                    canForms && (
-                      <button onClick={() => setFillingForm(f)} data-tip="Completar formulario" className="grid h-9 w-9 place-items-center rounded-xl border border-clinic-border hover:border-azure-300 hover:bg-azure-50">
-                        <Pencil className="h-4 w-4 text-azure-600" />
-                      </button>
-                    )
-                  ) : (
-                    <Badge tone="ok">Completado</Badge>
-                  )}
-                </div>
-              ))}
-            </Card>
-          )}
-        </Reveal>
-      )}
+      {/* ===== DOCUMENTOS CLÍNICOS (reemplaza a «Formularios») ===== */}
+      {tab === "documentos" && <Reveal><DocumentosClinicos patient={p} onCompletarFormulario={setFillingForm} /></Reveal>}
 
       {/* ===== FACTURACIÓN del paciente ===== */}
       {tab === "facturacion" && <Reveal><FacturacionPaciente patient={p} /></Reveal>}

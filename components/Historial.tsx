@@ -2,7 +2,7 @@
 /** Historial clínico = timeline unificado (paridad Dentalink): citas + evoluciones +
  *  prestaciones realizadas + pagos + notas, agrupados por día, con filtros e impresión. */
 import { useMemo, useState } from "react";
-import { Printer, Calendar, Activity, Receipt, ClipboardList, Stethoscope } from "lucide-react";
+import { Printer, Calendar, Activity, Receipt, ClipboardList, Stethoscope, FileText } from "lucide-react";
 import { useStore, fmtGs } from "@/lib/store";
 import { buildHistorial, type HistorialKind, type HistorialEntry } from "@/lib/historial";
 import { useAlcance } from "@/lib/useAlcance";
@@ -15,6 +15,7 @@ const KIND_META: Record<HistorialKind, { color: string; icon: any }> = {
   prestacion: { color: "bg-state-ok", icon: Stethoscope },
   pago: { color: "bg-state-warn", icon: Receipt },
   nota: { color: "bg-azure-300", icon: ClipboardList },
+  documento: { color: "bg-azure-700", icon: FileText },
 };
 
 export function HistorialTimeline({ patient }: { patient: Patient }) {
@@ -32,6 +33,7 @@ export function HistorialTimeline({ patient }: { patient: Patient }) {
         budgets: db.budgets.filter((b) => b.patientId === patient.id),
         payments: verMontos ? db.payments.filter((p) => p.patientId === patient.id) : [],
         emr: patient.emr,
+        documentos: db.clinicalDocs.filter((d) => d.patientId === patient.id),
       }),
     [db, patient, verMontos],
   );
@@ -63,6 +65,7 @@ export function HistorialTimeline({ patient }: { patient: Patient }) {
           <option value="prestacion">Prestaciones</option>
           {verMontos && <option value="pago">Pagos</option>}
           <option value="nota">Notas</option>
+          <option value="documento">Documentos</option>
         </select>
         <select className="rounded-xl border border-clinic-border bg-white px-3 py-1.5 text-sm" value={mes} onChange={(e) => setMes(e.target.value)}>
           <option value="todos">Todos los meses</option>

@@ -15,7 +15,7 @@ import { CamposPacienteForm } from "@/components/CamposPacienteForm";
 import { Btn, Card } from "@/components/ui";
 
 export default function NuevoPacientePage() {
-  const { db, session, upsertPatient } = useStore();
+  const { db, session, crearPaciente } = useStore();
   const alcance = useAlcance();
   const router = useRouter();
   const campos = camposDe(db.clinics[0]?.config.patientFields, "nuevo");
@@ -48,7 +48,7 @@ export default function NuevoPacientePage() {
     const falta = faltantes(campos, valores);
     if (falta.length > 0) { setError(`Completá: ${falta.join(", ")}.`); return; }
     const p = nuevoPaciente({ ...datosPaciente(campos, valores), ...(foto ? { photo: foto } : {}) }, session.clinicId, Date.now(), siguienteCodigo(db.patients));
-    upsertPatient(p);
+    crearPaciente(p, { id: session.userId, name: session.name });
     router.push(`/app/pacientes/${p.id}`);
   };
 
@@ -73,7 +73,7 @@ export default function NuevoPacientePage() {
 
         <Card className="space-y-4 p-5">
           <CamposPacienteForm campos={campos} valores={valores} onChange={setValores} convenios={(db.clinics[0]?.config.convenios ?? []).map((c) => c.name)} />
-          <p className="rounded-xl bg-azure-50 p-3 text-xs text-azure-700">Se asigna automáticamente el formulario de <b>Anamnesis inicial</b> como pendiente.</p>
+          <p className="rounded-xl bg-azure-50 p-3 text-xs text-azure-700">Se asigna automáticamente la <b>Historia Clínica</b> como documento clínico pendiente.</p>
           {error && <p role="alert" className="rounded-xl bg-state-errbg px-3 py-2 text-xs font-semibold text-state-err">{error}</p>}
           <div className="flex justify-end gap-2">
             <Btn variant="outline" type="button" onClick={() => router.push("/app/pacientes")}>Cancelar</Btn>

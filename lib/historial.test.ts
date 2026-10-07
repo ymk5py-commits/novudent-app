@@ -28,3 +28,32 @@ describe("buildHistorial", () => {
     expect(r).toHaveLength(0);
   });
 });
+
+describe("buildHistorial · documentos clínicos", () => {
+  const doc = (id: string, patch: Record<string, unknown>) => ({
+    id, nombre: "Historia Clínica", estado: "completado", createdAt: "2026-07-01T10:00:00Z", createdByName: "Laura",
+    completedAt: "2026-07-02T10:00:00Z", completedBy: "Dra. Sofía", ...patch,
+  }) as any;
+  const base = { appointments: [], budgets: [], payments: [], emr: [] };
+
+  it("suma los documentos completados, con quién los completó", () => {
+    const r = buildHistorial({ ...base, documentos: [doc("d1", {})] });
+    expect(r).toEqual([expect.objectContaining({
+      id: "doc_d1", at: "2026-07-02T10:00:00Z", kind: "documento", title: "Documento clínico", detail: "Historia Clínica", by: "Dra. Sofía",
+    })]);
+  });
+
+  it("no suma los pendientes ni los anulados", () => {
+    const r = buildHistorial({ ...base, documentos: [doc("d2", { estado: "pendiente", completedAt: undefined }), doc("d3", { estado: "anulado" })] });
+    expect(r).toEqual([]);
+  });
+
+  it("se ordena con el resto, de lo más nuevo a lo más viejo", () => {
+    const r = buildHistorial({
+      ...base,
+      emr: [{ id: "n1", createdAt: "2026-07-03T10:00:00Z", kind: "nota", text: "x", authorName: "Dra" } as any],
+      documentos: [doc("d1", {})],
+    });
+    expect(r.map((e) => e.kind)).toEqual(["nota", "documento"]);
+  });
+});

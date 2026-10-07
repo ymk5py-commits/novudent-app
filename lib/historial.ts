@@ -1,8 +1,8 @@
 import { ESTADO_LABEL } from "./estadosCita";
-import type { Appointment, OrthoRecord, Budget, Payment, EmrNote } from "./types";
+import type { Appointment, OrthoRecord, Budget, Payment, EmrNote, DocumentoClinico } from "./types";
 
 /** Tipos de entrada del timeline unificado (paridad Historial de Dentalink). */
-export type HistorialKind = "cita" | "evolucion" | "prestacion" | "pago" | "nota";
+export type HistorialKind = "cita" | "evolucion" | "prestacion" | "pago" | "nota" | "documento";
 
 export interface HistorialEntry {
   id: string;
@@ -25,6 +25,8 @@ export function buildHistorial(opts: {
   budgets: Budget[];
   payments: Payment[];
   emr: EmrNote[];
+  /** Documentos clínicos del paciente: entran los completados (un pendiente o anulado no es historia). */
+  documentos?: DocumentoClinico[];
 }): HistorialEntry[] {
   const out: HistorialEntry[] = [];
 
@@ -51,6 +53,11 @@ export function buildHistorial(opts: {
   }
   for (const n of opts.emr) {
     out.push({ id: `nota_${n.id}`, at: n.createdAt, kind: "nota", title: "Nota clínica", detail: n.text, by: n.authorName, badge: n.kind });
+  }
+
+  for (const d of opts.documentos ?? []) {
+    if (d.estado !== "completado") continue;
+    out.push({ id: `doc_${d.id}`, at: d.completedAt ?? d.createdAt, kind: "documento", title: "Documento clínico", detail: d.nombre, by: d.completedBy ?? d.createdByName });
   }
 
   return out.sort((a, b) => b.at.localeCompare(a.at));

@@ -18,16 +18,17 @@
  */
 import { useEffect, useRef, useState } from "react";
 import {
-  FileSignature, Plus, PenLine, Smartphone, Printer, Ban, Eye, X, Lock, ShieldCheck,
+  FileSignature, PenLine, Smartphone, Printer, Ban, Eye, X, Lock, ShieldCheck,
   Copy, Check, Loader2, QrCode,
 } from "lucide-react";
 import QRCode from "qrcode";
-import type { Clinic, Patient, SignatureDoc, SignatureStatus } from "@/lib/types";
-import { Card, Btn, Badge, Field, inputCls, Empty, useDialogA11y } from "@/components/ui";
+import type { Budget, Clinic, Patient, SignatureDoc, SignatureStatus, User } from "@/lib/types";
+import { Card, Btn, Badge, Field, inputCls, Empty, Modal, useDialogA11y } from "@/components/ui";
 import { useStore, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { useClinicPlan, PlanLocked } from "@/components/PlanGate";
 import { newSignToken } from "@/lib/firma";
+import { etiquetaPlan } from "@/lib/documentosClinicos";
 import SignaturePad, { type SignaturePadHandle } from "@/components/SignaturePad";
 import { PrintLetterhead } from "@/components/PrintDocument";
 import { ConsentPrintDocument } from "@/components/ConsentPrintDocument";
@@ -71,7 +72,8 @@ function ConsentimientosInner({ patient, canManage }: { patient: Patient; canMan
   const clinicId = db.clinics[0].id;
   const patientName = fullName(patient);
 
-  const [tplId, setTplId] = useState<string>("");
+  const [crearOpen, setCrearOpen] = useState(false);
+  const [mostrarAnulados, setMostrarAnulados] = useState(false);
   // Doc que se está firmando en consultorio (pad abierto).
   const [signing, setSigning] = useState<SignatureDoc | null>(null);
   // Doc cuyo QR/enlace remoto está abierto.
@@ -80,14 +82,20 @@ function ConsentimientosInner({ patient, canManage }: { patient: Patient; canMan
   const [viewing, setViewing] = useState<SignatureDoc | null>(null);
 
   const docs = db.signatures
-    .filter((s) => s.patientId === patient.id)
+    .filter((s) => s.patientId === patient.id && (mostrarAnulados || s.status !== "anulado"))
     .slice()
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
+  // Para «Crear nuevo consentimiento» (plan de tratamiento y profesional a cargo, como en Dentalink).
+  const planes = db.budgets.filter((b) => b.patientId === patient.id).slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const dentistas = db.users.filter((u) => u.role === "dentist" && u.active !== false);
+  const nombreDe = (id?: string) => db.users.find((u) => u.id === id)?.name;
+  const planDe = (id?: string) => { const b = id ? db.budgets.find((x) => x.id === id) : undefined; return b ? etiquetaPlan(b) : undefined; };
+
   /* ---- Crear consentimiento desde una plantilla ---- */
-  function createFromTemplate() {
+  function crearConsentimiento(o: { templateId: string; budgetId?: string; dentistId: string }) {
     if (!session) return;
-    const tpl = templates.find((t) => t.id === tplId);
+    const tpl = templates.find((t) => t.id === o.templateId);
     if (!tpl) return;
     const doc: SignatureDoc = {
       id: crypto.randomUUID(),
@@ -97,11 +105,13 @@ function ConsentimientosInner({ patient, canManage }: { patient: Patient; canMan
       body: tpl.body, // snapshot inmutable
       status: "pendiente",
       token: newSignToken(),
+      ...(o.budgetId ? { budgetId: o.budgetId } : {}),
+      dentistId: o.dentistId,
       createdBy: session.userId,
       createdAt: new Date().toISOString(),
     };
     addSignature(doc);
-    setTplId("");
+    setCrearOpen(false);
   }
 
   /* ---- Confirmar firma en consultorio ---- */
@@ -136,48 +146,29 @@ function ConsentimientosInner({ patient, canManage }: { patient: Patient; canMan
         </p>
       )}
 
-      {/* ---- Nuevo consentimiento ---- */}
-      {canManage && (
-        <Card className="p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-azure-100 text-azure-700">
-              <FileSignature className="h-5 w-5" />
-            </span>
-            <div>
-              <h2 className="font-bold text-clinic-text">Nuevo consentimiento</h2>
-              <p className="text-xs text-clinic-muted">
-                Elegí una plantilla; se crea como pendiente para firmar en consultorio o desde el celular del paciente.
-              </p>
-            </div>
-          </div>
-
-          {templates.length === 0 ? (
-            <p className="rounded-xl bg-state-warnbg px-3.5 py-2.5 text-xs font-semibold text-state-warn">
-              No hay plantillas cargadas. Creá plantillas de consentimiento en Configuración.
-            </p>
-          ) : (
-            <div className="flex flex-wrap items-end gap-3">
-              <Field label="Plantilla">
-                <select className={inputCls} value={tplId} onChange={(e) => setTplId(e.target.value)}>
-                  <option value="">Elegir plantilla…</option>
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>{t.title}</option>
-                  ))}
-                </select>
-              </Field>
-              <Btn onClick={createFromTemplate} disabled={!tplId}>
-                <Plus className="h-4 w-4" /> Crear consentimiento
-              </Btn>
-            </div>
-          )}
-        </Card>
+      {/* ---- Encabezado: Mostrar anulados + Nuevo consentimiento informado ---- */}
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="text-[18px] font-normal text-clinic-text">Consentimiento informado</h2>
+        <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-[13px] text-clinic-text">
+          <input type="checkbox" className="accent-azure-600" checked={mostrarAnulados} onChange={(e) => setMostrarAnulados(e.target.checked)} />
+          Mostrar anulados
+        </label>
+        {canManage && (
+          <Btn onClick={() => setCrearOpen(true)} disabled={templates.length === 0}>
+            <FileSignature aria-hidden className="h-4 w-4" /> Nuevo consentimiento informado
+          </Btn>
+        )}
+      </div>
+      {canManage && templates.length === 0 && (
+        <p className="rounded bg-state-warnbg px-3.5 py-2.5 text-xs font-semibold text-state-warn">
+          No hay plantillas cargadas. Creá plantillas de consentimiento en Configuración.
+        </p>
       )}
 
       {/* ---- Lista de documentos ---- */}
       <div>
-        <h3 className="mb-2 text-sm font-bold text-clinic-text">Consentimientos del paciente</h3>
         {docs.length === 0 ? (
-          <Empty title="Sin consentimientos" desc="Los consentimientos creados aparecerán acá." />
+          <Empty title="Este paciente no cuenta con ningún consentimiento informado." desc="Los consentimientos que se creen van a aparecer acá." />
         ) : (
           <div className="space-y-3">
             {docs.map((doc) => {
@@ -192,6 +183,8 @@ function ConsentimientosInner({ patient, canManage }: { patient: Patient; canMan
                       </div>
                       <p className="mt-0.5 text-[11px] text-clinic-muted">
                         Creado {fmtDate(doc.createdAt)}
+                        {nombreDe(doc.dentistId) ? ` · ${nombreDe(doc.dentistId)}` : ""}
+                        {planDe(doc.budgetId) ? ` · ${planDe(doc.budgetId)}` : ""}
                         {doc.status === "firmado" && doc.signedByName ? ` · Firmado por ${doc.signedByName}` : ""}
                         {doc.status === "firmado" && doc.signedAt ? ` el ${fmtDate(doc.signedAt)}` : ""}
                         {doc.status === "firmado" && doc.channel ? ` · ${doc.channel === "consultorio" ? "En consultorio" : "Desde el celular"}` : ""}
@@ -245,8 +238,28 @@ function ConsentimientosInner({ patient, canManage }: { patient: Patient; canMan
         )}
       </div>
 
+      {crearOpen && (
+        <NuevoConsentimientoModal
+          templates={templates}
+          planes={planes}
+          dentistas={dentistas}
+          dentistaInicial={session?.role === "dentist" ? session.userId : ""}
+          onClose={() => setCrearOpen(false)}
+          onCrear={crearConsentimiento}
+        />
+      )}
+
       {/* Visor del documento firmado (imprimible) */}
-      {viewing && <PrintViewer doc={viewing} clinic={db.clinics[0]} patientName={patientName} onClose={() => setViewing(null)} />}
+      {viewing && (
+        <PrintViewer
+          doc={viewing}
+          clinic={db.clinics[0]}
+          patientName={patientName}
+          profesional={nombreDe(viewing.dentistId)}
+          plan={planDe(viewing.budgetId)}
+          onClose={() => setViewing(null)}
+        />
+      )}
     </div>
   );
 }
@@ -376,7 +389,7 @@ function ShareInline({ url, onClose }: { url: string; onClose: () => void }) {
 /*  Visor imprimible del documento firmado                        */
 /* ============================================================== */
 
-function PrintViewer({ doc, clinic, patientName, onClose }: { doc: SignatureDoc; clinic: Clinic; patientName: string; onClose: () => void }) {
+function PrintViewer({ doc, clinic, patientName, profesional, plan, onClose }: { doc: SignatureDoc; clinic: Clinic; patientName: string; profesional?: string; plan?: string; onClose: () => void }) {
   // Mismo comportamiento accesible que <Modal>, conservando los estilos print:
   const { titleId, dialogProps } = useDialogA11y(onClose);
   return (
@@ -401,7 +414,9 @@ function PrintViewer({ doc, clinic, patientName, onClose }: { doc: SignatureDoc;
         <div>
           <PrintLetterhead clinic={clinic} label="CONSENTIMIENTO INFORMADO" />
           <h1 className="text-[16px] font-bold text-clinic-text">{doc.title}</h1>
-          <p className="mt-1 text-xs text-clinic-muted">Paciente: {patientName}</p>
+          <p className="mt-1 text-xs text-clinic-muted">
+            Paciente: {patientName}{profesional ? ` · Profesional: ${profesional}` : ""}{plan ? ` · ${plan}` : ""}
+          </p>
 
           <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-clinic-text">{doc.body}</div>
 
@@ -423,7 +438,65 @@ function PrintViewer({ doc, clinic, patientName, onClose }: { doc: SignatureDoc;
           <p className="mt-6 text-[11px] text-clinic-muted">{LEGAL_NOTE}</p>
         </div>
       </div>
-      <ConsentPrintDocument clinic={clinic} doc={doc} patientName={patientName} />
+      <ConsentPrintDocument clinic={clinic} doc={doc} patientName={patientName} profesional={profesional} plan={plan} />
     </div>
+  );
+}
+
+/* ============================================================== */
+/*  Crear nuevo consentimiento (como Dentalink)                   */
+/* ============================================================== */
+
+function NuevoConsentimientoModal({ templates, planes, dentistas, dentistaInicial, onClose, onCrear }: {
+  templates: { id: string; title: string }[];
+  planes: Budget[];
+  dentistas: User[];
+  dentistaInicial: string;
+  onClose: () => void;
+  onCrear: (o: { templateId: string; budgetId?: string; dentistId: string }) => void;
+}) {
+  const [templateId, setTemplateId] = useState("");
+  const [budgetId, setBudgetId] = useState("");
+  const [dentistId, setDentistId] = useState(dentistaInicial);
+
+  return (
+    <Modal title="Crear nuevo consentimiento" onClose={onClose}>
+      <form
+        className="space-y-4"
+        onSubmit={(e) => { e.preventDefault(); onCrear({ templateId, budgetId: budgetId || undefined, dentistId }); }}
+      >
+        <Field label="Tipo de consentimiento *" hint="Si querés agregar una plantilla nueva, hacelo desde Configuración.">
+          <select required className={inputCls} value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+            <option value="">Seleccionar</option>
+            {templates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+          </select>
+        </Field>
+        <Field label="Plan de tratamiento">
+          <select
+            className={inputCls}
+            value={budgetId}
+            onChange={(e) => {
+              setBudgetId(e.target.value);
+              // Si todavía no eligió profesional, se sugiere el del plan.
+              const plan = planes.find((b) => b.id === e.target.value);
+              if (plan && !dentistId && dentistas.some((d) => d.id === plan.dentistId)) setDentistId(plan.dentistId);
+            }}
+          >
+            <option value="">Seleccionar</option>
+            {planes.map((b) => <option key={b.id} value={b.id}>{etiquetaPlan(b)}</option>)}
+          </select>
+        </Field>
+        <Field label="Profesional a cargo *">
+          <select required className={inputCls} value={dentistId} onChange={(e) => setDentistId(e.target.value)}>
+            <option value="">Seleccionar</option>
+            {dentistas.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </Field>
+        <div className="flex justify-end gap-2">
+          <Btn variant="outline" onClick={onClose}>Cerrar</Btn>
+          <Btn type="submit" disabled={!templateId || !dentistId}>Crear consentimiento</Btn>
+        </div>
+      </form>
+    </Modal>
   );
 }

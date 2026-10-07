@@ -1,4 +1,6 @@
-import type { DB, Appointment, Patient, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, OutboxTask, ConsentTemplate } from "./types";
+import type { DB, Appointment, Patient, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, OutboxTask, ConsentTemplate, DocumentoClinico } from "./types";
+import { nuevoDocumento } from "./documentosClinicos";
+import { PLANTILLAS_DE_FABRICA } from "./plantillasDocumento";
 
 /** Devuelve el lunes de la semana actual a las 00:00 */
 function monday(): Date {
@@ -23,7 +25,6 @@ const patients: Patient[] = [
     id: "p1", clinicId: CLINIC_ID, code: 1, firstName: "María", lastName: "González", document: "3.456.789",
     phone: "+595 981 111 111", email: "maria@example.com", birthDate: "1988-04-12", insurer: "Asismed", sex: "F", gender: "F", city: "Asunción", municipio: "Asunción",
     forms: [
-      { id: "f1", templateName: "Anamnesis inicial", status: "pendiente", fields: [{ label: "Alergias", value: "" }, { label: "Medicación actual", value: "" }, { label: "Antecedentes", value: "" }] },
       { id: "f2", templateName: "Consentimiento informado", status: "completado", completedAt: "2026-05-20", fields: [{ label: "Firmado por", value: "María González" }] },
     ],
     historyUpdatePending: true,
@@ -59,7 +60,7 @@ const patients: Patient[] = [
   {
     id: "p2", clinicId: CLINIC_ID, code: 2, firstName: "Juan", lastName: "Ríos", document: "4.567.890",
     phone: "+595 982 222 222", birthDate: "1995-09-03", sex: "M", gender: "M", city: "Lambaré", municipio: "Lambaré",
-    forms: [{ id: "f3", templateName: "Anamnesis inicial", status: "pendiente", fields: [{ label: "Alergias", value: "" }, { label: "Medicación actual", value: "" }] }],
+    forms: [],
     historyUpdatePending: false,
     emr: [],
   },
@@ -253,6 +254,35 @@ const appointments: Appointment[] = [
   { id: "a7", clinicId: CLINIC_ID, patientId: "p3", dentistId: "u2", title: "Blanqueamiento — evaluación", start: at(4, 14), end: at(4, 14, 30), status: "pendiente", amount: 0, discount: 0 },
   { id: "a8", clinicId: CLINIC_ID, patientId: "p1", dentistId: "u2", title: "Control post-operatorio", start: at(4, 9), end: at(4, 9, 20), status: "cancelada", amount: 0, discount: 0 },
 ];
+
+/** Documentos clínicos de la demo: la Historia Clínica pendiente de p1 y p2 (como la que recibe todo
+ *  paciente nuevo) y la de p3 ya completada, para ver cómo queda impresa. p4 conserva su formulario
+ *  viejo (Patient.forms) para mostrar que los dos conviven. */
+function documentosDemo(): DocumentoClinico[] {
+  const historia = PLANTILLAS_DE_FABRICA.find((p) => p.id === "historia_clinica")!;
+  const base = (id: string, patientId: string) => nuevoDocumento({
+    id, clinicId: CLINIC_ID, patientId, plantilla: historia, dentistId: "u2",
+    by: { id: "u5", name: "Laura Recepción" }, now: at(-4, 9),
+  });
+  return [
+    base("cd_demo_p1", "p1"),
+    base("cd_demo_p2", "p2"),
+    {
+      ...base("cd_demo_p3", "p3"),
+      estado: "completado",
+      valores: {
+        enfermedad_ultimos_anos: "No", alergia: "Penicilina", vacunas: "Sí", refiere_padecido: ["Anemia"],
+        obs_enfermedades: "Anemia leve, controlada", medicamentos: "Hierro, una vez al día",
+        tension_arterial: "110/70", pulso: "72", peso_estatura: "58 / 1,64", embarazada: "No",
+        higiene_bucal: "Buena", cepillado_dia: "3", sangrado_encias: "No", sensibilidad: "Sí",
+        parafunciones_referidas: ["Apretamiento nocturno"], molar_der: "Clase I", molar_izq: "Clase I",
+      },
+      updatedAt: at(-3, 11),
+      completedAt: at(-3, 11),
+      completedBy: "Dra. Sofía Benítez",
+    },
+  ];
+}
 
 export function buildSeed(): DB {
   return {
@@ -461,6 +491,7 @@ Doy libremente mi consentimiento para la realización del tratamiento odontológ
       { id: "b_norte", clinicId: CLINIC_ID, name: "Sucursal Norte", address: "Av. San Martín 4500, Asunción", phone: "+595 21 555 010", active: true },
     ],
     signatures: [],
+    clinicalDocs: documentosDemo(),
     crmCards: [],
     campaigns: [],
     labOrders: [],
