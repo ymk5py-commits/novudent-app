@@ -2,10 +2,11 @@
 /** Registro ambiental de residuos (cumplimiento — spec 8.7). Bitácora de
  *  entregas de residuos al gestor externo, por tipo y peso, con manifiesto. */
 import { useMemo, useState } from "react";
+import { can } from "@/lib/rbac";
 import { useStore, fmtDate } from "@/lib/store";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
-import { Leaf, Plus, Pencil, Trash2 } from "lucide-react";
+import { Leaf, Plus, Pencil, Trash2, ShieldAlert } from "lucide-react";
 import type { EnvironmentalLog } from "@/lib/types";
 
 const WASTE_LABEL: Record<EnvironmentalLog["wasteType"], string> = {
@@ -16,7 +17,7 @@ const WASTE_TONE: Record<EnvironmentalLog["wasteType"], "err" | "warn" | "info" 
   biologico: "err", cortopunzante: "err", quimico: "warn", anatomopatologico: "err", comun: "muted", reciclable: "ok",
 };
 
-export default function AmbientalPage() {
+function Ambiental() {
   const { db, addEnvironmentalLog, updateEnvironmentalLog, deleteEnvironmentalLog } = useStore();
   const ym = new Date().toISOString().slice(0, 7);
   const [mes, setMes] = useState(ym);
@@ -146,4 +147,20 @@ function RegistroForm({ log, users, clinicId, onClose, onSave }: {
       </div>
     </Modal>
   );
+}
+
+/** Roles v3: es de la administración (`practice.config`), como el resto de «Gestión». El menú la esconde, pero quien escribía la
+ *  URL registraba, editaba y borraba igual. */
+export default function AmbientalPage() {
+  const { session } = useStore();
+  if (!session || !can(session.role, "practice.config")) {
+    return (
+      <Card className="p-10 text-center">
+        <ShieldAlert className="mx-auto h-10 w-10 text-state-warn" />
+        <h1 className="mt-3 text-[16px] font-bold text-clinic-text">Acceso denegado</h1>
+        <p className="mt-1 text-sm text-clinic-muted">El registro ambiental lo maneja el <b>Administrador</b>.</p>
+      </Card>
+    );
+  }
+  return <Ambiental />;
 }
