@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, Stethoscope, Headset, Wallet, ClipboardList, Mail, Lock, Eye, EyeOff, LoaderCircle, ArrowLeft, RotateCcw, KeyRound, CheckCircle2 } from "lucide-react";
-import { useStore } from "@/lib/store";
+import { useStore, CLINICA_DEMO_ID } from "@/lib/store";
 import { ROLE_LABEL } from "@/lib/rbac";
 import { Field, inputCls } from "@/components/ui";
 import { sendPasswordReset } from "@/lib/firebase";
@@ -34,7 +34,7 @@ function friendlyResetError(e: any): string {
 }
 
 export default function Login() {
-  const { db, login, loginWithEmail, seedDemo, ready, backend } = useStore();
+  const { db, login, loginWithEmail, seedDemo, entrarEnDemo, ready, backend } = useStore();
   const router = useRouter();
   /* La demo ya no se ofrece al público: Novudent se vende con acceso
      solicitado. NO se borró — sigue viva en `/login?demo=1` para mostrarla en
@@ -63,6 +63,12 @@ export default function Login() {
   const [seeding, setSeeding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const demoUsers = db.users.filter((u) => !u.authUid);
+  /* Lo que está cargado no es la demo sino una clínica REAL que quedó abierta en este navegador
+   * (la sesión se guarda en localStorage). Sin este aviso, «Ver demo» mostraba los usuarios de esa
+   * clínica —todos con cuenta, que la demo esconde— y decía «La demo está vacía». */
+  const clinicaCargada = db.clinics[0];
+  const enOtraClinica = ready && !!clinicaCargada && clinicaCargada.id !== CLINICA_DEMO_ID;
+  const [cambiandoADemo, setCambiandoADemo] = useState(false);
 
   /* Recuperar contraseña: vista aparte dentro de la misma card, no una página
    * nueva — así conserva el email que la persona ya haya tecleado. Antes esto
@@ -273,7 +279,26 @@ export default function Login() {
                   <h1 className="text-xl font-extrabold text-navy-800">Recorré la demo</h1>
                   <p className="mt-1 text-sm text-clinic-muted">Datos de ejemplo. Cada rol ve y puede hacer cosas distintas (RBAC).</p>
                 </div>
-                {ready && demoUsers.length === 0 && (
+                {enOtraClinica && (
+                  <div className="rounded-2xl border border-state-warn/40 bg-state-warnbg p-5 text-center">
+                    <p className="text-sm font-semibold text-clinic-text">Este navegador tiene abierta la clínica «{clinicaCargada.name}»</p>
+                    <p className="mt-1 text-xs leading-relaxed text-clinic-muted">
+                      Para recorrer la demo hay que cerrar esa sesión. Después podés volver a entrar a tu clínica con tu email y contraseña.
+                    </p>
+                    <button
+                      onClick={async () => {
+                        setCambiandoADemo(true);
+                        try { await entrarEnDemo(); } finally { setCambiandoADemo(false); }
+                      }}
+                      disabled={cambiandoADemo}
+                      className="mt-3 inline-flex items-center gap-2 rounded-xl bg-azure-600 px-4 py-2.5 text-sm font-bold text-white transition-[color,background-color,border-color,box-shadow,transform,opacity] hover:-translate-y-0.5 hover:bg-azure-700 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted"
+                    >
+                      {cambiandoADemo ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                      Cerrar esa sesión y ver la demo
+                    </button>
+                  </div>
+                )}
+                {ready && !enOtraClinica && demoUsers.length === 0 && (
                   <div className="rounded-2xl border border-dashed border-clinic-border p-5 text-center">
                     <p className="text-sm font-semibold text-clinic-text">La demo está vacía</p>
                     <p className="mt-1 text-xs leading-relaxed text-clinic-muted">
@@ -293,7 +318,7 @@ export default function Login() {
                     </button>
                   </div>
                 )}
-                {ready &&
+                {ready && !enOtraClinica &&
                   demoUsers.map((u) => {
                     const Icon = ICON[u.role];
                     return (

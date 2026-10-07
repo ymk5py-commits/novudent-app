@@ -63,6 +63,8 @@ import { parseFecha } from "./tareas";
 const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
 const DEMO_CLINIC_ID = "cl_demo";
+/** Id de la clínica de ejemplo: la pantalla de ingreso lo usa para saber si lo cargado es la demo. */
+export const CLINICA_DEMO_ID = DEMO_CLINIC_ID;
 /** Clínica activa (multi-clínica). Se resuelve desde la sesión guardada antes
  *  de cargar Firestore; cambia al iniciar sesión con una cuenta de otra clínica. */
 let CLINIC_ID = DEMO_CLINIC_ID;
@@ -419,6 +421,9 @@ interface Ctx {
   /** Cambia la contraseña del usuario actual y limpia mustChangePassword (cambio inicial obligatorio) */
   changeMyPassword: (newPassword: string) => Promise<void>;
   logout: () => void;
+  /** La puerta de la demo (/login?demo=1): cierra la sesión de la clínica real que haya quedado
+   *  en este navegador y carga la clínica de ejemplo. */
+  entrarEnDemo: () => Promise<void>;
   resetDemo: () => void;
   /** Restaura los datos de ejemplo SIN borrar cuentas reales (login vacío) */
   seedDemo: () => Promise<void>;
@@ -1004,6 +1009,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem(SES_KEY);
         try { localStorage.removeItem(DB_KEY); } catch { /* ignore */ }
         setSession(null);
+      },
+      /* Si en este navegador quedó abierta una clínica real, la pantalla de ingreso cargaba ESA
+       * clínica: la pestaña «Ver demo» mostraba sus usuarios (todos con cuenta real, que la demo
+       * esconde) y decía «La demo está vacía», y «Restaurar datos de demo» no hacía nada porque
+       * jamás siembra sobre una clínica real. Esto cierra esa sesión y carga la demo. */
+      entrarEnDemo: async () => {
+        void signOutUser().catch((e) => console.warn("signOut:", e));
+        localStorage.removeItem(SES_KEY);
+        try { localStorage.removeItem(DB_KEY); } catch { /* ignore */ }
+        setSession(null);
+        CLINIC_ID = DEMO_CLINIC_ID;
+        try {
+          await withTimeout(ensureAuth(), 6000).catch(() => {});
+          setDb(await withTimeout(loadFirestore(), 9000));
+          setBackend("firebase");
+        } catch (e) {
+          console.warn("Firestore no disponible — usando modo local:", e);
+          setDb(loadLocal());
+          setBackend("local");
+        }
       },
       seedDemo: async () => {
         if (clinicIdRef.current !== DEMO_CLINIC_ID) return; // jamás sobre una clínica real
