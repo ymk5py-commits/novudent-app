@@ -1,4 +1,5 @@
 "use client";
+import { CampoBanco } from "@/components/CampoBanco";
 import Link from "next/link";
 /** Cajas estilo Dentalink: libro de caja con apertura/cierre por usuario.
  *  Mi caja (sesión abierta + movimientos + arqueo) · Cajas abiertas · Cajas cerradas.
@@ -439,7 +440,7 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
         {method === "cheque" && (
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="N° de cheque"><input className={inputCls} value={checkNumber} onChange={(e) => setCheckNumber(e.target.value)} placeholder="00012345" /></Field>
-            <Field label="Banco"><input className={inputCls} value={checkBank} onChange={(e) => setCheckBank(e.target.value)} placeholder="Banco Continental" /></Field>
+            <Field label="Banco"><CampoBanco value={checkBank} onChange={setCheckBank} /></Field>
             <Field label="Fecha de cobro"><input type="date" className={inputCls} value={checkCashDate} onChange={(e) => setCheckCashDate(e.target.value)} /></Field>
           </div>
         )}

@@ -28,6 +28,13 @@ export default function PatientsPage() {
   const verPersonales = alcance.puede("patients.personal");
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"lista" | "analisis" | "estudios" | "configuracion">("lista");
+  // El menú (Administración › Campos del paciente) llega acá con #configuracion: abre esa pestaña.
+  useEffect(() => {
+    const aplicar = () => { if (window.location.hash === "#configuracion") setTab("configuracion"); };
+    aplicar();
+    window.addEventListener("hashchange", aplicar);
+    return () => window.removeEventListener("hashchange", aplicar);
+  }, []);
   const [estado, setEstado] = useState<"habilitados" | "deshabilitados" | "todos">("habilitados");
   // «Con documentos pendientes»: lo activa la campana y la tarjeta de Inicio (?pendientes=documentos).
   // Se lee en un efecto y no con useSearchParams para no obligar a la página a renderizar en el servidor.

@@ -9,8 +9,7 @@ import Link from "next/link";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, CreditCard,
   FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown, Banknote, Handshake, Image as ImageIcon,
-  Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star, ListChecks, Leaf, Video, MapPin, Headset,
-} from "lucide-react";
+  Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star, ListChecks, Leaf, Video, MapPin, Headset, CalendarClock, Landmark } from "lucide-react";
 import { useAlcance } from "@/lib/useAlcance";
 import { useStore, fullName } from "@/lib/store";
 import { pendientesPorPaciente } from "@/lib/documentosClinicos";
@@ -32,17 +31,19 @@ type NavLeaf = { href: string; label: string; icon: any; perm?: Permission; feat
 type NavTop = { label: string; href?: string; icon?: any; perm?: Permission; feature?: PlanFeature; children?: NavLeaf[] };
 
 /** Agrupado igual a la barra superior de Dentalink. CRM no lleva gate de feature:
- *  aparece siempre (la página decide si está disponible según el plan). */
+ *  aparece siempre (la página decide si está disponible según el plan). Un grupo sin
+ *  hijos visibles para el rol se oculta entero (ver `nav` más abajo). */
 const NAV: NavTop[] = [
   { href: "/app/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/app/pacientes", label: "Pacientes", icon: Users },
+  // Videos 3D: se muestran al paciente durante la consulta, así que van a mano y para quien atiende (antes: dentro de Administración, solo el admin).
+  { href: "/app/videos", label: "Videos 3D", icon: Video, perm: "emr.read" },
   { href: "/app/caja", label: "Cajas", icon: Wallet, perm: "payments.manage", feature: "caja" },
   {
     label: "Cobranza", icon: Receipt, children: [
       { href: "/app/facturacion", label: "Facturación", icon: Receipt, perm: "money.view" },
       { href: "/app/presupuestos", label: "Presupuestos", icon: FileSpreadsheet, perm: "budgets.manage" },
       { href: "/app/caja", label: "Cuentas por cobrar", icon: Wallet, perm: "payments.manage", feature: "caja" },
-      { href: "/app/liquidaciones", label: "Liquidaciones", icon: Coins, perm: "billing.reports", feature: "liquidaciones" },
       { href: "/app/reportes#desempeno", label: "Reporte de cobranza", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
     ],
   },
@@ -54,17 +55,17 @@ const NAV: NavTop[] = [
       { href: "/app/liquidaciones", label: "Liquidaciones", icon: Coins, perm: "billing.reports", feature: "liquidaciones", section: "Gestión" },
       { href: "/app/box", label: "Box / Sillones", icon: Armchair, perm: "practice.config", feature: "boxes", section: "Gestión" },
       { href: "/app/esterilizacion", label: "Esterilización", icon: ShieldCheck, perm: "practice.config", section: "Gestión" },
-      { href: "/app/encuestas", label: "Encuestas y NPS", icon: Star, perm: "practice.config", section: "Gestión" },
-      { href: "/app/videos", label: "Videos 3D", icon: Video, perm: "practice.config", section: "Gestión" },
       { href: "/app/ambiental", label: "Registro ambiental", icon: Leaf, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#convenios", label: "Convenios", icon: Handshake, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#usuarios", label: "Usuarios y profesionales", icon: Users, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#sucursales", label: "Sucursales", icon: MapPin, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#fusion", label: "Fusión de fichas", icon: Users, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#arancel", label: "Arancel de precios", icon: FileSpreadsheet, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion#bancos", label: "Bancos y entidades financieras", icon: Landmark, perm: "practice.config", section: "Configuración" },
       { href: "/app/configuracion#consentimientos", label: "Documentos y consentimientos", icon: FileText, perm: "practice.config", section: "Configuración" },
       { href: "/app/configuracion#logotipo", label: "Logotipo", icon: ImageIcon, perm: "practice.config", section: "Configuración" },
-      { href: "/app/configuracion#campos", label: "Campos del paciente", icon: ClipboardList, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion#agendamiento", label: "Agenda online", icon: CalendarClock, perm: "practice.config", section: "Configuración" },
+      { href: "/app/pacientes#configuracion", label: "Campos del paciente", icon: ClipboardList, perm: "practice.config", section: "Configuración" },
       { href: "/app/configuracion#estados-cita", label: "Estados de cita", icon: ListChecks, perm: "practice.config", section: "Configuración" },
       { href: "/app/configuracion#documentos-clinicos", label: "Documentos clínicos", icon: FileText, perm: "practice.config", section: "Configuración" },
       { href: "/app/integraciones", label: "Integraciones", icon: Bot, perm: "practice.config", feature: "integraciones", section: "Configuración" },
@@ -81,7 +82,12 @@ const NAV: NavTop[] = [
     ],
   },
   { href: "/app/tareas", label: "Tareas", icon: ListChecks, perm: "tasks.use" },
-  { href: "/app/crm", label: "CRM", icon: Megaphone, perm: "engagement.forms" },
+  {
+    label: "CRM", icon: Megaphone, children: [
+      { href: "/app/crm", label: "Seguimiento de pacientes", icon: Megaphone, perm: "engagement.forms" },
+      { href: "/app/encuestas", label: "Encuestas y NPS", icon: Star, perm: "practice.config" },
+    ],
+  },
   { href: "/app/chat", label: "Chat", icon: MessageCircle },
 ];
 
@@ -322,12 +328,17 @@ function Contador({ n }: { n: number }) {
   );
 }
 
+/** Forma de cada ítem de la barra de arriba. De 1024 a 1279 px se compacta (menos aire a los costados, letra de 13): con los diez
+ *  ítems que hay hoy, a 1024 px la barra no entra y el último (Chat) quedaba fuera de la pantalla sin forma de llegar; recién
+ *  desde `xl` (1280 px) hay lugar para el aire de siempre. `whitespace-nowrap`: «Videos 3D» no se parte en dos renglones. */
+const ITEM_DE_BARRA = "flex items-center gap-1 whitespace-nowrap rounded-[9px] px-1.5 py-2.5 text-[13px] font-normal transition-colors xl:gap-1.5 xl:px-3 xl:text-[14px]";
+
 /* — Link de nav (nivel superior, desktop) — */
 function NavLink({ href, label, icon: Icon, active, badge = 0 }: { href: string; label: string; icon: any; active: boolean; badge?: number }) {
   return (
     <Link
       href={href}
-      className={`relative flex items-center gap-1.5 rounded-[9px] px-3 py-2.5 text-[14px] font-normal transition-colors ${active ? "text-azure-600" : "text-clinic-text hover:text-azure-600"}`}
+      className={`${ITEM_DE_BARRA} relative ${active ? "text-azure-600" : "text-clinic-text hover:text-azure-600"}`}
     >
       <Icon className="h-4 w-4" /> {label}
       <Contador n={badge} />
@@ -350,7 +361,7 @@ function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; ic
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-1.5 rounded-[9px] px-3 py-2.5 text-[14px] font-normal transition-colors ${active || open ? "text-azure-600" : "text-clinic-text hover:text-azure-600"}`}
+        className={`${ITEM_DE_BARRA} ${active || open ? "text-azure-600" : "text-clinic-text hover:text-azure-600"}`}
       >
         <Icon className="h-4 w-4" /> {label}
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />

@@ -191,6 +191,26 @@ usuarios» y «Definir servicios» se marcan solos (`pasosPuestaEnMarcha`: hay m
 muestra un aviso con los que faltan. La regla de Firestore `routineChecks` deja escribir solo al administrador (+ demo y servicio);
 **hay que publicar las reglas antes del código**.
 
+**Menú y Configuración (oct-2026, pedido de Camila):** `components/Shell.tsx` (`NAV`): «Liquidaciones» está **una sola vez**
+(Administración › Gestión; es la misma página que antes colgaba también de Cobranza), «Encuestas y NPS» va dentro de **CRM**,
+«Videos 3D» es un enlace suelto junto a Pacientes (perm `emr.read`: lo ven admin, dentista y asistente) y «Campos del paciente»
+lleva a `/app/pacientes#configuracion` (la pestaña se abre sola por el hash). En Administración › Configuración: **Agenda online**
+(`components/AgendaOnline`: link, QR y anticipación mínima en una sola tarjeta), **Arancel de precios** y **Bancos y entidades
+financieras**. **Pago online** (`components/PagoOnline`, `lib/pagoOnline.ts`) guarda con botón y avisa; antes guardaba en silencio
+al salir del campo y un link sin `https://` quedaba guardado pero `/pagar/{cid}` lo ignoraba. Vaciar un campo de `config` se guarda
+como `""`, no como `undefined` (el `setDoc(..., {merge:true})` no borra un campo ausente). **Arancel** (`components/ArancelPrecios`,
+lógica pura con tests en `lib/arancel.ts`): buscar, precio editable en la fila (Enter guarda y pasa al siguiente), ajuste en
+bloque por porcentaje con vista previa y «Deshacer» (solo devuelve lo que sigue como lo dejó el ajuste), carga pegando filas de
+Excel o un CSV (código · descripción · [categoría] · precio; con solo código y precio actualiza lo que existe) y descarga. El
+**código del servicio es el id del documento** en Firestore: `normalizarCodigo` rechaza barras y espacios, y un código repetido ya
+no pisa al existente. Los cambios en bloque usan `upsertProcedures` (un solo estado y caché local). **Bancos** (`lib/bancos.ts`,
+`components/BancosEntidades`, `components/CampoBanco`): `config.entidadesFinancieras` vive en el documento de la clínica (sin
+colección nueva ni reglas nuevas) y el campo «Banco» del cheque las ofrece como sugerencia sin impedir escribir otro nombre; la
+lista «más usadas en Paraguay» es orientativa y la clínica la revisa. **⚠️ Un `sr-only` (position:absolute) dentro de un contenedor
+`overflow-x-auto` sin `relative` sobresale de la tabla y, en el celular, Chrome ensancha toda la ventana** (`innerWidth` 412 → 522):
+los modales quedan corridos y sus botones fuera de pantalla. `scrollWidth <= innerWidth` no lo detecta (crecen juntos): se compara
+con el ancho inicial (`e2e/arancel-bancos.spec.ts`). Ponele `relative` al contenedor.
+
 **Manual de procedimientos (oct-2026):** `docs/manual/` arma un PDF por rol con capturas reales de la demo
 (`npm run manual:capturas` + `npm run manual:pdf`; necesita WeasyPrint y poppler). El texto de cada procedimiento vive en
 `docs/manual/contenido/*.ts` (datos tipados + cómo sacar sus capturas con Playwright, con el botón a tocar marcado en rojo); los
