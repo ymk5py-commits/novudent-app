@@ -174,6 +174,13 @@ cada uso cuesta. Mi agenda lo explica con `mensajeErrorIA`; para probar la IA de
 clínica real con el plan Clínica. **Al sumar una ruta en `app/api/ia/` hay que agregarla a la lista exacta de
 `ia-gating.exploits.test.ts`** (hoy son 10) y poner `requireFeature` antes de `generativelanguage`.
 
+**Manual de procedimientos (oct-2026):** `docs/manual/` arma un PDF por rol con capturas reales de la demo
+(`npm run manual:capturas` + `npm run manual:pdf`; necesita WeasyPrint y poppler). El texto de cada procedimiento vive en
+`docs/manual/contenido/*.ts` (datos tipados + cómo sacar sus capturas con Playwright, con el botón a tocar marcado en rojo); los
+permisos del apéndice salen de `lib/rbac.ts` y `npm test` se rompe si un permiso nuevo no está explicado en `docs/manual/permisos.ts`.
+**Si cambiás una pantalla, un botón o un permiso que el manual explica, volvé a correr las capturas**: una captura que ya no
+encuentra su botón falla, que es justamente el aviso. El manual de agosto (`generar-manual.py`) sigue siendo el del dueño.
+
 ## Diferenciadores (cross-repo con Botika)
 
 Monitor post-op + Negociación de presupuestos: contrato outbox con Botika

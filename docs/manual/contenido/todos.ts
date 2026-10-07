@@ -225,7 +225,7 @@ export const procedimientos: Procedimiento[] = [
     paraQue: "Para hablar con tus compañeros sin salir del sistema: avisar que llegó un paciente, pedir algo, coordinar.",
     pasos: [
       { texto: "Entrá a **Chat**. A la izquierda están el canal **Equipo** (lo lee toda la clínica) y los mensajes directos con cada persona.", captura: "lista" },
-      { texto: "Elegí con quién querés hablar, escribí abajo y mandalo con el botón de enviar (o con Enter).", captura: "escribir" },
+      { texto: "Elegí con quién querés hablar, escribí abajo y mandalo con el botón de enviar o con **Enter** (con Mayús + Enter hacés un renglón nuevo).", captura: "escribir" },
       { texto: "El número rojo junto a «Chat», en el menú, te avisa cuando tenés mensajes sin leer." },
     ],
     avisos: [

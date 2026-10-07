@@ -17,7 +17,8 @@ export default defineConfig({
   fullyParallel: true,
   workers: Number(process.env.MANUAL_WORKERS ?? 4),
   reporter: [["list"]],
-  outputDir: resolve(__dirname, "salida/.resultados"),
+  // Una carpeta por parte: varias personas pueden correr capturas a la vez sin borrarse las pruebas fallidas entre sí.
+  outputDir: resolve(__dirname, "salida/.resultados", (process.env.MANUAL_SOLO ?? "todo").replace(/[^a-z0-9-]+/gi, "_")),
   use: { baseURL: `http://localhost:${PORT}`, locale: "es-PY", timezoneId: "America/Asuncion" },
   projects: [{ name: "manual", use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 760 }, deviceScaleFactor: 1.5 } }],
   webServer: {

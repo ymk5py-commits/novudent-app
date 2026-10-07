@@ -25,7 +25,7 @@ ul, ol { margin: 0; padding: 0; }
 
 /* Cómo usar, índice */
 .sin-capitulo { string-set: capitulo ""; font-size: 20pt; margin-bottom: 6mm; }
-.como-usar { break-after: page; }
+.como-usar { margin-bottom: 12mm; }
 .como-usar h3 { margin: 6mm 0 2mm; font-size: 11pt; }
 .leyenda { padding-left: 5mm; }
 .leyenda li { margin-bottom: 2mm; }
