@@ -132,6 +132,13 @@ describe("itemsDeTareas", () => {
     expect(ver([f])[0]).toMatchObject({ origen: "automatica", hecha: true, hechaPor: "sola" });
   });
 
+  it("solo las propias se pueden eliminar; las automáticas de la bandeja no", () => {
+    expect(ver([fila({ id: "t1" })])[0].eliminable).toBe(true);
+    expect(ver([fila({ id: "t2@x", estado: "completada", status: "cerrada", gestion: gestion("cerrar") })])[0].eliminable).toBe(true);
+    const auto = fila({ id: "d_cobranza:p1", derivedKey: "cobranza:p1", type: "cobranza", createdBy: undefined, assigneeId: YO });
+    expect(ver([auto])[0].eliminable).toBeUndefined();
+  });
+
   it("las tareas de otras personas no aparecen", () => {
     expect(ver([fila({ id: "t1", createdBy: OTRO })])).toHaveLength(0);
   });

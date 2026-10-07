@@ -2,7 +2,7 @@
 /** «Mi agenda» (Inicio): lo que le toca a la persona que entró, hoy o esta semana — sus tareas, las
  *  automáticas de la bandeja que le asignaron y la rutina del día, que se tacha sola cuando se resuelve.
  *  Toda la lógica vive en lib/miAgenda.ts (puro, con tests); esto la dibuja y la cablea con el store. */
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState, type KeyboardEvent } from "react";
 import { CalendarCheck, Mic, Plus, Sparkles } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { useAlcance } from "@/lib/useAlcance";
@@ -34,6 +34,7 @@ export function MiAgenda() {
   const [dictar, setDictar] = useState(false);
   const [resumen, setResumen] = useState(false);
 
+  const idBase = useId();
   const yo = session?.userId ?? "";
   const tieneIA = plan.features.includes("ia");
   const nombres = useMemo(() => new Map(db.patients.map((p) => [p.id, fullName(p)])), [db.patients]);
@@ -92,6 +93,13 @@ export function MiAgenda() {
     else if (i.accion === "destildar") tareas.reabrir(i.fila);
   };
 
+  const eliminar = (i: ItemAgenda) => {
+    if (!i.fila || !confirm(`¿Eliminar la tarea «${i.titulo}»? No se puede deshacer.`)) return;
+    setAviso("");
+    // Las filas ✓ llevan `${idDelDoc}@${momento}`: el doc es lo que va antes de la arroba.
+    tareas.eliminar(i.fila.id.split("@")[0]);
+  };
+
   const agregar = () => {
     const detalle = texto.trim();
     if (!detalle) return;
@@ -102,9 +110,21 @@ export function MiAgenda() {
     setAviso(fecha > agenda.rango.hasta ? `Tarea agregada para el ${fechaCorta(fecha, hoy)}: la vas a ver ese día.` : "Tarea agregada.");
   };
 
+  // Pestañas Hoy / Semana con el teclado de siempre: flechas, Inicio y Fin mueven y eligen.
+  const PERIODOS: Ambito[] = ["hoy", "semana"];
+  const idTab = (a: Ambito) => `${idBase}-tab-${a}`;
+  const teclaPestana = (e: KeyboardEvent, a: Ambito) => {
+    const otra = PERIODOS[(PERIODOS.indexOf(a) + 1) % PERIODOS.length];
+    const destino = e.key === "ArrowRight" || e.key === "ArrowLeft" ? otra : e.key === "Home" ? PERIODOS[0] : e.key === "End" ? PERIODOS[PERIODOS.length - 1] : null;
+    if (!destino) return;
+    e.preventDefault();
+    setAmbito(destino);
+    document.getElementById(idTab(destino))?.focus();
+  };
+
   const pct = Math.round(agenda.avance * 100);
   const atrasadas = agenda.atrasadas.length;
-  const fila = (i: ItemAgenda) => <FilaAgenda key={i.id} item={i} hoy={hoy} onCambiar={cambiar} />;
+  const fila = (i: ItemAgenda) => <FilaAgenda key={i.id} item={i} hoy={hoy} onCambiar={cambiar} onEliminar={eliminar} />;
 
   return (
     <Card className="p-5">
@@ -121,13 +141,17 @@ export function MiAgenda() {
             </>
           )}
           <div role="tablist" aria-label="Período de la agenda" className="inline-flex rounded border border-clinic-border p-0.5">
-            {(["hoy", "semana"] as const).map((a) => (
+            {PERIODOS.map((a) => (
               <button
                 key={a}
+                id={idTab(a)}
                 type="button"
                 role="tab"
                 aria-selected={ambito === a}
+                aria-controls={`${idBase}-panel`}
+                tabIndex={ambito === a ? 0 : -1}
                 onClick={() => setAmbito(a)}
+                onKeyDown={(e) => teclaPestana(e, a)}
                 className={`min-h-[28px] rounded-[3px] px-3 text-[13px] font-semibold transition-colors ${ambito === a ? "bg-azure-600 text-white" : "text-clinic-muted hover:bg-clinic-bg hover:text-clinic-text"}`}
               >
                 {a === "hoy" ? "Hoy" : "Semana"}
@@ -173,7 +197,7 @@ export function MiAgenda() {
       {error && <p role="alert" className="mt-2 text-xs font-semibold text-state-err">{error}</p>}
       {aviso && <p role="status" className="mt-2 text-xs font-semibold text-state-ok">{aviso}</p>}
 
-      <div role="tabpanel" aria-label={ambito === "hoy" ? "Agenda de hoy" : "Agenda de la semana"} className="mt-3">
+      <div id={`${idBase}-panel`} role="tabpanel" aria-label={ambito === "hoy" ? "Agenda de hoy" : "Agenda de la semana"} className="mt-3">
         {agenda.total === 0 ? (
           <p className="py-6 text-center text-sm text-clinic-muted">
             {ambito === "hoy" ? "No tenés nada para hoy." : "No tenés nada para esta semana."} Agregá una tarea{tieneIA ? " o dictá tu semana" : ""}.

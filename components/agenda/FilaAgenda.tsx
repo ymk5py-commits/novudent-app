@@ -1,12 +1,17 @@
 "use client";
 /** Una fila de Mi agenda: casillero, título, de qué paciente es y a dónde ir a resolverla. */
 import Link from "next/link";
-import { ArrowRight, CheckSquare, Sparkles, Square } from "lucide-react";
+import { ArrowRight, CheckSquare, Sparkles, Square, Trash2 } from "lucide-react";
 import { fechaCorta } from "@/lib/tareas";
 import type { ItemAgenda } from "@/lib/miAgenda";
 import { Badge } from "@/components/ui";
 
-export function FilaAgenda({ item, hoy, onCambiar }: { item: ItemAgenda; hoy: string; onCambiar: (i: ItemAgenda) => void }) {
+export function FilaAgenda({ item, hoy, onCambiar, onEliminar }: {
+  item: ItemAgenda;
+  hoy: string;
+  onCambiar: (i: ItemAgenda) => void;
+  onEliminar?: (i: ItemAgenda) => void;
+}) {
   const { hecha } = item;
   const Icono = hecha ? CheckSquare : Square;
   const color = hecha ? (item.hechaPor === "sola" ? "text-clinic-muted" : "text-state-ok") : "text-clinic-border";
@@ -15,7 +20,7 @@ export function FilaAgenda({ item, hoy, onCambiar }: { item: ItemAgenda; hoy: st
     : item.titulo;
 
   return (
-    <li className="flex items-start gap-2.5 rounded-lg px-1.5 py-2 hover:bg-clinic-bg">
+    <li className="group flex items-start gap-2.5 rounded-lg px-1.5 py-2 hover:bg-clinic-bg">
       {item.accion ? (
         <button
           type="button"
@@ -48,9 +53,21 @@ export function FilaAgenda({ item, hoy, onCambiar }: { item: ItemAgenda; hoy: st
       </div>
 
       {item.atrasada && <Badge tone="err">Atrasada · {fechaCorta(item.fecha, hoy)}</Badge>}
+      {item.eliminable && onEliminar && (
+        <button
+          type="button"
+          onClick={() => onEliminar(item)}
+          aria-label={`Eliminar la tarea: ${item.titulo}`}
+          // En el celular no hay hover: ahí siempre se ve. En escritorio aparece al pasar el mouse o al enfocar.
+          className="mt-px grid h-6 w-6 shrink-0 place-items-center rounded text-clinic-muted transition-opacity hover:bg-white hover:text-state-err focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+        >
+          <Trash2 aria-hidden className="h-3.5 w-3.5" />
+        </button>
+      )}
       {item.href && !hecha && (
-        <Link href={item.href} aria-label={`Ir a: ${item.titulo}`} className="mt-0.5 shrink-0 text-clinic-muted hover:text-azure-700">
-          <ArrowRight aria-hidden className="h-4 w-4" />
+        // Decorativa: el título ya es el link a lo mismo. Sin tabIndex ni nombre, para no duplicar el destino.
+        <Link href={item.href} aria-hidden tabIndex={-1} className="mt-0.5 shrink-0 text-clinic-muted hover:text-azure-700">
+          <ArrowRight className="h-4 w-4" />
         </Link>
       )}
     </li>

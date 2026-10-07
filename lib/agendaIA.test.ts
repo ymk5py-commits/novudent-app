@@ -127,6 +127,18 @@ describe("promptAgendaSemana", () => {
     expect(t).toContain("2026-10-06");
     expect(t).toContain("martes");
   });
+  it("trae el calendario de los próximos 14 días, para que el modelo no tenga que hacer cuentas con las fechas", () => {
+    const t = promptAgendaSemana(HOY);
+    expect(t).toContain("martes 6 de octubre → 2026-10-06 (hoy)");
+    expect(t).toContain("miércoles 7 de octubre → 2026-10-07 (mañana)");
+    expect(t).toContain("jueves 8 de octubre → 2026-10-08");
+    expect(t).toContain("lunes 19 de octubre → 2026-10-19"); // el día 14
+    expect(t).not.toContain("2026-10-20");
+  });
+  it("el calendario cruza el fin de año", () => {
+    const t = promptAgendaSemana("2026-12-30");
+    expect(t).toContain("→ 2027-01-02");
+  });
   it("pide solo el JSON y no inventar", () => {
     const t = promptAgendaSemana(HOY);
     expect(t).toMatch(/SOLO este JSON/);

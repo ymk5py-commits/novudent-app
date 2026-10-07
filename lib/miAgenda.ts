@@ -44,6 +44,8 @@ export interface ItemAgenda {
   paciente?: { id: string; nombre: string };
   /** Lo que hace el casillero. Sin valor, el ítem es de solo lectura. */
   accion?: "tildar" | "destildar";
+  /** Una tarea propia se puede borrar; las automáticas de la bandeja y la rutina no. */
+  eliminable?: true;
   /** «Se tacha sola cuando…» (solo propias pendientes que lo esperan). */
   leyenda?: string;
   /** La fila de la bandeja de la que sale (propias y automáticas): es lo que se tilda. */
@@ -87,6 +89,7 @@ export function itemsDeTareas(
     if (hecha) item.hechaPor = f.estado === "sistema" ? "sola" : "mano";
     if (f.patientId) item.paciente = { id: f.patientId, nombre: o.nombrePaciente(f) ?? f.patientName ?? "Paciente" };
     if (propia) {
+      item.eliminable = true;
       if (!hecha) item.accion = "tildar";
       // Solo se destilda lo que se cerró con «se ejecutó»: un «OK» (que la reactiva a la semana) o un
       // «volver a contactar» son otra cosa y se ven en la bandeja.

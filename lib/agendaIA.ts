@@ -107,18 +107,23 @@ export function emparejarPaciente<T extends Pick<Patient, "firstName" | "lastNam
     .map((x) => x.p);
 }
 
-/** El pedido al modelo. Va con el día de la semana de hoy para que «el jueves» y «mañana» salgan bien. */
+/** El pedido al modelo. Lleva el calendario de los próximos 14 días ya armado: un modelo que tiene que contar
+ *  «el jueves» a partir de hoy se equivoca de vez en cuando; uno que lo lee de una tabla, no. */
 export function promptAgendaSemana(hoy: string): string {
+  const calendario = Array.from({ length: 14 }, (_, i) => sumarDias(hoy, i))
+    .map((d, i) => `- ${fechaLarga(d, hoy)} → ${d}${i === 0 ? " (hoy)" : i === 1 ? " (mañana)" : ""}`)
+    .join("\n");
   return `Sos el asistente de agenda de una clínica dental en Paraguay.
 Una persona del equipo te dicta (por voz o por texto) lo que tiene que hacer en la semana.
 
-Hoy es ${fechaLarga(hoy)} (${hoy}).
+Hoy es ${fechaLarga(hoy)} (${hoy}). Calendario de los próximos 14 días:
+${calendario}
 
 Separalo en TAREAS concretas, una por cada cosa a hacer. De cada una devolvé:
 - "titulo": qué hay que hacer, en una frase corta y sin muletillas ("Llamar a Juan Pérez por el presupuesto").
-- "fecha": el día en que se hace, en formato YYYY-MM-DD. «hoy» es ${hoy}; «mañana» es el día siguiente;
-  «el jueves» es el próximo jueves (hoy mismo si hoy es jueves); «la semana que viene» sin más es el lunes
-  próximo. Si no se menciona ningún día, usá hoy.
+- "fecha": el día en que se hace, en formato YYYY-MM-DD, sacado SIEMPRE del calendario de arriba. «El jueves»
+  es el primer jueves del calendario (hoy mismo si hoy es jueves); «la semana que viene» sin un día es el
+  primer lunes después de hoy. Si no se menciona ningún día, usá hoy.
 - "paciente": el nombre y apellido del paciente tal como se dictó, SOLO si la tarea habla de un paciente.
   Si no, no pongas este campo.
 
