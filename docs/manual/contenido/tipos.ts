@@ -63,6 +63,8 @@ export interface Procedimiento {
   titulo: string;
   /** Todos los roles que lo hacen (aparece en el índice de cada uno). */
   roles: RolId[];
+  /** Roles que no lo hacen pero cuya pantalla se muestra como resultado («así la ve ella»): `capturar` puede entrar como ellos. */
+  verComo?: RolId[];
   /** Cuándo se usa, en una o dos frases. */
   paraQue: string;
   /** Lo que tiene que estar listo antes de empezar. */

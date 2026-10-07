@@ -79,13 +79,13 @@ strong { font-weight: 700; color: var(--tinta); }
 
 /* Avisos */
 .aviso { break-inside: avoid; margin: 3mm 0; padding: 2.4mm 4mm; border-left: 1.3mm solid; border-radius: 1mm; }
-.aviso strong { display: block; font: 700 7.6pt Montserrat, sans-serif; text-transform: uppercase; letter-spacing: 0.4pt; margin-bottom: 0.6mm; }
+.aviso-titulo { display: block; font: 700 7.6pt Montserrat, sans-serif; text-transform: uppercase; letter-spacing: 0.4pt; margin-bottom: 0.6mm; }
 .aviso-ojo { background: #FFF6E5; border-color: #F59E0B; }
-.aviso-ojo strong { color: #B45309; }
+.aviso-ojo .aviso-titulo { color: #B45309; }
 .aviso-tip { background: #EAF4FF; border-color: var(--azul); }
-.aviso-tip strong { color: var(--azul); }
+.aviso-tip .aviso-titulo { color: var(--azul); }
 .aviso-revisar { background: #FFFBD6; border: 0.4mm dashed #CA9A04; border-left: 1.3mm solid #CA9A04; }
-.aviso-revisar strong { color: #92710A; }
+.aviso-revisar .aviso-titulo { color: #92710A; }
 
 /* Apéndices */
 .apendice { break-before: page; }

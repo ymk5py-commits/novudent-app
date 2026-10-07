@@ -45,6 +45,7 @@ describe("validar — lo que está mal en el contenido", () => {
   it("roles que no existen o ninguno", () => {
     expect(validar(todas([proc({ id: "a", roles: ["jefe" as never] })]))).toContainEqual(expect.stringContaining("«jefe» no existe"));
     expect(validar(todas([proc({ id: "a", roles: [] })]))).toContainEqual(expect.stringContaining("qué roles"));
+    expect(validar(todas([proc({ id: "a", verComo: ["jefe" as never] })]))).toContainEqual(expect.stringContaining("«jefe» no existe"));
   });
   it("sin pasos, paso vacío, sin título o sin «para qué»", () => {
     expect(validar(todas([proc({ id: "a", pasos: [] })]))).toContainEqual(expect.stringContaining("no tiene pasos"));
@@ -57,6 +58,20 @@ describe("validar — lo que está mal en el contenido", () => {
     expect(validar(todas([proc({ id: "a", pasos: dos, capturar: async () => {} })]))).toContainEqual(expect.stringContaining("ya se usó"));
     expect(validar(todas([proc({ id: "a", pasos: [{ texto: "Uno.", captura: "Mi Foto" }], capturar: async () => {} })]))).toContainEqual(expect.stringContaining("minúsculas"));
     expect(validar(todas([proc({ id: "a", pasos: [{ texto: "Uno.", captura: "agenda" }] })]))).toContainEqual(expect.stringContaining("falta `capturar`"));
+  });
+  it("la captura no entra con un rol que el procedimiento dice que no lo hace", () => {
+    const foto = [{ texto: "Uno.", captura: "x" }];
+    const conAdmin = proc({ id: "a", roles: ["receptionist"], pasos: foto, capturar: async (c) => { await c.entrar("admin", "/app"); await c.foto("x"); } });
+    expect(validar(todas([conAdmin]))).toContainEqual(expect.stringContaining("«a»: la captura entra como «admin»"));
+    const comilla = proc({ id: "b", roles: ["receptionist"], pasos: foto, capturar: async (c) => { await c.entrar('cashier'); await c.foto("x"); } });
+    expect(validar(todas([comilla]))).toContainEqual(expect.stringContaining("entra como «cashier»"));
+    const sano = proc({ id: "c", roles: ["receptionist", "admin"], pasos: foto, capturar: async (c) => { await c.entrar("receptionist", "/app"); await c.entrar("admin"); await c.foto("x"); } });
+    expect(validar(todas([sano]))).toEqual([]);
+    // «Así la ve ella»: una captura de resultado puede ser de otro rol si el procedimiento lo declara en `verComo`.
+    const resultado = proc({ id: "d", roles: ["admin"], verComo: ["assistant"], pasos: foto, capturar: async (c) => { await c.entrar("admin"); await c.entrar("assistant"); await c.foto("x"); } });
+    expect(validar(todas([resultado]))).toEqual([]);
+    const otroMas = proc({ id: "e", roles: ["admin"], verComo: ["assistant"], pasos: foto, capturar: async (c) => { await c.entrar("dentist"); await c.foto("x"); } });
+    expect(validar(todas([otroMas]))).toContainEqual(expect.stringContaining("entra como «dentist»"));
   });
   it("marcas sin cerrar y referencias que no existen", () => {
     expect(validar(todas([proc({ id: "a", pasos: [{ texto: "Tocá **Agenda." }] })]))).toContainEqual(expect.stringContaining("`**` sin cerrar"));
@@ -186,6 +201,14 @@ describe("montarHtml", () => {
     expect(fin).not.toContain("No se puede dar una cita en el pasado.");
     expect(html).toContain('class="aviso aviso-revisar"');
     expect(html).toContain('class="aviso aviso-ojo"');
+  });
+  it("la negrita dentro de un aviso es negrita: solo el título del aviso lleva el estilo de título", () => {
+    const html = montarHtml(entrada([
+      cap("todos"),
+      cap("receptionist", [proc({ id: "a", avisos: [{ tipo: "tip", texto: "En la vista **Semanal**, tocá un hueco." }] })]),
+      cap("cashier"), cap("dentist"), cap("assistant"), cap("admin"),
+    ]));
+    expect(html).toContain('<aside class="aviso aviso-tip"><span class="aviso-titulo">Tip</span> En la vista <strong>Semanal</strong>, tocá un hueco.</aside>');
   });
   it("sin nada para revisar lo dice", () => {
     expect(montarHtml(entrada([cap("todos")]))).toContain("No hay puntos pendientes.");

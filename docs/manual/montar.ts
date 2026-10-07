@@ -37,6 +37,14 @@ const todosLosTextos = (p: Procedimiento): string[] => [
 ];
 
 /** Todo lo que está mal en el contenido, en frases que se entienden. Vacío = se puede armar el manual. */
+/** Los roles que `capturar` nombra al hacer `c.entrar("rol", …)`. Se leen del código de la función: solo cuentan los que están escritos
+ *  a mano (un rol que viaja en una variable no se puede saber sin correr la captura). */
+function rolesConLosQueEntra(p: Procedimiento): RolId[] {
+  if (!p.capturar) return [];
+  const roles = [...String(p.capturar).matchAll(/\.entrar\(\s*(["'`])([a-z]+)\1/g)].map((m) => m[2]);
+  return [...new Set(roles)] as RolId[];
+}
+
 export function validar(capitulos: readonly Capitulo[], opciones: { ignorarReferencias?: boolean } = {}): string[] {
   const problemas: string[] = [];
   const ids = new Set<string>();
@@ -67,7 +75,7 @@ export function validar(capitulos: readonly Capitulo[], opciones: { ignorarRefer
       if (!p.titulo.trim()) problemas.push(`${donde}: falta el título`);
       if (!p.paraQue.trim()) problemas.push(`${donde}: falta «para qué sirve»`);
       if (p.roles.length === 0) problemas.push(`${donde}: falta decir qué roles lo hacen`);
-      for (const r of p.roles) if (!roles.has(r)) problemas.push(`${donde}: el rol «${r}» no existe`);
+      for (const r of [...p.roles, ...(p.verComo ?? [])]) if (!roles.has(r)) problemas.push(`${donde}: el rol «${r}» no existe`);
       if (p.pasos.length === 0) problemas.push(`${donde}: no tiene pasos`);
 
       const capturas = new Set<string>();
@@ -80,6 +88,9 @@ export function validar(capitulos: readonly Capitulo[], opciones: { ignorarRefer
         }
       });
       if (capturas.size > 0 && !p.capturar) problemas.push(`${donde}: tiene capturas pero no tiene cómo sacarlas (falta \`capturar\`)`);
+      // La captura se saca entrando como alguien: si ese rol ni lo hace (`roles`) ni se muestra a propósito (`verComo`), el manual
+      // enseña la pantalla de quien no corresponde.
+      for (const rol of rolesConLosQueEntra(p)) if (!p.roles.includes(rol) && !(p.verComo ?? []).includes(rol)) problemas.push(`${donde}: la captura entra como «${rol}», que no está en \`roles\` ni en \`verComo\``);
       for (const a of p.avisos ?? []) if (!a.texto.trim()) problemas.push(`${donde}: hay un aviso vacío`);
 
       for (const t of todosLosTextos(p)) {
@@ -151,7 +162,7 @@ export function montarHtml(e: Entrada): string {
   const capitulos = ORDEN_CAPITULOS.map((id) => porId.get(id)).filter((c): c is Capitulo => !!c);
 
   const aviso = (a: Aviso) =>
-    `<aside class="aviso aviso-${a.tipo}"><strong>${AVISO_TITULO[a.tipo]}</strong> ${m(a.texto)}</aside>`;
+    `<aside class="aviso aviso-${a.tipo}"><span class="aviso-titulo">${AVISO_TITULO[a.tipo]}</span> ${m(a.texto)}</aside>`;
 
   const procedimiento = (p: Procedimiento): string => {
     const hay = new Set(e.capturas[p.id] ?? []);
