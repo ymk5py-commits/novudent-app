@@ -241,6 +241,16 @@ test.describe("Configuración › Bancos y entidades financieras", () => {
     expect((await leerDB(page)).clinics[0].config.entidadesFinancieras).toEqual([]);
   });
 
+    test("al sacar una entidad recién agregada no queda el aviso «Se agregó…» de antes", async ({ page }) => {
+    page.on("dialog", (d) => void d.accept());
+    const bancos = tarjeta(page, "Bancos y entidades financieras");
+    await bancos.getByLabel("Nombre de la entidad").fill("Banco Efímero");
+    await bancos.getByRole("button", { name: "Agregar", exact: true }).click();
+    await expect(bancos.getByRole("status")).toContainText("Se agregó «Banco Efímero»");
+    await bancos.getByRole("button", { name: "Sacar Banco Efímero de la lista" }).click();
+    await expect(bancos.getByText("Banco Efímero")).toHaveCount(0);
+  });
+
   test("el tipo se elige al agregar y la lista se agrupa por tipo", async ({ page }) => {
     const bancos = tarjeta(page, "Bancos y entidades financieras");
     await bancos.getByLabel("Nombre de la entidad").fill("Visa");
