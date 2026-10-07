@@ -87,6 +87,9 @@ async function logoDeEjemplo(page: Page): Promise<Buffer> {
   return Buffer.from(b64, "base64");
 }
 
+/** El pie «Plataforma de soporte · ID de soporte» de la demo: si un menú o una captura de pantalla entera lo deja a medias, se esconde. */
+const pieDeSoporte = (page: Page) => page.getByText("Plataforma de soporte").locator("xpath=..");
+
 export const procedimientos: Procedimiento[] = [
   /* ─────────────────────────────── 1. Datos de la clínica y logotipo ─────────────────────────────── */
   {
@@ -260,7 +263,7 @@ export const procedimientos: Procedimiento[] = [
       await c.entrar("assistant", "/app/pacientes");
       const aviso = page.getByText("Todavía no tenés doctores asignados");
       await c.expect(aviso).toBeVisible();
-      await c.foto("ve", { pantalla: true, alto: 560, resaltar: aviso });
+      await c.foto("ve", { pantalla: true, alto: 560, resaltar: aviso, ocultar: pieDeSoporte(page) });
     },
   },
 
@@ -640,7 +643,7 @@ export const procedimientos: Procedimiento[] = [
       // Solo se muestra el botón: el título y el texto de la tarjeta nombran al sistema de origen.
       const iniciar = page.getByRole("button", { name: "Iniciar migración" });
       await colocar(page, iniciar);
-      await c.foto("boton", { recorte: iniciar, margen: 6, resaltar: iniciar });
+      await c.foto("boton", { recorte: iniciar, margen: 6, resaltar: iniciar, ocultar: page.getByText(/Dentalink/) });
       await iniciar.click();
 
       // Archivo de ejemplo armado a mano, con datos inventados: dos pacientes nuevos (uno con deuda) y uno que ya está en la clínica (misma CI).

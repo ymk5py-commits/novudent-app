@@ -154,7 +154,7 @@ export const procedimientos: Procedimiento[] = [
       await buscador.fill("mar");
       await c.expect(page.getByRole("link", { name: /María González/ })).toBeVisible();
       const resultados = page.getByRole("link", { name: /María González/ }).locator("xpath=..");
-      await c.foto("buscador", { resaltar: [buscador, page.getByRole("link", { name: /María González/ })], recorte: [buscador, resultados] });
+      await c.foto("buscador", { resaltar: [buscador, page.getByRole("link", { name: /María González/ })], recorte: [buscador, resultados], ocultar: page.getByRole("navigation") }); // sin la fila del menú de atrás («Pacie…» asomando al costado del resultado)
       await c.ir("/app/pacientes");
       const lista = page.getByPlaceholder("Buscar por nombre, CI o teléfono…");
       await lista.fill("mar");
@@ -207,14 +207,17 @@ export const procedimientos: Procedimiento[] = [
     capturar: async (c) => {
       const { page } = c;
       await c.entrar("receptionist", "/app/tareas");
-      await c.foto("bandeja", { resaltar: [page.getByRole("tab", { name: "Tareas del día" }), page.getByRole("button", { name: /Nueva tarea personalizada/ })] });
+      const tareasDelDia = page.getByRole("tab", { name: "Tareas del día" });
+      const nuevaTarea = page.getByRole("button", { name: /Nueva tarea personalizada/ });
+      // El título entra entero en la foto (si no, queda cortado por la mitad arriba).
+      await c.foto("bandeja", { resaltar: [tareasDelDia, nuevaTarea], recorte: [page.getByRole("heading", { name: /^Tareas - / }), tareasDelDia, nuevaTarea], margen: 10 });
       await c.foto("fechas", { resaltar: [page.getByRole("button", { name: "Anterior" }), page.getByLabel("Fecha", { exact: true }), page.getByRole("button", { name: "Siguiente" }), page.getByRole("tab", { name: /Tareas atrasadas/ })], recorte: page.getByRole("heading", { name: /^Tareas - / }).locator("xpath=ancestor::div[3]"), alto: 640 });
       const fila = page.getByRole("button", { name: /Cita — Camila Ortega/ });
       await fila.click();
       await c.foto("detalle", { alto: 900, resaltar: fila });
       const finalizar = page.getByRole("button", { name: /^Finalizar/ });
       await finalizar.click();
-      await c.foto("finalizar", { resaltar: finalizar, recorte: [finalizar, page.getByRole("menu")], alto: 900 });
+      await c.foto("finalizar", { resaltar: finalizar, recorte: [finalizar, page.getByRole("menu")], alto: 900, margen: 4 });
     },
   },
   {

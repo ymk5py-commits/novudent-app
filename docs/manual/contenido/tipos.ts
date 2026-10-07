@@ -23,6 +23,9 @@ export interface OpcionesFoto {
   conFoco?: boolean;
   /** Saca la ventana entera aunque haya recuadros resaltados (por defecto se recorta alrededor de lo resaltado). */
   pantalla?: boolean;
+  /** Esconde esto (visibility:hidden, sin mover nada) solo mientras se saca la foto: para tapar un pedazo de pantalla que no tiene que
+   *  salir (el pie «Plataforma de soporte» cortado por un menú, una etiqueta ajena a la clínica, una URL local). */
+  ocultar?: Locator | Locator[];
   /** Alto de la ventana para esta captura (por defecto 760 px). Para mostrar algo más alto que la pantalla. */
   alto?: number;
 }

@@ -22,6 +22,10 @@ const USUARIO_DEL_ROL: Record<RolId, string> = {
 
 interface Caja { x: number; y: number; width: number; height: number }
 
+/** Lo que nunca puede salir en una captura: nombres de otro sistema, el pie de soporte de la demo, direcciones locales y etiquetas que solo
+ *  confunden a una clínica de Paraguay. Si una captura lo muestra, falla con un mensaje que dice cómo taparlo (`ocultar` o un recorte más chico). */
+const PROHIBIDO = "Dentalink|Plataforma de soporte|localhost|Reiniciar demo|Sin conexión|ATHENA";
+
 const lista = <T,>(x: T | T[] | undefined): T[] => (x === undefined ? [] : Array.isArray(x) ? x : [x]);
 
 export class CaptorPW implements Captor {
@@ -175,10 +179,57 @@ export class CaptorPW implements Captor {
       const y1 = Math.min(vista.height, Math.max(...cajas.map((c) => c.y + c.height)) + margen);
       clip = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
     }
-    await page.screenshot({ path: join(this.carpeta, `${nombre}.png`), type: "png", ...(clip ? { clip } : {}) });
-    if (marcas.length) await page.evaluate(() => document.querySelectorAll("[data-manual-marca]").forEach((n) => n.remove()));
-    if (fondoLiso) await page.evaluate(aplanarFondoDeDialogos, false);
+    const aOcultar = lista(o.ocultar);
+    for (const l of aOcultar) await l.evaluateAll(esconder, true);
+    try {
+      const zona = clip ?? { x: 0, y: 0, width: vista.width, height: vista.height };
+      const intrusos = await page.evaluate(buscarTextoProhibido, { zona, patron: PROHIBIDO });
+      if (intrusos.length) {
+        throw new Error(`[${this.procId}/${nombre}] la captura muestra texto que no tiene que salir: «${[...new Set(intrusos)].join("», «")}». Taparlo con \`ocultar\` o achicar el recorte.`);
+      }
+      await page.screenshot({ path: join(this.carpeta, `${nombre}.png`), type: "png", ...(clip ? { clip } : {}) });
+    } finally {
+      for (const l of aOcultar) await l.evaluateAll(esconder, false).catch(() => {});
+      if (marcas.length) await page.evaluate(() => document.querySelectorAll("[data-manual-marca]").forEach((n) => n.remove()));
+      if (fondoLiso) await page.evaluate(aplanarFondoDeDialogos, false);
+    }
   }
+}
+
+/** Corre EN la página (sobre cada elemento que encontró el locator): esconde o vuelve a mostrar, sin mover nada. */
+function esconder(els: Element[], esconder: boolean): void {
+  for (const el of els) {
+    const e = el as HTMLElement;
+    if (esconder) { e.dataset.manualOculto = e.style.visibility || "-"; e.style.visibility = "hidden"; }
+    else if (e.dataset.manualOculto !== undefined) { e.style.visibility = e.dataset.manualOculto === "-" ? "" : e.dataset.manualOculto; delete e.dataset.manualOculto; }
+  }
+}
+
+/** Corre EN la página: los textos prohibidos que se ven dentro de `zona` (no los escondidos, ni los que tapa otro elemento). */
+function buscarTextoProhibido({ zona, patron }: { zona: { x: number; y: number; width: number; height: number }; patron: string }): string[] {
+  const re = new RegExp(patron, "i");
+  const hallados: string[] = [];
+  const recorrido = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = recorrido.nextNode(); n; n = recorrido.nextNode()) {
+    const texto = n.textContent ?? "";
+    if (!re.test(texto)) continue;
+    const el = n.parentElement;
+    if (!el || el.closest("[data-manual-marca]") || el.closest("script,style,noscript")) continue;
+    if (getComputedStyle(el).visibility === "hidden" || el.getClientRects().length === 0) continue;
+    const rango = document.createRange();
+    rango.selectNodeContents(n);
+    for (const r of Array.from(rango.getClientRects())) {
+      if (r.width === 0 || r.height === 0) continue;
+      const dentro = r.right > zona.x && r.left < zona.x + zona.width && r.bottom > zona.y && r.top < zona.y + zona.height;
+      if (!dentro) continue;
+      // Si lo tapa otro elemento (el fondo liso de un diálogo, un menú), en la foto no se ve.
+      const arriba = document.elementFromPoint(Math.min(Math.max(r.left + r.width / 2, 0), innerWidth - 1), Math.min(Math.max(r.top + r.height / 2, 0), innerHeight - 1));
+      if (arriba && !el.contains(arriba) && !arriba.contains(el)) continue;
+      hallados.push(texto.trim().slice(0, 60));
+      break;
+    }
+  }
+  return hallados;
 }
 
 /** Corre EN la página: pinta (o devuelve a como estaba) el fondo oscurecido que rodea a cada diálogo abierto. */
