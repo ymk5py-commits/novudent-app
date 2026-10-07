@@ -20,7 +20,9 @@ export const test = base.extend<Soporte>({
     for (const d of BLOQUEADOS) await page.route(`**${d}**`, (r) => r.abort());
     if (consentimiento !== "sin-decidir") {
       await page.addInitScript((analitica) => {
-        localStorage.setItem("novudent.consentimiento.v1", JSON.stringify({ version: 1, analitica, fecha: new Date().toISOString() }));
+        // Corre en TODOS los marcos, también en los que no dejan usar el almacenamiento (about:blank, iframes aislados): ahí
+        // `localStorage` tira SecurityError y el fixture de errores de consola lo contaba como un fallo de la página.
+        try { localStorage.setItem("novudent.consentimiento.v1", JSON.stringify({ version: 1, analitica, fecha: new Date().toISOString() })); } catch { /* marco sin almacenamiento */ }
       }, consentimiento === "aceptado");
     }
     await use(page);
