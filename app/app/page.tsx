@@ -18,6 +18,8 @@ import { Card, Badge, StatusBadge } from "@/components/ui";
 import { Isologo } from "@/components/Marca";
 import { ContralorCard } from "@/components/NovudentIA";
 import { MiAgenda } from "@/components/agenda/MiAgenda";
+import { RutinaAdmin } from "@/components/RutinaAdmin";
+import { pasosPuestaEnMarcha } from "@/lib/rutinaAdmin";
 import { WeekBarsChart, StatusDonutChart } from "@/components/Charts";
 import { useClinicPlan } from "@/components/PlanGate";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
@@ -165,11 +167,9 @@ export default function Dashboard() {
       : []),
   ].filter(Boolean) as { icon: any; tone: string; label: string; hint: string; href: string }[];
 
-  const checklist = [
-    { key: "usersCreated" as const, label: "Crear usuarios del equipo", done: db.onboarding.usersCreated, href: "/app/configuracion" },
-    { key: "servicesDefined" as const, label: "Definir servicios y aranceles", done: db.onboarding.servicesDefined, href: "/app/configuracion" },
-    { key: "tourDone" as const, label: "Recorrer la Agenda y el Buscador", done: db.onboarding.tourDone, href: "/app/agenda" },
-  ];
+  // Los pasos se marcan solos cuando ya hay otra persona en el equipo y cuando ya hay prestaciones cargadas.
+  const checklist = pasosPuestaEnMarcha({ onboarding: db.onboarding, usuarios: db.users.length, prestaciones: db.procedures.length })
+    .map((c) => ({ ...c, done: c.hecho }));
 
   // Snapshot de pendientes para el Contralor IA — los mismos flujos
   // del panel de tareas críticas, con el detalle que el digest necesita.
@@ -243,6 +243,9 @@ export default function Dashboard() {
         {alcance.puede("engagement.forms") && <StaggerItem><SpikeStat label="Documentos pendientes" value={pendingForms} icon={FileText} tone={pendingForms > 0 ? "amber" : "green"} href={HREF_DOCUMENTOS_PENDIENTES} /></StaggerItem>}
         {alcance.puede("money.view") && <StaggerItem><SpikeStat label="Reclamos en retención" value={onHold} icon={PauseCircle} tone={onHold > 0 ? "red" : "green"} href={HREF_RETENCIONES} /></StaggerItem>}
       </Stagger>
+
+      {/* ===== Rutina del administrador — lo que revisa cada día, cada semana y a fin de mes ===== */}
+      {can(session.role, "practice.config") && <Reveal><RutinaAdmin /></Reveal>}
 
       {/* ===== Mi agenda — lo que me toca hoy y esta semana ===== */}
       <Reveal><MiAgenda /></Reveal>
@@ -352,7 +355,7 @@ export default function Dashboard() {
           )}
         </Card>
 
-        <Card className="p-6 lg:col-span-2">
+        <Card id="puesta-en-marcha" className="p-6 lg:col-span-2">
           <h2 className="font-bold text-clinic-text">Puesta en marcha</h2>
           <p className="mt-0.5 text-xs text-clinic-muted">
             {checklist.filter((c) => !c.done).length === 0 ? "¡Todo listo! La clínica está configurada." : `${checklist.filter((c) => !c.done).length} paso(s) pendiente(s)`}
@@ -360,12 +363,18 @@ export default function Dashboard() {
           <div className="mt-4 space-y-2">
             {checklist.map((c) => (
               <div key={c.key} className="flex items-center gap-3 rounded-xl border border-clinic-border p-3 transition-colors hover:border-azure-200">
-                <button onClick={() => can(session.role, "practice.config") && setOnboarding(c.key, !c.done)} aria-label={c.done ? "Marcar pendiente" : "Marcar hecho"}>
+                <button
+                  onClick={() => can(session.role, "practice.config") && !c.sola && setOnboarding(c.key, !c.done)}
+                  disabled={c.sola}
+                  aria-label={c.sola ? "Hecho: ya está cargado" : c.done ? "Marcar pendiente" : "Marcar hecho"}
+                  className="disabled:cursor-default"
+                >
                   {c.done ? <CheckCircle2 className="h-5 w-5 text-state-ok" /> : <Circle className="h-5 w-5 text-clinic-border" />}
                 </button>
                 <Link href={c.href} className={`flex-1 text-sm font-semibold ${c.done ? "text-clinic-muted line-through" : "text-clinic-text hover:text-azure-700"}`}>
                   {c.label}
                 </Link>
+                {c.sola && <span className="text-[11px] text-clinic-muted">se marcó solo</span>}
               </div>
             ))}
           </div>

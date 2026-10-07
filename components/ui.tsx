@@ -7,8 +7,8 @@ import { useEstadosCita } from "@/lib/useEstadosCita";
 import type { BillingFlag, AppointmentStatus } from "@/lib/types";
 import { FLAG_INFO } from "@/lib/billing";
 
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded border border-clinic-border bg-white ${className}`}>{children}</div>;
+export function Card({ children, className = "", id }: { children: ReactNode; className?: string; id?: string }) {
+  return <div id={id} className={`rounded border border-clinic-border bg-white ${className}`}>{children}</div>;
 }
 
 export function Btn({

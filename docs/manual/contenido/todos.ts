@@ -102,6 +102,7 @@ export const procedimientos: Procedimiento[] = [
     avisos: [
       { tipo: "ojo", texto: "Una tarea que le asignás a otra persona deja de ser tuya: ya no la ves en tu agenda, sino en la de ella." },
       { tipo: "tip", texto: "Para borrar una tarea tuya, pasá el mouse sobre la fila y tocá el tachito. Pide confirmación." },
+      { tipo: "tip", texto: "El administrador tiene además, justo arriba, la **Rutina del administrador** (lo que revisa cada día, cada semana y a fin de mes): mirá [[usar-la-rutina-del-administrador]]." },
       { tipo: "tip", texto: "En las clínicas con el plan Clínica hay además «Dictar la semana» (por voz o escribiendo) y «Resumen semanal»: la IA arma las tareas y vos las revisás antes de guardarlas." },
       { tipo: "revisar", texto: "Confirmar si la rutina del día alcanza o falta algún punto (hoy: citas de mañana, reservas online, documentos pendientes, caja y stock)." },
     ],
