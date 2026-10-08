@@ -1,16 +1,16 @@
 "use client";
 /** Presupuestos (planes de tratamiento): borrador → presentado → aceptado → completado.
  *  Convenios con descuento, cobro en cuotas, ejecución por ítem y impresión. */
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
-  Plus, ShieldAlert, Printer, Check, X, Send, CircleCheck, Trash2, Pencil, FileText, Handshake,
+  Plus, ShieldAlert, Printer, Check, X, Send, CircleCheck, Pencil, FileText, Handshake, Search,
 } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { escapeHtml } from "@/lib/html";
 import { EmailButton } from "@/components/EmailButton";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { can } from "@/lib/rbac";
-import { budgetTotal, budgetSubtotal, budgetDescuento, budgetInteres, budgetPaid, budgetBalance, installmentValue, BUDGET_STATUS_INFO } from "@/lib/budgets";
+import { budgetTotal, budgetSubtotal, budgetDescuento, budgetInteres, budgetPaid, installmentValue, presupuestosDePaciente, BUDGET_STATUS_INFO } from "@/lib/budgets";
 import type { Budget, BudgetItem, BudgetStatus } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
@@ -23,6 +23,7 @@ export default function BudgetsPage() {
   const store = useStore();
   const { db, session } = store;
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("todos");
+  const [busqueda, setBusqueda] = useState("");
   const [editing, setEditing] = useState<Budget | "new" | null>(null);
   const [detail, setDetail] = useState<Budget | null>(null);
 
@@ -39,7 +40,10 @@ export default function BudgetsPage() {
   }
 
   const by = session.name;
-  const list = db.budgets
+  // El buscador por paciente va antes que el filtro de estado: los números de cada estado son los de ese paciente.
+  const delPaciente = presupuestosDePaciente(db.budgets, db.patients, busqueda);
+  const buscando = busqueda.trim() !== "";
+  const list = delPaciente
     .filter((b) => filter === "todos" || b.status === filter)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const liveDetail = detail ? db.budgets.find((b) => b.id === detail.id) ?? null : null;
@@ -70,10 +74,20 @@ export default function BudgetsPage() {
         <Btn onClick={() => setEditing("new")}><Plus className="h-4 w-4" /> Nuevo presupuesto</Btn>
       </Reveal>
 
+      {/* buscador por paciente */}
+      <Reveal className="flex flex-wrap items-center gap-2">
+        <label className="relative min-w-0 flex-1 sm:max-w-sm">
+          <span className="sr-only">Buscar presupuestos por paciente</span>
+          <Search aria-hidden className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-clinic-muted" />
+          <input type="search" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar por paciente: nombre o CI…" className={`${inputCls} pl-8`} />
+        </label>
+        {buscando && <span role="status" className="text-xs text-clinic-muted">{delPaciente.length} de {db.budgets.length} presupuestos</span>}
+      </Reveal>
+
       {/* filtros por estado */}
       <Reveal className="flex flex-wrap gap-2">
         {FILTERS.map((f) => {
-          const n = f === "todos" ? db.budgets.length : db.budgets.filter((b) => b.status === f).length;
+          const n = f === "todos" ? delPaciente.length : delPaciente.filter((b) => b.status === f).length;
           return (
             <button
               key={f}
@@ -89,7 +103,9 @@ export default function BudgetsPage() {
       </Reveal>
 
       {list.length === 0 ? (
-        <Empty title="Sin presupuestos en este estado" desc="Creá un presupuesto desde el botón superior o desde la ficha del paciente." />
+        buscando
+          ? <Empty title="Ningún presupuesto de ese paciente" desc={filter === "todos" ? "Probá con otro nombre o con la CI." : "Probá con otro estado, otro nombre o con la CI."} />
+          : <Empty title="Sin presupuestos en este estado" desc="Creá un presupuesto desde el botón superior o desde la ficha del paciente." />
       ) : (
         <Stagger className="grid gap-4 lg:grid-cols-2">
           {list.map((b) => {

@@ -1,4 +1,4 @@
-import type { Budget, BudgetStatus, Payment, PaymentMethod, PaymentRetention } from "./types";
+import type { Budget, BudgetStatus, Patient, Payment, PaymentMethod, PaymentRetention } from "./types";
 import { CURRENCIES, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
 
 /* ===== Presupuestos: totales, saldos y estados ===== */
@@ -10,6 +10,26 @@ export const BUDGET_STATUS_INFO: Record<BudgetStatus, { label: string; tone: "mu
   completado: { label: "Completado", tone: "ok", desc: "Todos los procedimientos realizados" },
   anulado: { label: "Anulado", tone: "err", desc: "Presupuesto descartado" },
 };
+
+const sinTildes = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+/** El buscador por paciente de Presupuestos: los presupuestos de los pacientes cuyo nombre, apellido o CI tienen todo lo escrito
+ *  (sin tildes ni mayúsculas, en cualquier orden; la CI con o sin puntos y aunque sea una parte). Sin búsqueda, todos. */
+export function presupuestosDePaciente<B extends Pick<Budget, "patientId">>(
+  budgets: B[], patients: Pick<Patient, "id" | "firstName" | "lastName" | "document">[], busqueda: string,
+): B[] {
+  const palabras = sinTildes(busqueda).split(/\s+/).filter(Boolean);
+  if (palabras.length === 0) return budgets;
+  const coinciden = new Set(
+    patients
+      .filter((p) => {
+        const pajar = sinTildes(`${p.firstName} ${p.lastName} ${p.document} ${p.document.replace(/\D/g, "")}`);
+        return palabras.every((w) => pajar.includes(w));
+      })
+      .map((p) => p.id),
+  );
+  return budgets.filter((b) => coinciden.has(b.patientId));
+}
 
 export function budgetSubtotal(b: Pick<Budget, "items">): number {
   return b.items.reduce((s, i) => s + i.price, 0);

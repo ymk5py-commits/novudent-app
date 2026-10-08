@@ -452,9 +452,9 @@ export const procedimientos: Procedimiento[] = [
     paraQue: "Para armar el presupuesto de un tratamiento, entregárselo al paciente y registrar que lo aceptó. Pasa por tres estados: Borrador, Presentado y Aceptado.",
     antes: ["El paciente tiene ficha.", "Saber qué prestaciones lleva (te las indica el dentista) y si el paciente tiene convenio."],
     pasos: [
-      { texto: "En el menú de arriba, abrí **Cobranza** y tocá «Presupuestos». Cada tarjeta es un presupuesto, con su estado; los filtros de arriba (Borrador, Presentado, Aceptado…) los separan.", captura: "lista" },
-      { texto: "Tocá «Nuevo presupuesto» y elegí el **Paciente** y el **Profesional**. Si el paciente tiene convenio, elegilo en **Convenio**: el descuento se aplica solo.", captura: "nuevo" },
-      { texto: "Tocá «Agregar» por cada prestación y elegila de la lista (sale del arancel). Anotá la **Pieza** si corresponde, revisá el precio y mirá el **Total**.", captura: "items" },
+      { texto: "En el menú de arriba, abrí **Cobranza** y tocá «Presupuestos». Cada tarjeta es un presupuesto, con su estado; los filtros (Borrador, Presentado, Aceptado…) los separan y el buscador de arriba encuentra los de un paciente por su nombre o su CI.", captura: "lista" },
+      { texto: "Tocá «Nuevo presupuesto». En **Paciente**, escribí la CI o el nombre y elegilo de la lista; después elegí el **Profesional**. Si el paciente tiene convenio, elegilo en **Convenio**: el descuento se aplica solo.", captura: "nuevo" },
+      { texto: "En **Prestaciones**, buscá cada una por su nombre o su código y tocala en la lista: se agrega con el precio del arancel. Anotá la **Pieza** si corresponde, revisá el precio y mirá el **Total**.", captura: "items" },
       { texto: "Tocá «Guardar»: el presupuesto queda en **Borrador**." },
       { texto: "Para dárselo al paciente, tocá «Detalle» en la tarjeta y después «Imprimir / PDF» (o «Enviar por email»).", captura: "detalle" },
       { texto: "Cuando se lo entregaste, tocá «Presentar» en la tarjeta: pasa a **Presentado**.", captura: "presentar" },
@@ -466,6 +466,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "tip", texto: "Un presupuesto **Presentado** sin ningún pago genera en **Tareas** la tarea «Presupuesto presentado sin aceptar», para hacerle seguimiento al paciente; al aceptarlo, esa tarea desaparece sola y, si queda saldo, el sistema arma la de cobranza («Saldo pendiente de pago»)." },
       { tipo: "revisar", texto: "«Marcar aceptado» no pide firma ni deja constancia de cómo aceptó el paciente (firmado, por WhatsApp). Confirmar si la clínica necesita registrarlo." },
       { tipo: "tip", texto: "Al editar un borrador con «Editar» se conserva todo lo que tenía, incluido su nombre. Para cambiarlo o ponerle uno, usá **Nombre del plan (opcional)**." },
+      { tipo: "tip", texto: "Desde la ficha del paciente se arma igual, sin tener que elegirlo: **Planes de tratamiento** › «Nuevo plan de tratamiento». Queda en Borrador, se abre al guardarlo y aparece también en esta lista." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -474,17 +475,21 @@ export const procedimientos: Procedimiento[] = [
 
       await page.getByRole("button", { name: "Nuevo presupuesto" }).click();
       const modal = page.getByRole("dialog", { name: "Nuevo presupuesto" });
-      await modal.getByLabel("Paciente").selectOption({ label: "Lucía Ferreira" });
+      const paciente = modal.getByRole("combobox", { name: "Paciente" });
+      await paciente.fill("Ferreira");
+      await modal.getByRole("option", { name: /LUCÍA FERREIRA/ }).click();
       await modal.getByLabel("Profesional").selectOption({ label: "Dr. Diego Martínez" });
       await modal.getByLabel("Convenio").selectOption({ label: "IPS (10%)" });
-      await c.foto("nuevo", { resaltar: [modal.getByLabel("Paciente"), modal.getByLabel("Profesional"), modal.getByLabel("Convenio")], recorte: modal, margen: 4, alto: 1100 });
+      await c.foto("nuevo", { resaltar: [paciente, modal.getByLabel("Profesional"), modal.getByLabel("Convenio")], recorte: modal, margen: 4, alto: 1100 });
 
-      await modal.getByRole("button", { name: "Agregar" }).click();
-      await modal.getByRole("button", { name: "Agregar" }).click();
-      await modal.locator("div.rounded-xl select").nth(1).selectOption("D1110");
+      const buscar = modal.getByRole("combobox", { name: "Buscar prestación" });
+      await buscar.fill("D0120");
+      await modal.getByRole("option", { name: /Evaluación oral periódica/ }).click();
+      await buscar.fill("profilaxis");
+      await modal.getByRole("option", { name: /Profilaxis \(adulto\)/ }).click();
       await modal.getByPlaceholder("Pieza").first().fill("16");
       await c.foto("items", {
-        resaltar: [modal.getByRole("button", { name: "Agregar" }), modal.getByPlaceholder("Pieza").first(), modal.getByText(/^Total/).locator("xpath=..")],
+        resaltar: [buscar, modal.getByPlaceholder("Pieza").first(), modal.getByText(/^Total/).locator("xpath=..")],
         recorte: modal, margen: 4, alto: 1100,
       });
       await modal.getByRole("button", { name: "Guardar" }).click();

@@ -9,6 +9,7 @@ import { validatePairings, validateExtras, recordTotal, canSubmit, canRelease, C
 import type { BillingRecord, ClaimType, BillingExtra } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Badge, FlagBadge, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
+import { BuscadorPrestacion } from "@/components/BuscadorPrestacion";
 
 type Filter = "todos" | "sin-enviar" | "en-retencion" | "facturado";
 
@@ -225,17 +226,8 @@ function NewBilling({ onClose, onSave }: { onClose: () => void; onSave: (b: Bill
   const issues = [...validatePairings({ cpt, dx, pos, modifier }), ...validateExtras(extras)];
   const total = amount - discount + extras.reduce((s, e) => s + e.amount, 0);
 
-  function addExtra() {
-    const first = db.procedures.find((x) => x.cpt !== cpt) ?? db.procedures[0];
-    if (first) setExtras([...extras, { cpt: first.cpt, modifier: "", amount: first.price }]);
-  }
   function setExtra(i: number, patch: Partial<BillingExtra>) {
-    setExtras(extras.map((e, j) => {
-      if (j !== i) return e;
-      const next = { ...e, ...patch };
-      if (patch.cpt) next.amount = db.procedures.find((x) => x.cpt === patch.cpt)?.price ?? next.amount;
-      return next;
-    }));
+    setExtras(extras.map((e, j) => (j === i ? { ...e, ...patch } : e)));
   }
 
   function onCptChange(next: string) {
@@ -273,11 +265,12 @@ function NewBilling({ onClose, onSave }: { onClose: () => void; onSave: (b: Bill
               {db.patients.map((p) => <option key={p.id} value={p.id}>{fullName(p)}</option>)}
             </select>
           </Field>
-          <Field label="Procedimiento (CPT/CDT)">
-            <select className={inputCls} value={cpt} onChange={(e) => onCptChange(e.target.value)}>
-              {db.procedures.map((p) => <option key={p.cpt} value={p.cpt}>{p.cpt} — {p.description}</option>)}
-            </select>
-          </Field>
+          {/* Con un arancel de cientos o miles de servicios, un <select> no se puede usar: se busca por código o nombre. */}
+          <div className="min-w-0">
+            <span className="mb-1 block text-[13px] font-semibold text-clinic-text">Procedimiento (CPT/CDT)</span>
+            <BuscadorPrestacion procs={db.procedures} onElegir={(p) => onCptChange(p.cpt)} etiqueta="Procedimiento (CPT/CDT)" placeholder="Cambiar: código o nombre…" />
+            <p className="mt-1 text-[12px] text-clinic-muted">{proc ? <><b className="tabular-nums">{proc.cpt}</b> {proc.description}</> : "Elegí el procedimiento."}</p>
+          </div>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <Field label="DX (diagnóstico)" hint={`Permitidos: ${(CPT_DX[cpt] ?? []).join(", ") || "libre"}`}>
@@ -302,19 +295,22 @@ function NewBilling({ onClose, onSave }: { onClose: () => void; onSave: (b: Bill
         </div>
         {/* Procedimientos adicionales (Procedure_Billing_Mapping) */}
         <div className="rounded-2xl border border-clinic-border bg-clinic-bg/50 p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[13px] font-bold text-clinic-muted">Procedimientos adicionales</span>
-            <Btn variant="outline" onClick={addExtra}><Plus className="h-3.5 w-3.5" /> Agregar</Btn>
-          </div>
+          <div className="mb-2 text-[13px] font-bold text-clinic-muted">Procedimientos adicionales</div>
+          <BuscadorPrestacion
+            procs={db.procedures}
+            onElegir={(p) => setExtras([...extras, { cpt: p.cpt, modifier: "", amount: p.price }])}
+            etiqueta="Agregar procedimiento adicional"
+            placeholder="Agregar: escribí el código o el nombre…"
+          />
           {extras.length === 0 ? (
-            <p className="text-xs text-clinic-muted">Mismo reclamo, varios procedimientos: agregalos acá con su modificador.</p>
+            <p className="mt-2 text-xs text-clinic-muted">Mismo reclamo, varios procedimientos: agregalos acá con su modificador.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="mt-2 space-y-2">
               {extras.map((e, i) => (
                 <div key={i} className="grid grid-cols-12 items-center gap-2">
-                  <select className={`${inputCls} col-span-5`} value={e.cpt} onChange={(ev) => setExtra(i, { cpt: ev.target.value })}>
-                    {db.procedures.map((p) => <option key={p.cpt} value={p.cpt}>{p.cpt} — {p.description}</option>)}
-                  </select>
+                  <span className="col-span-5 min-w-0 truncate text-sm text-clinic-text" title={db.procedures.find((p) => p.cpt === e.cpt)?.description}>
+                    <b className="tabular-nums">{e.cpt}</b> {db.procedures.find((p) => p.cpt === e.cpt)?.description}
+                  </span>
                   <input className={`${inputCls} col-span-2`} placeholder="MOD" value={e.modifier ?? ""} onChange={(ev) => setExtra(i, { modifier: ev.target.value })} data-tip={`Permitidos: ${(CPT_MOD[e.cpt] ?? []).map((m) => m || "—").join(", ")}`} />
                   <input type="number" min={0} className={`${inputCls} col-span-4`} value={e.amount} onChange={(ev) => setExtra(i, { amount: +ev.target.value })} />
                   <button type="button" onClick={() => setExtras(extras.filter((_, j) => j !== i))} aria-label="Quitar" className="col-span-1 grid h-9 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err">✕</button>

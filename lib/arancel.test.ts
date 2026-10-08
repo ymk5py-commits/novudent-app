@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import type { Procedure } from "./types";
 import {
   parsearPrecio, parsearPorcentaje, normalizarCodigo, filtrarServicios, ajustarPrecio, planAjuste, aplicarCambios,
-  analizarCargaDePrecios, procedimientosDeLaCarga, filasParaExportar, totalDelArancel, buscarPrestaciones,
+  analizarCargaDePrecios, analizarCargaDeFilas, procedimientosDeLaCarga, filasParaExportar, totalDelArancel, buscarPrestaciones,
+  MAX_FILAS_DE_CARGA,
 } from "./arancel";
 
 const P = (cpt: string, description: string, price: number, category?: Procedure["category"], extra: Partial<Procedure> = {}): Procedure =>
@@ -191,15 +192,191 @@ describe("analizarCargaDePrecios — pegar filas de Excel", () => {
     expect(a.filas).toHaveLength(1);
     expect(a.filas[0]).toMatchObject({ linea: 3, cpt: "D2330" });
   });
-  it("corta en 500 filas y avisa", () => {
-    const texto = Array.from({ length: 520 }, (_, i) => `N${i + 1};Servicio ${i + 1};${1000 + i}`).join("\n");
+  it("corta en 3.000 filas y avisa (antes eran 500: un arancel real tiene miles de prestaciones)", () => {
+    expect(MAX_FILAS_DE_CARGA).toBe(3000);
+    const texto = Array.from({ length: 3020 }, (_, i) => `N${i + 1};Servicio ${i + 1};${1000 + i}`).join("\n");
     const a = analizarCargaDePrecios(texto, CATALOGO);
-    expect(a.filas).toHaveLength(500);
+    expect(a.filas).toHaveLength(3000);
     expect(a.truncado).toBe(true);
+    expect(analizarCargaDePrecios(texto.split("\n").slice(0, 3000).join("\n"), CATALOGO).truncado).toBe(false);
+  });
+  it("un precio que es una fórmula sin su resultado guardado pide abrir el archivo en Excel", () => {
+    const a = analizarCargaDeFilas([{ linea: 1, campos: ["Prestación", "Precio"] }, { linea: 6, campos: ["Carillas", "=B2*10"] }], CATALOGO);
+    expect(a.filas[0]).toMatchObject({ linea: 6, estado: "error", motivo: "La fórmula «=B2*10» no tiene su resultado guardado: abrí el archivo en Excel, guardalo y volvé a elegirlo." });
+  });
+  it("una fila sin precio dice que falta el precio", () => {
+    const a = analizarCargaDePrecios("Código;Descripción;Precio\nN1;Pulido;", CATALOGO);
+    expect(a.filas[0]).toMatchObject({ linea: 2, estado: "error", motivo: "Falta el precio." });
   });
   it("un texto sin nada útil da un análisis vacío", () => {
     const a = analizarCargaDePrecios("   \n\n", CATALOGO);
     expect(a).toMatchObject({ filas: [], nuevos: 0, cambian: 0, iguales: 0, errores: 0, truncado: false });
+  });
+});
+
+describe("analizarCargaDeFilas — el mismo análisis para el texto pegado y para el archivo de Excel", () => {
+  it("con las mismas filas da lo mismo que pegarlas", () => {
+    const texto = "Código;Descripción;Precio\nD2330;Resina compuesta — 1 superficie;450000\nN1;Pulido;mucho";
+    const filas = texto.split("\n").map((l, i) => ({ linea: i + 1, campos: l.split(";") }));
+    const desdeFilas = analizarCargaDeFilas(filas, CATALOGO);
+    const desdeTexto = analizarCargaDePrecios(texto, CATALOGO);
+    expect(desdeFilas.filas.map(({ estado, linea }) => ({ estado, linea }))).toEqual(desdeTexto.filas.map(({ estado, linea }) => ({ estado, linea })));
+    expect([desdeFilas.nuevos, desdeFilas.cambian, desdeFilas.errores]).toEqual([0, 1, 1]);
+  });
+  it("cada fila conserva su número (el de la fila en la hoja, aunque haya filas salteadas)", () => {
+    const a = analizarCargaDeFilas([
+      { linea: 7, campos: ["Código", "Precio"] },
+      { linea: 9, campos: ["D2330", "450000"] },
+      { linea: 15, campos: ["D0120", "abc"] },
+    ], CATALOGO);
+    expect(a.filas.map((f) => f.linea)).toEqual([9, 15]);
+  });
+  it("una fila con error muestra sus celdas separadas por «|», y las columnas vacías del final no cuentan", () => {
+    const a = analizarCargaDeFilas([{ linea: 3, campos: ["N1", "Pulido", "mucho", "", ""] }], CATALOGO);
+    expect(a.filas[0]).toEqual({ linea: 3, estado: "error", texto: "N1 | Pulido | mucho", motivo: "Precio inválido «mucho»." });
+    // El CSV que guarda Excel con columnas de más vacías al final se lee igual.
+    const b = analizarCargaDePrecios("D2330;Resina compuesta — 1 superficie;450000;;", CATALOGO);
+    expect(b.filas[0]).toMatchObject({ estado: "cambia", cpt: "D2330", price: 450000 });
+  });
+});
+
+describe("nombre y precio, sin código — la planilla «Prestación | Precio»", () => {
+  it("empareja por nombre sin tildes, mayúsculas ni signos y cambia el precio (sin tocar el nombre guardado)", () => {
+    const texto = "Prestación\tPrecio\nresina compuesta - 1 superficie\t450.000\nEVALUACIÓN ORAL PERIÓDICA\t150000";
+    const a = analizarCargaDePrecios(texto, CATALOGO);
+    expect(a.filas).toEqual([
+      {
+        linea: 2, estado: "cambia", cpt: "D2330", description: "Resina compuesta — 1 superficie", price: 450000, category: "operatoria", porNombre: true,
+        antes: { description: "Resina compuesta — 1 superficie", price: 420000, category: "operatoria" },
+      },
+      { linea: 3, estado: "igual", cpt: "D0120", description: "Evaluación oral periódica", porNombre: true },
+    ]);
+    expect([a.nuevos, a.cambian, a.iguales, a.errores]).toEqual([0, 1, 1, 0]);
+  });
+  it("lo que no existe se crea con un código automático S0001, S0002… que no choca con los que ya hay ni entre sí", () => {
+    const conAutomaticos = [...CATALOGO, P("S0001", "Creado en otra carga", 1000), P("S0003", "Otro de otra carga", 1000)];
+    const a = analizarCargaDePrecios("Prestación;Precio\nLimpieza con ultrasonido;180000\nCarillas;2.500.000\nGuarda oclusal;900000", conAutomaticos);
+    expect(a.filas).toEqual([
+      { linea: 2, estado: "nuevo", cpt: "S0002", description: "Limpieza con ultrasonido", price: 180000, porNombre: true },
+      { linea: 3, estado: "nuevo", cpt: "S0004", description: "Carillas", price: 2500000, porNombre: true },
+      { linea: 4, estado: "nuevo", cpt: "S0005", description: "Guarda oclusal", price: 900000, porNombre: true },
+    ]);
+  });
+  it("un nombre repetido en el archivo es un error de esa fila (y no gasta un código)", () => {
+    const a = analizarCargaDePrecios(
+      "Prestación;Precio\nCorona nueva;100\ncorona  NUEVA;200\nResina compuesta — 1 superficie;1\nresina compuesta - 1 superficie;2\nOtra nueva;300",
+      CATALOGO,
+    );
+    expect(a.filas.map((f) => f.estado)).toEqual(["nuevo", "error", "cambia", "error", "nuevo"]);
+    expect(a.filas[1]).toMatchObject({ linea: 3, motivo: "Nombre repetido: ya está en la línea 2." });
+    expect(a.filas[3]).toMatchObject({ linea: 5, motivo: "Nombre repetido: ya está en la línea 4." });
+    expect(a.filas[4]).toMatchObject({ cpt: "S0002" });
+  });
+  it("reconoce «Procedimiento» e «Ítem» como la columna del nombre", () => {
+    expect(analizarCargaDePrecios("Procedimiento;Valor\nExodoncia simple;650000", CATALOGO).filas[0]).toMatchObject({ estado: "cambia", cpt: "D7140", price: 650000 });
+    expect(analizarCargaDePrecios("Ítem;Importe\nExodoncia simple;650000", CATALOGO).filas[0]).toMatchObject({ estado: "cambia", cpt: "D7140", price: 650000 });
+  });
+  it("con categoría también la cambia, y la categoría que no existe es un error", () => {
+    const a = analizarCargaDePrecios("Prestación;Categoría;Precio\nExodoncia simple;Cirugía;600000\nPulido nuevo;Prevención e higiene;80000\nAlgo;Magia;1", CATALOGO);
+    expect(a.filas[0]).toMatchObject({ estado: "igual", cpt: "D7140" });
+    expect(a.filas[1]).toMatchObject({ estado: "nuevo", cpt: "S0001", category: "prevencion" });
+    expect(a.filas[2]).toMatchObject({ estado: "error" });
+  });
+  it("si en el arancel hay dos servicios con ese nombre, pide el código para elegir", () => {
+    const dobles = [...CATALOGO, P("C1", "Consulta", 100), P("C2", "consulta", 200)];
+    const a = analizarCargaDePrecios("Prestación;Precio\nConsulta;300", dobles);
+    expect(a.filas[0]).toMatchObject({ estado: "error" });
+    if (a.filas[0].estado === "error") expect(a.filas[0].motivo).toMatch(/C1, C2.*código/);
+  });
+  it("falta el nombre o el precio: error de esa fila", () => {
+    const a = analizarCargaDeFilas([
+      { linea: 1, campos: ["Prestación", "Precio"] },
+      { linea: 2, campos: ["", "1000"] },
+      { linea: 3, campos: ["Carillas"] },
+      { linea: 4, campos: ["—", "1000"] },
+    ], CATALOGO);
+    expect(a.filas.map((f) => (f.estado === "error" ? f.motivo : f.estado))).toEqual([
+      "Falta el nombre de la prestación.", "Falta el precio.", "Falta el nombre de la prestación.",
+    ]);
+  });
+  it("lo nuevo por nombre se guarda con su código automático", () => {
+    const a = analizarCargaDePrecios("Prestación;Precio\nLimpieza con ultrasonido;180000\nExodoncia simple;650000", CATALOGO);
+    expect(procedimientosDeLaCarga(a, CATALOGO)).toEqual([
+      { cpt: "S0001", description: "Limpieza con ultrasonido", price: 180000, defaultDx: [] },
+      { ...CATALOGO[3], price: 650000 },
+    ]);
+  });
+  it("sin encabezado y con dos columnas: con espacios o más de 20 letras es un nombre; si no, un código (como siempre)", () => {
+    const a = analizarCargaDePrecios(
+      "Limpieza con ultrasonido;180000\nD2330;450000\nResinaCompuesta1Superficie;1000\nZZ9;1000",
+      CATALOGO,
+    );
+    expect(a.filas.map((f) => f.estado)).toEqual(["nuevo", "cambia", "nuevo", "error"]);
+    expect(a.filas[0]).toMatchObject({ cpt: "S0001", description: "Limpieza con ultrasonido", porNombre: true });
+    expect(a.filas[1]).toMatchObject({ cpt: "D2330", price: 450000 });
+    expect(a.filas[1]).not.toHaveProperty("porNombre");
+    expect(a.filas[2]).toMatchObject({ cpt: "S0002", description: "ResinaCompuesta1Superficie" });
+    if (a.filas[3].estado === "error") expect(a.filas[3].motivo).toMatch(/no existe/);
+  });
+  it("sin encabezado, una sola palabra sin números («Profilaxis») es un nombre, salvo que sea un código que ya existe", () => {
+    const catalogo = [...CATALOGO, P("ORTO", "Control de ortodoncia", 100000)];
+    const a = analizarCargaDePrecios("Profilaxis;300000\northo;5\nORTO;120000\nExodoncia simple;600000", catalogo);
+    expect(a.filas).toMatchObject([
+      { estado: "nuevo", cpt: "S0001", description: "Profilaxis" },
+      { estado: "nuevo", cpt: "S0002", description: "ortho" },
+      { estado: "cambia", cpt: "ORTO", price: 120000 },
+      { estado: "igual", cpt: "D7140" },
+    ]);
+  });
+  it("el código automático no pisa un código que el mismo archivo trae más abajo", () => {
+    const a = analizarCargaDePrecios("Limpieza profunda;180000\nS0001;Servicio con su código;5000", CATALOGO);
+    expect(a.filas).toMatchObject([
+      { estado: "nuevo", cpt: "S0002", description: "Limpieza profunda" },
+      { estado: "nuevo", cpt: "S0001", description: "Servicio con su código" },
+    ]);
+  });
+  it("el mismo servicio por código y por nombre en el mismo archivo es un repetido", () => {
+    const a = analizarCargaDePrecios("D7140;Exodoncia simple;610000\nExodoncia simple;620000\nN1;Algo nuevo;1000\nalgo nuevo;2000", CATALOGO);
+    expect(a.filas.map((f) => f.estado)).toEqual(["cambia", "error", "nuevo", "error"]);
+    if (a.filas[1].estado === "error") expect(a.filas[1].motivo).toMatch(/línea 1/);
+    if (a.filas[3].estado === "error") expect(a.filas[3].motivo).toMatch(/línea 3/);
+  });
+  it("el encabezado necesita la columna del precio y la del código o el nombre", () => {
+    const sinPrecio = analizarCargaDePrecios("Prestación;Categoría\nPulido;Prevención e higiene", CATALOGO);
+    expect(sinPrecio.filas).toHaveLength(1);
+    expect(sinPrecio.filas[0]).toMatchObject({ estado: "error", linea: 1 });
+    if (sinPrecio.filas[0].estado === "error") expect(sinPrecio.filas[0].motivo).toMatch(/Precio/);
+    const sinNombre = analizarCargaDePrecios("Precio;Categoría\n1000;Cirugía", CATALOGO);
+    if (sinNombre.filas[0].estado === "error") expect(sinNombre.filas[0].motivo).toMatch(/Código.*nombre/i);
+    else throw new Error("tenía que ser un error");
+  });
+});
+
+describe("el encabezado como lo escribe la gente", () => {
+  it("lo busca en las primeras filas y saltea el título de arriba", () => {
+    const a = analizarCargaDePrecios("LISTA DE PRECIOS 2026\nClínica Aura\n\nPrestación\tPrecio (Gs.)\nExodoncia simple\t650000", CATALOGO);
+    expect(a.lineaDelEncabezado).toBe(4);
+    expect(a.filasAntesDelEncabezado).toBe(2);
+    expect(a.filas).toMatchObject([{ linea: 5, estado: "cambia", cpt: "D7140", price: 650000 }]);
+  });
+  it("no se saltea nada si arriba hay filas con datos (el encabezado tiene que ir antes)", () => {
+    const a = analizarCargaDePrecios("D2330;450000\nCódigo;Precio\nD0120;160000", CATALOGO);
+    expect(a.lineaDelEncabezado).toBeNull();
+    expect(a.filasAntesDelEncabezado).toBe(0);
+    expect(a.filas[0]).toMatchObject({ linea: 1, estado: "cambia", cpt: "D2330" });
+  });
+  it("entiende encabezados con más palabras: «Código CDT», «Nombre del servicio», «Valor unitario»", () => {
+    const a = analizarCargaDePrecios("Código CDT;Nombre del servicio;Valor unitario\nN1;Algo nuevo;1000", CATALOGO);
+    expect(a.filas).toEqual([{ linea: 2, estado: "nuevo", cpt: "N1", description: "Algo nuevo", price: 1000 }]);
+  });
+  it("con varias columnas de plata, «Precio» gana sobre «Costo» aunque esté después", () => {
+    const a = analizarCargaDePrecios("Prestación;Costo;Precio\nExodoncia simple;100000;650000", CATALOGO);
+    expect(a.filas[0]).toMatchObject({ estado: "cambia", price: 650000 });
+  });
+  it("un título de una sola celda que empieza como una columna («Precio de lista») no es el encabezado", () => {
+    const a = analizarCargaDePrecios("Precio de lista\nCódigo;Precio\nD2330;450000", CATALOGO);
+    expect(a.lineaDelEncabezado).toBe(2);
+    expect(a.filas).toMatchObject([{ linea: 3, estado: "cambia", cpt: "D2330" }]);
   });
 });
 

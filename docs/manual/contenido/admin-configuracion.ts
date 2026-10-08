@@ -418,14 +418,18 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Para cambiar la descripción o la categoría, tocá el lápiz de su fila, corregí y tocá «Guardar». El código no se puede cambiar." },
       { texto: "Para subir o bajar todos los precios a la vez, tocá «Ajustar precios», escribí el porcentaje (10 sube un 10 %; -5 baja un 5 %) y, si querés, a qué múltiplo redondear. Ves cómo queda cada precio antes de guardar; tocá «Aplicar».", captura: "ajuste" },
       { texto: "Si te equivocaste, «Deshacer» (arriba de la tabla) devuelve los precios como estaban. Si pusiste un filtro de categoría, el ajuste puede ser solo para lo que estás viendo." },
-      { texto: "Para cargar muchos servicios de una vez, tocá «Cargar desde Excel», pegá las filas de tu planilla (código, descripción, categoría si querés, y precio) o elegí un archivo CSV. Ves qué pasaría con cada fila —nueva, cambia, sin cambios o con error— y recién al tocar «Aplicar» se guarda.", captura: "carga" },
+      { texto: "Para cargar muchos servicios de una vez, tocá «Cargar desde Excel» y después «Elegir archivo (Excel o CSV)», y elegí tu planilla (.xlsx o CSV). Alcanza con una columna con el nombre de la prestación y otra con el precio; si el libro tiene varias hojas, elegí cuál en **Hoja**. También podés pegar las filas copiadas de la planilla." },
+      { texto: "Ves qué pasaría con cada fila —nueva, cambia, sin cambios o con error— y recién al tocar «Aplicar» se guarda. Si la planilla no tiene códigos, cada prestación se busca por su nombre: la que ya existe cambia de precio y la nueva se crea con un código automático (S0001, S0002…).", captura: "carga" },
       { texto: "«Descargar» baja el arancel actual en una planilla: sirve de modelo para armar la carga, o para editarlo en Excel y volver a subirlo." },
       { texto: "Para sacar una prestación, tocá el tachito de su fila y aceptá la pregunta." },
-      { texto: "Desde ese momento, al armar un plan de tratamiento o un presupuesto la prestación aparece en la lista con su precio: [[armar-un-plan-de-tratamiento]]." },
+      { texto: "Desde ese momento, al armar un plan de tratamiento o un presupuesto la prestación aparece en el buscador de prestaciones con su precio: [[armar-un-plan-de-tratamiento]]." },
     ],
     avisos: [
       { tipo: "ojo", texto: "Cambiar un precio no cambia los planes ya armados: cada plan guarda el precio del momento en que se agregó la prestación. Al eliminar una prestación pasa lo mismo: los planes que la usan no se tocan, solo deja de ofrecerse para los nuevos." },
       { tipo: "ojo", texto: "No se puede crear un servicio con un código que ya existe: la pantalla avisa y hay que cambiarle el precio al que está. En la carga desde Excel, un código que ya existe se actualiza (precio, y descripción o categoría si las traés)." },
+      { tipo: "ojo", texto: "Sin columna de código, cada fila se busca por el nombre, sin importar tildes, mayúsculas ni signos. Si en el arancel hay dos prestaciones con el mismo nombre, o el nombre se repite en la planilla, esa fila da error y no se carga." },
+      { tipo: "ojo", texto: "Un Excel viejo (.xls) o con contraseña no se puede leer: guardalo como .xlsx (o CSV) y sin contraseña. Entran hasta 3.000 filas por carga y archivos de hasta 8 MB; con más de 500 servicios, la app pide confirmar antes de guardar." },
+      { tipo: "revisar", texto: "Las prestaciones nuevas sin código reciben uno automático (S0001…) y, si la planilla no trae la columna **Categoría**, quedan en «General» en los reportes por categoría. Confirmar si conviene pedirles a las clínicas que la agreguen." },
       { tipo: "ojo", texto: "«Deshacer» solo devuelve los precios que siguen como los dejó el ajuste, y se pierde al salir de la pantalla, al hacer otro ajuste o una carga desde Excel. Los precios que cambiaste a mano después no se pisan." },
       { tipo: "tip", texto: "Los reportes agrupan las prestaciones por categoría a partir del código. Cargalas con los códigos de la nomenclatura CDT (D0…, D1…, D2…) y quedan bien agrupadas; se guardan en mayúsculas." },
     ],
@@ -477,12 +481,16 @@ export const procedimientos: Procedimiento[] = [
       await c.foto("ajuste", { recorte: ajuste, alto: 1000, margen: 4, resaltar: [ajuste.getByLabel("Porcentaje"), ajuste.getByRole("button", { name: /Aplicar a/ })] });
       await ajuste.getByRole("button", { name: "Cancelar" }).click();
 
-      // Cargar filas pegadas de Excel: también se cancela después de mostrar la vista previa.
+      // Cargar una planilla de Excel real («Prestación | Precio», sin códigos): también se cancela después de ver la vista previa.
       await arancel.getByRole("button", { name: "Cargar desde Excel" }).click();
       const carga = page.getByRole("dialog", { name: "Cargar precios desde Excel" });
-      await carga.getByLabel("Filas de la planilla").fill("D1110\tProfilaxis (adulto)\t270000\nD1351\tSellante de fosas y fisuras\t120000\nD2330\tResina compuesta — 1 superficie\t450000");
-      await c.expect(carga).toContainText("nuevo");
-      await c.foto("carga", { recorte: carga, alto: 1000, margen: 4, resaltar: [carga.getByLabel("Filas de la planilla"), carga.getByRole("button", { name: /Aplicar/ })] });
+      const { resolve } = await import("node:path");
+      await carga.getByLabel("Elegir archivo (Excel o CSV)").setInputFiles(resolve("lib/__fixtures__/arancel-prueba.xlsx"));
+      await c.expect(carga).toContainText("nuevos");
+      await c.foto("carga", {
+        recorte: carga, alto: 1000, margen: 4,
+        resaltar: [carga.getByText("Elegir archivo (Excel o CSV)"), carga.getByLabel("Hoja"), carga.getByRole("button", { name: /Aplicar/ })],
+      });
       await carga.getByRole("button", { name: "Cancelar" }).click();
 
       // El tachito saca la prestación (con pregunta).
@@ -493,9 +501,9 @@ export const procedimientos: Procedimiento[] = [
       await c.ir("/app/presupuestos");
       await page.getByRole("button", { name: "Nuevo presupuesto" }).click();
       const presupuesto = page.getByRole("dialog", { name: "Nuevo presupuesto" });
-      await presupuesto.getByRole("button", { name: "Agregar", exact: true }).click();
-      await presupuesto.locator("select").nth(3).selectOption({ label: "D1110 — Profilaxis (adulto)" });
-      await c.expect(presupuesto.getByLabel("Precio")).toHaveValue("270000");
+      await presupuesto.getByRole("combobox", { name: "Buscar prestación" }).fill("D1110");
+      await presupuesto.getByRole("option", { name: /Profilaxis \(adulto\)/ }).click();
+      await c.expect(presupuesto.getByLabel("Precio de la prestación 1")).toHaveValue("270000");
     },
   },
 

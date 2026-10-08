@@ -1,25 +1,28 @@
 "use client";
 /** «Arancel de precios» (Administración): el catálogo de servicios y lo que cuesta cada uno.
  *  Cargar precios tiene que ser rápido: buscar, cambiar el precio en la misma fila (Enter guarda y pasa al siguiente),
- *  subir o bajar todo un porcentaje con vista previa —y deshacer—, y pegar las filas desde Excel. La lógica está en
- *  `lib/arancel.ts` (con sus tests); acá solo se muestra y se guarda con las acciones de siempre del store. */
+ *  subir o bajar todo un porcentaje con vista previa —y deshacer—, y cargar la planilla de Excel (el archivo .xlsx o CSV, o sus
+ *  filas pegadas). La lógica está en `lib/arancel.ts` y `lib/xlsx.ts` (con sus tests); acá solo se muestra y se guarda con las
+ *  acciones de siempre del store. */
 import { useMemo, useRef, useState } from "react";
-import { Download, Pencil, Percent, Plus, Search, Stethoscope, Trash2, Undo2, UploadCloud } from "lucide-react";
+import { Download, FileSpreadsheet, Pencil, Percent, Plus, Search, Stethoscope, Trash2, Undo2, UploadCloud } from "lucide-react";
 import { useStore, fmtGs } from "@/lib/store";
 import { CURRENCIES } from "@/lib/currency";
 import { CATEGORY_LABEL } from "@/lib/categorias";
 import { downloadCsv } from "@/lib/csv";
 import {
-  aplicarCambios, analizarCargaDePrecios, categoriaDe, filasParaExportar, filtrarServicios, MAX_FILAS_DE_CARGA, normalizarCodigo,
-  parsearPorcentaje, parsearPrecio, planAjuste, procedimientosDeLaCarga, totalDelArancel, type AnalisisDeCarga, type CambioDePrecio,
+  aplicarCambios, analizarCargaDeFilas, analizarCargaDePrecios, categoriaDe, filasParaExportar, filtrarServicios, MAX_FILAS_DE_CARGA,
+  normalizarCodigo, parsearPorcentaje, parsearPrecio, planAjuste, procedimientosDeLaCarga, totalDelArancel, type AnalisisDeCarga,
+  type CambioDePrecio,
 } from "@/lib/arancel";
+import { ArchivoNoLegible, hojaPorDefecto, leerXlsx, MAX_BYTES_DEL_ARCHIVO, textoDeArchivo, tipoDeArchivo, type LibroDeCalculo } from "@/lib/xlsx";
 import type { Procedure, ProcedureCategory } from "@/lib/types";
 import { Badge, Btn, Card, Empty, Field, Modal, inputCls } from "@/components/ui";
 
 type Abierto = null | { tipo: "servicio"; proc?: Procedure } | { tipo: "ajuste" } | { tipo: "carga" };
 type Aviso = { tono: "ok" | "warn"; texto: string };
 
-const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
+const plural = (n: number, uno: string, varios: string) => `${n.toLocaleString("es-PY")} ${n === 1 ? uno : varios}`;
 const fmtPct = (n: number) => `${n > 0 ? "+" : ""}${n.toLocaleString("es-PY", { maximumFractionDigits: 2 })} %`;
 
 export function ArancelPrecios() {
@@ -108,7 +111,7 @@ export function ArancelPrecios() {
       </div>
       <p className="mb-3 text-xs text-clinic-muted">
         Hacé clic en un precio para cambiarlo ahí mismo: <b>Enter</b> guarda y pasa al siguiente. Para cambiar muchos juntos usá <b>Ajustar precios</b> (sube o baja un porcentaje, con vista previa)
-        o <b>Cargar desde Excel</b> (pegás las filas de tu planilla).
+        o <b>Cargar desde Excel</b> (elegís el archivo de tu planilla, .xlsx o CSV, o pegás sus filas).
       </p>
 
       {ultimoAjuste && (
@@ -350,52 +353,126 @@ function AjusteModal({ procs, visibles, filtrando, decimales, onClose, onAplicar
 
 /* ───────────── Cargar precios desde una planilla ───────────── */
 
-async function leerArchivo(archivo: File): Promise<string> {
-  const bytes = await archivo.arrayBuffer();
-  try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
-  catch { return new TextDecoder("windows-1252").decode(bytes); } // el CSV «ANSI» que guarda Excel en español
-}
+/** Con más servicios que esto, aplicar pide confirmar: es una escritura por servicio. */
+const CONFIRMAR_DESDE = 500;
+const MOSTRAR = 60;
+const miles = (n: number) => n.toLocaleString("es-PY");
+
+/** De dónde salen las filas: lo pegado en el cuadro (también un CSV, que se vuelca ahí) o una hoja de un .xlsx. */
+type Fuente = { tipo: "texto" } | { tipo: "xlsx"; archivo: string; libro: LibroDeCalculo; hoja: number };
 
 function CargaModal({ procs, decimales, onClose, onDescargar, onAplicar }: {
   procs: Procedure[]; decimales: number; onClose: () => void; onDescargar: () => void; onAplicar: (aGuardar: Procedure[], analisis: AnalisisDeCarga) => void;
 }) {
   const [texto, setTexto] = useState("");
+  const [fuente, setFuente] = useState<Fuente>({ tipo: "texto" });
+  const [csvLeido, setCsvLeido] = useState<string | null>(null);
+  const [leyendo, setLeyendo] = useState(false);
   const [errorArchivo, setErrorArchivo] = useState<string | null>(null);
-  const analisis = useMemo(() => analizarCargaDePrecios(texto, procs, decimales), [texto, procs, decimales]);
+  const [confirmando, setConfirmando] = useState(false);
+  // Si se elige otro archivo mientras se lee el anterior, gana el último.
+  const lectura = useRef(0);
+
+  const hoja = fuente.tipo === "xlsx" ? fuente.libro.hojas[fuente.hoja] : undefined;
+  const analisis = useMemo(
+    () => (hoja ? analizarCargaDeFilas(hoja.filas.map((f) => ({ linea: f.numero, campos: f.celdas })), procs, decimales) : analizarCargaDePrecios(texto, procs, decimales)),
+    [hoja, texto, procs, decimales],
+  );
   const aGuardar = analisis.nuevos + analisis.cambian;
-  const MOSTRAR = 60;
+  const hojasConDatos = fuente.tipo === "xlsx" ? fuente.libro.hojas.map((h, i) => ({ h, i })).filter(({ h }) => h.filas.length > 0) : [];
+  const porNombre = analisis.filas.some((f) => f.estado !== "error" && f.porNombre);
 
   const cargarArchivo = async (archivo: File | undefined) => {
     if (!archivo) return;
-    if (archivo.size > 1_000_000) { setErrorArchivo("El archivo es muy grande: el máximo son unas 500 filas."); return; }
+    const turno = ++lectura.current;
     setErrorArchivo(null);
-    setTexto(await leerArchivo(archivo));
+    setConfirmando(false);
+    if (archivo.size > MAX_BYTES_DEL_ARCHIVO) {
+      setFuente({ tipo: "texto" });
+      if (csvLeido) { setTexto(""); setCsvLeido(null); }
+      setErrorArchivo("El archivo pesa más de 8 MB. Dejá solo la hoja con los precios (o guardala como CSV) y volvé a elegirlo.");
+      return;
+    }
+    setLeyendo(true);
+    try {
+      const bytes = new Uint8Array(await archivo.arrayBuffer());
+      const tipo = tipoDeArchivo(bytes);
+      if (tipo === "binario") throw new ArchivoNoLegible("no-es-xlsx", "No es una planilla. Elegí el archivo de Excel (.xlsx) o un CSV.");
+      if (tipo === "texto") {
+        const leido = textoDeArchivo(bytes);
+        if (turno !== lectura.current) return;
+        setFuente({ tipo: "texto" });
+        setTexto(leido);
+        setCsvLeido(archivo.name);
+        return;
+      }
+      const libro = await leerXlsx(bytes);
+      if (turno !== lectura.current) return;
+      if (libro.hojas.every((h) => h.filas.length === 0)) throw new ArchivoNoLegible("danado", "El archivo no tiene filas con datos en sus hojas visibles (las hojas ocultas no se leen).");
+      setFuente({ tipo: "xlsx", archivo: archivo.name, libro, hoja: hojaPorDefecto(libro) });
+      setCsvLeido(null);
+    } catch (e) {
+      if (turno !== lectura.current) return;
+      // Lo del archivo anterior no queda a la vista (ni se puede aplicar) mientras el mensaje habla de este.
+      setFuente({ tipo: "texto" });
+      if (csvLeido) { setTexto(""); setCsvLeido(null); }
+      setErrorArchivo(e instanceof ArchivoNoLegible ? e.message : "No se pudo leer el archivo. Guardalo de nuevo como Excel (.xlsx) o CSV y volvé a elegirlo.");
+    } finally {
+      if (turno === lectura.current) setLeyendo(false);
+    }
   };
+  // Deja de lado el archivo (y una lectura que siga en curso: su resultado ya no se usa).
+  const volverAPegar = () => { lectura.current++; setLeyendo(false); setFuente({ tipo: "texto" }); setErrorArchivo(null); setConfirmando(false); };
+  const aplicar = () => onAplicar(procedimientosDeLaCarga(analisis, procs), analisis);
 
   return (
     <Modal title="Cargar precios desde Excel" onClose={onClose} wide>
       <div className="space-y-4">
-        <div className="text-sm text-clinic-muted">
-          <p>Copiá las filas de tu planilla (Excel o Google Sheets) y pegalas acá, o elegí un archivo CSV. Las columnas son <b>código</b>, <b>descripción</b>, <b>categoría</b> (opcional) y <b>precio</b>.
-            Con solo <b>código y precio</b> se actualizan los servicios que ya existen. Máximo {MAX_FILAS_DE_CARGA} filas por carga.</p>
-          <button type="button" onClick={onDescargar} className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-azure-700 hover:underline"><Download aria-hidden className="h-3 w-3" /> Descargar el arancel actual como modelo</button>
+        <div className="space-y-1 text-sm text-clinic-muted">
+          <p>Elegí el archivo de tu planilla (Excel .xlsx o CSV) o pegá sus filas. Alcanza con una columna con el <b>nombre</b> de la prestación (o su <b>código</b>) y otra con el <b>precio</b>; la <b>categoría</b> es opcional.</p>
+          <p>Si no tiene códigos, cada prestación se busca por su nombre: la que ya existe cambia de precio y la nueva se crea con un código automático (S0001, S0002…). Hasta {miles(MAX_FILAS_DE_CARGA)} filas por carga. Un Excel viejo (.xls) hay que guardarlo antes como .xlsx.</p>
+          <button type="button" onClick={onDescargar} className="inline-flex items-center gap-1 text-xs font-bold text-azure-700 hover:underline"><Download aria-hidden className="h-3 w-3" /> Descargar el arancel actual como modelo</button>
         </div>
-        <Field label="Filas de la planilla">
-          <textarea
-            className={`${inputCls} min-h-[8rem] font-mono text-xs`}
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            spellCheck={false}
-            placeholder={"D2330\tResina compuesta — 1 superficie\t450.000\nD2740\tCorona de porcelana\t2.900.000"}
-          />
-        </Field>
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          <label className="relative inline-flex cursor-pointer items-center gap-1.5 rounded border border-clinic-border px-3 py-1.5 font-bold text-clinic-text hover:border-azure-300 hover:text-azure-700">
-            <UploadCloud aria-hidden className="h-3.5 w-3.5" /> Elegir archivo CSV
-            <input type="file" accept=".csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" className="sr-only" onChange={(e) => { void cargarArchivo(e.target.files?.[0]); e.target.value = ""; }} />
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+          <label className="relative inline-flex cursor-pointer items-center gap-1.5 rounded border border-azure-300 bg-azure-50 px-3 py-1.5 text-[13px] font-bold text-azure-700 hover:border-azure-400 focus-within:ring-2 focus-within:ring-azure-200">
+            <UploadCloud aria-hidden className="h-4 w-4" /> Elegir archivo (Excel o CSV)
+            <input type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt" className="sr-only" onChange={(e) => { void cargarArchivo(e.target.files?.[0]); e.target.value = ""; }} />
           </label>
-          {errorArchivo && <span role="alert" className="font-semibold text-state-err">{errorArchivo}</span>}
+          {leyendo && <span role="status" className="text-clinic-muted">Leyendo el archivo…</span>}
+          {!leyendo && fuente.tipo === "texto" && csvLeido && <span className="min-w-0 break-all text-clinic-muted">Leído: <b className="text-clinic-text">{csvLeido}</b></span>}
         </div>
+        {errorArchivo && <p role="alert" className="rounded bg-state-errbg px-3 py-2 text-xs font-semibold text-state-err">{errorArchivo}</p>}
+
+        {fuente.tipo === "xlsx" ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded border border-clinic-border bg-clinic-bg/60 px-3 py-2 text-sm">
+            <span className="flex min-w-0 items-center gap-1.5 text-clinic-text">
+              <FileSpreadsheet aria-hidden className="h-4 w-4 shrink-0 text-state-ok" />
+              <span className="min-w-0 break-all">Leído: <b>{fuente.archivo}</b></span>
+            </span>
+            {hojasConDatos.length > 1 ? (
+              <label className="flex min-w-0 max-w-full items-center gap-1.5 text-xs font-semibold text-clinic-muted">
+                Hoja
+                <select className={`${inputCls} !w-auto min-w-0 max-w-full`} value={fuente.hoja} onChange={(e) => { setFuente({ ...fuente, hoja: Number(e.target.value) }); setConfirmando(false); }}>
+                  {hojasConDatos.map(({ h, i }) => <option key={i} value={i}>{h.nombre} ({miles(h.filas.length)} {h.filas.length === 1 ? "fila" : "filas"})</option>)}
+                </select>
+              </label>
+            ) : (
+              <span className="text-xs text-clinic-muted">Hoja «{hoja?.nombre}»</span>
+            )}
+            <button type="button" onClick={volverAPegar} className="ml-auto text-xs font-bold text-azure-700 hover:underline">Pegar filas en lugar del archivo</button>
+          </div>
+        ) : (
+          <Field label="Filas de la planilla">
+            <textarea
+              className={`${inputCls} min-h-[8rem] font-mono text-xs`}
+              value={texto}
+              onChange={(e) => { setTexto(e.target.value); setConfirmando(false); }}
+              spellCheck={false}
+              placeholder={"Prestación\tPrecio\nResina compuesta — 1 superficie\t450.000\nCorona de porcelana\t2.900.000"}
+            />
+          </Field>
+        )}
 
         {analisis.filas.length > 0 && (
           <div>
@@ -405,7 +482,12 @@ function CargaModal({ procs, decimales, onClose, onDescargar, onAplicar }: {
               <Badge tone="muted">{analisis.iguales} sin cambios</Badge>
               {analisis.errores > 0 && <Badge tone="err">{plural(analisis.errores, "con error", "con errores")}</Badge>}
             </div>
-            {analisis.truncado && <p className="mb-2 text-xs font-semibold text-state-warn">Se leyeron solo las primeras {MAX_FILAS_DE_CARGA} filas. Cargá el resto en otra tanda.</p>}
+            {analisis.lineaDelEncabezado !== null && analisis.filasAntesDelEncabezado > 0 && (
+              <p className="mb-2 text-xs text-clinic-muted">El encabezado está en la línea {analisis.lineaDelEncabezado}: {plural(analisis.filasAntesDelEncabezado, "fila de arriba se salteó", "filas de arriba se saltearon")} (un título).</p>
+            )}
+            {porNombre && <p className="mb-2 text-xs text-clinic-muted">Sin códigos: cada prestación se buscó por su nombre, y las nuevas reciben un código automático.</p>}
+            {analisis.truncado && <p className="mb-2 text-xs font-semibold text-state-warn">Se leyeron solo las primeras {miles(MAX_FILAS_DE_CARGA)} filas. Cargá el resto en otra tanda.</p>}
+            <p className="mb-1 text-xs font-semibold text-azure-700 sm:hidden">Deslizá la tabla para ver el precio y qué pasa →</p>
             <div className="max-h-64 overflow-auto rounded border border-clinic-border">
               <table className="w-full min-w-[520px] text-sm">
                 <thead className="sticky top-0 bg-clinic-bg text-left text-xs font-bold text-clinic-text">
@@ -423,16 +505,18 @@ function CargaModal({ procs, decimales, onClose, onDescargar, onAplicar }: {
                         </>
                       ) : f.estado === "igual" ? (
                         <>
-                          <td className="px-3 py-1.5"><b className="tabular-nums">{f.cpt}</b></td>
+                          <td className="px-3 py-1.5"><b className="tabular-nums">{f.cpt}</b>{f.description && <span className="text-clinic-muted"> {f.description}</span>}</td>
                           <td className="px-3 py-1.5" />
                           <td className="px-3 py-1.5"><Badge tone="muted">Sin cambios</Badge></td>
                         </>
                       ) : (
                         <>
                           <td className="px-3 py-1.5"><b className="tabular-nums">{f.cpt}</b> <span className="text-clinic-muted">{f.description}</span></td>
-                          <td className="px-3 py-1.5 text-right font-bold tabular-nums">{fmtGs(f.price)}</td>
+                          <td className="whitespace-nowrap px-3 py-1.5 text-right font-bold tabular-nums">{fmtGs(f.price)}</td>
                           <td className="px-3 py-1.5">
-                            {f.estado === "nuevo" ? <Badge tone="ok">Nuevo</Badge> : (
+                            {f.estado === "nuevo" ? (
+                              <><Badge tone="ok">Nuevo</Badge>{f.porNombre && <span className="text-xs text-clinic-muted"> · código automático</span>}</>
+                            ) : (
                               <>
                                 <Badge tone="warn">Cambia</Badge>{" "}
                                 <span className="text-xs text-clinic-muted">
@@ -450,17 +534,30 @@ function CargaModal({ procs, decimales, onClose, onDescargar, onAplicar }: {
                 </tbody>
               </table>
             </div>
-            {analisis.filas.length > MOSTRAR && <p className="mt-1 text-xs text-clinic-muted">…y {analisis.filas.length - MOSTRAR} filas más (se aplican igual).</p>}
+            {analisis.filas.length > MOSTRAR && <p className="mt-1 text-xs text-clinic-muted">…y {miles(analisis.filas.length - MOSTRAR)} filas más (se aplican igual).</p>}
             {analisis.errores > 0 && <p className="mt-2 text-xs text-clinic-muted">Las filas con error se saltan; el resto se aplica.</p>}
           </div>
         )}
 
-        <div className="flex justify-end gap-2">
-          <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
-          <Btn disabled={aGuardar === 0} onClick={() => onAplicar(procedimientosDeLaCarga(analisis, procs), analisis)}>
-            {aGuardar > 0 ? `Aplicar ${plural(aGuardar, "cambio", "cambios")}` : "Aplicar"}
-          </Btn>
-        </div>
+        {confirmando ? (
+          <div role="alert" className="space-y-3 rounded border border-amber-300 bg-state-warnbg px-3 py-3 text-sm text-clinic-text">
+            <p>
+              Se van a guardar <b>{miles(aGuardar)} servicios</b> ({[analisis.nuevos > 0 && plural(analisis.nuevos, "nuevo", "nuevos"), analisis.cambian > 0 && plural(analisis.cambian, "precio que cambia", "precios que cambian")].filter(Boolean).join(" y ")}).
+              Puede tardar un poco: no cierres la pestaña hasta que termine.
+            </p>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Btn variant="outline" onClick={() => setConfirmando(false)}>Volver</Btn>
+              <Btn onClick={aplicar}>Guardar {miles(aGuardar)} servicios</Btn>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-end gap-2">
+            <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
+            <Btn disabled={aGuardar === 0 || leyendo} onClick={() => (aGuardar > CONFIRMAR_DESDE ? setConfirmando(true) : aplicar())}>
+              {aGuardar > 0 ? `Aplicar ${aGuardar === 1 ? "1 cambio" : `${miles(aGuardar)} cambios`}` : "Aplicar"}
+            </Btn>
+          </div>
+        )}
       </div>
     </Modal>
   );

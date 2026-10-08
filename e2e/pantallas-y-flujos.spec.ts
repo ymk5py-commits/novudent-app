@@ -38,7 +38,11 @@ test("presupuestos: la tarjeta del presupuesto recién creado se ve sin recargar
 
   await main(page).getByRole("button", { name: "Nuevo presupuesto" }).click();
   const dialogo = page.getByRole("dialog", { name: "Nuevo presupuesto" });
-  await dialogo.getByRole("button", { name: "Agregar" }).click();
+  // El paciente y la prestación se buscan (8-oct-2026: ya no hay un paciente elegido de entrada ni un «Agregar» con un <select>).
+  await dialogo.getByRole("combobox", { name: "Paciente" }).fill("gonzalez");
+  await dialogo.getByRole("option", { name: /MARÍA GONZÁLEZ/ }).click();
+  await dialogo.getByRole("combobox", { name: "Buscar prestación" }).fill("D0120");
+  await dialogo.getByRole("option", { name: /Evaluación oral periódica/ }).click();
   await dialogo.getByRole("button", { name: "Guardar" }).click();
   await expect(dialogo).toBeHidden();
 
