@@ -39,6 +39,7 @@ import Periodontogram from "@/components/Periodontogram";
 import RecoveryCard from "@/components/RecoveryCard";
 import { Reveal } from "@/components/motion";
 
+import { fechaLocal } from "@/lib/tareas";
 type SubTab =
   | "datos" | "citas" | "comentarios" | "tareas" | "emails" | "archivos" | "consentimientos" | "documentos"
   | "resumen" | "evoluciones" | "antecedentes" | "odontograma" | "periodoncia" | "historial" | "radiografias" | "copilot" | "recetas"
@@ -108,7 +109,7 @@ export default function PatientProfile() {
   const [fillingForm, setFillingForm] = useState<PatientForm | null>(null);
   const [writingNote, setWritingNote] = useState(false);
   const [clipOpen, setClipOpen] = useState(false);
-  const [clipDate, setClipDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [clipDate, setClipDate] = useState(() => fechaLocal());
   const [medOpen, setMedOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   // Enlace directo a una pestaña (#planes desde "Ir al tratamiento" de la bandeja
@@ -621,7 +622,7 @@ function MedicalModal({ patient, onClose, onSave }: { patient: Patient; onClose:
 
 function FormFill({ form, onClose, onSave }: { form: PatientForm; onClose: () => void; onSave: (fields: { label: string; value: string }[], date: string) => void }) {
   const [fields, setFields] = useState(form.fields);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => fechaLocal());
   return (
     <Modal title={`Completar: ${form.templateName}`} onClose={onClose}>
       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onSave(fields, date); }}>

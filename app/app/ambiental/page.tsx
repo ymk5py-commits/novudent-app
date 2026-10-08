@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import { can } from "@/lib/rbac";
 import { useStore, fmtDate } from "@/lib/store";
-import { fechaLocal } from "@/lib/tareas";
+import { aInputLocal, diaDe, fechaLocal } from "@/lib/tareas";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 import { Leaf, Plus, Pencil, Trash2, ShieldAlert } from "lucide-react";
@@ -27,7 +27,7 @@ function Ambiental() {
   const userName = (id?: string) => db.users.find((u) => u.id === id)?.name ?? "—";
 
   const list = useMemo(
-    () => db.environmentalLogs.filter((e) => e.date.slice(0, 7) === mes).sort((a, b) => b.date.localeCompare(a.date)),
+    () => db.environmentalLogs.filter((e) => diaDe(e.date).slice(0, 7) === mes).sort((a, b) => b.date.localeCompare(a.date)),
     [db.environmentalLogs, mes],
   );
   const totalKg = list.reduce((s, e) => s + (e.quantityKg || 0), 0);
@@ -103,7 +103,7 @@ function RegistroForm({ log, users, clinicId, onClose, onSave }: {
   log: EnvironmentalLog | null; users: { id: string; name: string }[]; clinicId: string;
   onClose: () => void; onSave: (e: EnvironmentalLog) => void;
 }) {
-  const [date, setDate] = useState((log?.date ?? new Date().toISOString()).slice(0, 16));
+  const [date, setDate] = useState(aInputLocal(log?.date ?? new Date().toISOString()));
   const [wasteType, setWasteType] = useState<EnvironmentalLog["wasteType"]>(log?.wasteType ?? "biologico");
   const [quantityKg, setQuantityKg] = useState(log?.quantityKg ? String(log.quantityKg) : "");
   const [responsibleId, setResponsibleId] = useState(log?.responsibleId ?? users[0]?.id ?? "");

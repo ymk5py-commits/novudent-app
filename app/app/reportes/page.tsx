@@ -8,7 +8,7 @@ import { useStore, fmtGs, fmtDate, fmtTime, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, patientBalance, netAmount, retentionPct, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { Card, Btn, Badge, Field, inputCls } from "@/components/ui";
-import { derivarTareas, diaLocal, esFecha, fechaLocal, sumarDias } from "@/lib/tareas";
+import { derivarTareas, diaDe, esFecha, fechaLocal, sumarDias } from "@/lib/tareas";
 import { tareasCumplidas } from "@/lib/tareasAuto";
 import { lineasDeTareas, reporteTareas, type LineaTarea } from "@/lib/tareas-reportes";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
@@ -90,8 +90,8 @@ export default function ReportsPage() {
       const key = fechaLocal(day);
       return {
         d: day.toLocaleDateString("es-PY", { day: "2-digit", month: "short" }),
-        cobrado: pays.filter((p) => diaLocal(p.date) === key).reduce((s, p) => s + p.amount, 0),
-        gastos: exps.filter((e) => diaLocal(e.date) === key).reduce((s, e) => s + e.amount, 0),
+        cobrado: pays.filter((p) => diaDe(p.date) === key).reduce((s, p) => s + p.amount, 0),
+        gastos: exps.filter((e) => diaDe(e.date) === key).reduce((s, e) => s + e.amount, 0),
       };
     });
 
@@ -137,7 +137,7 @@ export default function ReportsPage() {
         return [
           ["Fecha", "Paciente", "Concepto", "Método", "Monto Gs", "Retención %", "Monto neto", "Recibido por"],
           ...db.payments.map((p) => [
-            diaLocal(p.date), patientName(p.patientId), p.concept, PAYMENT_METHOD_LABEL[p.method], p.amount,
+            diaDe(p.date), patientName(p.patientId), p.concept, PAYMENT_METHOD_LABEL[p.method], p.amount,
             retentionPct(p.method, cfg), netAmount(p, cfg, currency),
             p.receivedBy,
           ]),
@@ -148,14 +148,14 @@ export default function ReportsPage() {
       label: "Gastos", file: "gastos.csv",
       rows: () => [
         ["Fecha", "Categoría", "Proveedor", "Descripción", "Monto Gs", "Registrado por"],
-        ...db.expenses.map((e) => [diaLocal(e.date), e.category, e.supplier ?? "", e.description, e.amount, e.registeredBy]),
+        ...db.expenses.map((e) => [diaDe(e.date), e.category, e.supplier ?? "", e.description, e.amount, e.registeredBy]),
       ],
     },
     {
       label: "Presupuestos", file: "presupuestos.csv",
       rows: () => [
         ["Fecha", "Paciente", "Estado", "Ítems", "Descuento %", "Cuotas", "Total Gs"],
-        ...db.budgets.map((b) => [diaLocal(b.createdAt), patientName(b.patientId), b.status, b.items.length, b.discountPct ?? 0, b.installments ?? 1, budgetTotal(b)]),
+        ...db.budgets.map((b) => [diaDe(b.createdAt), patientName(b.patientId), b.status, b.items.length, b.discountPct ?? 0, b.installments ?? 1, budgetTotal(b)]),
       ],
     },
     {

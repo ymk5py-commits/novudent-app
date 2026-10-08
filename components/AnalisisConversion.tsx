@@ -14,6 +14,7 @@ import { downloadCsv } from "@/lib/csv";
 import { FunnelChart, ConversionLineChart } from "@/components/Charts";
 import { Reveal } from "@/components/motion";
 
+import { fechaLocal } from "@/lib/tareas";
 const PALETTE = ["#04A9F2", "#0E9F6E", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", "#F97316", "#64748B"];
 const AGE_ORDER = ["<14", "15-20", "21-35", "36-50", "51-65", ">65", "Sin dato"];
 const AGE_LABEL: Record<string, string> = {
@@ -92,8 +93,8 @@ function MiniDonut({ title, parts }: { title: string; parts: { label: string; v:
 export function AnalisisConversion() {
   const { db } = useStore();
   const today = new Date();
-  const defTo = today.toISOString().slice(0, 10);
-  const defFrom = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate()).toISOString().slice(0, 10);
+  const defTo = fechaLocal(today);
+  const defFrom = fechaLocal(new Date(today.getFullYear() - 1, today.getMonth(), today.getDate()));
   // Filtro estilo Dentalink: se elige el rango y se aplica con "Filtrar".
   const [fromI, setFromI] = useState(defFrom);
   const [toI, setToI] = useState(defTo);

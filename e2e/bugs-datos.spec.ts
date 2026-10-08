@@ -47,6 +47,48 @@ test("fusionar fichas pasa la ortodoncia, las notas, la lista de espera y los me
   expect(db.waitlist.find((w: Fila) => w.id === "w1").patientId, "la lista de espera no queda con un paciente que ya no existe").toBe("p3");
 });
 
+test("fusionar fichas: si las dos tienen hallazgos distintos en una pieza se avisa cuál, y los de la duplicada que no chocan pasan", async ({ page }) => {
+  await entrarDemo(page);
+  await page.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem("novudent.db.v4")!);
+    const buscar = (id: string) => db.patients.find((p: { id: string }) => p.id === id);
+    buscar("p3").odontogram = { version: "2.10", globals: {}, teeth: { "46": { caries: ["caries-occlusal"] } } };
+    buscar("p6").odontogram = { version: "2.10", globals: {}, teeth: { "46": { endo: "endo-filling" }, "11": { caries: ["caries-mesial"] } } };
+    localStorage.setItem("novudent.db.v4", JSON.stringify(db));
+  });
+  await page.goto("/app/configuracion");
+  const mensajes: string[] = [];
+  page.on("dialog", (d) => { mensajes.push(d.message()); void d.accept(); });
+  await page.getByLabel("Mantener esta ficha").selectOption("p3");
+  await page.getByLabel("Fusionar y eliminar").selectOption("p6");
+  await page.getByRole("button", { name: "Fusionar fichas" }).click();
+  await expect.poll(() => mensajes.length).toBe(2); // la pregunta y el aviso
+  expect(mensajes[1]).toMatch(/la pieza 46 del odontograma/);
+  const camila = (await leerDB(page)).patients.find((p: Fila) => p.id === "p3");
+  expect(camila.odontogram.teeth["46"].caries, "en la pieza que chocó manda la ficha que se mantiene").toEqual(["caries-occlusal"]);
+  expect(camila.odontogram.teeth["11"].caries, "lo de la duplicada que no chocaba pasó").toEqual(["caries-mesial"]);
+});
+
+test("fusionar fichas se frena, sin borrar nada, si las dos juntas no entran en un documento", async ({ page }) => {
+  await entrarDemo(page);
+  await page.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem("novudent.db.v4")!);
+    const archivo = (id: string) => ({ id, name: `${id}.png`, kind: "imagen", dataUrl: `data:image/png;base64,${"A".repeat(250 * 1024)}`, uploadedAt: "2026-10-01", by: "u2" });
+    db.patients.find((p: { id: string }) => p.id === "p3").files = [archivo("a1"), archivo("a2")];
+    db.patients.find((p: { id: string }) => p.id === "p6").files = [archivo("b1"), archivo("b2")];
+    localStorage.setItem("novudent.db.v4", JSON.stringify(db));
+  });
+  await page.goto("/app/configuracion");
+  page.on("dialog", (d) => void d.accept());
+  await page.getByLabel("Mantener esta ficha").selectOption("p3");
+  await page.getByLabel("Fusionar y eliminar").selectOption("p6");
+  await page.getByRole("button", { name: "Fusionar fichas" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "pesan demasiado" })).toBeVisible();
+  const db = await leerDB(page);
+  expect(db.patients.some((p: Fila) => p.id === "p6"), "la duplicada sigue ahí").toBe(true);
+  expect(db.patients.find((p: Fila) => p.id === "p3").files).toHaveLength(2);
+});
+
 test("editar un borrador de presupuesto conserva su nombre y deja elegir la sección de cada prestación", async ({ page }) => {
   await entrarDemo(page);
   await page.goto("/app/presupuestos");
@@ -152,6 +194,13 @@ test("un pago de hoy queda con la hora real del cobro, no al mediodía", async (
   await expect(page.getByRole("heading", { name: "Ingresar un pago" })).toBeVisible();
   await page.getByLabel("Pagar plan #g2").check();
   await page.getByLabel("Monto a abonar al plan #g2").fill("100000");
+  // Sin fecha no se cobra (antes tiraba un error sin mensaje): se avisa y, al elegirla, el cobro sigue.
+  const fecha = page.getByLabel("Fecha", { exact: true });
+  const hoyEscrito = await fecha.inputValue();
+  await fecha.fill("");
+  await page.getByRole("button", { name: /^Ingresar pago/ }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Elegí la fecha del pago" })).toBeVisible();
+  await fecha.fill(hoyEscrito);
   await page.getByRole("button", { name: /^Ingresar pago/ }).click();
   await expect(page.getByRole("heading", { name: /^Comprobante N°/ })).toBeVisible();
 
@@ -328,4 +377,30 @@ test("la receta impresa muestra la CI solo a quien puede ver datos personales", 
   await cerrarSesion(page);
   await entrarDemo(page, USUARIOS_DEMO.admin);
   await expect(await emitir()).toContainText("CI 3.456.789");
+});
+
+test("esterilización: el ciclo nuevo arranca con la hora local y editarlo sin tocar la hora no lo corre", async ({ page }) => {
+  await entrarDemo(page);
+  await page.goto("/app/esterilizacion");
+  await page.getByRole("button", { name: "Nuevo ciclo" }).click();
+  const modal = page.getByRole("dialog", { name: "Nuevo ciclo de esterilización" });
+  const ahoraLocal = await page.evaluate(() => {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  });
+  // Los dos textos están en la hora del navegador: se restan como texto, sin importar la zona de quien corre la prueba.
+  const minutos = (v: string) => Date.parse(`${v}:00Z`) / 60_000;
+  expect(Math.abs(minutos(await modal.getByLabel("Fecha y hora").inputValue()) - minutos(ahoraLocal)), "el campo arranca en la hora local, no en la UTC").toBeLessThanOrEqual(2);
+
+  await modal.getByLabel("Carga / instrumental").fill("Set de examen E2E");
+  await modal.getByRole("button", { name: "Guardar ciclo" }).click();
+  const guardado = () => (leerDB(page) as Promise<{ sterilizationCycles: Fila[] }>).then((db) => db.sterilizationCycles.find((c) => c.load === "Set de examen E2E")!);
+  const primero = await guardado();
+  expect(Math.abs(Date.now() - Date.parse(primero.date)), "queda con la hora del momento").toBeLessThan(3 * 60_000);
+
+  // Editarlo y guardar sin tocar la hora: no se mueve (antes cada edición lo corría 3 horas).
+  await page.getByRole("row").filter({ hasText: "Set de examen E2E" }).getByTitle("Editar").click();
+  await page.getByRole("dialog", { name: "Editar ciclo de esterilización" }).getByRole("button", { name: "Guardar ciclo" }).click();
+  await expect.poll(async () => (await guardado()).date).toBe(primero.date);
 });

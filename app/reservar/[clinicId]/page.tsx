@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Logotipo } from "@/components/Marca";
 
+import { fechaLocal } from "@/lib/tareas";
 type Step = "fecha" | "horario" | "datos" | "listo";
 
 type Availability = {
@@ -326,7 +327,7 @@ export default function ReservaOnline() {
                         <label key={c.key} className="block text-xs font-semibold text-clinic-muted">
                           {ph}
                           <input type="date" required={c.requerido} className={`${inputCls} mt-1`} value={valor}
-                            max={new Date().toISOString().slice(0, 10)} onChange={(e) => cambiar(e.target.value)} />
+                            max={fechaLocal()} onChange={(e) => cambiar(e.target.value)} />
                         </label>
                       );
                     }

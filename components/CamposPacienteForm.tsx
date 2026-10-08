@@ -9,6 +9,7 @@ import { Fragment, type ReactNode } from "react";
 import { CAMPOS_RESPONSABLE, GRUPOS, esMenor, type CampoKey, type CampoResuelto, type ValoresCampos } from "@/lib/camposPaciente";
 import { Field, inputCls } from "@/components/ui";
 
+import { fechaLocal } from "@/lib/tareas";
 export function CamposPacienteForm({ campos, valores, onChange, convenios = [], compacto = false, problemas = [], avisos = {} }: {
   /** Todos los campos del contexto (`camposDe`); se muestran los presentes. */
   campos: CampoResuelto[];
@@ -66,7 +67,7 @@ export function CamposPacienteForm({ campos, valores, onChange, convenios = [], 
           {...comun}
           type={tipo}
           maxLength={c.max}
-          max={c.tipo === "fecha" ? new Date().toISOString().slice(0, 10) : undefined}
+          max={c.tipo === "fecha" ? fechaLocal() : undefined}
           placeholder={c.key === "telefonoMovil" ? "+595 …" : c.key === "parentesco" ? "Madre, padre, tutor…" : undefined}
           list={c.key === "convenio" && convenios.length > 0 ? "convenios-clinica" : undefined}
           onChange={(e) => set(c.key, e.target.value)}

@@ -1,5 +1,5 @@
 import type { Appointment } from "./types";
-import { fechaLocal } from "./tareas";
+import { diaDe } from "./tareas";
 
 /* Boxes (sillones): qué pasa con las citas cuando se borra uno, y en qué día cae cada cita. */
 
@@ -19,5 +19,5 @@ export function citasSinBox(citas: Appointment[], boxId: string): Appointment[] 
  *  instante UTC y las de la reserva online la hora local sin zona; cortar el texto en 10
  *  caracteres daba el día equivocado a la noche (a las 22:30 ya es «mañana» en UTC). */
 export function diaDeLaCita(start: string): string {
-  return fechaLocal(new Date(start));
+  return diaDe(start);
 }

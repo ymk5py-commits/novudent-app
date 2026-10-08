@@ -19,6 +19,7 @@ import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui
 import { RadiografiasTab } from "@/components/Radiografias";
 import { MAX_FILES } from "@/components/PatientExtras";
 
+import { fechaLocal } from "@/lib/tareas";
 type OrthoSub = "resumen" | "fotografica" | "diagnostico" | "plan" | "rx";
 
 export function OrtodonciaPanel({ patient, budget }: { patient: Patient; budget: Budget }) {
@@ -345,7 +346,7 @@ function OrthoPlan({ budget }: { budget: Budget }) {
 function ActivateModal({ prev, onClose, onSave }: { prev?: OrthoRecord; onClose: () => void; onSave: (rec: OrthoRecord) => void }) {
   const [applianceType, setApplianceType] = useState(prev?.applianceType ?? "Brackets metálicos");
   const [diagnosis, setDiagnosis] = useState(prev?.diagnosis ?? "");
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(() => fechaLocal());
   // Sin money.view la cuota no se ve ni se inventa: queda la que había (o 0) y la carga la caja.
   const verMontos = useAlcance().puede("money.view");
   const [monthlyFee, setMonthlyFee] = useState(prev?.monthlyFee ?? (verMontos ? 350000 : 0));

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   derivacion, eficienciaProfesional, estadoFinanciamientos, etiquetaMes, mesesEntre, morososPorAntiguedad, rangoPorDefecto,
-  recaudacionDiaria, resultados, sumarMeses, ventasPorCategoria, ventasPorPrestacion,
+  realizadas, recaudacionDiaria, resultados, sumarMeses, ventasPorCategoria, ventasPorPrestacion,
 } from "./reportes";
 import type { Appointment, Budget, Expense, Patient, Payment, Procedure, User } from "./types";
 
@@ -153,5 +153,13 @@ describe("morosos por antigüedad", () => {
       ["p1", 550, 550, 0, 0, 24],
       ["p3", 1500, 1500, 0, 0, 14],
     ]);
+  });
+});
+
+describe("realizadas — un descuento guardado fuera de rango no da ventas negativas", () => {
+  it("un convenio viejo cargado con 150 % cuenta como 100 % (monto 0), no como −50 %", () => {
+    const b = budget("bx", "p1", "u2", { discountPct: 150, items: [{ id: "ix", cpt: "D1110", description: "Limpieza", price: 800, status: "realizado", doneAt: T("2026-09-10") }] });
+    expect(realizadas([b]).map((r) => r.monto)).toEqual([0]);
+    expect(realizadas([budget("by", "p1", "u2", { discountPct: -20, items: [{ id: "iy", cpt: "D1110", description: "Limpieza", price: 800, status: "realizado", doneAt: T("2026-09-10") }] })]).map((r) => r.monto)).toEqual([800]);
   });
 });

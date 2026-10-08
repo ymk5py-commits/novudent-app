@@ -75,7 +75,7 @@ export function BudgetForm({ budget, onClose, onSave, sinMontos = false, pacient
               onChange={(e) => {
                 const c = convenios.find((x) => x.name === e.target.value);
                 setConvenio(e.target.value);
-                setDiscountPct(c?.discountPct ?? 0);
+                setDiscountPct(descuentoSaneado(c?.discountPct));
               }}
             >
               <option value="">Sin convenio</option>

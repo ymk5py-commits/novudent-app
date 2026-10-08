@@ -19,6 +19,7 @@ import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { Reveal } from "@/components/motion";
 
+import { fechaLocal } from "@/lib/tareas";
 const METHOD_ICON: Record<PaymentMethod, any> = { efectivo: Banknote, tarjeta: CreditCard, transferencia: Landmark, cheque: Landmark, qr: QrCode };
 
 /** Totales de una sesión (lib/caja): pagos no anulados + gastos en [apertura, cierre/ahora]. */
@@ -406,7 +407,7 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
   const [method, setMethod] = useState<PaymentMethod>("efectivo");
   const [checkNumber, setCheckNumber] = useState("");
   const [checkBank, setCheckBank] = useState("");
-  const [checkCashDate, setCheckCashDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [checkCashDate, setCheckCashDate] = useState(() => fechaLocal());
   const [concept, setConcept] = useState("");
 
   const openBudgets = db.budgets.filter((b) => b.patientId === patientId && (b.status === "aceptado" || b.status === "completado") && budgetBalance(b, db.payments) > 0);
@@ -476,7 +477,7 @@ function ChequesPanel() {
   const { db, session, markCheckCobrado } = useStore();
   const [vista, setVista] = useState<ChequeVista>("porCobrar");
   const [anular, setAnular] = useState<Payment | null>(null);
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = fechaLocal();
 
   const cheques = db.payments.filter((p): p is Payment & { check: NonNullable<Payment["check"]> } => p.method === "cheque" && !!p.check);
   const porCobrar = cheques.filter((p) => checkStatus(p) === "pendiente").sort((a, b) => a.check.cashDate.localeCompare(b.check.cashDate));

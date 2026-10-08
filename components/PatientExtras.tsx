@@ -15,6 +15,7 @@ import { Logotipo } from "@/components/Marca";
 import { EmailButton } from "@/components/EmailButton";
 import { anularReceta, baseDeDuplicado, recetaHtml, recetasVisibles } from "@/lib/recetas";
 
+import { fechaLocal } from "@/lib/tareas";
 /* ===================== PRESUPUESTOS ===================== */
 export function BudgetsTab({ patient }: { patient: Patient }) {
   const { db } = useStore();
@@ -546,7 +547,7 @@ function ControlForm({ onSave, onClose }: { onSave: (note: string) => void; onCl
 function OrthoForm({ prev, onClose, onSave }: { prev?: OrthoRecord; onClose: () => void; onSave: (rec: OrthoRecord) => void }) {
   const [applianceType, setApplianceType] = useState(prev?.applianceType ?? "Brackets metálicos");
   const [diagnosis, setDiagnosis] = useState(prev?.diagnosis ?? "");
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(() => fechaLocal());
   const [monthlyFee, setMonthlyFee] = useState(prev?.monthlyFee ?? 350000);
   return (
     <Modal title="Activar módulo de ortodoncia" onClose={onClose}>

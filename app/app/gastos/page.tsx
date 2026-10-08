@@ -10,6 +10,7 @@ import type { Expense } from "@/lib/types";
 import { Card, Btn, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 
+import { fechaLocal } from "@/lib/tareas";
 const EXPENSE_CATS = ["Insumos", "Laboratorio", "Sueldos", "Alquiler", "Servicios", "Equipamiento", "Marketing", "Impuestos", "Mantenimiento", "Otros"];
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
@@ -144,7 +145,7 @@ function GastoModal({ expense, onClose }: { expense: Expense | null; onClose: ()
   const [supplier, setSupplier] = useState(expense?.supplier ?? "");
   const [description, setDescription] = useState(expense?.description ?? "");
   const [amount, setAmount] = useState(expense?.amount ?? 0);
-  const [invoiceDate, setInvoiceDate] = useState(expense?.invoiceDate ?? new Date().toISOString().slice(0, 10));
+  const [invoiceDate, setInvoiceDate] = useState(expense?.invoiceDate ?? fechaLocal());
   const [payDate, setPayDate] = useState(expense?.payDate ?? "");
   const [cashSessionId, setCashSessionId] = useState(expense?.cashSessionId ?? db.cashSessions.find((s) => s.status === "abierta" && s.userId === session?.userId)?.id ?? "");
   const openCajas = db.cashSessions.filter((s) => s.status === "abierta");

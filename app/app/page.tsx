@@ -24,6 +24,7 @@ import { WeekBarsChart, StatusDonutChart } from "@/components/Charts";
 import { useClinicPlan } from "@/components/PlanGate";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 
+import { fechaLocal } from "@/lib/tareas";
 /* ---- count-up ---- */
 function Count({ value }: { value: number }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -180,7 +181,7 @@ export default function Dashboard() {
     (a) => new Date(a.start).toDateString() === tomorrow.toDateString() && a.status === "pendiente" && alcance.veDoctor(a.dentistId)
   );
   const contralorPendientes = {
-    fecha: today.toISOString().slice(0, 10),
+    fecha: fechaLocal(today),
     citasMananaSinConfirmar: tomorrowUnconfirmed.map((a) => ({
       hora: fmtTime(a.start),
       paciente: (() => { const p = db.patients.find((x) => x.id === a.patientId); return p ? `${p.firstName} ${p.lastName}` : "—"; })(),
