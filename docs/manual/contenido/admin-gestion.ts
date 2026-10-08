@@ -274,10 +274,10 @@ export const procedimientos: Procedimiento[] = [
     paraQue: "Para repartir el trabajo del día entre el equipo (quién llama, quién cobra, quién agenda) y ver después cuánto resolvió cada uno.",
     antes: ["Conocer la bandeja de tareas: [[trabajar-las-tareas]]."],
     pasos: [
-      { texto: "Entrá a **Tareas** y, en la fila de la tarea, tocá «Responsable»: se abre la lista de personas.", captura: "responsable" },
+      { texto: "Entrá a **Tareas** y, en la fila de la tarea (en cualquiera de las tres listas: «Todas las pendientes», «Tareas del día» o «Tareas atrasadas»), tocá «Responsable»: se abre la lista de personas.", captura: "responsable" },
       { texto: "Elegí «Asignar a mí» o, más abajo, el nombre de un compañero. La lista trae solo a quienes pueden ver ese tipo de tarea: una cobranza, por ejemplo, no se le asigna a quien no ve montos." },
       { texto: "En la fila queda el nombre del responsable, y la tarea aparece en **Mi agenda** (en Inicio) de esa persona. Para soltarla, abrí «Responsable» y elegí «Quitar responsable».", captura: "asignada" },
-      { texto: "Para ver cómo se reparte el trabajo, tocá «Filtrar por» y, en **Responsable**, elegí «Asignadas a mí» o «Sin asignar».", captura: "filtro" },
+      { texto: "Para ver cómo se reparte el trabajo, tocá «Filtrar por» y, en **Responsable**, elegí «Asignadas a mí» o «Sin asignar». Vale para las tres listas y los números de las pestañas cuentan lo que se ve.", captura: "filtro" },
       { texto: "Para ver cuánto resolvió cada uno, tocá el segundo ícono de arriba a la izquierda, **Estadísticas**. Elegí «Resultados históricos» o un mes con las flechas.", captura: "estadisticas" },
       { texto: "Los cuatro contadores (deudas cobradas, presupuestos capturados, controles agendados y citas re-agendadas) dicen «N de M casos»: M son los casos que alguien trabajó con «Finalizar» y N los que hoy terminaron bien (la deuda se cobró, el presupuesto se aceptó, el paciente volvió a agendar). Abajo, la tabla cuenta los casos que trabajó cada persona, incluidas las tareas personalizadas, los cheques y las citas sin confirmar.", captura: "casos" },
       { texto: "Los plazos con los que el sistema arma las tareas automáticas se cambian en «Plazos de las tareas» (el engranaje de la pantalla de Tareas), **Configuración de plazos**: mirá [[ajustar-los-plazos-de-las-tareas]]." },
@@ -292,6 +292,8 @@ export const procedimientos: Procedimiento[] = [
       await c.entrar("admin", "/app/tareas");
       const main = page.locator("main");
       await revelarTodo(page);
+      // La bandeja abre en «Todas las pendientes», que es larga: para las fotos se trabaja en «Tareas del día».
+      await main.getByRole("tab", { name: /Tareas del día/ }).click();
 
       // La tarea interna de la demo (sin paciente, sin fecha: siempre está en «hoy»).
       const lista = main.getByRole("list", { name: "Tareas del día" });

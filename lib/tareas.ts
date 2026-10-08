@@ -523,7 +523,8 @@ export function detalleTarea(t: { amount?: number; detail?: string }, fmt?: (n: 
  *  fecha elegida (‹ Anterior · Fecha · Siguiente ›), y lo que no se hizo a
  *  tiempo se acumula en "Tareas atrasadas". Una tarea trabajada no desaparece:
  *  queda con su ✓ en el día en que se trabajó, y si fue "Volver a contactar en…"
- *  vuelve a aparecer, pendiente, en la fecha nueva. */
+ *  vuelve a aparecer, pendiente, en la fecha nueva. Novudent suma una tercera lista,
+ *  "Todas las pendientes" (`todasLasPendientes`): lo que falta de cualquier fecha, sin ir día por día. */
 
 /** Hoy (YYYY-MM-DD) en la hora local del navegador, que es la de la clínica.
  *  No `toISOString()`: en Paraguay, de 21 a 24 h eso ya da el día siguiente. */
