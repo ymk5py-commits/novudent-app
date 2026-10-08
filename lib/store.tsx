@@ -1665,7 +1665,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         persist((prev) => ({
           ...prev,
           boxes: prev.boxes.filter((x) => x.id !== id),
-          appointments: prev.appointments.map((a) => (a.boxId === id ? { ...a, boxId: "" } : a)),
+          appointments: prev.appointments.map((a) => {
+            if (a.boxId !== id) return a;
+            const { boxId: _quitado, ...resto } = a;
+            return resto;
+          }),
         }));
         fsDelete("boxes", id);
         for (const a of sueltas) fsSave("appointments", a.id, a);

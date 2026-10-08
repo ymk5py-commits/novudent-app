@@ -10,10 +10,10 @@ const cita = (id: string, extra: Partial<Appointment> = {}): Appointment => ({
 describe("citasSinBox — qué pasa con las citas cuando se borra un box", () => {
   const citas = [cita("a", { boxId: "box1" }), cita("b", { boxId: "box2" }), cita("c"), cita("d", { boxId: "box1" })];
 
-  it("devuelve solo las citas de ese box, ya sin box (vacío, para que también se borre en Firestore)", () => {
+  it("devuelve solo las citas de ese box, ya sin el campo boxId (Firestore reemplaza el documento entero: el campo se va)", () => {
     const sueltas = citasSinBox(citas, "box1");
     expect(sueltas.map((c) => c.id)).toEqual(["a", "d"]);
-    expect(sueltas.every((c) => c.boxId === "")).toBe(true);
+    expect(sueltas.every((c) => !("boxId" in c))).toBe(true);
   });
 
   it("no toca las demás citas ni las originales", () => {

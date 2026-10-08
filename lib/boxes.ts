@@ -8,11 +8,11 @@ export function citasDelBox(citas: Appointment[], boxId: string): number {
   return citas.filter((c) => c.boxId === boxId).length;
 }
 
-/** Las citas de este box ya sin box. Se guarda `""` y no se saca el campo: Firestore (setDoc con
- *  merge) no borra lo que falta, y un `boxId` que apunta a un box que ya no existe dejaba la cita
- *  contando en el día pero sin columna donde verla. */
+/** Las citas de este box, ya sin el campo `boxId`: un `boxId` que apunta a un box que ya no existe
+ *  dejaba la cita contando en el día pero sin columna donde verla. (El store guarda cada cita con
+ *  `setDoc` sin merge: el documento se reemplaza entero y el campo desaparece también de Firestore.) */
 export function citasSinBox(citas: Appointment[], boxId: string): Appointment[] {
-  return citas.filter((c) => c.boxId === boxId).map((c) => ({ ...c, boxId: "" }));
+  return citas.filter((c) => c.boxId === boxId).map(({ boxId: _quitado, ...resto }) => resto);
 }
 
 /** El día (AAAA-MM-DD) en que cae una cita, en hora local. Las citas del panel guardan un
