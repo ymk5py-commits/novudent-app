@@ -305,3 +305,25 @@ test.describe("B3 · Plan de tratamiento", () => {
   }
 });
 
+/* ═══════════════════════ B5 · Odontograma y radiografías ═══════════════════════ */
+
+test.describe("B5 · Textos del odontograma y de radiografías", () => {
+  test("el odontograma habla en voseo", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.dentista);
+    await page.goto("/app/pacientes/p1#odontograma");
+    await expect(page.locator(".tooth-tile.side-view svg")).toHaveCount(32);
+    await expect(page.locator(".chart-hint")).toHaveText("Hacé clic en un diente. Para selección múltiple, usá Cmd/Ctrl + clic.");
+    // `#contenido` es el <main> de la app; el motor del odontograma trae otro <main> adentro.
+    const texto = await page.locator("#contenido").evaluate((n) => n.textContent ?? "");
+    expect(texto).not.toMatch(/\bHaz clic\b|\bSelecciona\b|\busa CMD\b/);
+  });
+
+  test("la carga de radiografías no se llama «Análisis IA»: la IA es un paso opcional", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.dentista);
+    await page.goto("/app/pacientes/p1#radiografias");
+    await expect(main(page).getByRole("heading", { name: "Subir una radiografía" })).toBeVisible();
+    await expect(main(page).getByRole("heading", { name: "Análisis IA de radiografías" })).toHaveCount(0);
+    await expect(main(page)).toContainText("Analizar con IA");
+  });
+});
+
