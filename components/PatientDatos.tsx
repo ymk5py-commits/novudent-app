@@ -101,7 +101,7 @@ export function DatosTab({ patient }: { patient: Patient }) {
               {repetidos.map((p, i) => (
                 <span key={p.id}>{i > 0 && ", "}<Link href={`/app/pacientes/${p.id}`} className="underline">{fullName(p)}</Link></span>
               ))}
-              . Si es el mismo, usá «Fusión de fichas».
+              . Si es la misma persona, el administrador puede unir las fichas en «Fusión de fichas».
             </p>
           )}
         </div>
