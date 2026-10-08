@@ -10,6 +10,9 @@
  * El paciente elige fecha → profesional + horario → deja sus datos →
  * la cita entra a la agenda de la clínica como "pendiente" y, si la
  * clínica tiene Botika activo, le llega un WhatsApp para confirmar.
+ * El encabezado dice el nombre de la CLÍNICA (no «NOVUdent») desde el
+ * primer paso, y no promete WhatsApp: eso solo se sabe al terminar la
+ * reserva (`botikaQueued`), y recién ahí se le dice al paciente.
  *
  * Todo pasa por /api/reservas — el navegador nunca toca Firestore.
  */
@@ -61,6 +64,20 @@ export default function ReservaOnline() {
   const [booking, setBooking] = useState(false);
   const [result, setResult] = useState<{ botikaQueued: boolean } | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  // El nombre de la clínica para el encabezado: se trae al abrir la página (el de disponibilidad llega recién al elegir un día).
+  const [clinicName, setClinicName] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/reservas?clinicId=${encodeURIComponent(clinicId)}`);
+        const data = await res.json();
+        if (vivo && res.ok && data.ok && typeof data.clinic?.name === "string" && data.clinic.name) setClinicName(data.clinic.name);
+      } catch { /* sin nombre el encabezado dice «Reservá tu cita»: la reserva sigue andando */ }
+    })();
+    return () => { vivo = false; };
+  }, [clinicId]);
 
   // Próximos 30 días hábiles (sin domingos), paginados de a 7.
   const days = useMemo(() => {
@@ -123,15 +140,14 @@ export default function ReservaOnline() {
       {/* Header público */}
       <header className="bg-navy-800 px-5 py-6 text-white">
         <div className="mx-auto max-w-xl">
-          <Logotipo tono="blanco" className="mb-5 h-9 w-auto" />
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-azure-200">
             Reserva online
           </p>
           <h1 className="mt-1 text-2xl font-extrabold">
-            {avail?.clinic?.name || "Reservá tu cita"}
+            {clinicName || avail?.clinic?.name || "Reservá tu cita"}
           </h1>
           <p className="mt-1 text-sm text-white/65">
-            Elegí día y horario — te confirmamos por WhatsApp.
+            Elegí día y horario. La clínica te va a confirmar el turno.
           </p>
         </div>
       </header>
@@ -363,6 +379,10 @@ export default function ReservaOnline() {
           </section>
           </div>
         )}
+
+        <p className="flex items-center justify-center gap-2 pt-2 text-[11px] text-clinic-muted">
+          Reservas con <Logotipo tono="color" className="h-4 w-auto" />
+        </p>
       </div>
     </main>
   );

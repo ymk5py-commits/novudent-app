@@ -74,6 +74,19 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const clinicId = String(searchParams.get("clinicId") || "");
   const date = String(searchParams.get("date") || ""); // YYYY-MM-DD
+  // Sin fecha: solo el nombre de la clínica, para el encabezado de la página pública (antes se veía recién después de elegir un día).
+  // Nada más sale por acá: ni profesionales, ni agenda, ni configuración.
+  if (isValidId(clinicId) && !date) {
+    try {
+      const clinic = await getDocument(`clinics/${clinicId}`);
+      if (!clinic) return NextResponse.json({ ok: false, error: "Clínica no encontrada" }, { status: 404 });
+      return NextResponse.json({ ok: true, clinic: { name: String(clinic.name || "Clínica") } });
+    } catch (e) {
+      // Sin detalles internos (paths de Firestore, projectId) hacia una página pública.
+      console.error("[reservas GET nombre]", e);
+      return NextResponse.json({ ok: false, error: "No se pudo cargar la clínica." }, { status: 502 });
+    }
+  }
   if (!isValidId(clinicId) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ ok: false, error: "Parámetros inválidos" }, { status: 400 });
   }

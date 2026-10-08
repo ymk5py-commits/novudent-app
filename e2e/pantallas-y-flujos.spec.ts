@@ -404,3 +404,64 @@ test.describe("Agenda: el cartel «agendamiento(s) online que deben ser validado
     });
   }
 });
+
+/* ═══ Reserva online pública ═══ */
+
+test.describe("Reserva online pública (/reservar/{clinicId})", () => {
+  /** La API se simula: sin el usuario de servicio local, la de verdad no llega a Firestore. */
+  async function simular(page: Page, opciones: { botikaQueued?: boolean; nombre?: string | null } = {}) {
+    const nombre = opciones.nombre === undefined ? "Clínica Aura" : opciones.nombre;
+    await page.route("**/api/reservas**", async (route) => {
+      if (route.request().method() === "POST") return route.fulfill({ json: { ok: true, appointmentId: "a_x", botikaQueued: !!opciones.botikaQueued } });
+      if (nombre === null) return route.fulfill({ status: 500, json: { ok: false, error: "Reservas online no configuradas (envs del servidor)" } });
+      if (!new URL(route.request().url()).searchParams.get("date")) return route.fulfill({ json: { ok: true, clinic: { name: nombre } } });
+      return route.fulfill({ json: { ok: true, clinic: { name: nombre }, dentists: [{ id: "u2", name: "Dra. Sofía Benítez" }], slots: { u2: ["11:00", "11:30"] } } });
+    });
+  }
+  const reservar = async (page: Page) => {
+    await page.getByRole("button", { name: /^(lun|mar|mié|jue|vie|sáb)/i }).first().click();
+    await page.getByRole("button", { name: "11:00" }).click();
+    await page.getByPlaceholder("Nombre", { exact: true }).fill("Lía");
+    await page.getByPlaceholder("Apellido", { exact: true }).fill("Online");
+    await page.getByPlaceholder("Cédula (CI)").fill("5555555");
+    await page.getByPlaceholder("WhatsApp (09xx xxx xxx)").fill("0983 555 555");
+    await page.getByRole("button", { name: "Confirmar reserva" }).click();
+  };
+
+  test("el encabezado dice el nombre de la clínica desde el primer paso, no «NOVUdent»", async ({ page }) => {
+    await simular(page);
+    await page.goto("/reservar/cl_aura");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Clínica Aura");
+    await expect(page.locator("header").getByRole("img", { name: "Novudent" })).toHaveCount(0);
+    await sinScrollHorizontal(page);
+  });
+
+  test("no promete que la clínica va a confirmar por WhatsApp: dice que la clínica confirma el turno", async ({ page }) => {
+    await simular(page);
+    await page.goto("/reservar/cl_aura");
+    await expect(page.locator("header")).toContainText("La clínica te va a confirmar el turno");
+    await expect(page.locator("header")).not.toContainText("WhatsApp");
+  });
+
+  test("si no se pudo traer el nombre, el encabezado dice «Reservá tu cita» y la página sigue andando", async ({ page }) => {
+    await simular(page, { nombre: null });
+    await page.goto("/reservar/cl_aura");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Reservá tu cita");
+    await expect(page.getByRole("button", { name: /^(lun|mar|mié|jue|vie|sáb)/i }).first()).toBeVisible();
+  });
+
+  test("al terminar, el WhatsApp solo se promete si la clínica lo está mandando", async ({ page }) => {
+    await simular(page, { botikaQueued: false });
+    await page.goto("/reservar/cl_aura");
+    await reservar(page);
+    await expect(page.getByText("¡Reserva recibida!")).toBeVisible();
+    await expect(page.getByText("La clínica revisará tu reserva y te contactará para confirmar.")).toBeVisible();
+    await expect(page.getByText(/te llega un WhatsApp/)).toHaveCount(0);
+
+    await page.unroute("**/api/reservas**");
+    await simular(page, { botikaQueued: true });
+    await page.goto("/reservar/cl_aura");
+    await reservar(page);
+    await expect(page.getByText("En breve te llega un WhatsApp para confirmar tu asistencia.")).toBeVisible();
+  });
+});
