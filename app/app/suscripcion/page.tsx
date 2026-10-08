@@ -5,13 +5,13 @@
  *  solo una suscripción confirmada por el servidor modifica el acceso. */
 import { useState } from "react";
 import Link from "next/link";
-import { ShieldAlert, Check, ExternalLink, ArrowRight, AlertTriangle } from "lucide-react";
+import { ShieldAlert, Check, ExternalLink, ArrowRight } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { Card, Badge, Btn } from "@/components/ui";
 import { PLANS, planOf, publicPlanId, type PlanId } from "@/lib/plan";
 import { PLANES, CONDICIONES, gs } from "@/lib/landing/precios";
-import { subscriptionPlanId, isSubscriptionActive, subscriptionNotice } from "@/lib/subscription";
+import { subscriptionPlanId, isSubscriptionActive } from "@/lib/subscription";
 import type { SubscriptionStatus } from "@/lib/types";
 import { Reveal } from "@/components/motion";
 
@@ -33,7 +33,6 @@ export default function SubscriptionPage() {
   const sub = db.subscription ?? null;
   const planActual = planOf(subscriptionPlanId(sub, db.clinics[0]));
   const activa = isSubscriptionActive(sub);
-  const aviso = subscriptionNotice(sub);
 
   if (!session) return null;
   if (!can(session.role, "practice.config")) {
@@ -60,15 +59,6 @@ export default function SubscriptionPage() {
           </a>
         )}
       </div>
-
-      {aviso && (
-        <div className={`flex flex-wrap items-center gap-3 rounded-2xl border px-4 py-3 ${
-          aviso.tone === "err" ? "border-state-err/30 bg-state-errbg text-state-err" : "border-state-warn/30 bg-state-warnbg text-state-warn"
-        }`}>
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          <p className="min-w-0 flex-1 text-sm font-semibold">{aviso.text}</p>
-        </div>
-      )}
 
       {/* Estado actual */}
       <Reveal>

@@ -304,3 +304,29 @@ test.describe("Integraciones (Botika)", () => {
     await sinScrollHorizontal(page);
   });
 });
+
+/* ═══ Suscripción vencida ═══ */
+
+test.describe("Suscripción vencida", () => {
+  test.beforeEach(async ({ page }) => {
+    await entrarDemo(page);
+    await conDemo(page, (db: any) => {
+      db.subscription = { clinicId: db.clinics[0].id, plan: "cadena", status: "past_due", updatedAt: new Date().toISOString() };
+    });
+  });
+  const cartel = (page: Page) => page.getByText("No pudimos procesar tu último pago");
+
+  test("el cartel rojo sale UNA sola vez en /app/suscripcion (el del Shell, igual que en el resto de las pantallas)", async ({ page }) => {
+    await page.goto("/app/suscripcion");
+    await expect(page.getByRole("heading", { name: "Suscripción", level: 1 })).toBeVisible();
+    await expect(cartel(page)).toHaveCount(1);
+    await expect(page.getByRole("status").filter({ hasText: "No pudimos procesar tu último pago" })).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Regularizar pago" })).toHaveCount(1);
+  });
+
+  test("en las demás pantallas el cartel sigue, con el botón para regularizar", async ({ page }) => {
+    await page.goto("/app/agenda");
+    await expect(cartel(page)).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Regularizar pago" })).toBeVisible();
+  });
+});
