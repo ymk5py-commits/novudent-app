@@ -78,3 +78,31 @@ test("Configuración › Documentos clínicos: «Guardar plantillas» guarda y s
   await expect(tarjeta.getByRole("row", { name: /Cuidados postoperatorios de exodoncia/ }).getByText("Inactiva")).toBeVisible();
   await expect(guardar).toHaveCount(0);
 });
+
+test.describe("Administración: los atajos a Configuración", () => {
+  test.skip(({ isMobile }) => isMobile, "es el menú de escritorio; el cajón del celular usa la misma lista");
+
+  const barra = (page: Page) => page.getByRole("banner").getByRole("navigation");
+  const abrirAdministracion = (page: Page) => barra(page).getByRole("button", { name: "Administración", exact: true }).click();
+
+  test("todos llevan a una tarjeta que existe (antes «Documentos y consentimientos» iba a un ancla inexistente)", async ({ page }) => {
+    await entrarDemo(page);
+    await abrirAdministracion(page);
+    const hrefs = await page.getByRole("banner").locator("a[href^='/app/configuracion#']").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""));
+    expect(hrefs.length).toBeGreaterThan(8);
+    expect(hrefs).toContain("/app/configuracion#consentimientos");
+    for (const href of new Set(hrefs)) {
+      const ancla = href.split("#")[1];
+      await page.goto(href);
+      await expect(page.locator(`[id="${ancla}"]`), `el atajo ${href} no tiene a dónde llegar`).toHaveCount(1);
+    }
+  });
+
+  test("«Documentos y consentimientos» lleva a las plantillas de consentimiento", async ({ page }) => {
+    await entrarDemo(page);
+    await abrirAdministracion(page);
+    await barra(page).getByRole("link", { name: "Documentos y consentimientos", exact: true }).click();
+    await page.waitForURL("**/app/configuracion#consentimientos");
+    await expect(page.getByRole("heading", { name: "Plantillas de consentimiento", level: 2 })).toBeInViewport();
+  });
+});
