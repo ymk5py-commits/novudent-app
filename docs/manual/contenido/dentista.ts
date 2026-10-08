@@ -206,8 +206,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "La asistente de doctores ve lo mismo, pero solo para leer: no tiene «Nueva evolución», «Nueva receta» ni «Nueva medición», ni la pestaña «Copilot IA»." },
       { tipo: "tip", texto: "Los íconos de al lado de «Ver agenda» avisan de pendientes: el naranja, que al paciente le faltan documentos por completar (tocarlo abre «Documentos»); el celeste, que hay una actualización de su historial médico pendiente (la registra la recepción)." },
       { tipo: "tip", texto: "Con el plan Clínica, «Preparar consulta» (arriba a la derecha) arma con IA un resumen de la ficha, y «Copilot IA» propone hallazgos y un plan a partir de una radiografía." },
-      { tipo: "error", texto: "En **Resumen**, «Próximas citas» también lista las citas anuladas (con la etiqueta «Anulado»). Tendría que mostrar solo las que siguen en pie." },
-      { tipo: "error", texto: "En **Resumen** y en **Historial**, el tipo de cada nota sale tal como lo guarda el sistema —«diagnostico», «plan», «tratamiento»—, sin tilde ni mayúscula; en **Evoluciones** sale bien («Diagnóstico»). Tendría que verse igual en las tres." },
+      { tipo: "tip", texto: "En **Resumen**, «Próximas citas» muestra hasta cuatro, de la más cercana a la más lejana; las citas anuladas no figuran. El tipo de cada nota («Diagnóstico», «Plan», «Tratamiento», «Nota») se lee igual en Resumen, Historial y Evoluciones." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -622,7 +621,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "Revisá el texto antes de tocar «Firmar y guardar»: una vez guardada, no hay botón para editar ni para borrar la nota." },
       { tipo: "tip", texto: "Con el plan Clínica, «Dictar nota» (en **Historial**) te deja contar la evolución hablando: la IA la transcribe y la redacta como nota clínica, y vos la revisás antes de guardarla." },
       { tipo: "revisar", texto: "Las plantillas SOAP («Control de ortodoncia», «Urgencia por dolor», «Profilaxis» y «Post-quirúrgico») son textos de ejemplo de Novudent, algunas con «…» para completar: confirmar con un odontólogo que sirven." },
-      { tipo: "error", texto: "Si todos los casilleros están vacíos, «Firmar y guardar» no hace nada y no dice por qué (hay que escribir en al menos uno). Tendría que avisar que falta completar algo." },
+      { tipo: "ojo", texto: "Una evolución vacía no se firma: si todos los casilleros están vacíos (o solo tienen espacios), aparece un aviso en rojo («Escribí al menos uno de los cuatro campos…») y la nota no se guarda." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -660,6 +659,7 @@ export const procedimientos: Procedimiento[] = [
       await c.expect(modal.getByLabel("Detalle")).toBeVisible();
       await modal.getByRole("button", { name: "Firmar y guardar" }).click();
       await c.expect(modal).toBeVisible(); // vacía, no guarda
+      await c.expect(modal.getByRole("alert")).toContainText("Escribí al menos uno");
       await modal.getByRole("button", { name: "Cancelar" }).click();
       await boton(page, "Historial").click();
       await c.expect(page.getByText(/S: Asintomático, consulta de control/)).toBeVisible();

@@ -42,7 +42,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "No ves teléfonos ni correos de los pacientes ni montos: son datos personales y de plata que este rol no tiene." },
       { tipo: "tip", texto: "No confundas **Agenda** (las citas de los doctores) con **Mi agenda**, en Inicio (tus propias tareas): mirá [[usar-mi-agenda]]. Para lo básico de leer una agenda en solo lectura, mirá también [[ver-tu-agenda]]." },
       { tipo: "tip", texto: "El botón «Lista de espera» muestra a los pacientes que esperan un turno con tus doctores, solo para mirar." },
-      { tipo: "tip", texto: "El cartel verde de las reservas online («Ver y validar») es un aviso para la recepción: vos no podés confirmarlas." },
+      { tipo: "tip", texto: "El cartel verde de las reservas online («Ver y validar») es un aviso para la recepción: con este rol no aparece, porque vos no podés confirmarlas." },
     ],
     capturar: async (c) => {
       const { page } = c;

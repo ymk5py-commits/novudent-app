@@ -1216,7 +1216,7 @@ export const procedimientos: Procedimiento[] = [
     pasos: [
       { texto: "Entrá a **Administración › Integraciones**. La tarjeta **Contact Center IA** (Botika) dice en qué estado está: «Cola desactivada», «Cola activa · sin envíos confirmados» o «Actividad de Botika recibida». En la demo dice «Modo demo».", captura: "tarjeta" },
       { texto: "Tocá «Activar cola de Botika» para que Novudent empiece a dejar mensajes en la cola. Con «Pausar cola» se frenan todos y, mientras esté pausada, las automatizaciones no se pueden tocar y las plantillas no se muestran." },
-      { texto: "Elegí qué automatizaciones querés: **Confirmación de citas**, **Encuestas NPS**, **Cobranza conversacional** y **Reagendar canceladas**. Tocá cada tarjeta para prenderla o apagarla.", captura: "automatizaciones" },
+      { texto: "Elegí qué automatizaciones querés: **Confirmación de citas**, **Encuestas NPS** y **Cobranza conversacional**. Tocá cada tarjeta para prenderla o apagarla. **Reagendar canceladas** figura apagada, con la marca «Todavía no envía»: no se puede tocar.", captura: "automatizaciones" },
       { texto: "En **Plantillas de mensajes** editá el primer mensaje que manda Botika en cada automatización. Podés usar las variables {paciente} {clinica} {fecha} {hora} {titulo} {saldo}. Tocá «Guardar plantillas».", captura: "plantillas" },
       { texto: "La **Cola de mensajería** muestra cada mensaje con su estado (Pendiente, Enviado, Respondido o Error) y lo que contestó el paciente. Con el tachito cancelás uno pendiente.", captura: "cola" },
     ],
@@ -1225,10 +1225,9 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "Cuándo se encola cada uno: la confirmación, al dar una cita nueva a un paciente con teléfono; la nota NPS, al completar un presupuesto; la cobranza, con el botón «Botika» de Cajas › Cuentas por cobrar." },
       { tipo: "tip", texto: "Cuando el paciente responde, la cita pasa a «Confirmado» y la nota queda en su ficha, y alimenta la tarjeta «Encuestas NPS» de Reportes: [[leer-el-panel-de-desempeno]]." },
       { tipo: "revisar", texto: "En la demo la conexión es simulada: el botón «Simular respuesta» inventa lo que contestaría el paciente y no se pudo probar un envío real por WhatsApp. Confirmar con Novum qué hay que cargar para conectar una clínica real: hoy se configura del lado de Botika." },
-      { tipo: "error", texto: "En «Plantillas de mensajes», el campo «Negociación de presupuestos» aparece vacío y con «↺ Restaurar default» aunque nadie lo haya tocado, y «Guardar plantillas» no se apaga después de guardar. Tendría que mostrar el mensaje de fábrica en ese campo y ofrecer «Guardar plantillas» solo cuando algo cambió." },
-      { tipo: "ojo", texto: "Dejá el campo «Negociación de presupuestos» como está salvo que quieras cambiar ese mensaje: vacío, Botika usa el mensaje de fábrica. Esa automatización se prende en Configuración, no en esta pantalla." },
-      { tipo: "error", texto: "El interruptor «Reagendar canceladas» promete que Botika ofrece nuevos horarios cuando se cancela una cita, pero la app no deja ningún mensaje en la cola al cancelar: prenderlo o apagarlo no cambia nada. Tendría que encolar el mensaje de reagendamiento cuando se cancela una cita." },
-      { tipo: "ojo", texto: "Hasta que eso funcione, no cuentes con ese mensaje: las citas canceladas reagendalas vos ([[reprogramar-una-cita]])." },
+      { tipo: "ojo", texto: "El campo «Negociación de presupuestos» trae el mensaje de fábrica: dejalo así salvo que quieras cambiarlo. Con «↺ Restaurar default» volvés al de fábrica. Esa automatización se prende en Configuración, no en esta pantalla." },
+      { tipo: "ojo", texto: "«Reagendar canceladas» todavía no manda ningún mensaje: el interruptor no se puede tocar y la tarjeta lo dice. Las citas anuladas reagendalas vos desde Agenda › Reprogramación ([[reprogramar-una-cita]])." },
+      { tipo: "revisar", texto: "Para activar «Reagendar canceladas» hay que decidir el texto del mensaje y cuándo se manda (al cancelar la cita, o después de unos días). Confirmar con la clínica." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -1254,18 +1253,20 @@ export const procedimientos: Procedimiento[] = [
       await page.waitForTimeout(500);
       await c.foto("cola", { resaltar: respondida.getByText("Respondido", { exact: true }), recorte: [main.getByRole("heading", { name: "Cola de mensajería" }), respondida], margen: 8 });
 
-      // Sin captura: «Guardar plantillas» deja el texto guardado (el botón no se apaga después: ver el informe); el tachito cancela el
-      // mensaje pendiente; tocar una automatización la apaga; con la cola pausada las automatizaciones no se pueden tocar y las
-      // plantillas se ocultan.
-      await c.expect(main.getByLabel("Negociación de presupuestos"), "El campo «Negociación de presupuestos» ya no sale vacío: sacá ese aviso «error» de conectar-las-integraciones").toHaveValue("");
+      // Sin captura: «Negociación de presupuestos» trae el mensaje de fábrica; «Guardar plantillas» deja el texto guardado y se apaga; el
+      // tachito cancela el mensaje pendiente; tocar una automatización la apaga; «Reagendar canceladas» no se puede tocar (todavía no envía);
+      // con la cola pausada las automatizaciones no se pueden tocar y las plantillas se ocultan.
+      await c.expect(main.getByLabel("Negociación de presupuestos")).not.toHaveValue("");
       await guardar.click();
-      await c.expect(guardar, "«Guardar plantillas» ya se apaga después de guardar: sacá ese aviso «error» de conectar-las-integraciones").toBeVisible();
+      await c.expect(guardar).toHaveCount(0);
       await c.expect.poll(async () => (await leerDemo(page)).clinics[0].config.botika.templates?.confirmCita ?? "").toContain("Respondé SÍ para confirmar");
       await main.getByRole("button", { name: "Cancelar tarea" }).click();
       await c.expect(main.getByRole("button", { name: "Cancelar tarea" })).toHaveCount(0);
       await c.expect(main.getByText("0 pendientes")).toBeVisible();
-      await auto[3].click();
-      await c.expect.poll(async () => (await leerDemo(page)).clinics[0].config.botika.automations.reagendar).toBe(false);
+      await c.expect(auto[3]).toBeDisabled();
+      const nps = (await leerDemo(page)).clinics[0].config.botika.automations.nps;
+      await auto[1].click();
+      await c.expect.poll(async () => (await leerDemo(page)).clinics[0].config.botika.automations.nps).toBe(!nps);
       await main.getByRole("button", { name: "Pausar cola" }).click();
       await c.expect(main.getByText("Cola desactivada", { exact: true })).toBeVisible();
       for (const automatizacion of auto) await c.expect(automatizacion).toBeDisabled();

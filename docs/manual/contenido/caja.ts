@@ -461,7 +461,6 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Cuando el paciente dice que sí, tocá «Marcar aceptado»: pasa a **Aceptado**. Desde ese momento la tarjeta muestra lo **pagado** y el **saldo**, y el paciente entra en **Cuentas por cobrar**.", captura: "aceptar" },
     ],
     avisos: [
-      { tipo: "error", texto: "Después de «Guardar», la tarjeta del presupuesto nuevo puede no aparecer enseguida (queda un hueco en la lista). El presupuesto ya está guardado: recargá la página (F5) y vas a verlo." },
       { tipo: "ojo", texto: "«Presentar» y «Marcar aceptado» solo cambian el estado: no le mandan nada al paciente. Entregarlo o enviarlo es el paso de «Detalle»." },
       { tipo: "ojo", texto: "«Editar» existe solo en **Borrador**. «Anular» (en Borrador y Presentado) no pide confirmación y un presupuesto anulado no se puede reactivar desde esta pantalla." },
       { tipo: "tip", texto: "Un presupuesto **Presentado** sin ningún pago genera en **Tareas** la tarea «Presupuesto presentado sin aceptar», para hacerle seguimiento al paciente; al aceptarlo, esa tarea desaparece sola y, si queda saldo, el sistema arma la de cobranza («Saldo pendiente de pago»)." },
@@ -490,8 +489,7 @@ export const procedimientos: Procedimiento[] = [
       });
       await modal.getByRole("button", { name: "Guardar" }).click();
 
-      // La tarjeta nueva no se ve hasta recargar (error de la app): se vuelve a entrar a la lista, como haría la persona.
-      await c.ir("/app/presupuestos");
+      // La tarjeta nueva aparece enseguida, sin recargar la lista.
       const tarjeta = tarjetaDe(page, "Lucía Ferreira");
       await c.expect(tarjeta.getByRole("button", { name: "Presentar" })).toBeVisible();
       await tarjeta.getByRole("button", { name: "Detalle" }).click();
@@ -608,7 +606,6 @@ export const procedimientos: Procedimiento[] = [
       await opciones.click();
       const menu = page.getByRole("menu", { name: "Opciones del plan" });
       await c.expect(menu).toBeVisible();
-      // Con el menú abierto no se puede cambiar el tamaño de la ventana (el menú falla): esta foto entra en la ventana tal cual está.
       await c.foto("opciones", { resaltar: [opciones, menu.getByRole("menuitem", { name: /Financiamiento/ })], recorte: [opciones, menu] });
       await menu.getByRole("menuitem", { name: /Financiamiento/ }).click();
 

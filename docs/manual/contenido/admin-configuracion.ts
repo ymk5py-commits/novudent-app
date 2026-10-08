@@ -569,9 +569,9 @@ export const procedimientos: Procedimiento[] = [
     avisos: [
       { tipo: "ojo", texto: "Editar una plantilla no cambia los documentos ni los consentimientos que ya se hicieron: cada uno guarda su propia copia del texto." },
       { tipo: "ojo", texto: "Si salís de la pantalla sin tocar «Guardar plantillas», se pierden los cambios." },
-      { tipo: "ojo", texto: "El atajo «Documentos y consentimientos» del menú abre esta pantalla pero no baja hasta **Plantillas de consentimiento**: bajá a mano." },
+      { tipo: "tip", texto: "El atajo «Documentos y consentimientos» del menú te lleva directo a **Plantillas de consentimiento**; «Documentos clínicos» abre las plantillas de arriba." },
       { tipo: "tip", texto: "Las plantillas se usan desde la ficha del paciente: [[completar-la-historia-clinica]] y [[pedir-un-consentimiento]]." },
-      { tipo: "error", texto: "Después de tocar «Guardar plantillas», la barra «Descartar / Guardar plantillas» no se va y no aparece el cartel «Plantillas guardadas», aunque los cambios ya quedaron guardados: la barra recién desaparece al recargar la pantalla. Tendría que irse al guardar." },
+      { tipo: "tip", texto: "Al tocar «Guardar plantillas» la barra de abajo desaparece y aparece el cartel «Plantillas guardadas»." },
       { tipo: "revisar", texto: "Los tres textos de indicaciones que trae Novudent son borradores generales: un odontólogo de la clínica tiene que revisarlos antes de marcarlos como revisados y dárselos a un paciente." },
       { tipo: "revisar", texto: "Los dos consentimientos de ejemplo son textos tipo: confirmar con el asesor legal de cada clínica antes de usarlos." },
     ],
@@ -614,7 +614,9 @@ export const procedimientos: Procedimiento[] = [
       await sacarMouse(page);
       await c.foto("guardar", { recorte: [fila("Higiene y cepillado en adultos"), guardar], margen: 4, resaltar: guardar });
       await guardar.click();
-      // Se comprueba en el estado local que quedó guardada (la barra de «Guardar plantillas» no se va sola hasta recargar: ver el aviso del procedimiento).
+      // Se comprueba que quedó guardada: la barra se va y aparece el cartel «Plantillas guardadas».
+      await c.expect(docs.getByText("Plantillas guardadas")).toBeVisible();
+      await c.expect(guardar).toHaveCount(0);
       await c.expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("novudent.db.v4") || "{}").clinics?.[0]?.config?.plantillasDocumento?.length)).toBe(5);
 
       // Duplicar, desactivar, activar y eliminar: se comprueba sobre la plantilla propia (queda sin guardar).
@@ -713,7 +715,7 @@ export const procedimientos: Procedimiento[] = [
     avisos: [
       { tipo: "ojo", texto: "«Anulación: Sí» quiere decir que el estado libera el horario en la agenda. Lo decide el comportamiento: solo los que se comportan como «Anulado» lo liberan." },
       { tipo: "ojo", texto: "Solo los estados propios se pueden borrar (tachito). Los de fábrica se renombran y se recolorean; los de uso interno —los que deja el sistema, como «Confirmado por WhatsApp»— además se pueden desactivar. Las citas que tenían un estado borrado o desactivado se muestran con el estado de fábrica equivalente." },
-      { tipo: "ojo", texto: "El menú de estados de la agenda es largo y no tiene scroll: en una pantalla chica los últimos —los propios van al final— quedan cortados. Si te pasa, achicá el zoom del navegador (Ctrl y la tecla −)." },
+      { tipo: "tip", texto: "Si el menú de estados de la agenda es más largo que la pantalla (muchos estados propios en una ventana baja), el propio menú se achica y se recorre con scroll: llegás a todos los estados." },
       { tipo: "tip", texto: "«Restablecer configuración original» vuelve a los estados de fábrica y borra los propios (pide confirmación)." },
     ],
     capturar: async (c) => {
