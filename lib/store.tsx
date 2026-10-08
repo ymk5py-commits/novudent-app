@@ -53,14 +53,15 @@ import type {
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
 import { can, aplicarRolesDeLaClinica, mismaConfiguracionDeRoles } from "./rbac";
-import { historiaClinicaPendiente, historiasClinicasPendientes, plantillasDeClinica } from "./documentosClinicos";
-import { aplicarDatosClinica, type DatosClinica } from "./datosClinica";
+import { historiaClinicaPendiente, plantillasDeClinica } from "./documentosClinicos";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { worstSeverity } from "./recovery";
 import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
 import { registrarFallo, resolverFallo, clasificarError, vigilarEscritura } from "./write-errors";
 import { parseFecha } from "./tareas";
 import { idCheck, type PasoId } from "./rutinaAdmin";
+import { historiasClinicasPendientes } from "./documentosClinicos";
+import { aplicarDatosClinica, type DatosClinica } from "./datosClinica";
 
 const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
