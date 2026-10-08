@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  anularDocumento, camposVisibles, completarDocumento, cuerpoConDatos, documentoHtml, documentosDelPaciente, etiquetaPlan,
+  anularDocumento, anularHistoriasClinicasRepetidas, camposVisibles, completarDocumento, cuerpoConDatos, documentoHtml, documentosDelPaciente, etiquetaPlan,
   guardarCambios, hayPlantillasSinGuardar, historiaClinicaPendiente, idUnico, limpiarValores, mover, normalizarPlantillas, nuevoDocumento,
   pendientesPorPaciente, plantillasActivas, plantillasDeClinica, puedeEditarDocumentos, puedeVerDocumentos,
   respuestasParaImprimir, sexoDe, slug, valorVacio,
@@ -519,5 +519,42 @@ describe("demo sembrada", () => {
 
   it("siguen siendo tres los pacientes con pendientes: p1 y p2 (documentos) y p4 (formulario viejo)", () => {
     expect([...pendientesPorPaciente(seed.patients, seed.clinicalDocs).keys()].sort()).toEqual(["p1", "p2", "p4"]);
+  });
+});
+
+describe("anularHistoriasClinicasRepetidas — al fusionar dos fichas", () => {
+  const AHORA = "2026-10-08T15:00:00.000Z";
+  const hc = (id: string, estado: DocumentoClinico["estado"], createdAt: string, extra: Partial<DocumentoClinico> = {}): DocumentoClinico => ({
+    id, clinicId: "c1", patientId: "k", plantillaId: "historia_clinica", nombre: "Historia Clínica", tipo: "formulario", estado,
+    createdAt, createdBy: "u1", createdByName: "Ana", ...extra,
+  });
+  const anular = (docs: DocumentoClinico[]) => anularHistoriasClinicasRepetidas(docs, "k", { now: AHORA, by: "Carlos Admin" });
+
+  it("dos Historias Clínicas pendientes: queda la más vieja y la otra se anula (no se borra)", () => {
+    const r = anular([hc("hc2", "pendiente", "2026-10-02T10:00:00.000Z"), hc("hc1", "pendiente", "2026-10-01T10:00:00.000Z")]);
+    expect(r.map((d) => d.id)).toEqual(["hc2"]);
+    expect(r[0]).toMatchObject({ estado: "anulado", voidedAt: AHORA, voidedBy: "Carlos Admin" });
+  });
+
+  it("si ya hay una completada, las pendientes sobran: se anulan todas", () => {
+    const r = anular([hc("hc1", "completado", "2026-09-01T10:00:00.000Z"), hc("hc2", "pendiente", "2026-10-01T10:00:00.000Z"), hc("hc3", "pendiente", "2026-10-02T10:00:00.000Z")]);
+    expect(r.map((d) => d.id).sort()).toEqual(["hc2", "hc3"]);
+  });
+
+  it("una sola pendiente, o una completada sola, no se toca", () => {
+    expect(anular([hc("hc1", "pendiente", "2026-10-01T10:00:00.000Z")])).toEqual([]);
+    expect(anular([hc("hc1", "completado", "2026-10-01T10:00:00.000Z")])).toEqual([]);
+  });
+
+  it("no toca documentos que no son la Historia Clínica, los de otros pacientes ni los ya anulados", () => {
+    const r = anular([
+      hc("hc1", "pendiente", "2026-10-01T10:00:00.000Z"),
+      hc("otro1", "pendiente", "2026-10-01T10:00:00.000Z", { plantillaId: "post_exodoncia" }),
+      hc("otro2", "pendiente", "2026-10-02T10:00:00.000Z", { plantillaId: "post_exodoncia" }),
+      hc("ajeno1", "pendiente", "2026-10-01T10:00:00.000Z", { patientId: "z" }),
+      hc("ajeno2", "pendiente", "2026-10-02T10:00:00.000Z", { patientId: "z" }),
+      hc("vieja", "anulado", "2026-09-01T10:00:00.000Z"),
+    ]);
+    expect(r).toEqual([]);
   });
 });

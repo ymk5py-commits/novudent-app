@@ -232,6 +232,18 @@ export function anularDocumento(doc: DocumentoClinico, o: { now: string; by: str
   return doc.estado === "anulado" ? doc : { ...doc, estado: "anulado", voidedAt: o.now, voidedBy: o.by };
 }
 
+/** Al fusionar dos fichas, la Historia Clínica que el alta le dejó pendiente a cada una pasa a la ficha que queda y ésta termina con
+ *  dos (la campana y la cabecera cuentan las dos). Devuelve las que sobran, YA anuladas (no se borran): si el paciente ya tiene una
+ *  completada, todas las pendientes sobran; si no, queda la pendiente más vieja. Solo mira la Historia Clínica: otros documentos
+ *  pendientes pueden ser de ocasiones distintas. */
+export function anularHistoriasClinicasRepetidas(docs: readonly DocumentoClinico[], patientId: string, o: { now: string; by: string }): DocumentoClinico[] {
+  const delPaciente = docs.filter((d) => d.patientId === patientId && d.plantillaId === "historia_clinica" && d.estado !== "anulado");
+  const hayCompletada = delPaciente.some((d) => d.estado === "completado");
+  const pendientes = delPaciente.filter((d) => d.estado === "pendiente").sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const sobran = hayCompletada ? pendientes : pendientes.slice(1);
+  return sobran.map((d) => anularDocumento(d, o));
+}
+
 /** Lo que se imprime o se manda por correo: solo lo respondido, por sección. Las preguntas que
  *  no corresponden al paciente no salen aunque tengan un valor viejo. */
 export function respuestasParaImprimir(doc: DocumentoClinico, sexo?: Sexo): { titulo: string; filas: { etiqueta: string; valor: string }[] }[] {

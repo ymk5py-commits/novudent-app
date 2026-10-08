@@ -3,10 +3,51 @@
  *   · lo que la ficha que se mantiene ya tiene, manda; lo que le falta se completa con lo de la duplicada (teléfono, correo, convenio, foto…);
  *   · los textos médicos (alertas, enfermedades, medicamentos) se UNEN: perder una alergia es lo peor que puede pasar;
  *   · las listas (historial, evoluciones, archivos, recetas, periodontogramas, encuestas) se juntan sin repetir;
- *   · la ortodoncia de la duplicada pasa entera si la otra no tiene, y si las dos tienen se unen los controles. */
+ *   · la ortodoncia de la duplicada pasa entera si la otra no tiene, y si las dos tienen se unen los controles;
+ *   · el odontograma se junta PIEZA POR PIEZA: el editor guarda siempre las 32 piezas (las sanas con el estado por defecto del motor),
+ *     así que una pieza sana de la ficha que se mantiene no tapa los hallazgos de la duplicada; si las dos tienen hallazgos
+ *     distintos en la misma pieza, manda la ficha que se mantiene (`piezasEnConflicto` dice cuáles para avisarlo). */
 import { DEFAULT_ODONTOGRAM_STATUS, type OdontogramStatus, type OrthoRecord, type Patient } from "./types";
+import { PIEZA_SIN_HALLAZGOS } from "./odontogramaSinHallazgos";
 
 const vacio = (x: unknown): boolean => x === undefined || x === null || (typeof x === "string" && x.trim() === "");
+
+/** La importación de pacientes sin CI guarda `s/d-<hora>-<fila>` para no dejar el campo vacío: no es una CI. */
+const esCIdeRelleno = (x: unknown): boolean => typeof x === "string" && /^s\/d\b/i.test(x.trim());
+
+/** Igualdad de datos JSON sin importar el orden de las claves (Firestore no lo conserva). */
+function iguales(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => iguales(x, b[i]));
+  const ka = Object.keys(a);
+  return ka.length === Object.keys(b).length && ka.every((k) => Object.prototype.hasOwnProperty.call(b, k) && iguales((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
+}
+
+type Pieza = OdontogramStatus["teeth"][string];
+
+/** ¿Una pieza del odontograma no tiene ningún hallazgo? Todo lo que trae es el valor por defecto del motor (lo que falta se ignora:
+ *  un payload de una versión más vieja puede no traer los campos nuevos). Un campo que el motor por defecto no conoce cuenta como hallazgo. */
+function sinHallazgos(pieza: unknown): boolean {
+  if (typeof pieza !== "object" || pieza === null || Array.isArray(pieza)) return false;
+  return Object.entries(pieza).every(([k, v]) =>
+    Object.prototype.hasOwnProperty.call(PIEZA_SIN_HALLAZGOS, k) ? iguales(v, PIEZA_SIN_HALLAZGOS[k]) : v === undefined || v === null);
+}
+
+/** Las piezas donde las dos fichas tienen hallazgos DISTINTOS: ahí manda la ficha que se mantiene y los de la otra no pasan. */
+export function piezasEnConflicto(keep: Patient, remove: Patient): string[] {
+  const a = keep.odontogram?.teeth ?? {};
+  const b = remove.odontogram?.teeth ?? {};
+  return Object.keys(a)
+    .filter((n) => n in b && !sinHallazgos(a[n]) && !sinHallazgos(b[n]) && !iguales(a[n], b[n]))
+    .sort((x, y) => Number(x) - Number(y));
+}
+
+/** De la más nueva a la más vieja, como las deja el store al agregar (`[nuevo, ...lista]`): «Última actividad», el contexto de la IA y
+ *  el periodontograma que se abre toman los primeros. */
+function masNuevoPrimero<T>(lista: T[] | undefined, fecha: (x: T) => string): T[] | undefined {
+  return lista && [...lista].sort((x, y) => fecha(y).localeCompare(fecha(x)));
+}
 
 /** Une dos textos médicos sin repetir: uno vacío → el otro; iguales o uno dentro del otro → el más completo; distintos → los dos. */
 export function unirTextosMedicos(a?: string, b?: string): string | undefined {
@@ -52,11 +93,44 @@ const COMPLETAR: (keyof Patient)[] = [
   "emergencyContact", "emergencyPhone", "photo", "gender", "sex", "foreigner",
 ];
 
+/** Lo que devuelve `mergePatients` del store: o se fusionó (con las piezas del odontograma donde las dos fichas tenían hallazgos
+ *  distintos y mandó la que se mantiene), o se frenó con el motivo. */
+export type ResultadoFusion = { ok: true; piezasEnConflicto: string[] } | { ok: false; error: string };
+
+/** Lo más que debería pesar el documento de un paciente (Firestore tiene un tope de 1 MiB por documento, con su propio encabezado). */
+export const TOPE_FICHA_BYTES = 900_000;
+
+/** ¿El documento de esta ficha pasa del tope? Se mira ANTES de fusionar: si Firestore rechaza el guardado de la ficha que queda pero
+ *  la duplicada ya se borró, se pierden las evoluciones, los archivos y el odontograma de la duplicada. */
+export function fichaDemasiadoGrande(p: Patient): boolean {
+  return new TextEncoder().encode(JSON.stringify(p)).length > TOPE_FICHA_BYTES;
+}
+
+/** La clave de una tarea derivada que lleva el id del paciente (`cobranza:`, `control:` y `cheque:` + id), pasada a la ficha que queda.
+ *  Las que llevan el id de un presupuesto o de una cita (`captura:`, `cita:`) no cambian: esos ids siguen existiendo. Sin esto, lo que
+ *  la recepción ya había cerrado, postergado o asignado de esas tareas se perdía y la fila volvía a aparecer abierta. */
+export function reasignarClaveDerivada(clave: string | undefined, removeId: string, keepId: string): string | undefined {
+  if (!clave) return clave;
+  const m = /^(cobranza|control|cheque):(.+)$/.exec(clave);
+  return m && m[2] === removeId ? `${m[1]}:${keepId}` : clave;
+}
+
+/** Pieza por pieza: la de la ficha que se mantiene, salvo que no tenga hallazgos y la de la duplicada sí. */
+function juntarPiezas(a: Record<string, Pieza>, b: Record<string, Pieza>): Record<string, Pieza> {
+  const out: Record<string, Pieza> = {};
+  for (const n of new Set([...Object.keys(b), ...Object.keys(a)])) {
+    out[n] = !(n in a) ? b[n] : !(n in b) ? a[n] : sinHallazgos(a[n]) && !sinHallazgos(b[n]) ? b[n] : a[n];
+  }
+  return out;
+}
+
 export function fusionarFichas(keep: Patient, remove: Patient): Patient {
   const m: Patient = { ...keep };
   const aEscribir = m as unknown as Record<string, unknown>;
   for (const k of COMPLETAR) {
-    if (vacio(keep[k]) && !vacio(remove[k])) aEscribir[k] = remove[k];
+    const falta = vacio(keep[k]) || (k === "document" && esCIdeRelleno(keep[k]));
+    const hayDato = !vacio(remove[k]) && !(k === "document" && esCIdeRelleno(remove[k]));
+    if (falta && hayDato) aEscribir[k] = remove[k];
   }
   for (const k of ["medicalAlerts", "conditions", "medications"] as const) {
     const unido = unirTextosMedicos(keep[k], remove[k]);
@@ -66,17 +140,20 @@ export function fusionarFichas(keep: Patient, remove: Patient): Patient {
   if (!keep.historyUpdateDate && remove.historyUpdateDate) m.historyUpdateDate = remove.historyUpdateDate;
 
   m.forms = unir(keep.forms, remove.forms, (f) => f.id) ?? [];
-  m.emr = unir(keep.emr, remove.emr, (n) => n.id) ?? [];
+  m.emr = masNuevoPrimero(unir(keep.emr, remove.emr, (n) => n.id), (n) => n.createdAt) ?? [];
   const files = unir(keep.files, remove.files, (f) => f.id);
   if (files) m.files = files;
-  const perio = unir(keep.perio, remove.perio, (s) => s.id);
+  const perio = masNuevoPrimero(unir(keep.perio, remove.perio, (s) => s.id), (s) => s.date);
   if (perio) m.perio = perio;
-  const prescriptions = unir(keep.prescriptions, remove.prescriptions, (r) => r.id);
+  const prescriptions = masNuevoPrimero(unir(keep.prescriptions, remove.prescriptions, (r) => r.id), (r) => r.date);
   if (prescriptions) m.prescriptions = prescriptions;
   const ortho = unirOrtodoncia(keep.ortho, remove.ortho);
   if (ortho) m.ortho = ortho;
 
-  const npsHistory = unir(keep.npsHistory, remove.npsHistory, (n) => `${n.at}|${n.score}`);
+  // La última encuesta puede estar suelta (`nps`, de antes del historial): se suma al historial para que ninguna se pierda.
+  const claveNps = (n: NonNullable<Patient["nps"]>) => `${n.at}|${n.score}`;
+  const sueltas = [keep.nps, remove.nps].filter((n): n is NonNullable<Patient["nps"]> => !!n);
+  const npsHistory = unir(unir(keep.npsHistory, remove.npsHistory, claveNps), sueltas, claveNps);
   if (npsHistory) m.npsHistory = npsHistory;
   const ultimo = [keep.nps, remove.nps, ...(npsHistory ?? [])].filter((n): n is NonNullable<Patient["nps"]> => !!n).sort((x, y) => y.at.localeCompare(x.at))[0];
   if (ultimo) m.nps = ultimo;
@@ -87,7 +164,7 @@ export function fusionarFichas(keep: Patient, remove: Patient): Patient {
       ...(remove.odontogram ?? {}),
       ...(keep.odontogram ?? {}),
       globals: { ...(remove.odontogram?.globals ?? {}), ...(keep.odontogram?.globals ?? {}) },
-      teeth: { ...(remove.odontogram?.teeth ?? {}), ...(keep.odontogram?.teeth ?? {}) },
+      teeth: juntarPiezas(keep.odontogram?.teeth ?? {}, remove.odontogram?.teeth ?? {}),
     };
     m.odontogram = odontogram;
     const por = keep.odontogramUpdatedBy ?? remove.odontogramUpdatedBy;

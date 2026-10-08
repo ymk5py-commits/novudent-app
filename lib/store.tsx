@@ -53,9 +53,9 @@ import type {
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
 import { can, aplicarRolesDeLaClinica, mismaConfiguracionDeRoles } from "./rbac";
-import { fusionarFichas } from "./fusionFichas";
+import { fichaDemasiadoGrande, fusionarFichas, piezasEnConflicto, reasignarClaveDerivada, type ResultadoFusion } from "./fusionFichas";
 import { citasSinBox } from "./boxes";
-import { historiaClinicaPendiente, plantillasDeClinica } from "./documentosClinicos";
+import { anularHistoriasClinicasRepetidas, historiaClinicaPendiente, plantillasDeClinica } from "./documentosClinicos";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { worstSeverity } from "./recovery";
 import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
@@ -486,7 +486,8 @@ interface Ctx {
   updatePrescription: (patientId: string, rx: Prescription) => void;
   addPatientFile: (patientId: string, f: PatientFileRec) => void;
   removePatientFile: (patientId: string, fileId: string) => void;
-  mergePatients: (keepId: string, removeId: string) => void;
+  /** Fusiona la ficha `removeId` dentro de `keepId` (irreversible). Se frena, sin tocar nada, si las dos juntas no entrarían en un documento. */
+  mergePatients: (keepId: string, removeId: string) => ResultadoFusion;
   setOrtho: (patientId: string, ortho: OrthoRecord | null) => void;
   addOrthoControl: (patientId: string, c: { date: string; note: string; by: string }) => void;
   /* — Configuración — */
@@ -1164,10 +1165,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (hc) fsSave("clinicalDocs", hc.id, hc);
       },
       mergePatients: (keepId, removeId) => {
-        if (keepId === removeId) return;
+        if (keepId === removeId) return { ok: false, error: "Elegí dos fichas distintas." };
         const keep = db.patients.find((p) => p.id === keepId);
         const remove = db.patients.find((p) => p.id === removeId);
-        if (!keep || !remove) return;
+        if (!keep || !remove) return { ok: false, error: "No se encontró alguna de las dos fichas." };
+        // Primero se arma la ficha que queda y se mira que entre en un documento de Firestore (1 MiB: radiografías y archivos pesan). Si no
+        // entra no se toca NADA: Firestore rechazaría el guardado y la duplicada, ya borrada, se perdería con sus evoluciones y archivos.
+        const merged = fusionarFichas(keep, remove);
+        if (fichaDemasiadoGrande(merged)) {
+          return { ok: false, error: "Las dos fichas juntas pesan demasiado para guardarse en una sola (por los archivos y radiografías). Borrá algunos archivos de una de las dos y probá de nuevo." };
+        }
+        const enConflicto = piezasEnConflicto(keep, remove);
         // Reasigna patientId en TODAS las colecciones que lo llevan y re-guarda los docs cambiados. Si falta una, esos registros quedan
         // apuntando a una ficha que ya no existe (una fila sin nombre en la lista de espera, mensajes automáticos huérfanos…).
         const reassign = <T extends { id: string; patientId?: string }>(col: string, arr: T[], extra?: (x: T) => Partial<T>): T[] =>
@@ -1188,17 +1196,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const labOrders = reassign("labOrders", db.labOrders);
         const patientNotes = reassign("patientNotes", db.patientNotes);
         const fiscalDocs = reassign("fiscalDocs", db.fiscalDocs);
-        const clinicalDocs = reassign("clinicalDocs", db.clinicalDocs);
         const waitlist = reassign("waitlist", db.waitlist);
         const outbox = reassign("outbox", db.outbox);
+        // Documentos clínicos: la Historia Clínica pendiente que el alta le dejó a cada ficha termina duplicada en la que queda; la que sobra se anula.
+        let clinicalDocs = reassign("clinicalDocs", db.clinicalDocs);
+        const anuladas = anularHistoriasClinicasRepetidas(clinicalDocs, keepId, { now: new Date().toISOString(), by: session?.name ?? "Fusión de fichas" });
+        if (anuladas.length > 0) {
+          const porId = new Map(anuladas.map((d) => [d.id, d]));
+          clinicalDocs = clinicalDocs.map((d) => porId.get(d.id) ?? d);
+          anuladas.forEach((d) => fsSave("clinicalDocs", d.id, d));
+        }
+        // Tareas: al paciente nuevo, y las claves de tareas derivadas que llevan el id del paciente (`cobranza:p6`) pasan a la ficha que queda
+        // para no perder lo cerrado, postergado o asignado (salvo que la ficha que queda ya tenga una tarea con esa misma clave).
         const nombre = `${keep.firstName} ${keep.lastName}`.trim();
-        const mgmtTasks = reassign("mgmtTasks", db.mgmtTasks, () => ({ patientName: nombre }));
-        // Fusiona los datos de la ficha (personales, alertas médicas, recetas, ortodoncia…): lib/fusionFichas.ts.
-        const merged = fusionarFichas(keep, remove);
+        const clavesEnUso = new Set(db.mgmtTasks.map((t) => t.derivedKey).filter((k): k is string => !!k));
+        const mgmtTasks = reassign("mgmtTasks", db.mgmtTasks, (t) => {
+          const clave = reasignarClaveDerivada(t.derivedKey, removeId, keepId);
+          return { patientName: nombre, ...(clave !== t.derivedKey && clave && !clavesEnUso.has(clave) ? { derivedKey: clave } : {}) };
+        });
         const patients = db.patients.filter((p) => p.id !== removeId).map((p) => (p.id === keepId ? merged : p));
         persist((prev) => ({ ...prev, patients, appointments, billing, budgets, payments, signatures, radiographs, recoveryMonitors, crmCards, labOrders, patientNotes, fiscalDocs, clinicalDocs, waitlist, outbox, mgmtTasks }));
         fsSave("patients", keepId, merged);
         fsDelete("patients", removeId);
+        return { ok: true, piezasEnConflicto: enConflicto };
       },
       completeForm: (patientId, formId, fields, completedAt) =>
         patchPatient(patientId, (p) => {

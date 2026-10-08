@@ -39,6 +39,7 @@ export default function ConfigPage() {
   const [addingUser, setAddingUser] = useState(false);
   const [mergeKeep, setMergeKeep] = useState(db.patients[0]?.id ?? "");
   const [mergeRemove, setMergeRemove] = useState("");
+  const [mergeError, setMergeError] = useState<string | null>(null);
   // Deep-link desde el menú Administración (/app/configuracion#arancel) → scroll a la sección.
   useEffect(() => {
     const go = () => { const id = window.location.hash.replace("#", ""); if (id) document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); };
@@ -438,13 +439,21 @@ export default function ConfigPage() {
         <div id="fusion" className="mb-3 flex scroll-mt-24 items-center gap-2"><Users className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Fusión de fichas</h2></div>
         <p className="mb-3 text-xs text-clinic-muted">Unificá dos fichas duplicadas: citas, presupuestos, pagos e historial pasan a la ficha que se mantiene; la otra se elimina.</p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Mantener esta ficha"><select className={inputCls} value={mergeKeep} onChange={(e) => { setMergeKeep(e.target.value); if (e.target.value === mergeRemove) setMergeRemove(""); }}>{db.patients.map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {p.document}</option>)}</select></Field>
-          <Field label="Fusionar y eliminar"><select className={inputCls} value={mergeRemove} onChange={(e) => setMergeRemove(e.target.value)}><option value="">— Elegí la ficha duplicada —</option>{db.patients.filter((p) => p.id !== mergeKeep).map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {p.document}</option>)}</select></Field>
+          <Field label="Mantener esta ficha"><select className={inputCls} value={mergeKeep} onChange={(e) => { setMergeKeep(e.target.value); setMergeError(null); if (e.target.value === mergeRemove) setMergeRemove(""); }}>{db.patients.map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {p.document}</option>)}</select></Field>
+          <Field label="Fusionar y eliminar"><select className={inputCls} value={mergeRemove} onChange={(e) => { setMergeRemove(e.target.value); setMergeError(null); }}><option value="">— Elegí la ficha duplicada —</option>{db.patients.filter((p) => p.id !== mergeKeep).map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {p.document}</option>)}</select></Field>
         </div>
+        {mergeError && <p role="alert" className="mt-3 rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold text-state-err">{mergeError}</p>}
         <div className="mt-3 flex justify-end">
           <Btn disabled={!mergeRemove || mergeRemove === mergeKeep} onClick={() => {
             const a = db.patients.find((p) => p.id === mergeKeep); const b = db.patients.find((p) => p.id === mergeRemove);
-            if (a && b && confirm(`¿Fusionar "${fullName(b)}" dentro de "${fullName(a)}"? Esta acción no se puede deshacer.`)) { mergePatients(mergeKeep, mergeRemove); setMergeRemove(""); }
+            if (!a || !b || !confirm(`¿Fusionar "${fullName(b)}" dentro de "${fullName(a)}"? Esta acción no se puede deshacer.`)) return;
+            const r = mergePatients(mergeKeep, mergeRemove);
+            if (!r.ok) { setMergeError(r.error); return; }
+            setMergeError(null);
+            setMergeRemove("");
+            if (r.piezasEnConflicto.length > 0) {
+              alert(`Fichas fusionadas. En ${r.piezasEnConflicto.length === 1 ? "la pieza" : "las piezas"} ${r.piezasEnConflicto.join(", ")} del odontograma las dos fichas tenían hallazgos distintos: quedaron los de «${fullName(a)}».`);
+            }
           }}><Users className="h-4 w-4" /> Fusionar fichas</Btn>
         </div>
       </Card>
