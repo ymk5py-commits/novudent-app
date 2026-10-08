@@ -106,3 +106,59 @@ test.describe("Administración: los atajos a Configuración", () => {
     await expect(page.getByRole("heading", { name: "Plantillas de consentimiento", level: 2 })).toBeInViewport();
   });
 });
+
+/* ═══ Menús flotantes (Desplegable) ═══ */
+
+test.describe("Agenda: el menú «Estado de la cita»", () => {
+  test.beforeEach(async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+    await conDemo(page, (db: any) => {
+      const ini = new Date(); ini.setHours(10, 0, 0, 0);
+      const fin = new Date(ini); fin.setHours(11);
+      db.appointments.push({ id: "a_e2e_hoy", clinicId: db.clinics[0].id, patientId: "p1", dentistId: "u2", title: "Control E2E", start: ini.toISOString(), end: fin.toISOString(), status: "pendiente", amount: 0, discount: 0 });
+    });
+    await page.goto("/app/agenda");
+  });
+
+  test("al cambiar el tamaño de la ventana con el menú abierto no tira error: se reubica (o se cierra)", async ({ page, isMobile }) => {
+    await main(page).getByRole("button", { name: "No confirmado" }).first().click();
+    const menu = page.getByRole("menu", { name: "Estado de la cita" });
+    await expect(menu).toBeVisible();
+
+    // Antes: «TypeError: Failed to execute 'contains' on 'Node'» (en `resize`, el objetivo del evento es `window`).
+    // El fixture de `soporte.ts` hace fallar la prueba si la página tira una excepción.
+    const ancho = isMobile ? 360 : 1100;
+    await page.setViewportSize({ width: ancho, height: 700 });
+
+    if (!isMobile) await expect(menu).toBeVisible(); // en escritorio el botón sigue a la vista: el menú lo acompaña
+    // O se cerró (el botón quedó fuera de la pantalla) o sigue entero adentro de la ventana nueva: nunca a medio salir.
+    await expect.poll(async () => {
+      if (!(await menu.isVisible())) return "cerrado";
+      const c = (await menu.boundingBox())!;
+      return c.x >= 0 && c.x + c.width <= ancho && c.y >= 0 && c.y + c.height <= 700 ? "adentro" : `afuera (x ${c.x}, ancho ${c.width}, y ${c.y}, alto ${c.height})`;
+    }).toMatch(/^(adentro|cerrado)$/);
+  });
+
+  test("con muchos estados propios y una ventana de 760 px, los últimos se alcanzan con scroll", async ({ page, isMobile }) => {
+    const propios = Array.from({ length: 20 }, (_, i) => ({ id: `propio_${i + 1}`, label: `Estado propio ${i + 1}`, color: "#0E9F6E", base: "pendiente", tipo: "propio" }));
+    await conDemo(page, (db: any, estados: unknown[]) => { db.clinics[0].config.estadosCita = estados; }, [...ESTADOS_DEFAULT, ...propios]);
+    const alto = 760;
+    await page.setViewportSize({ width: isMobile ? 412 : 1440, height: alto });
+
+    await main(page).getByRole("button", { name: "No confirmado" }).first().click();
+    const menu = page.getByRole("menu", { name: "Estado de la cita" });
+    await expect(menu).toBeVisible();
+
+    // El menú entero está dentro de la pantalla…
+    const caja = (await menu.boundingBox())!;
+    expect(caja.y).toBeGreaterThanOrEqual(0);
+    expect(caja.y + caja.height).toBeLessThanOrEqual(alto);
+    // …y lo que no entra se recorre dentro del propio menú.
+    const medidas = await menu.evaluate((el) => ({ visible: el.clientHeight, total: el.scrollHeight }));
+    expect(medidas.total, "el menú tiene más estados de los que entran").toBeGreaterThan(medidas.visible);
+
+    // El último estado propio se puede tocar y se aplica.
+    await menu.getByRole("menuitem", { name: "Estado propio 20", exact: true }).click();
+    await expect.poll(async () => (await leerDB(page)).appointments.find((a: { id: string }) => a.id === "a_e2e_hoy")?.estadoId).toBe("propio_20");
+  });
+});
