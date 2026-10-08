@@ -328,7 +328,8 @@ export default function ConfigPage() {
                   onClick={() => saveBotika({ automations: { ...(botika?.automations ?? { confirmCita: false, nps: false, cobranza: false, reagendar: false, negociacion: false }), negociacion: !isOn } })}
                   className={`relative h-5 w-9 rounded-full transition-colors ${isOn ? "bg-azure-600" : "bg-clinic-border"}`}
                 >
-                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${isOn ? "translate-x-4" : "translate-x-0.5"}`} />
+                  {/* `left-0.5`: sin un `left`, la bolita absoluta se queda donde la deja el botón (centrada) y encendida se salía de la pista. */}
+                  <span className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${isOn ? "translate-x-4" : "translate-x-0"}`} />
                 </button>
               </label>
             </div>
