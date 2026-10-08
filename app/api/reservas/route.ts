@@ -5,11 +5,13 @@ import {
   listCollection,
   setDocument,
   createIfAbsent,
+  queryRange,
+  queryIn,
 } from "@/lib/server/firestore-rest";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 import { ahoraEnZona, slotAlcanzaAnticipacion, anticipacionDe, turnosOcupados } from "@/lib/reserva-online";
 import { historiaClinicaPendiente, plantillasDeClinica } from "@/lib/documentosClinicos";
-import { camposDe, datosPaciente, extrasOnline, type ValoresCampos } from "@/lib/camposPaciente";
+import { camposDe, claveDeCI, datosPaciente, extrasOnline, type ValoresCampos } from "@/lib/camposPaciente";
 import type { FieldConfig } from "@/lib/types";
 
 /**
@@ -56,6 +58,27 @@ function sumarDias(fecha: string, dias: number): string {
   const d = new Date(`${fecha}T00:00:00.000Z`);
   d.setUTCDate(d.getUTCDate() + dias);
   return d.toISOString().slice(0, 10);
+}
+
+/** Las citas que pueden pisar el día `date` de la clínica, pedidas a Firestore por rango de `start`. Antes se bajaban las primeras 500 de la
+ *  colección (las de menor id = las MÁS VIEJAS): con más de 500 citas la disponibilidad no veía las recientes y se reservaba encima.
+ *  El rango va de la víspera al día siguiente porque las citas del panel guardan un instante UTC («…T12:00:00.000Z») y las online la hora
+ *  local sin zona: ambas empiezan con AAAA-MM-DD, y un día de la clínica toca el día anterior o el siguiente en UTC. */
+const citasAlrededorDe = (clinicId: string, date: string) =>
+  queryRange(`clinics/${clinicId}`, "appointments", "start", sumarDias(date, -1), sumarDias(date, 2), 500);
+
+/** El paciente de esa CI: se busca en Firestore con y sin puntos («4123456» / «4.123.456»: así la guardan las clínicas) y, si no está,
+ *  se revisan las primeras 500 fichas por si la CI está escrita de otra forma («4 123 456»). `null` si no existe. */
+async function pacienteDeLaCI(clinicId: string, ci: string): Promise<string | null> {
+  const conPuntos = ci.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const exactos = await queryIn(`clinics/${clinicId}`, "patients", "document", [...new Set([ci, conPuntos])], 5);
+  if (exactos[0]) return exactos[0].id;
+  const clave = claveDeCI(ci);
+  const todos = await listCollection(`clinics/${clinicId}`, "patients", 500);
+  return todos.find((p) => {
+    const doc = String(p.data.document || "");
+    return doc === ci || (clave !== null && claveDeCI(doc) === clave);
+  })?.id ?? null;
 }
 
 /** La matriz de campos del paciente de la clínica (clinic.config.patientFields). */
@@ -121,7 +144,7 @@ export async function GET(req: NextRequest) {
       .filter((u) => u.data.role === "dentist" && u.data.active !== false)
       .map((u) => ({ id: u.id, name: String(u.data.name || "Profesional") }));
 
-    const appts = await listCollection(`clinics/${clinicId}`, "appointments", 500);
+    const appts = await citasAlrededorDe(clinicId, date);
     // Ocupado = todo turno que una cita pisa, en la hora de la CLÍNICA: las del panel se guardan como instante UTC y las online como hora local
     // sin zona, y compararlas como texto dejaba libre el turno ocupado (ver lib/reserva-online.ts › turnosOcupados).
     const grilla = gridSlots();
@@ -269,7 +292,7 @@ export async function POST(req: NextRequest) {
 
     // Pre-chequeo de citas existentes (fuente de verdad de disponibilidad:
     // cubre slots ocupados por la agenda interna, no solo por reservas online).
-    const appts = await listCollection(`clinics/${clinicId}`, "appointments", 500);
+    const appts = await citasAlrededorDe(clinicId, date);
     const taken = appts.some(
       (a) =>
         String(a.data.dentistId) === dentistId &&
@@ -284,8 +307,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Paciente por CI — reusar si existe, crear si no.
-    const patients = await listCollection(`clinics/${clinicId}`, "patients", 500);
-    let patientId = patients.find((p) => String(p.data.document || "") === ci)?.id || null;
+    let patientId = await pacienteDeLaCI(clinicId, ci);
     if (!patientId) {
       patientId = `p_${Date.now()}`;
       // Los extras solo se guardan en un paciente NUEVO. A uno existente no se le pisan

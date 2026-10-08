@@ -29,6 +29,10 @@ const listCollection = vi.fn(async (_parent: string, col: string) =>
 const setDocument = vi.fn(async () => {});
 const patchFields = vi.fn(async () => {});
 const createIfAbsent = vi.fn(async () => true);
+/** Las consultas que filtran EN Firestore (las citas de un día, un paciente por CI): por defecto no devuelven nada. */
+type Fila = { id: string; data: Record<string, unknown> };
+const queryRange = vi.fn(async (..._a: unknown[]): Promise<Fila[]> => []);
+const queryIn = vi.fn(async (..._a: unknown[]): Promise<Fila[]> => []);
 
 vi.mock("@/lib/server/firestore-rest", () => ({
   getDocument: (...a: unknown[]) => getDocument(...(a as [string])),
@@ -36,6 +40,8 @@ vi.mock("@/lib/server/firestore-rest", () => ({
   setDocument: (...a: unknown[]) => setDocument(...(a as [])),
   patchFields: (...a: unknown[]) => patchFields(...(a as [])),
   createIfAbsent: (...a: unknown[]) => createIfAbsent(...(a as [])),
+  queryRange: (...a: unknown[]) => queryRange(...a),
+  queryIn: (...a: unknown[]) => queryIn(...a),
   isServerFirestoreConfigured: () => true,
 }));
 
@@ -225,18 +231,20 @@ describe("campos extra (Pacientes → Configuración, columna «Agenda online»)
 describe("agenda ocupada: citas del panel (UTC) y reservas online (hora local)", () => {
   const listaOriginal = listCollection.getMockImplementation()!;
   const llamadas = () => setDocument.mock.calls as unknown as [string, Record<string, unknown>][];
-  const conCitas = (citas: Record<string, unknown>[], pacientes: { id: string; data: Record<string, unknown> }[] = []) =>
+  // Las citas del día salen de queryRange (filtrado en Firestore), no de listCollection.
+  const conCitas = (citas: Record<string, unknown>[], pacientes: { id: string; data: Record<string, unknown> }[] = []) => {
+    queryRange.mockImplementation(async () => citas.map((data, i) => ({ id: `a${i}`, data })));
     listCollection.mockImplementation((async (_parent: string, col: string) =>
       col === "users" ? [{ id: "u2", data: { role: "dentist", active: true, name: "Dra. Prueba" } }, { id: "u4", data: { role: "dentist", active: true, name: "Dr. Otro" } }]
-        : col === "appointments" ? citas.map((data, i) => ({ id: `a${i}`, data }))
         : col === "patients" ? pacientes
         : []) as unknown as typeof listaOriginal);
+  };
   const cita = (start: string, end: string, extra: Record<string, unknown> = {}) => ({ dentistId: "u2", status: "confirmada", start, end, ...extra });
   const slotsDe = async (dentista = "u2") => ((await (await GET(req(`http://x/api/reservas?clinicId=cl_demo&date=${MANANA}`))).json()).slots[dentista] ?? []) as string[];
   const turno = (time: string) => ({ ...datosPaciente, date: MANANA, time, extras: { email: "ana@correo.com" } });
 
   beforeEach(() => { setDocument.mockClear(); createIfAbsent.mockClear(); });
-  afterEach(() => listCollection.mockImplementation(listaOriginal));
+  afterEach(() => { listCollection.mockImplementation(listaOriginal); queryRange.mockImplementation(async () => []); });
 
   it("una cita del panel de las 09:00 (guardada en UTC) saca el turno de las 09:00 y no el de las 12:00", async () => {
     conCitas([cita("2026-08-07T12:00:00.000Z", "2026-08-07T12:30:00.000Z")]);
@@ -313,5 +321,66 @@ describe("el paciente que reserva por la web queda con la Historia Clínica pend
         : []) as unknown as typeof listaOriginal);
     expect((await POST(post(turno))).status).toBe(200);
     expect(llamadas().some(([path]) => path.includes("/clinicalDocs/"))).toBe(false);
+  });
+});
+
+/* ===== No depender de «los primeros 500 documentos» =====
+ * `listCollection(…, 500)` baja los 500 documentos de MENOR id, o sea los más viejos: con más de 500 citas la disponibilidad dejaba de ver las
+ * recientes (doble reserva) y con más de 500 pacientes no encontraba al existente (ficha duplicada, y otra Historia Clínica pendiente). */
+describe("la reserva online mira solo lo del día y busca al paciente por CI en Firestore", () => {
+  const listaOriginal = listCollection.getMockImplementation()!;
+  const llamadas = () => setDocument.mock.calls as unknown as [string, Record<string, unknown>][];
+  const turno = { ...datosPaciente, date: MANANA, time: "11:00", extras: { email: "ana@correo.com" } };
+  const sinCitaTomada = (a: unknown[]) => a[1] === "appointments";
+
+  beforeEach(() => { queryRange.mockClear(); queryIn.mockClear(); listCollection.mockClear(); setDocument.mockClear(); });
+  afterEach(() => { listCollection.mockImplementation(listaOriginal); queryRange.mockImplementation(async () => []); queryIn.mockImplementation(async () => []); });
+
+  it("el GET pide las citas de un rango alrededor del día (la víspera y el día siguiente: las del panel están en UTC), no la colección entera", async () => {
+    await GET(req(`http://x/api/reservas?clinicId=cl_demo&date=${MANANA}`));
+    expect(queryRange.mock.calls).toContainEqual(["clinics/cl_demo", "appointments", "start", "2026-08-06", "2026-08-09", expect.any(Number)]);
+    expect(listCollection.mock.calls.some(sinCitaTomada)).toBe(false);
+  });
+
+  it("el POST también", async () => {
+    await POST(post(turno));
+    expect(queryRange.mock.calls).toContainEqual(["clinics/cl_demo", "appointments", "start", "2026-08-06", "2026-08-09", expect.any(Number)]);
+    expect(listCollection.mock.calls.some(sinCitaTomada)).toBe(false);
+  });
+
+  it("una cita que devuelve la consulta del día ocupa su turno, sin importar cuántas citas viejas tenga la clínica", async () => {
+    queryRange.mockImplementation(async () => [{ id: "reciente", data: { dentistId: "u2", status: "confirmada", start: "2026-08-07T12:00:00.000Z", end: "2026-08-07T12:30:00.000Z" } }]);
+    const j = await (await GET(req(`http://x/api/reservas?clinicId=cl_demo&date=${MANANA}`))).json();
+    expect(j.slots.u2).not.toContain("09:00");
+    expect((await POST(post({ ...turno, time: "09:00" }))).status).toBe(409);
+  });
+
+  it("busca al paciente por CI en Firestore, con y sin puntos (así la guardan las clínicas), y no revisa las primeras 500 fichas", async () => {
+    await POST(post(turno));
+    expect(queryIn.mock.calls).toContainEqual(["clinics/cl_demo", "patients", "document", ["1234567", "1.234.567"], expect.any(Number)]);
+  });
+
+  it("un paciente guardado con puntos («1.234.567») es el mismo: no se crea otro ni otra Historia Clínica", async () => {
+    queryIn.mockImplementation(async () => [{ id: "p9", data: { document: "1.234.567" } }]);
+    expect((await POST(post(turno))).status).toBe(200);
+    expect(llamadas().some(([path]) => path.includes("/patients/"))).toBe(false);
+    expect(llamadas().some(([path]) => path.includes("/clinicalDocs/"))).toBe(false);
+    const cita = llamadas().find(([path]) => path.includes("/appointments/"));
+    expect(cita?.[1]).toMatchObject({ patientId: "p9" });
+  });
+
+  it("y uno guardado con otro formato («1 234 567») se encuentra con la revisión de respaldo", async () => {
+    listCollection.mockImplementation((async (_parent: string, col: string) =>
+      col === "users" ? [{ id: "u2", data: { role: "dentist", active: true, name: "Dra. Prueba" } }]
+        : col === "patients" ? [{ id: "p8", data: { document: "1 234 567" } }]
+        : []) as unknown as typeof listaOriginal);
+    expect((await POST(post(turno))).status).toBe(200);
+    expect(llamadas().some(([path]) => path.includes("/patients/"))).toBe(false);
+  });
+
+  it("una CI que nadie tiene crea el paciente (con su Historia Clínica pendiente)", async () => {
+    expect((await POST(post(turno))).status).toBe(200);
+    expect(llamadas().some(([path]) => path.includes("/patients/"))).toBe(true);
+    expect(llamadas().some(([path]) => path.includes("/clinicalDocs/"))).toBe(true);
   });
 });
