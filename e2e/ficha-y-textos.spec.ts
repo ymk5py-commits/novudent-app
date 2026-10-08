@@ -394,3 +394,26 @@ test.describe("B6 · Datos de la clínica y color de cada usuario", () => {
   });
 });
 
+/* ═══════════════════════ B7 · Textos que mandaban a un lugar que no existe ═══════════════════════ */
+
+test.describe("B7 · «Administración › Usuarios y profesionales»", () => {
+  const CAMINO = "Administración › Usuarios y profesionales";
+
+  test("la asistente sin doctores asignados lo lee en la agenda, en Pacientes y en Inicio", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.asistente);
+    await cambiarDemo(page, { usuarios: { u3: { asiste: [] } } });
+    await page.goto("/app/agenda");
+    await expect(main(page).getByRole("status")).toContainText(CAMINO);
+    await page.goto("/app/pacientes");
+    await expect(main(page)).toContainText(CAMINO);
+    await page.goto("/app");
+    await expect(main(page)).toContainText(CAMINO);
+    await expect(main(page)).not.toContainText("Configuración → Usuarios");
+  });
+
+  test("la pantalla de entrada también", async ({ page }) => {
+    await page.goto("/login");
+    await expect(page.getByText("Las cuentas las crea el")).toContainText(CAMINO);
+  });
+});
+
