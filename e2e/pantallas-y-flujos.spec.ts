@@ -246,3 +246,61 @@ test.describe("Ficha clínica › Resumen e Historial", () => {
     }
   });
 });
+
+/* ═══ Integraciones ═══ */
+
+test.describe("Integraciones (Botika)", () => {
+  test.beforeEach(async ({ page }) => {
+    await entrarDemo(page);
+    await page.goto("/app/integraciones");
+  });
+
+  const editor = (page: Page) => page.getByRole("heading", { name: "Plantillas de mensajes" }).locator("xpath=..");
+
+  test("las cinco plantillas arrancan con su texto (también «Negociación de presupuestos») y «Guardar plantillas» no está prendido", async ({ page }) => {
+    const cajas = editor(page).locator("textarea");
+    await expect(cajas).toHaveCount(5);
+    const claves = Object.keys(DEFAULT_TEMPLATES) as (keyof typeof DEFAULT_TEMPLATES)[];
+    for (const [i, k] of claves.entries()) await expect(cajas.nth(i), k).toHaveValue(DEFAULT_TEMPLATES[k]);
+    await expect(editor(page).getByText("Restaurar default")).toHaveCount(0);
+    await expect(editor(page).getByRole("button", { name: "Guardar plantillas" })).toHaveCount(0);
+    await sinScrollHorizontal(page);
+  });
+
+  test("editar una plantilla prende «Guardar plantillas», guardar lo apaga, y «Restaurar default» vuelve al texto de fábrica", async ({ page }) => {
+    const negociacion = editor(page).locator("textarea").nth(4);
+    const guardar = editor(page).getByRole("button", { name: "Guardar plantillas" });
+    const plantillaGuardada = async () => (await leerDB(page)).clinics[0].config.botika.templates?.negociacion;
+
+    await negociacion.fill("Hola {paciente}, ¿viste el presupuesto?");
+    await expect(guardar).toBeVisible();
+    await guardar.click();
+    await expect(guardar).toHaveCount(0);
+    await expect.poll(plantillaGuardada).toBe("Hola {paciente}, ¿viste el presupuesto?");
+
+    await page.reload();
+    await expect(editor(page).locator("textarea").nth(4)).toHaveValue("Hola {paciente}, ¿viste el presupuesto?");
+    await editor(page).getByText("Restaurar default").click();
+    await expect(editor(page).locator("textarea").nth(4)).toHaveValue(DEFAULT_TEMPLATES.negociacion);
+    await expect(guardar).toBeVisible();
+    await guardar.click();
+    await expect(guardar).toHaveCount(0);
+    // Quedó el de fábrica (vacío = el de fábrica), no el texto propio de antes.
+    await expect.poll(plantillaGuardada).toBe("");
+    await page.reload();
+    await expect(editor(page).locator("textarea").nth(4)).toHaveValue(DEFAULT_TEMPLATES.negociacion);
+    await expect(editor(page).getByText("Restaurar default")).toHaveCount(0);
+  });
+
+  test("«Reagendar canceladas» no se puede prender y dice que todavía no envía nada", async ({ page }) => {
+    const reagendar = page.getByRole("button", { name: /Reagendar canceladas/ });
+    await expect(reagendar).toBeDisabled();
+    await expect(reagendar).toContainText("Todavía no envía");
+    const antes = (await leerDB(page)).clinics[0].config.botika.automations;
+    await reagendar.click({ force: true });
+    expect((await leerDB(page)).clinics[0].config.botika.automations).toEqual(antes);
+    // Las que sí funcionan siguen funcionando.
+    await expect(page.getByRole("button", { name: /Confirmación de citas/ })).toBeEnabled();
+    await sinScrollHorizontal(page);
+  });
+});
