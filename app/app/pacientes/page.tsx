@@ -5,7 +5,8 @@ import Link from "next/link";
  *  · Configuración. La lista muestra código interno, CI o RUC, nombre, apellido,
  *  tratamientos y deudas, con un menú ⋮ cuyas opciones dependen del rol. */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { rutaDeFicha, rutaDeSeccion, seccionDeRuta } from "@/lib/rutasPanel";
 import { Search, Plus, MoreVertical, UserRound, Layers, Stethoscope, Receipt, Wallet, UserX, UserCheck } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { patientBalance } from "@/lib/budgets";
@@ -28,13 +29,19 @@ export default function PatientsPage() {
   const verPersonales = alcance.puede("patients.personal");
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"lista" | "analisis" | "estudios" | "configuracion">("lista");
-  // El menú (Administración › Campos del paciente) llega acá con #configuracion: abre esa pestaña.
+  // La pestaña sale de la URL limpia (/app/pacientes/configuracion, /analisis, /estudios: lib/rutasPanel) y la sigue con «atrás». Un enlace
+  // viejo con #configuracion también la abre (el Shell además lo pasa a la URL limpia).
+  const pathname = usePathname();
   useEffect(() => {
-    const aplicar = () => { if (window.location.hash === "#configuracion") setTab("configuracion"); };
-    aplicar();
-    window.addEventListener("hashchange", aplicar);
-    return () => window.removeEventListener("hashchange", aplicar);
-  }, []);
+    const s = seccionDeRuta(pathname);
+    if (s?.area === "pacientes") setTab(s.id as typeof tab);
+    if (window.location.hash === "#configuracion") setTab("configuracion");
+  }, [pathname]);
+  const elegirTab = (k: typeof tab) => {
+    setTab(k);
+    const destino = rutaDeSeccion("pacientes", k);
+    if (window.location.pathname !== destino) window.history.pushState(null, "", destino + (k === "lista" ? window.location.search : ""));
+  };
   const [estado, setEstado] = useState<"habilitados" | "deshabilitados" | "todos">("habilitados");
   // «Con documentos pendientes»: lo activa la campana y la tarjeta de Inicio (?pendientes=documentos).
   // Se lee en un efecto y no con useSearchParams para no obligar a la página a renderizar en el servidor.
@@ -90,7 +97,7 @@ export default function PatientsPage() {
         {TABS.map((t, i) => (
           <span key={t.k} className="contents">
             <button
-              onClick={() => setTab(t.k)}
+              onClick={() => elegirTab(t.k)}
               className={`-mb-px rounded-none border-b-2 px-3.5 py-2 text-[14px] font-normal transition-colors ${tab === t.k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}
             >
               {t.label}
@@ -100,7 +107,7 @@ export default function PatientsPage() {
               <select
                 aria-label="Mostrar pacientes"
                 value={estado}
-                onChange={(e) => { setEstado(e.target.value as typeof estado); setTab("lista"); }}
+                onChange={(e) => { setEstado(e.target.value as typeof estado); elegirTab("lista"); }}
                 className="rounded-xl border-0 bg-transparent px-2 py-2 text-[14px] font-normal text-clinic-text hover:bg-clinic-bg focus:ring-2 focus:ring-azure-200"
               >
                 <option value="habilitados">Habilitados</option>
@@ -228,7 +235,7 @@ function AccionesPaciente({ paciente, onDeshabilitar }: { paciente: Patient; onD
   const alcance = useAlcance();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
-  const ir = (tab: string) => { window.location.href = `/app/pacientes/${paciente.id}?tab=${tab}`; };
+  const ir = (tab: string) => { window.location.href = rutaDeFicha(paciente.id, tab); };
   return (
     <>
       <button ref={ref} type="button" aria-haspopup="menu" aria-expanded={open} aria-label={`Acciones de ${fullName(paciente)}`} onClick={() => setOpen((o) => !o)} className="grid h-10 w-10 shrink-0 place-items-center rounded-lg hover:bg-clinic-bg">

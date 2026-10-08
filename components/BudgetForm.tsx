@@ -110,7 +110,7 @@ export function BudgetForm({ budget, onClose, onSave, sinMontos = false, pacient
             <p role="status" className="rounded-xl bg-clinic-bg px-3 py-2.5 text-xs text-clinic-muted">
               Todavía no hay prestaciones cargadas en el arancel.{" "}
               {alcance.puede("practice.config")
-                ? <Link href="/app/configuracion#arancel" className="font-bold text-azure-700 hover:underline">Cargalas en Configuración › Arancel de precios</Link>
+                ? <Link href="/app/configuracion/arancel" className="font-bold text-azure-700 hover:underline">Cargalas en Configuración › Arancel de precios</Link>
                 : "Pedile a la administración que las cargue en Configuración › Arancel de precios."}
             </p>
           ) : (

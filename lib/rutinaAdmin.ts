@@ -29,12 +29,12 @@ interface DefPaso {
 /** La rutina, en el orden en que se muestra. */
 export const PASOS_RUTINA: readonly DefPaso[] = [
   { id: "caja", frecuencia: "diaria", titulo: "Controlar cómo cerró la caja", href: "/app/caja", requiere: "caja" },
-  { id: "cobrado", frecuencia: "diaria", titulo: "Revisar lo cobrado del día", href: "/app/reportes#graficos" },
+  { id: "cobrado", frecuencia: "diaria", titulo: "Revisar lo cobrado del día", href: "/app/reportes/graficos" },
   { id: "deudores", frecuencia: "diaria", titulo: "Seguir a los pacientes que deben", href: "/app/pacientes" },
   { id: "implantes", frecuencia: "diaria", titulo: "Seguir a los que deben implantes", href: "/app/pacientes" },
   { id: "retenciones", frecuencia: "diaria", titulo: "Mirar los reclamos en retención", href: HREF_RETENCIONES },
   { id: "cheques", frecuencia: "diaria", titulo: "Controlar los cheques", href: "/app/caja" },
-  { id: "desempeno", frecuencia: "semanal", titulo: "Revisar el desempeño de la semana", href: "/app/reportes#desempeno" },
+  { id: "desempeno", frecuencia: "semanal", titulo: "Revisar el desempeño de la semana", href: "/app/reportes" },
   { id: "liquidar", frecuencia: "mensual", titulo: "Liquidar a los profesionales", href: "/app/liquidaciones", requiere: "liquidaciones" },
   { id: "gastos", frecuencia: "mensual", titulo: "Cargar los gastos del mes", href: "/app/gastos" },
 ];

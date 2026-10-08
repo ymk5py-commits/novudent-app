@@ -94,11 +94,18 @@ const PESTANAS_DE_DOCUMENTOS = new Set<SubTab>(["documentos", "consentimientos"]
 const clavePestana = (k: string) => (k === "formularios" ? "documentos" : k);
 
 export default function PatientProfile() {
-  const { id } = useParams<{ id: string }>();
+  // `/app/pacientes/<id>/<pestaña>` (URL limpia, lib/rutasPanel): la pestaña viene en la ruta.
+  const { id, pestana } = useParams<{ id: string; pestana?: string }>();
   const { db, session, completeForm, addEmrNote, addPerioSession, setOdontogram, markHistoryUpdate, upsertPatient } = useStore();
   const hasIA = useClinicPlan().features.includes("ia"); // Novudent IA: Plan Clínica+
   const alcance = useAlcance();
-  const [tabElegida, setTab] = useState<SubTab>("resumen");
+  // La pestaña de entrada sale de la URL limpia (/app/pacientes/<id>/planes). Cambiar de pestaña NO toca la URL (como antes): llevar la ficha a
+  // otra ruta con `history.replaceState` hace que Next vuelva a montar la página y se pierde lo abierto (por ejemplo, el plan elegido para
+  // «Recaudar»). Los enlaces viejos (?tab=… o #…) los pasa a la URL limpia el Shell (lib/rutasPanel).
+  const [tabElegida, setTab] = useState<SubTab>(() => {
+    const pedida = clavePestana(pestana ?? "");
+    return TODAS_LAS_PESTANAS.has(pedida as SubTab) ? (pedida as SubTab) : "resumen";
+  });
   // «Recaudar este tratamiento» (Opciones del plan): abre Recibir pago con ese plan cargado.
   const [planARecaudar, setPlanARecaudar] = useState<string | null>(null);
   // ?tab=… (desde el menú ⋮ del listado de pacientes): abre esa pestaña si existe.

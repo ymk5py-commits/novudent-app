@@ -34,7 +34,7 @@ test.describe("recepcionista", () => {
     await expect(menu.getByRole("menuitem", { name: "Deshabilitar paciente" })).toBeVisible();
     await expect(menu.getByRole("menuitem", { name: /pagos|recaudación/i })).toHaveCount(0);
     await menu.getByRole("menuitem", { name: "Ir a datos personales" }).click();
-    await page.waitForURL(/tab=datos/);
+    await page.waitForURL(/\/app\/pacientes\/[^/]+\/datos$/);
     await expect(main(page).getByText("Datos requeridos")).toBeVisible();
   });
 

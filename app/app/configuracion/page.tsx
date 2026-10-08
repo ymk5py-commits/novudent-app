@@ -3,6 +3,8 @@ import Link from "next/link";
 /** Configuración de la práctica (solo Administrador): datos de la clínica, usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { seccionDeRuta } from "@/lib/rutasPanel";
 import { ShieldAlert, Plus, UserCog, Users, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, FileText, Image as ImageIcon, MapPin, ListChecks, Ban, Power } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { can, rolLabel, rolDescripcion, rolesParaElegir } from "@/lib/rbac";
@@ -40,13 +42,18 @@ export default function ConfigPage() {
   const [mergeKeep, setMergeKeep] = useState(db.patients[0]?.id ?? "");
   const [mergeRemove, setMergeRemove] = useState("");
   const [mergeError, setMergeError] = useState<string | null>(null);
-  // Deep-link desde el menú Administración (/app/configuracion#arancel) → scroll a la sección.
+  // Enlace directo a una sección: la URL limpia /app/configuracion/arancel (lib/rutasPanel) o un enlace viejo con #arancel → scroll a la sección.
+  const pathname = usePathname();
   useEffect(() => {
-    const go = () => { const id = window.location.hash.replace("#", ""); if (id) document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); };
+    const go = () => {
+      const s = seccionDeRuta(window.location.pathname);
+      const id = (s?.area === "configuracion" && s.id) || window.location.hash.replace("#", "");
+      if (id) document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
     const t = setTimeout(go, 90);
     window.addEventListener("hashchange", go);
     return () => { clearTimeout(t); window.removeEventListener("hashchange", go); };
-  }, []);
+  }, [pathname]);
   const [importing, setImporting] = useState(false);
   const [convName, setConvName] = useState("");
   const [convPct, setConvPct] = useState("10");

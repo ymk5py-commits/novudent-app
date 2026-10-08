@@ -27,8 +27,8 @@ describe("listaPendientes · documentos", () => {
   it("una fila por paciente, ordenada por nombre, con el documento pendiente y el link a su pestaña", () => {
     const r = listaPendientes({ ...todo, patients: pacientes, docs: [doc("d1", "p2", "Historia Clínica")], billing: [] });
     expect(r.documentos).toEqual([
-      { id: "doc_p2", tipo: "documentos", titulo: "Juan Ríos", detalle: "Historia Clínica", href: "/app/pacientes/p2?tab=documentos" },
-      { id: "doc_p1", tipo: "documentos", titulo: "María González", detalle: "Historia médica", href: "/app/pacientes/p1?tab=documentos" },
+      { id: "doc_p2", tipo: "documentos", titulo: "Juan Ríos", detalle: "Historia Clínica", href: "/app/pacientes/p2/documentos" },
+      { id: "doc_p1", tipo: "documentos", titulo: "María González", detalle: "Historia médica", href: "/app/pacientes/p1/documentos" },
     ]);
     expect(r.total).toBe(2);
   });

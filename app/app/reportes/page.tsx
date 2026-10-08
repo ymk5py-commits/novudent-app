@@ -3,6 +3,8 @@ import Link from "next/link";
 /** Informes de gestión: KPIs de 30 días, producción y comisiones por profesional,
  *  tasa de aceptación de presupuestos, morosidad y reportes descargables (Excel/CSV). */
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
+import { rutaDeSeccion, seccionDeRuta } from "@/lib/rutasPanel";
 import { ShieldAlert, Download, TrendingUp, TrendingDown, Scale, FileSpreadsheet, Percent, Bot, Star } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fmtTime, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
@@ -37,16 +39,20 @@ export default function ReportsPage() {
   // Rango de los reportes de CRM (tareas de gestión): por defecto, el mes en curso.
   const [crmDesde, setCrmDesde] = useState(() => `${fechaLocal().slice(0, 7)}-01`);
   const [crmHasta, setCrmHasta] = useState(() => sumarDias(`${sumarDias(`${fechaLocal().slice(0, 7)}-01`, 32).slice(0, 7)}-01`, -1));
-  // Deep-link desde el menú (Reportes ▾): /app/reportes#analisis abre esa pestaña.
+  // La pestaña sale de la URL limpia (/app/reportes/graficos, /app/reportes/analisis-de-pacientes: lib/rutasPanel) y la sigue con «atrás».
+  // Un enlace viejo con #analisis también abre la pestaña (el Shell además lo pasa a la URL limpia).
+  const pathname = usePathname();
   useEffect(() => {
-    const apply = () => {
-      const h = window.location.hash.replace("#", "");
-      if (h === "desempeno" || h === "graficos" || h === "analisis" || h === "excel") setTab(h);
-    };
-    apply();
-    window.addEventListener("hashchange", apply);
-    return () => window.removeEventListener("hashchange", apply);
-  }, []);
+    const s = seccionDeRuta(pathname);
+    const h = window.location.hash.replace("#", "");
+    const pedida = s?.area === "reportes" ? s.id : h;
+    if (pedida === "desempeno" || pedida === "graficos" || pedida === "analisis" || pedida === "excel") setTab(pedida);
+  }, [pathname]);
+  const elegirTab = (k: typeof tab) => {
+    setTab(k);
+    const destino = rutaDeSeccion("reportes", k);
+    if (window.location.pathname !== destino) window.history.pushState(null, "", destino);
+  };
 
   const data = useMemo(() => {
     const since = Date.now() - DAYS30;
@@ -259,7 +265,7 @@ export default function ReportsPage() {
       {/* Sub-pestañas estilo Dentalink */}
       <div className="flex flex-wrap border-b border-clinic-border">
         {([["desempeno", "Panel de desempeño"], ["graficos", "Reportes gráficos"], ["analisis", "Análisis de pacientes"], ["excel", "Reportes Excel"]] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setTab(k)} className={`-mb-px rounded-none border-b-2 px-3.5 py-2 text-[14px] font-normal transition-colors ${tab === k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}>{label}</button>
+          <button key={k} onClick={() => elegirTab(k)} className={`-mb-px rounded-none border-b-2 px-3.5 py-2 text-[14px] font-normal transition-colors ${tab === k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}>{label}</button>
         ))}
       </div>
 

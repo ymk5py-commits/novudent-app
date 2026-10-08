@@ -5,6 +5,7 @@
  *  siempre visible (paridad Dentalink). */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { hrefActivo, rutaLimpia } from "@/lib/rutasPanel";
 import Link from "next/link";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, CreditCard,
@@ -44,7 +45,7 @@ const NAV: NavTop[] = [
       { href: "/app/facturacion", label: "Facturación", icon: Receipt, perm: "money.view" },
       { href: "/app/presupuestos", label: "Presupuestos", icon: FileSpreadsheet, perm: "budgets.manage" },
       { href: "/app/caja", label: "Cuentas por cobrar", icon: Wallet, perm: "payments.manage", feature: "caja" },
-      { href: "/app/reportes#desempeno", label: "Reporte de cobranza", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/reportes", label: "Reporte de cobranza", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
     ],
   },
   {
@@ -56,19 +57,19 @@ const NAV: NavTop[] = [
       { href: "/app/box", label: "Box / Sillones", icon: Armchair, perm: "practice.config", feature: "boxes", section: "Gestión" },
       { href: "/app/esterilizacion", label: "Esterilización", icon: ShieldCheck, perm: "practice.config", section: "Gestión" },
       { href: "/app/ambiental", label: "Registro ambiental", icon: Leaf, perm: "practice.config", section: "Gestión" },
-      { href: "/app/configuracion#convenios", label: "Convenios", icon: Handshake, perm: "practice.config", section: "Gestión" },
-      { href: "/app/configuracion#usuarios", label: "Usuarios y profesionales", icon: Users, perm: "practice.config", section: "Gestión" },
-      { href: "/app/configuracion#permisos", label: "Permisos del equipo", icon: KeyRound, perm: "practice.config", section: "Gestión" },
-      { href: "/app/configuracion#sucursales", label: "Sucursales", icon: MapPin, perm: "practice.config", section: "Gestión" },
-      { href: "/app/configuracion#fusion", label: "Fusión de fichas", icon: Users, perm: "practice.config", section: "Gestión" },
-      { href: "/app/configuracion#arancel", label: "Arancel de precios", icon: FileSpreadsheet, perm: "practice.config", section: "Configuración" },
-      { href: "/app/configuracion#bancos", label: "Bancos y entidades financieras", icon: Landmark, perm: "practice.config", section: "Configuración" },
-      { href: "/app/configuracion#consentimientos", label: "Documentos y consentimientos", icon: FileText, perm: "practice.config", section: "Configuración" },
-      { href: "/app/configuracion#logotipo", label: "Logotipo", icon: ImageIcon, perm: "practice.config", section: "Configuración" },
-      { href: "/app/configuracion#agendamiento", label: "Agenda online", icon: CalendarClock, perm: "practice.config", section: "Configuración" },
-      { href: "/app/pacientes#configuracion", label: "Campos del paciente", icon: ClipboardList, perm: "practice.config", section: "Configuración" },
-      { href: "/app/configuracion#estados-cita", label: "Estados de cita", icon: ListChecks, perm: "practice.config", section: "Configuración" },
-      { href: "/app/configuracion#documentos-clinicos", label: "Documentos clínicos", icon: FileText, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion/convenios", label: "Convenios", icon: Handshake, perm: "practice.config", section: "Gestión" },
+      { href: "/app/configuracion/usuarios", label: "Usuarios y profesionales", icon: Users, perm: "practice.config", section: "Gestión" },
+      { href: "/app/configuracion/permisos", label: "Permisos del equipo", icon: KeyRound, perm: "practice.config", section: "Gestión" },
+      { href: "/app/configuracion/sucursales", label: "Sucursales", icon: MapPin, perm: "practice.config", section: "Gestión" },
+      { href: "/app/configuracion/fusion-de-fichas", label: "Fusión de fichas", icon: Users, perm: "practice.config", section: "Gestión" },
+      { href: "/app/configuracion/arancel", label: "Arancel de precios", icon: FileSpreadsheet, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion/bancos", label: "Bancos y entidades financieras", icon: Landmark, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion/consentimientos", label: "Documentos y consentimientos", icon: FileText, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion/logotipo", label: "Logotipo", icon: ImageIcon, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion/agenda-online", label: "Agenda online", icon: CalendarClock, perm: "practice.config", section: "Configuración" },
+      { href: "/app/pacientes/configuracion", label: "Campos del paciente", icon: ClipboardList, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion/estados-de-cita", label: "Estados de cita", icon: ListChecks, perm: "practice.config", section: "Configuración" },
+      { href: "/app/configuracion/documentos-clinicos", label: "Documentos clínicos", icon: FileText, perm: "practice.config", section: "Configuración" },
       { href: "/app/integraciones", label: "Integraciones", icon: Bot, perm: "practice.config", feature: "integraciones", section: "Configuración" },
       { href: "/app/suscripcion", label: "Suscripción", icon: CreditCard, perm: "practice.config", section: "Configuración" },
       { href: "/app/configuracion", label: "Configuración general", icon: Settings, perm: "practice.config", section: "Configuración" },
@@ -76,10 +77,10 @@ const NAV: NavTop[] = [
   },
   {
     label: "Reportes", icon: BarChart3, children: [
-      { href: "/app/reportes#desempeno", label: "Panel de desempeño", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
-      { href: "/app/reportes#graficos", label: "Reportes gráficos", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
-      { href: "/app/reportes#analisis", label: "Análisis de pacientes", icon: Users, perm: "billing.reports", feature: "reportes" },
-      { href: "/app/reportes#excel", label: "Reportes Excel", icon: FileSpreadsheet, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/reportes", label: "Panel de desempeño", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/reportes/graficos", label: "Reportes gráficos", icon: BarChart3, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/reportes/analisis-de-pacientes", label: "Análisis de pacientes", icon: Users, perm: "billing.reports", feature: "reportes" },
+      { href: "/app/reportes/excel", label: "Reportes Excel", icon: FileSpreadsheet, perm: "billing.reports", feature: "reportes" },
     ],
   },
   { href: "/app/tareas", label: "Tareas", icon: ListChecks, perm: "tasks.use" },
@@ -96,6 +97,18 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const { session, ready, logout, db, backend } = useStore();
   const router = useRouter();
   const pathname = usePathname();
+  // Enlaces viejos con # o ?tab= (el manual en PDF, marcadores): se pasan a la URL limpia (lib/rutasPanel). Las pantallas igual entienden el
+  // enlace viejo, así que no se ve nada raro mientras tanto.
+  const routerDelPanel = useRouter();
+  useEffect(() => {
+    const convertir = () => {
+      const nueva = rutaLimpia(window.location.pathname, window.location.search, window.location.hash);
+      if (nueva) routerDelPanel.replace(nueva, { scroll: false });
+    };
+    convertir();
+    window.addEventListener("hashchange", convertir);
+    return () => window.removeEventListener("hashchange", convertir);
+  }, [pathname, routerDelPanel]);
   const [q, setQ] = useState("");
   const [navOpen, setNavOpen] = useState(false); // drawer móvil
   const [ayuda, setAyuda] = useState(false); // panel «Ayuda de Novum»
@@ -185,7 +198,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <div key={e.label}>
               <div className="px-3 pb-1.5 text-[12px] font-bold text-clinic-muted/80">{e.label}</div>
               <div className="space-y-1">
-                {e.children.map((it) => <DrawerLink key={it.href} {...it} active={isActive(it.href)} badge={badgeDe(it.href)} />)}
+                {e.children.map((it) => <DrawerLink key={it.href} {...it} active={it.href === hrefActivo(pathname, e.children!.map((x) => x.href))} badge={badgeDe(it.href)} />)}
               </div>
             </div>
           ) : (
@@ -357,7 +370,9 @@ function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; ic
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [open]);
-  const active = items.some((it) => pathname.startsWith(it.href.split(/[?#]/)[0]));
+  // El ítem activo es el que más se parece a la URL: en /app/configuracion/permisos, «Permisos del equipo» y no también «Configuración general».
+  const activoHref = hrefActivo(pathname, items.map((it) => it.href));
+  const active = activoHref !== null;
   return (
     <div ref={ref} className="relative">
       <button
@@ -369,7 +384,7 @@ function NavDropdown({ label, icon: Icon, items, pathname }: { label: string; ic
       </button>
       {open && (() => {
         const renderItem = (it: NavLeaf) => {
-          const a = pathname.startsWith(it.href.split(/[?#]/)[0]);
+          const a = it.href === activoHref;
           return (
             <Link key={it.href} href={it.href} onClick={() => setOpen(false)} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-[13px] font-normal transition-colors ${a ? "bg-azure-50 text-azure-700" : "text-clinic-text hover:bg-clinic-bg hover:text-azure-600"}`}>
               <it.icon className="h-4 w-4 shrink-0" /> {it.label}
