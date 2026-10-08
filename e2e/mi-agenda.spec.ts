@@ -222,10 +222,12 @@ test.describe("Mi agenda — administrador", () => {
 });
 
 test.describe("Mi agenda — teclado", () => {
-  test("las pestañas Hoy y Semana se mueven con las flechas", async ({ page }) => {
+  // El detalle de las tres pestañas (con vuelta, Inicio y Fin) está en e2e/tareas-todas.spec.ts.
+  test("las pestañas Hoy, Semana y Todas se mueven con las flechas", async ({ page }) => {
     await entrarDemo(page);
     const hoyTab = page.getByRole("tab", { name: "Hoy" });
     const semanaTab = page.getByRole("tab", { name: "Semana" });
+    const todasTab = page.getByRole("tab", { name: "Todas", exact: true });
     await expect(hoyTab).toHaveAttribute("aria-selected", "true");
     await expect(hoyTab).toHaveAttribute("tabindex", "0");
     await expect(semanaTab).toHaveAttribute("tabindex", "-1"); // la que no está elegida no entra con Tab
@@ -234,6 +236,10 @@ test.describe("Mi agenda — teclado", () => {
     await expect(semanaTab).toHaveAttribute("aria-selected", "true");
     await expect(semanaTab).toBeFocused();
     await expect(lista(page, "semana")).toBeVisible();
+    await page.keyboard.press("ArrowRight");
+    await expect(todasTab).toHaveAttribute("aria-selected", "true");
+    await expect(todasTab).toBeFocused();
+    await expect(page.getByRole("tabpanel", { name: "Todas las pendientes" })).toBeVisible();
     await page.keyboard.press("Home");
     await expect(hoyTab).toBeFocused();
     await expect(lista(page)).toBeVisible();
@@ -433,6 +439,8 @@ test.describe("Mi agenda — pantalla chica", () => {
     await agregar(page, "Una tarea con un texto bastante largo para ver cómo se parte en la pantalla del celular");
     await sinScrollHorizontal(page);
     await page.getByRole("tab", { name: "Semana" }).click();
+    await sinScrollHorizontal(page);
+    await page.getByRole("tab", { name: "Todas", exact: true }).click();
     await sinScrollHorizontal(page);
     await abrirDictado(page);
     await expect(page.getByLabel("Lo que tenés que hacer")).toBeVisible();

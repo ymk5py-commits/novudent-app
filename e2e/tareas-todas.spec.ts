@@ -56,8 +56,8 @@ interface Tarea {
   extra?: Record<string, unknown>;
 }
 
-/** Deja la demo sin citas, planes ni pagos y con estas tareas propias (de Carlos Admin, salvo que `extra` diga otra cosa). */
-async function conTareas(page: Page, tareas: Tarea[]) {
+/** Deja la demo sin citas, planes ni pagos y con estas tareas propias (de Carlos Admin, `u1`, salvo que se pida otro creador o `extra` diga otra cosa). */
+async function conTareas(page: Page, tareas: Tarea[], creador = "u1") {
   await page.evaluate(`(() => {
     const db = JSON.parse(localStorage.getItem("novudent.db.v4"));
     const d = new Date();
@@ -65,9 +65,9 @@ async function conTareas(page: Page, tareas: Tarea[]) {
     const mas = (n) => { const x = new Date(hoy + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
     db.appointments = []; db.budgets = []; db.payments = [];
     db.mgmtTasks = ${JSON.stringify(tareas)}.map((t) => ({
-      clinicId: "cl_demo", type: "personalizada", status: "pendiente", createdBy: "u1", createdAt: new Date().toISOString(),
+      clinicId: "cl_demo", type: "personalizada", status: "pendiente", createdBy: ${JSON.stringify(creador)}, createdAt: new Date().toISOString(),
       ...(t.dias == null ? {} : { dueDate: mas(t.dias) }),
-      ...(t.hecha ? { status: "cerrada", resolution: "ejecutada", gestiones: [{ fecha: hoy, at: new Date().toISOString(), by: "u1", byName: "Carlos Admin", accion: "cerrar" }] } : {}),
+      ...(t.hecha ? { status: "cerrada", resolution: "ejecutada", gestiones: [{ fecha: hoy, at: new Date().toISOString(), by: ${JSON.stringify(creador)}, byName: "Quien la hizo", accion: "cerrar" }] } : {}),
       ...t.extra, id: t.id, title: t.title,
     }));
     localStorage.setItem("novudent.db.v4", JSON.stringify(db));
@@ -393,5 +393,254 @@ test.describe("Bandeja de tareas — «Todas las pendientes» según el rol", ()
     // Lo suyo sí está: la tarea sobre su paciente Marco Giménez.
     await expect(main(page).getByRole("button", { name: /^Personalizada — Marco Giménez — pendiente/ })).toBeVisible();
     await sinEnsancharLaVentana(page);
+  });
+});
+
+/* ═══════════════════════════ Mi agenda (Inicio) · pestaña «Todas» ═══════════════════════════ */
+
+const tabAgenda = (page: Page, nombre: "Hoy" | "Semana" | "Todas") => page.getByRole("tab", { name: nombre, exact: true });
+const panelAgenda = (page: Page, nombre: "Agenda de hoy" | "Agenda de la semana" | "Todas las pendientes") => page.getByRole("tabpanel", { name: nombre });
+const avanceAgenda = (page: Page) => page.getByRole("progressbar", { name: "Avance de la agenda" });
+/** Un renglón de Mi agenda por su texto. */
+const renglon = (panel: Locator, texto: string) => panel.getByRole("listitem").filter({ hasText: texto });
+/** Lo que se ve del renglón en orden: los títulos de todos los renglones del panel. */
+const titulosDe = (panel: Locator) => panel.getByRole("listitem").locator("p.font-semibold");
+const TITULO_SECCION = "h3";
+
+/** Entra como `usuario`, arma las tareas de `creador` y abre Inicio. Devuelve «hoy» (el de la clínica). */
+async function abrirAgenda(page: Page, usuario: string, creador: string, tareas: Tarea[]) {
+  await entrarDemo(page, usuario);
+  await conTareas(page, tareas, creador);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Mi agenda" })).toBeVisible();
+  return hoyDe(page);
+}
+
+/** El caso de la dentista: mis pendientes de cualquier fecha, una hecha hoy y una de otra persona. */
+const DE_LA_DENTISTA: Tarea[] = [
+  { id: "d_lejana", title: "Renovar el seguro del consultorio", dias: 200 },
+  { id: "d_hoy", title: "Pedir guantes y anestesia", dias: 0 },
+  { id: "d_vieja", title: "Renovar la matrícula", dias: -30 },
+  { id: "d_diez", title: "Llevar el equipo a calibrar", dias: 10 },
+  { id: "d_ayer", title: "Llamar al laboratorio por la prótesis", dias: -1 },
+  { id: "d_manana", title: "Confirmar el turno del escáner", dias: 1 },
+  { id: "d_hecha", title: "Tarea que ya hice", dias: 0, hecha: true },
+  { id: "d_ajena", title: "Tarea de otra persona", dias: 2, extra: { createdBy: "u1" } },
+];
+
+test.describe("Mi agenda — pestaña «Todas»", () => {
+  test("junta mis pendientes de cualquier fecha: las atrasadas primero y después cada día; sin las hechas ni las de otros", async ({ page }) => {
+    const hoy = await abrirAgenda(page, USUARIOS_DEMO.dentista, "u2", DE_LA_DENTISTA);
+
+    // «Hoy» sigue igual: lo de hoy, lo atrasado y lo que ya hice, con su avance.
+    await expect(tabAgenda(page, "Hoy")).toHaveAttribute("aria-selected", "true");
+    await expect(avanceAgenda(page)).toHaveAttribute("aria-valuetext", "1 de 4 hechas");
+
+    await tabAgenda(page, "Todas").click();
+    await expect(tabAgenda(page, "Todas")).toHaveAttribute("aria-selected", "true");
+    const panel = panelAgenda(page, "Todas las pendientes");
+    await expect(panel).toBeVisible();
+
+    // Seis pendientes —dos atrasadas— en orden. No está la que hice ni la de otra persona.
+    await expect(titulosDe(panel)).toHaveText([
+      "Renovar la matrícula", "Llamar al laboratorio por la prótesis", "Pedir guantes y anestesia",
+      "Confirmar el turno del escáner", "Llevar el equipo a calibrar", "Renovar el seguro del consultorio",
+    ]);
+    await expect(panel).not.toContainText("Tarea que ya hice");
+    await expect(panel).not.toContainText("Tarea de otra persona");
+    await expect(page.getByText(/^6 pendientes/)).toContainText("· 2 atrasadas");
+
+    // Atrasadas aparte, y después un grupo por día con su fecha.
+    await expect(panel.getByRole("region", { name: "Atrasadas" }).getByRole("listitem")).toHaveCount(2);
+    await expect(panel.getByRole("region", { name: tituloFecha(hoy, hoy) }).getByRole("listitem")).toHaveCount(1);
+    await expect(panel.getByRole("region", { name: tituloFecha(sumarDias(hoy, 1), hoy) })).toContainText("Confirmar el turno del escáner");
+    await expect(panel.getByRole("region", { name: tituloFecha(sumarDias(hoy, 10), hoy) })).toContainText("Llevar el equipo a calibrar");
+    await expect(panel.getByRole("region", { name: tituloFecha(sumarDias(hoy, 200), hoy) })).toContainText("Renovar el seguro del consultorio");
+    await expect(panel.locator(TITULO_SECCION)).toHaveCount(5); // atrasadas + 4 días
+
+    // Seis es menos que el tope: no hace falta mandar a ningún lado.
+    await expect(page.getByRole("link", { name: "Ver todas en Tareas" })).toHaveCount(0);
+  });
+
+  test("el avance de «Todas» cuenta solo pendientes: no hay barra ni «X de Y hechas», y tildar una la saca de la lista", async ({ page }) => {
+    await abrirAgenda(page, USUARIOS_DEMO.dentista, "u2", DE_LA_DENTISTA);
+    await tabAgenda(page, "Todas").click();
+    const panel = panelAgenda(page, "Todas las pendientes");
+
+    await expect(page.getByText(/^6 pendientes/)).toBeVisible();
+    await expect(avanceAgenda(page)).toHaveCount(0);
+    await expect(page.getByText(/ hechas/)).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Marcar como hecha: Pedir guantes y anestesia" }).click();
+    await expect(page.getByText(/^5 pendientes/)).toContainText("· 2 atrasadas");
+    await expect(panel).not.toContainText("Pedir guantes y anestesia");
+    await expect(panel.locator("button[aria-pressed=true]")).toHaveCount(0); // nada hecho a la vista
+
+    // La tarea quedó hecha de verdad: en «Hoy» está entre las hechas, y el avance de «Hoy» la cuenta.
+    await tabAgenda(page, "Hoy").click();
+    await expect(avanceAgenda(page)).toHaveAttribute("aria-valuetext", "2 de 4 hechas");
+    await expect(panelAgenda(page, "Agenda de hoy").getByRole("region", { name: "Hechas" })).toContainText("Pedir guantes y anestesia");
+  });
+
+  test("con más de 10 pendientes muestra las primeras 10 y un enlace «Ver todas en Tareas» que abre «Todas las pendientes»", async ({ page }) => {
+    const muchas: Tarea[] = [
+      ...[-40, -20, -3].map((d, i) => ({ id: `m_a${i}`, title: `Atrasada ${String(i + 1).padStart(2, "0")}`, dias: d })),
+      ...Array.from({ length: 10 }, (_, i) => ({ id: `m_f${i}`, title: `Futura ${String(i + 1).padStart(2, "0")}`, dias: i + 1 })),
+    ];
+    await abrirAgenda(page, USUARIOS_DEMO.dentista, "u2", muchas);
+    await tabAgenda(page, "Todas").click();
+    const panel = panelAgenda(page, "Todas las pendientes");
+
+    await expect(page.getByText(/^13 pendientes/)).toContainText("· 3 atrasadas");
+    await expect(panel.getByRole("listitem")).toHaveCount(10);
+    // Las 10 primeras en el orden en que se ven: las 3 atrasadas y 7 días.
+    await expect(titulosDe(panel)).toHaveText([
+      "Atrasada 01", "Atrasada 02", "Atrasada 03", "Futura 01", "Futura 02", "Futura 03", "Futura 04", "Futura 05", "Futura 06", "Futura 07",
+    ]);
+    await expect(panel).toContainText("Mostrando 10 de 13 pendientes.");
+
+    const enlace = panel.getByRole("link", { name: "Ver todas en Tareas" });
+    await expect(enlace).toHaveAttribute("href", "/app/tareas");
+    await enlace.click();
+    await page.waitForURL(/\/app\/tareas$/);
+    await expect(pestana(page, TODAS)).toHaveAttribute("aria-selected", "true");
+    await expect(titulo(page)).toHaveText("Tareas pendientes");
+    await expect(filas(page)).toHaveCount(13); // ahí está todo, no solo las 10
+    expect(await contador(pestana(page, TODAS))).toBe(13);
+  });
+
+  test("justo 10 pendientes se ven todas y no hay enlace", async ({ page }) => {
+    const diez: Tarea[] = Array.from({ length: 10 }, (_, i) => ({ id: `d_${i}`, title: `Pendiente ${String(i + 1).padStart(2, "0")}`, dias: i }));
+    await abrirAgenda(page, USUARIOS_DEMO.dentista, "u2", diez);
+    await tabAgenda(page, "Todas").click();
+    await expect(page.getByText(/^10 pendientes/)).toBeVisible();
+    await expect(panelAgenda(page, "Todas las pendientes").getByRole("listitem")).toHaveCount(10);
+    await expect(page.getByRole("link", { name: "Ver todas en Tareas" })).toHaveCount(0);
+    await expect(page.getByText(/Mostrando/)).toHaveCount(0);
+  });
+
+  test("sin pendientes lo dice, y una tarea con fecha lejana se ve apenas se agrega", async ({ page }) => {
+    const hoy = await abrirAgenda(page, USUARIOS_DEMO.dentista, "u2", []);
+    await tabAgenda(page, "Todas").click();
+    const panel = panelAgenda(page, "Todas las pendientes");
+    await expect(page.getByText("Sin pendientes", { exact: true })).toBeVisible();
+    await expect(panel).toContainText("No tenés nada pendiente.");
+
+    const lejana = sumarDias(hoy, 300);
+    await page.getByLabel("Nueva tarea").fill("Renovar el contrato del local");
+    await page.getByLabel("Día de la tarea").fill(lejana);
+    await page.getByRole("button", { name: "Agregar", exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Tarea agregada." })).toBeVisible(); // en «Todas» se ve ahí mismo: no hace falta decir «la vas a ver ese día»
+    await expect(page.getByText(/^1 pendiente/)).toBeVisible();
+    await expect(panel.getByRole("region", { name: tituloFecha(lejana, hoy) })).toContainText("Renovar el contrato del local");
+  });
+
+  test("las pestañas Hoy · Semana · Todas se recorren con el teclado: flechas con vuelta, Inicio y Fin", async ({ page }) => {
+    await abrirAgenda(page, USUARIOS_DEMO.dentista, "u2", DE_LA_DENTISTA);
+    const [hoyTab, semanaTab, todasTab] = [tabAgenda(page, "Hoy"), tabAgenda(page, "Semana"), tabAgenda(page, "Todas")];
+    /** Elegida y con el foco solo `tab`; las otras no entran con Tab (patrón de pestañas de ARIA). */
+    const elegida = async (tab: Locator) => {
+      for (const t of [hoyTab, semanaTab, todasTab]) {
+        await expect(t).toHaveAttribute("aria-selected", String(t === tab));
+        await expect(t).toHaveAttribute("tabindex", t === tab ? "0" : "-1");
+      }
+      await expect(tab).toBeFocused();
+    };
+    await hoyTab.focus();
+    await elegida(hoyTab);
+    await page.keyboard.press("ArrowRight"); await elegida(semanaTab);
+    await page.keyboard.press("ArrowRight"); await elegida(todasTab);
+    await expect(panelAgenda(page, "Todas las pendientes")).toBeVisible();
+    await page.keyboard.press("ArrowRight"); await elegida(hoyTab); // da la vuelta
+    await page.keyboard.press("ArrowLeft"); await elegida(todasTab); // y para el otro lado también
+    await page.keyboard.press("ArrowLeft"); await elegida(semanaTab);
+    await page.keyboard.press("End"); await elegida(todasTab);
+    await page.keyboard.press("Home"); await elegida(hoyTab);
+    await expect(panelAgenda(page, "Agenda de hoy")).toBeVisible();
+    // Cada pestaña controla un panel que existe.
+    for (const t of [hoyTab, semanaTab, todasTab]) {
+      const id = await t.getAttribute("aria-controls");
+      expect(await page.locator(`[id="${id}"]`).count()).toBe(1);
+    }
+  });
+
+  test("el resumen semanal sigue usando solo la semana, aunque esté elegida «Todas»", async ({ page }) => {
+    await abrirAgenda(page, USUARIOS_DEMO.dentista, "u2", [
+      { id: "r_vieja", title: "Renovar la matrícula", dias: -30 },
+      { id: "r_hoy", title: "Pedir guantes y anestesia", dias: 0 },
+      { id: "r_lejana", title: "Renovar el seguro del consultorio", dias: 200 },
+    ]);
+    let pedido: { datos: { semana: { desde: string; hasta: string }; hoy: string; misTareas: Record<string, number> } } | null = null;
+    await page.route("**/api/ia/agenda-resumen", async (route) => {
+      pedido = route.request().postDataJSON();
+      await route.fulfill({ json: { ok: true, resumen: "• Todo en orden." } });
+    });
+    await tabAgenda(page, "Todas").click();
+    await expect(page.getByText(/^3 pendientes/)).toBeVisible(); // «Todas» ve las tres…
+    await page.getByRole("button", { name: "Resumen semanal" }).click();
+    await expect(page.getByRole("region", { name: "Resumen de la semana" })).toContainText("Todo en orden.");
+    // …y el resumen, solo lo de la semana (la atrasada y la de hoy), igual que si estuviera en «Semana».
+    expect(pedido!.datos.misTareas).toMatchObject({ total: 2, hechas: 0, pendientes: 2, atrasadas: 1 });
+    expect(pedido!.datos.semana.desde <= pedido!.datos.hoy && pedido!.datos.hoy <= pedido!.datos.semana.hasta).toBe(true);
+  });
+
+  test("con la rutina del administrador: lo que falta de la rutina de hoy entra en «Todas»; lo que se tachó sola, no", async ({ page }) => {
+    await entrarDemo(page);
+    await conTareas(page, [{ id: "a_lejana", title: "Renovar el seguro del consultorio", dias: 120 }]);
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Mi agenda" })).toBeVisible();
+    const hoyPendientes = await panelAgenda(page, "Agenda de hoy").getByRole("region", { name: "Pendientes" }).getByRole("listitem").count();
+    expect(hoyPendientes, "la demo del administrador tiene rutina pendiente").toBeGreaterThan(0);
+
+    await tabAgenda(page, "Todas").click();
+    const panel = panelAgenda(page, "Todas las pendientes");
+    // Lo de hoy pendiente (la rutina) + la tarea lejana. Nada hecho.
+    await expect(panel.getByRole("listitem")).toHaveCount(hoyPendientes + 1);
+    await expect(panel).toContainText("Renovar el seguro del consultorio");
+    await expect(panel.getByRole("link", { name: "Completar los documentos clínicos pendientes", exact: true })).toBeVisible();
+    await expect(panel.getByText("Se tachó sola")).toHaveCount(0);
+  });
+
+  test("el enlace de una automática asignada a mí sigue llevando a «Tareas del día» de su fecha, con la tarea elegida", async ({ page }) => {
+    await entrarDemo(page);
+    // Juan Ríos faltó hoy a su única cita: la tarea de cita (re-agenda) vence hoy y me la asigné.
+    await page.evaluate(() => {
+      const db = JSON.parse(localStorage.getItem("novudent.db.v4")!);
+      const ini = new Date(); ini.setHours(10, 0, 0, 0);
+      const fin = new Date(ini); fin.setMinutes(40);
+      db.appointments = db.appointments.filter((a: { patientId: string }) => a.patientId !== "p2");
+      db.appointments.push({ id: "a_e2e_ausente", clinicId: "cl_demo", patientId: "p2", dentistId: "u2", title: "Consulta E2E", start: ini.toISOString(), end: fin.toISOString(), status: "ausente", amount: 0, discount: 0 });
+      db.mgmtTasks.push({ id: "ov_e2e_ausente", clinicId: "cl_demo", type: "cita", patientId: "p2", derivedKey: "cita:a_e2e_ausente", title: "Faltó a su cita", status: "pendiente", assigneeId: "u1", createdAt: new Date().toISOString() });
+      localStorage.setItem("novudent.db.v4", JSON.stringify(db));
+    });
+    await page.reload();
+    const hoy = await hoyDe(page);
+    // También desde «Todas»: el enlace de la tarea no cambia con la pestaña.
+    await tabAgenda(page, "Todas").click();
+    await panelAgenda(page, "Todas las pendientes").getByRole("link", { name: "Faltó a su cita", exact: true }).click();
+    await page.waitForURL(/\/app\/tareas\?fecha=/);
+    await expect(pestana(page, DEL_DIA)).toHaveAttribute("aria-selected", "true");
+    await expect(fechaBandeja(page)).toHaveValue(hoy);
+    await expect(main(page).getByRole("button", { name: /^Cita — Juan Ríos — pendiente/ })).toHaveAttribute("aria-current", "true");
+  });
+});
+
+test.describe("Mi agenda — pestaña «Todas» en el celular", () => {
+  test("las tres pestañas y la lista entran en la pantalla, también con un texto largo sin cortes", async ({ page }) => {
+    await abrirAgenda(page, USUARIOS_DEMO.dentista, "u2", [
+      { id: "c_larga", title: "Llamar_a_la_Dra_Sofía_Benítez_para_coordinar_la_entrega_de_la_prótesis_total_superior_del_paciente_Marco_Giménez", dias: 40 },
+      { id: "c_vieja", title: "Renovar la matrícula", dias: -400 },
+      { id: "c_lejana", title: "Renovar el seguro", dias: 400 },
+    ]);
+    await tabAgenda(page, "Todas").click();
+    const ancho = page.viewportSize()!.width;
+    const adentro = async (l: Locator, que: string) => {
+      const caja = (await l.boundingBox())!;
+      expect(caja.x + caja.width, `${que} se sale de la pantalla (${Math.round(caja.x + caja.width)}px de ${ancho}px)`).toBeLessThanOrEqual(ancho);
+    };
+    for (const t of ["Hoy", "Semana", "Todas"] as const) await adentro(tabAgenda(page, t), `la pestaña ${t}`);
+    for (const li of await panelAgenda(page, "Todas las pendientes").getByRole("listitem").all()) await adentro(li, "un renglón de la lista");
+    await adentro(page.getByRole("heading", { name: "Mi agenda" }).locator("xpath=ancestor::div[contains(@class,'p-5')][1]"), "la tarjeta de Mi agenda");
+    expect(await page.evaluate(() => innerWidth), "la ventana se ensanchó").toBe(ancho);
   });
 });
