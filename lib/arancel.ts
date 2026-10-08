@@ -367,6 +367,8 @@ export function analizarCargaDeFilas(entrada: FilaDeEntrada[], existentes: Proce
     const precioCrudo = dato("precio");
     const leido = precioCrudo === "" ? null : parsearPrecio(precioCrudo);
     const errorDePrecio = precioCrudo === "" ? "Falta el precio."
+      // Una fórmula que nunca se calculó (la guardó un programa, no Excel): el lector de .xlsx la devuelve como «=B2*10».
+      : precioCrudo.startsWith("=") ? `La fórmula «${precioCrudo}» no tiene su resultado guardado: abrí el archivo en Excel, guardalo y volvé a elegirlo.`
       : leido === null ? `Precio inválido «${precioCrudo}».`
         : leido > PRECIO_MAXIMO ? "El monto es demasiado grande." : null;
     const price = leido === null ? 0 : Number(leido.toFixed(decimales));

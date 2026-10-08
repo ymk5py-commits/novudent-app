@@ -200,6 +200,10 @@ describe("analizarCargaDePrecios — pegar filas de Excel", () => {
     expect(a.truncado).toBe(true);
     expect(analizarCargaDePrecios(texto.split("\n").slice(0, 3000).join("\n"), CATALOGO).truncado).toBe(false);
   });
+  it("un precio que es una fórmula sin su resultado guardado pide abrir el archivo en Excel", () => {
+    const a = analizarCargaDeFilas([{ linea: 1, campos: ["Prestación", "Precio"] }, { linea: 6, campos: ["Carillas", "=B2*10"] }], CATALOGO);
+    expect(a.filas[0]).toMatchObject({ linea: 6, estado: "error", motivo: "La fórmula «=B2*10» no tiene su resultado guardado: abrí el archivo en Excel, guardalo y volvé a elegirlo." });
+  });
   it("una fila sin precio dice que falta el precio", () => {
     const a = analizarCargaDePrecios("Código;Descripción;Precio\nN1;Pulido;", CATALOGO);
     expect(a.filas[0]).toMatchObject({ linea: 2, estado: "error", motivo: "Falta el precio." });
