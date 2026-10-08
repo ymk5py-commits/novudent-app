@@ -435,7 +435,7 @@ function CargaModal({ procs, decimales, onClose, onDescargar, onAplicar }: {
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
-          <label className="relative inline-flex cursor-pointer items-center gap-1.5 rounded border border-azure-300 bg-azure-50 px-3 py-1.5 text-[13px] font-bold text-azure-700 hover:border-azure-400">
+          <label className="relative inline-flex cursor-pointer items-center gap-1.5 rounded border border-azure-300 bg-azure-50 px-3 py-1.5 text-[13px] font-bold text-azure-700 hover:border-azure-400 focus-within:ring-2 focus-within:ring-azure-200">
             <UploadCloud aria-hidden className="h-4 w-4" /> Elegir archivo (Excel o CSV)
             <input type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt" className="sr-only" onChange={(e) => { void cargarArchivo(e.target.files?.[0]); e.target.value = ""; }} />
           </label>
@@ -451,9 +451,9 @@ function CargaModal({ procs, decimales, onClose, onDescargar, onAplicar }: {
               <span className="min-w-0 break-all">Leído: <b>{fuente.archivo}</b></span>
             </span>
             {hojasConDatos.length > 1 ? (
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-clinic-muted">
+              <label className="flex min-w-0 max-w-full items-center gap-1.5 text-xs font-semibold text-clinic-muted">
                 Hoja
-                <select className={`${inputCls} !w-auto`} value={fuente.hoja} onChange={(e) => { setFuente({ ...fuente, hoja: Number(e.target.value) }); setConfirmando(false); }}>
+                <select className={`${inputCls} !w-auto min-w-0 max-w-full`} value={fuente.hoja} onChange={(e) => { setFuente({ ...fuente, hoja: Number(e.target.value) }); setConfirmando(false); }}>
                   {hojasConDatos.map(({ h, i }) => <option key={i} value={i}>{h.nombre} ({miles(h.filas.length)} {h.filas.length === 1 ? "fila" : "filas"})</option>)}
                 </select>
               </label>
