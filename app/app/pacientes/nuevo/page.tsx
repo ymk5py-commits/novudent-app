@@ -3,14 +3,18 @@ import Link from "next/link";
 /** Alta de paciente en página completa (revisión de Novum, 27/9/2026: «que el registro
  *  no sea un pop up sea tamaño layout formulario a cargar y poder subir foto del
  *  paciente»). Los campos y cuáles son obligatorios salen de Pacientes → Configuración
- *  (contexto «Nuevo paciente»); si el paciente es menor de edad se pide el responsable. */
+ *  (contexto «Nuevo paciente»); si el paciente es menor de edad se pide el responsable.
+ *  El formulario es `noValidate`: lo que falta o está mal cargado y una CI que ya tiene otro
+ *  paciente se avisan con `useRevisionAlta`, no con el globito del navegador. */
 import { useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, ChevronLeft, ShieldAlert, Trash2, UserRound } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useAlcance } from "@/lib/useAlcance";
-import { camposDe, faltantes, datosPaciente, nuevoPaciente, siguienteCodigo, type ValoresCampos } from "@/lib/camposPaciente";
+import { camposDe, datosPaciente, nuevoPaciente, siguienteCodigo, type ValoresCampos } from "@/lib/camposPaciente";
+import { useRevisionAlta } from "@/lib/useRevisionAlta";
 import { resizeToDataUrl } from "@/lib/image";
+import { AvisoCiRepetida } from "@/components/AvisoCiRepetida";
 import { CamposPacienteForm } from "@/components/CamposPacienteForm";
 import { Btn, Card } from "@/components/ui";
 
@@ -23,6 +27,7 @@ export default function NuevoPacientePage() {
   const [foto, setFoto] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const archivo = useRef<HTMLInputElement>(null);
+  const alta = useRevisionAlta(campos, valores, db.patients);
 
   if (!session) return null;
   if (!alcance.puede("patients.personal")) {
@@ -45,15 +50,14 @@ export default function NuevoPacientePage() {
 
   const guardar = (e: React.FormEvent) => {
     e.preventDefault();
-    const falta = faltantes(campos, valores);
-    if (falta.length > 0) { setError(`Completá: ${falta.join(", ")}.`); return; }
+    if (!alta.validar()) return;
     const p = nuevoPaciente({ ...datosPaciente(campos, valores), ...(foto ? { photo: foto } : {}) }, session.clinicId, Date.now(), siguienteCodigo(db.patients));
     crearPaciente(p, { id: session.userId, name: session.name });
     router.push(`/app/pacientes/${p.id}`);
   };
 
   return (
-    <form className="space-y-5" onSubmit={guardar}>
+    <form className="space-y-5" noValidate onSubmit={guardar}>
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/app/pacientes" className="inline-flex items-center gap-1 text-sm font-bold text-azure-700 hover:underline"><ChevronLeft className="h-4 w-4" /> Pacientes</Link>
         <h1 className="text-[16px] font-bold text-clinic-text">Nuevo paciente</h1>
@@ -72,9 +76,13 @@ export default function NuevoPacientePage() {
         </Card>
 
         <Card className="space-y-4 p-5">
-          <CamposPacienteForm campos={campos} valores={valores} onChange={setValores} convenios={(db.clinics[0]?.config.convenios ?? []).map((c) => c.name)} />
+          <CamposPacienteForm
+            campos={campos} valores={valores} onChange={setValores} convenios={(db.clinics[0]?.config.convenios ?? []).map((c) => c.name)}
+            problemas={alta.problemas}
+            avisos={{ documento: <AvisoCiRepetida repetidos={alta.repetidos} otraPersona={alta.otraPersona} onOtraPersona={alta.setOtraPersona} /> }}
+          />
           <p className="rounded-xl bg-azure-50 p-3 text-xs text-azure-700">Se asigna automáticamente la <b>Historia Clínica</b> como documento clínico pendiente.</p>
-          {error && <p role="alert" className="rounded-xl bg-state-errbg px-3 py-2 text-xs font-semibold text-state-err">{error}</p>}
+          {(alta.mensaje ?? error) && <p role="alert" className="rounded-xl bg-state-errbg px-3 py-2 text-xs font-semibold text-state-err">{alta.mensaje ?? error}</p>}
           <div className="flex justify-end gap-2">
             <Btn variant="outline" type="button" onClick={() => router.push("/app/pacientes")}>Cancelar</Btn>
             <Btn type="submit">Crear paciente</Btn>

@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { CAMPOS, CONTEXTOS, camposDe, visibles, faltantes, datosPaciente, extrasOnline, esMenor, siguienteCodigo, codigosFaltantes, nuevoPaciente } from "./camposPaciente";
+import {
+  CAMPOS, CONTEXTOS, camposDe, visibles, faltantes, datosPaciente, extrasOnline, esMenor, siguienteCodigo, codigosFaltantes, nuevoPaciente,
+  claveDeCI, pacientesConCI, requeridos, invalidos, revisar,
+} from "./camposPaciente";
 import type { FieldConfig } from "./types";
 
 const req = (ctx: "nuevo" | "agenda" | "online", config?: Record<string, FieldConfig>) =>
@@ -181,5 +184,101 @@ describe("código interno", () => {
   it("los pacientes viejos reciben códigos en orden de alta, a continuación del mayor", () => {
     const r = codigosFaltantes([{ id: "p_300" }, { id: "p1", code: 1 }, { id: "p_20" }, { id: "p2" }]);
     expect(r).toEqual([{ id: "p2", code: 2 }, { id: "p_20", code: 3 }, { id: "p_300", code: 4 }]);
+  });
+});
+
+/* ═══ CI repetida (B1a) ═══ */
+
+describe("claveDeCI: con qué se compara una CI", () => {
+  it("sin puntos, guiones ni espacios y sin distinguir mayúsculas: «3.456.789» y «3456789» son la misma", () => {
+    expect(claveDeCI("3.456.789")).toBe("3456789");
+    expect(claveDeCI(" 3 456-789 ")).toBe("3456789");
+    expect(claveDeCI("AB-123456")).toBe("ab123456"); // pasaportes
+  });
+
+  it("lo que no identifica a nadie no sirve para comparar: vacío, «s/d», ceros, un solo dígito repetido, muy corto", () => {
+    for (const v of ["", "   ", "s/d", "sin ci", "-", "0", "12", "000000", "1111111"]) expect(claveDeCI(v), `«${v}»`).toBeNull();
+    expect(claveDeCI(undefined)).toBeNull();
+  });
+});
+
+describe("pacientesConCI", () => {
+  const todos = [
+    { id: "p1", document: "3.456.789" },
+    { id: "p2", document: "4.567.890" },
+    { id: "p3", document: "s/d" },
+    { id: "p4", document: "s/d" },
+  ];
+
+  it("encuentra a quien ya tiene esa CI aunque esté escrita distinto", () => {
+    expect(pacientesConCI(todos, "3456789").map((p) => p.id)).toEqual(["p1"]);
+    expect(pacientesConCI(todos, "9.999.999")).toEqual([]);
+  });
+
+  it("al editar, el propio paciente no cuenta", () => {
+    expect(pacientesConCI(todos, "3.456.789", "p1")).toEqual([]);
+    expect(pacientesConCI(todos, "3.456.789", "p2").map((p) => p.id)).toEqual(["p1"]);
+  });
+
+  it("una CI que no sirve para comparar nunca coincide: los «s/d» no se confunden entre sí", () => {
+    expect(pacientesConCI(todos, "s/d")).toEqual([]);
+    expect(pacientesConCI(todos, "")).toEqual([]);
+    expect(pacientesConCI(todos, undefined)).toEqual([]);
+  });
+});
+
+/* ═══ Revisión del formulario (B8) ═══ */
+
+describe("requeridos: lo que de verdad se exige", () => {
+  it("los requeridos presentes, más el responsable si el paciente es menor", () => {
+    const campos = camposDe(undefined, "nuevo");
+    expect(requeridos(campos, {}).map((c) => c.key)).toEqual(["nombreLegal", "apellidos", "documento", "fechaNacimiento", "sexo", "genero", "telefonoMovil", "email"]);
+    const conMenor = requeridos(campos, { fechaNacimiento: "2018-01-01" }).map((c) => c.key);
+    expect(conMenor).toEqual(expect.arrayContaining(["apoderado", "dniRepLegal", "parentesco"]));
+  });
+});
+
+describe("invalidos: lo cargado que se descartaría en silencio", () => {
+  const campos = camposDe(undefined, "nuevo");
+
+  it("un email sin dominio y una fecha de nacimiento futura se detectan", () => {
+    expect(invalidos(campos, { email: "ana@correo", fechaNacimiento: "2999-01-01" }).map((c) => c.label)).toEqual(["Fecha de nacimiento", "Email"]);
+  });
+
+  it("lo vacío no es inválido (de eso se ocupa faltantes) y lo correcto pasa", () => {
+    expect(invalidos(campos, { email: "  ", documento: "", fechaNacimiento: "" })).toEqual([]);
+    expect(invalidos(campos, { email: "ana@correo.com", fechaNacimiento: "1990-04-12", sexo: "F" })).toEqual([]);
+  });
+
+  it("no mira los campos que el contexto no muestra", () => {
+    expect(invalidos(campos, { empleador: "<>" })).toEqual([]);
+  });
+});
+
+describe("revisar: un solo mensaje con todo lo que hay que corregir", () => {
+  const campos = camposDe(undefined, "nuevo");
+  const completo = { nombreLegal: "Ana", apellidos: "Paz", documento: "1.234.567", fechaNacimiento: "1990-05-20", sexo: "F", genero: "nd", telefonoMovil: "0981 111 222", email: "ana@correo.com" };
+
+  it("sin problemas no hay mensaje", () => {
+    expect(revisar(campos, completo)).toMatchObject({ mensaje: null, claves: [] });
+  });
+
+  it("todo vacío: lista los ocho obligatorios, en el orden del formulario", () => {
+    const r = revisar(campos, {});
+    expect(r.mensaje).toBe("Completá: Nombre legal, Apellidos, Cédula / DNI, Fecha de nacimiento, Sexo, Género, Teléfono móvil, Email.");
+    expect(r.claves[0]).toBe("nombreLegal");
+    expect(r.claves).toHaveLength(8);
+  });
+
+  it("los espacios no cuentan como dato y un correo sin dominio se pide revisar", () => {
+    const r = revisar(campos, { ...completo, documento: "   ", email: "ana@correo" });
+    expect(r.mensaje).toBe("Completá: Cédula / DNI. Revisá: Email.");
+    expect(r.claves).toEqual(["documento", "email"]);
+  });
+
+  it("un dato opcional mal cargado también se avisa (si no, se perdería sin decir nada)", () => {
+    const conRuc = camposDe(undefined, "nuevo");
+    const r = revisar(conRuc, { ...completo, fechaNacimiento: "2999-01-01" });
+    expect(r.mensaje).toBe("Revisá: Fecha de nacimiento.");
   });
 });

@@ -110,7 +110,7 @@ test.describe("paciente nuevo al agendar", () => {
     await ficha.getByLabel("Nombre legal *").fill("Sin");
     await ficha.getByLabel("Apellidos *").fill("Cédula");
     await ficha.getByRole("button", { name: "Crear paciente" }).click();
-    await expect(ficha).toBeVisible(); // el navegador frena el envío: faltan CI y teléfono
+    await expect(ficha).toBeVisible(); // la revisión del alta frena el envío (faltan CI y teléfono) y lo avisa: ver ficha-y-textos.spec.ts
     expect((await leerDB(page)).patients.length).toBe(antes);
   });
 

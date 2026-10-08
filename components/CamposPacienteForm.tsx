@@ -1,13 +1,15 @@
 "use client";
 /** Campos del paciente según la configuración de la clínica (Pacientes → Configuración),
  *  por secciones. Lo usan el alta de paciente (página completa) y «Crear nuevo paciente»
- *  al dar una cita. Los requeridos llevan asterisco y `required`: el navegador no deja
- *  enviar el formulario sin ellos. Si la fecha de nacimiento es de un menor de edad,
- *  aparece la sección del responsable y pasa a ser obligatoria. */
-import { CAMPOS_RESPONSABLE, GRUPOS, esMenor, type CampoResuelto, type ValoresCampos } from "@/lib/camposPaciente";
+ *  al dar una cita. Los requeridos llevan asterisco, `required` y `aria-required`; quien arma el
+ *  formulario le pone `noValidate` y revisa con `useRevisionAlta` (lib/useRevisionAlta.ts), que
+ *  marca acá los campos con problema (`problemas`: `aria-invalid` y borde rojo). Si la fecha de
+ *  nacimiento es de un menor de edad, aparece la sección del responsable y pasa a ser obligatoria. */
+import { Fragment, type ReactNode } from "react";
+import { CAMPOS_RESPONSABLE, GRUPOS, esMenor, type CampoKey, type CampoResuelto, type ValoresCampos } from "@/lib/camposPaciente";
 import { Field, inputCls } from "@/components/ui";
 
-export function CamposPacienteForm({ campos, valores, onChange, convenios = [], compacto = false }: {
+export function CamposPacienteForm({ campos, valores, onChange, convenios = [], compacto = false, problemas = [], avisos = {} }: {
   /** Todos los campos del contexto (`camposDe`); se muestran los presentes. */
   campos: CampoResuelto[];
   valores: ValoresCampos;
@@ -16,6 +18,10 @@ export function CamposPacienteForm({ campos, valores, onChange, convenios = [], 
   convenios?: string[];
   /** Sin títulos de sección (para ventanas chicas). */
   compacto?: boolean;
+  /** Los campos a marcar como inválidos. */
+  problemas?: readonly CampoKey[];
+  /** Un aviso a todo el ancho debajo de un campo (p. ej. «ya hay un paciente con esa CI»). */
+  avisos?: Partial<Record<CampoKey, ReactNode>>;
 }) {
   const set = (key: string, v: string) => onChange({ ...valores, [key]: v });
   const menor = esMenor(valores);
@@ -25,9 +31,14 @@ export function CamposPacienteForm({ campos, valores, onChange, convenios = [], 
   const campo = (c: CampoResuelto) => {
     const label = obligatorio(c) ? `${c.label} *` : c.label;
     const valor = valores[c.key] ?? "";
-    const comun = { id: `campo-${c.key}`, required: obligatorio(c), "aria-required": obligatorio(c), className: inputCls, value: valor };
+    const malo = problemas.includes(c.key);
+    const comun = {
+      id: `campo-${c.key}`, required: obligatorio(c), "aria-required": obligatorio(c), "aria-invalid": malo || undefined,
+      className: malo ? `${inputCls} !border-state-err` : inputCls, value: valor,
+    };
+    const conAviso = (nodo: ReactNode) => (avisos[c.key] ? <Fragment key={c.key}>{nodo}<div className="sm:col-span-2">{avisos[c.key]}</div></Fragment> : nodo);
     if (c.tipo === "sexo" || c.tipo === "genero") {
-      return (
+      return conAviso(
         <Field key={c.key} label={label}>
           <select {...comun} onChange={(e) => set(c.key, e.target.value)}>
             <option value="">Elegí una opción</option>
@@ -40,7 +51,7 @@ export function CamposPacienteForm({ campos, valores, onChange, convenios = [], 
       );
     }
     if (c.tipo === "textoLargo") {
-      return (
+      return conAviso(
         <div key={c.key} className="sm:col-span-2">
           <Field label={label}>
             <textarea {...comun} rows={2} maxLength={c.max} onChange={(e) => set(c.key, e.target.value)} />
@@ -49,7 +60,7 @@ export function CamposPacienteForm({ campos, valores, onChange, convenios = [], 
       );
     }
     const tipo = c.tipo === "fecha" ? "date" : c.tipo === "email" ? "email" : c.tipo === "tel" ? "tel" : "text";
-    return (
+    return conAviso(
       <Field key={c.key} label={label}>
         <input
           {...comun}

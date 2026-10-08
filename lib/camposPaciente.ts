@@ -160,14 +160,19 @@ export function esMenor(valores: ValoresCampos, hoy = Date.now()): boolean {
   return edad < 18;
 }
 
+/** Los campos que de verdad se exigen: los requeridos que se muestran y, si el paciente es menor,
+ *  el responsable aunque la clínica no lo haya marcado. */
+export function requeridos(campos: CampoResuelto[], valores: ValoresCampos): CampoResuelto[] {
+  const menor = esMenor(valores);
+  return campos.filter((c) => (c.presente && c.requerido) || (menor && CAMPOS_RESPONSABLE.includes(c.key)));
+}
+
+const vacio = (v: string | undefined): boolean => !(v ?? "").trim();
+
 /** Etiquetas de los campos requeridos que quedaron vacíos. Si el paciente es menor,
  *  el responsable es obligatorio aunque la clínica no lo haya marcado. */
 export function faltantes(campos: CampoResuelto[], valores: ValoresCampos): string[] {
-  const menor = esMenor(valores);
-  return campos
-    .filter((c) => (c.presente && c.requerido) || (menor && CAMPOS_RESPONSABLE.includes(c.key)))
-    .filter((c) => !(valores[c.key] ?? "").trim())
-    .map((c) => c.label);
+  return requeridos(campos, valores).filter((c) => vacio(valores[c.key])).map((c) => c.label);
 }
 
 const SEXOS = ["F", "M"];
@@ -189,6 +194,52 @@ export function normalizar(campo: Campo, valor: string | undefined): string | un
   if (campo.tipo === "fecha") return fechaValida(v) ? v : undefined;
   if (campo.tipo === "email") return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? v.toLowerCase() : undefined;
   return v;
+}
+
+/** Campos con un dato cargado que `normalizar` no acepta (un correo sin dominio, una fecha de nacimiento que
+ *  todavía no pasó…): `datosPaciente` los descartaría en silencio y el paciente quedaría sin ese dato. Los vacíos no
+ *  cuentan: de eso se ocupa `faltantes`. */
+export function invalidos(campos: CampoResuelto[], valores: ValoresCampos): CampoResuelto[] {
+  const menor = esMenor(valores);
+  return campos.filter((c) => (c.presente || (menor && CAMPOS_RESPONSABLE.includes(c.key))) && !vacio(valores[c.key]) && normalizar(c, valores[c.key]) === undefined);
+}
+
+export interface Revision {
+  /** «Completá: …» y/o «Revisá: …», listo para mostrar. `null` si no hay nada que corregir. */
+  mensaje: string | null;
+  /** Los campos con problema, en el orden del formulario (el primero es adonde lleva el foco). */
+  claves: CampoKey[];
+}
+
+/** Todo lo que hay que corregir antes de guardar, en un solo mensaje. Reemplaza al globito del navegador
+ *  (`required`), que avisa de a un campo, no se puede dar formato y no ve lo que `normalizar` descartaría. */
+export function revisar(campos: CampoResuelto[], valores: ValoresCampos): Revision {
+  const faltan = requeridos(campos, valores).filter((c) => vacio(valores[c.key]));
+  const mal = invalidos(campos, valores);
+  const partes = [
+    faltan.length > 0 ? `Completá: ${faltan.map((c) => c.label).join(", ")}.` : "",
+    mal.length > 0 ? `Revisá: ${mal.map((c) => c.label).join(", ")}.` : "",
+  ].filter(Boolean);
+  return {
+    mensaje: partes.length > 0 ? partes.join(" ") : null,
+    claves: campos.filter((c) => faltan.includes(c) || mal.includes(c)).map((c) => c.key),
+  };
+}
+
+/** La CI sin puntos, guiones ni espacios y en minúsculas, para reconocer a la misma persona escrita distinto
+ *  («3.456.789» y «3456789»). `null` si no sirve para reconocer a nadie: «s/d», «0», una sola cifra repetida o
+ *  menos de 4 caracteres. Sin esto, todos los pacientes cargados sin CI parecerían el mismo. */
+export function claveDeCI(ci: string | null | undefined): string | null {
+  const n = (ci ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (n.length < 4 || !/\d/.test(n) || /^(.)\1*$/.test(n)) return null;
+  return n;
+}
+
+/** Los pacientes que ya tienen esa CI. `excepto`: el que se está editando, que no cuenta contra sí mismo. */
+export function pacientesConCI<T extends Pick<Patient, "id" | "document">>(pacientes: readonly T[], ci: string | null | undefined, excepto?: string): T[] {
+  const clave = claveDeCI(ci);
+  if (!clave) return [];
+  return pacientes.filter((p) => p.id !== excepto && claveDeCI(p.document) === clave);
 }
 
 /** Los valores cargados, pasados a las propiedades del paciente. Solo toma los campos
