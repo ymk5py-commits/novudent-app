@@ -21,7 +21,7 @@ import {
   assertFails,
   assertSucceeds,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, getDocs, collection, collectionGroup, setDoc, updateDoc, deleteDoc, query, where } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, collectionGroup, setDoc, updateDoc, deleteDoc, deleteField, query, where } from "firebase/firestore";
 
 const PROJECT_ID = "novudent-rules-test";
 let testEnv;
@@ -355,6 +355,32 @@ test("EMR: un DENTISTA SÍ puede escribir el odontograma/EMR del paciente", asyn
 
 test("EMR: un ADMIN SÍ puede escribir el EMR del paciente", async () => {
   await assertSucceeds(updateDoc(doc(authed("adminA"), "clinics/clA/patients/p1"), { emr: [{ note: "control" }] }));
+});
+
+// ---- Seguimiento: quitar a un paciente de «Sin próxima cita» (`Patient.seguimiento`) ----
+// No es un campo clínico (patientClinicalFields): lo escriben quienes manejan los datos del paciente (recepción, caja, comercial) y el
+// dentista; la pantalla solo lo ofrece a quien tiene patients.personal o emr.write. El guardado es un setDoc SIN merge con la ficha entera.
+
+const QUITA = { cerradoAt: "2026-10-08T14:00:00.000Z", motivo: "No quiere continuar", por: "Laura Recepción" };
+
+test("SEGUIMIENTO: recepción y dentista pueden quitar a un paciente de la lista y volver a incluirlo (no es un campo clínico)", async () => {
+  await assertSucceeds(updateDoc(doc(authed("recepA"), "clinics/clA/patients/p1"), { seguimiento: QUITA }));
+  await assertSucceeds(updateDoc(doc(authed("dentA"), "clinics/clA/patients/p1"), { seguimiento: deleteField() }));
+  await assertSucceeds(updateDoc(doc(authed("dentA"), "clinics/clA/patients/p1"), { seguimiento: QUITA }));
+  await assertSucceeds(updateDoc(doc(authed("recepA"), "clinics/clA/patients/p1"), { seguimiento: deleteField() }));
+});
+
+test("SEGUIMIENTO: la ficha entera con la quita (setDoc sin merge) pasa si lo clínico queda igual, y la recepción no puede colar lo clínico de paso", async () => {
+  const ficha = (await getDoc(doc(authed("adminA"), "clinics/clA/patients/pEmr"))).data();
+  await assertSucceeds(setDoc(doc(authed("recepA"), "clinics/clA/patients/pEmr"), { ...ficha, seguimiento: QUITA }));
+  await assertFails(setDoc(doc(authed("recepA"), "clinics/clA/patients/pEmr"), { ...ficha, emr: [{ id: "e1", note: "Evolución forjada" }], seguimiento: QUITA }));
+  // Volver a incluir = la ficha sin el campo.
+  await assertSucceeds(setDoc(doc(authed("recepA"), "clinics/clA/patients/pEmr"), ficha));
+  assert.equal((await getDoc(doc(authed("adminA"), "clinics/clA/patients/pEmr"))).data().seguimiento, undefined);
+});
+
+test("SEGUIMIENTO: otra clínica no puede tocar la quita de un paciente ajeno", async () => {
+  await assertFails(updateDoc(doc(authed("adminB"), "clinics/clA/patients/p1"), { seguimiento: QUITA }));
 });
 
 // ---- Monetización: el plan lo fija la suscripción, no el cliente ----
