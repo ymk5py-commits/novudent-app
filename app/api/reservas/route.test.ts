@@ -218,3 +218,100 @@ describe("campos extra (Pacientes → Configuración, columna «Agenda online»)
     expect(docPaciente()).toBeUndefined();
   });
 });
+
+/* ===== La agenda ocupada se mide en la hora de la clínica =====
+ * Las citas del panel se guardan como instante UTC («…T12:00:00.000Z» = 09:00 en Asunción) y las online como hora local sin zona. Comparar
+ * `start.slice(11, 16)` con los turnos de la grilla dejaba libre el turno ocupado y ocupaba otro: la reserva online pisaba citas. */
+describe("agenda ocupada: citas del panel (UTC) y reservas online (hora local)", () => {
+  const listaOriginal = listCollection.getMockImplementation()!;
+  const llamadas = () => setDocument.mock.calls as unknown as [string, Record<string, unknown>][];
+  const conCitas = (citas: Record<string, unknown>[], pacientes: { id: string; data: Record<string, unknown> }[] = []) =>
+    listCollection.mockImplementation((async (_parent: string, col: string) =>
+      col === "users" ? [{ id: "u2", data: { role: "dentist", active: true, name: "Dra. Prueba" } }, { id: "u4", data: { role: "dentist", active: true, name: "Dr. Otro" } }]
+        : col === "appointments" ? citas.map((data, i) => ({ id: `a${i}`, data }))
+        : col === "patients" ? pacientes
+        : []) as unknown as typeof listaOriginal);
+  const cita = (start: string, end: string, extra: Record<string, unknown> = {}) => ({ dentistId: "u2", status: "confirmada", start, end, ...extra });
+  const slotsDe = async (dentista = "u2") => ((await (await GET(req(`http://x/api/reservas?clinicId=cl_demo&date=${MANANA}`))).json()).slots[dentista] ?? []) as string[];
+  const turno = (time: string) => ({ ...datosPaciente, date: MANANA, time, extras: { email: "ana@correo.com" } });
+
+  beforeEach(() => { setDocument.mockClear(); createIfAbsent.mockClear(); });
+  afterEach(() => listCollection.mockImplementation(listaOriginal));
+
+  it("una cita del panel de las 09:00 (guardada en UTC) saca el turno de las 09:00 y no el de las 12:00", async () => {
+    conCitas([cita("2026-08-07T12:00:00.000Z", "2026-08-07T12:30:00.000Z")]);
+    const slots = await slotsDe();
+    expect(slots).not.toContain("09:00");
+    expect(slots).toContain("12:00");
+  });
+
+  it("una cita larga saca todos los turnos que pisa", async () => {
+    conCitas([cita("2026-08-07T12:00:00.000Z", "2026-08-07T13:00:00.000Z")]);
+    const slots = await slotsDe();
+    expect(slots).not.toContain("09:00");
+    expect(slots).not.toContain("09:30");
+    expect(slots).toContain("10:00");
+  });
+
+  it("una reserva online (hora local sin zona) saca su turno", async () => {
+    conCitas([cita("2026-08-07T11:00:00", "2026-08-07T11:30:00", { source: "online", status: "pendiente" })]);
+    const slots = await slotsDe();
+    expect(slots).not.toContain("11:00");
+    expect(slots).toContain("11:30");
+  });
+
+  it("una cita cancelada no ocupa, y la de otro profesional tampoco", async () => {
+    conCitas([cita("2026-08-07T12:00:00.000Z", "2026-08-07T12:30:00.000Z", { status: "cancelada" }), cita("2026-08-07T13:00:00.000Z", "2026-08-07T13:30:00.000Z", { dentistId: "u4" })]);
+    expect(await slotsDe("u2")).toContain("09:00");
+    expect(await slotsDe("u2")).toContain("10:00");
+    expect(await slotsDe("u4")).not.toContain("10:00");
+  });
+
+  it("el POST no deja tomar un turno que una cita del panel ya ocupa (aunque el horario sea el mismo en hora local)", async () => {
+    conCitas([cita("2026-08-07T12:00:00.000Z", "2026-08-07T12:30:00.000Z")]);
+    const r = await POST(post(turno("09:00")));
+    expect(r.status).toBe(409);
+    expect(llamadas().some(([path]) => path.includes("/appointments/"))).toBe(false);
+  });
+
+  it("el POST tampoco deja pisar a mitad de una cita larga, pero sí tomar el turno que viene después", async () => {
+    conCitas([cita("2026-08-07T12:00:00.000Z", "2026-08-07T13:00:00.000Z")]);
+    expect((await POST(post(turno("09:30")))).status).toBe(409);
+    expect((await POST(post(turno("10:00")))).status).toBe(200);
+  });
+
+  it("antes se reservaba encima: el turno que sí estaba libre (las 12:00) se puede tomar", async () => {
+    conCitas([cita("2026-08-07T12:00:00.000Z", "2026-08-07T12:30:00.000Z")]);
+    expect((await POST(post(turno("12:00")))).status).toBe(200);
+  });
+});
+
+describe("el paciente que reserva por la web queda con la Historia Clínica pendiente", () => {
+  const listaOriginal = listCollection.getMockImplementation()!;
+  const llamadas = () => setDocument.mock.calls as unknown as [string, Record<string, unknown>][];
+  const turno = { ...datosPaciente, date: MANANA, time: "11:00", extras: { email: "ana@correo.com" } };
+
+  beforeEach(() => { setDocument.mockClear(); });
+  afterEach(() => listCollection.mockImplementation(listaOriginal));
+
+  it("un paciente nuevo trae su Historia Clínica pendiente, igual que el alta de la recepción", async () => {
+    const r = await POST(post(turno));
+    expect(r.status).toBe(200);
+    const paciente = llamadas().find(([path]) => path.includes("/patients/"));
+    const hc = llamadas().find(([path]) => path.includes("/clinicalDocs/"));
+    expect(paciente).toBeDefined();
+    expect(hc).toBeDefined();
+    const patientId = String(paciente![1].id);
+    expect(hc![0]).toBe(`clinics/cl_demo/clinicalDocs/cd_${patientId}_hc`);
+    expect(hc![1]).toMatchObject({ patientId, plantillaId: "historia_clinica", estado: "pendiente", createdBy: "reserva-online" });
+  });
+
+  it("un paciente que ya existe (mismo CI) no recibe otra Historia Clínica", async () => {
+    listCollection.mockImplementation((async (_parent: string, col: string) =>
+      col === "users" ? [{ id: "u2", data: { role: "dentist", active: true, name: "Dra. Prueba" } }]
+        : col === "patients" ? [{ id: "p9", data: { document: "1234567" } }]
+        : []) as unknown as typeof listaOriginal);
+    expect((await POST(post(turno))).status).toBe(200);
+    expect(llamadas().some(([path]) => path.includes("/clinicalDocs/"))).toBe(false);
+  });
+});

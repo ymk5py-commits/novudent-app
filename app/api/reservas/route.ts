@@ -7,7 +7,8 @@ import {
   createIfAbsent,
 } from "@/lib/server/firestore-rest";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
-import { ahoraEnZona, slotAlcanzaAnticipacion, anticipacionDe } from "@/lib/reserva-online";
+import { ahoraEnZona, slotAlcanzaAnticipacion, anticipacionDe, turnosOcupados } from "@/lib/reserva-online";
+import { historiaClinicaPendiente, plantillasDeClinica } from "@/lib/documentosClinicos";
 import { camposDe, datosPaciente, extrasOnline, type ValoresCampos } from "@/lib/camposPaciente";
 import type { FieldConfig } from "@/lib/types";
 
@@ -108,14 +109,17 @@ export async function GET(req: NextRequest) {
       .map((u) => ({ id: u.id, name: String(u.data.name || "Profesional") }));
 
     const appts = await listCollection(`clinics/${clinicId}`, "appointments", 500);
+    // Ocupado = todo turno que una cita pisa, en la hora de la CLÍNICA: las del panel se guardan como instante UTC y las online como hora local
+    // sin zona, y compararlas como texto dejaba libre el turno ocupado (ver lib/reserva-online.ts › turnosOcupados).
+    const grilla = gridSlots();
     const busy: Record<string, Set<string>> = {};
     for (const a of appts) {
-      const start = String(a.data.start || "");
-      if (!start.startsWith(date)) continue;
       if (a.data.status === "cancelada") continue;
+      const ocupados = turnosOcupados({ start: String(a.data.start || ""), end: a.data.end ? String(a.data.end) : undefined }, date, grilla, tz, SLOT_MIN);
+      if (ocupados.length === 0) continue;
       const dId = String(a.data.dentistId || "");
       if (!busy[dId]) busy[dId] = new Set();
-      busy[dId].add(start.slice(11, 16));
+      for (const t of ocupados) busy[dId].add(t);
     }
 
     // Se filtra por anticipación ANTES de responder: el paciente no debería ver
@@ -256,8 +260,8 @@ export async function POST(req: NextRequest) {
     const taken = appts.some(
       (a) =>
         String(a.data.dentistId) === dentistId &&
-        String(a.data.start || "").startsWith(`${date}T${time}`) &&
-        a.data.status !== "cancelada"
+        a.data.status !== "cancelada" &&
+        turnosOcupados({ start: String(a.data.start || ""), end: a.data.end ? String(a.data.end) : undefined }, date, [time], tz, SLOT_MIN).length > 0
     );
     if (taken) {
       return NextResponse.json(
@@ -286,6 +290,13 @@ export async function POST(req: NextRequest) {
         emr: [],
         historyUpdatePending: false,
       });
+      // Igual que un alta de la recepción (`crearPaciente` del store): la Historia Clínica queda PENDIENTE para completarla en la primera visita.
+      const hc = historiaClinicaPendiente({
+        id: `cd_${patientId}_hc`, clinicId, patientId,
+        plantillas: plantillasDeClinica(clinic.config as Parameters<typeof plantillasDeClinica>[0]),
+        by: { id: "reserva-online", name: "Reserva online" }, now: new Date().toISOString(),
+      });
+      if (hc) await setDocument(`clinics/${clinicId}/clinicalDocs/${hc.id}`, JSON.parse(JSON.stringify(hc)) as Record<string, unknown>);
     }
 
     // La cita entra "pendiente": la clínica (o Botika) la confirma.

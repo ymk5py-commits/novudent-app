@@ -105,6 +105,55 @@ function diasEntre(a: string, b: string): number | null {
   return Math.round((tb - ta) / 86_400_000);
 }
 
+/* ===== Cuándo está ocupada la agenda =====
+ * Una cita se guarda de dos formas: desde el panel como INSTANTE con zona («2026-10-08T12:00:00.000Z», que en Asunción son las 09:00) y desde la
+ * reserva online como hora local SIN zona («2026-10-08T09:00:00»). Compararlas como texto (`start.slice(11, 16)`) hacía que una cita del panel de
+ * las 09:00 ocupara el turno de las 12:00 y dejara libre el de las 09:00: la reserva online pisaba citas. Acá todo se lleva a la hora de la clínica. */
+
+const CON_ZONA = /(Z|[+-]\d{2}:?\d{2})$/i;
+const FECHA_Y_HORA = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/;
+
+/** Cuándo es ese momento en la zona de la clínica: fecha y minutos desde medianoche. Si el texto trae zona se convierte; si no, ya es hora de
+ *  la clínica y se lee tal cual. `null` si no es una fecha y hora válidas. */
+export function momentoLocal(iso: string, timeZone: string): { fecha: string; minutos: number } | null {
+  if (typeof iso !== "string") return null;
+  const texto = iso.trim();
+  const partes = FECHA_Y_HORA.exec(texto);
+  if (!partes) return null;
+  if (CON_ZONA.test(texto)) {
+    const ms = Date.parse(texto);
+    return Number.isNaN(ms) ? null : ahoraEnZona(ms, timeZone);
+  }
+  const h = Number(partes[2]);
+  const m = Number(partes[3]);
+  if (h > 23 || m > 59 || diasEntre(partes[1], partes[1]) === null) return null;
+  return { fecha: partes[1], minutos: h * 60 + m };
+}
+
+/** Los turnos de la grilla de ese día que una cita ocupa: todos los que se pisan con [inicio, fin). Sin fin (o con uno que no tiene sentido) la
+ *  cita dura un turno. Una cita sin inicio válido no ocupa nada. */
+export function turnosOcupados(
+  cita: { start: string; end?: string },
+  fecha: string,
+  grilla: readonly string[],
+  timeZone: string,
+  duracionTurnoMin = 30,
+): string[] {
+  const ini = momentoLocal(cita.start, timeZone);
+  if (!ini) return [];
+  const dIni = diasEntre(fecha, ini.fecha);
+  if (dIni === null) return [];
+  const inicio = dIni * 1440 + ini.minutos; // minutos desde la medianoche de `fecha`
+  let fin = inicio + duracionTurnoMin;
+  const finLocal = cita.end ? momentoLocal(cita.end, timeZone) : null;
+  const dFin = finLocal ? diasEntre(fecha, finLocal.fecha) : null;
+  if (finLocal && dFin !== null && dFin * 1440 + finLocal.minutos > inicio) fin = dFin * 1440 + finLocal.minutos;
+  return grilla.filter((hora) => {
+    const m = minutosDeHora(hora);
+    return m !== null && m < fin && m + duracionTurnoMin > inicio;
+  });
+}
+
 /** Lee la anticipación configurada por la clínica, saneada. Cualquier valor raro
  *  —negativo, no numérico, ausente— cae al default en vez de deshabilitar el
  *  control sin que nadie se entere. */

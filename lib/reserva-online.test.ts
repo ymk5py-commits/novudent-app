@@ -3,6 +3,8 @@ import {
   ahoraEnZona,
   minutosDeHora,
   slotAlcanzaAnticipacion,
+  momentoLocal,
+  turnosOcupados,
   MIN_LEAD_HORAS_DEFAULT,
   OPCIONES_ANTICIPACION,
 } from "./reserva-online";
@@ -129,5 +131,77 @@ describe("configuración", () => {
     // sin comerse la mañana siguiente. No se ofrece en el selector porque la
     // clínica que entra a configurarlo debería elegir explícitamente.
     expect(MIN_LEAD_HORAS_DEFAULT).toBe(12);
+  });
+});
+
+/* ===== Cuándo está ocupada la agenda =====
+ * Una cita se guarda de dos formas: desde el panel como INSTANTE con zona («2026-10-08T12:00:00.000Z», que en Asunción es las 09:00) y desde la
+ * reserva online como hora local SIN zona («2026-10-08T09:00:00»). Compararlas como texto hacía que una cita del panel de las 09:00 ocupara el
+ * turno de las 12:00 y dejara libre el de las 09:00: la reserva online pisaba citas. */
+
+const ZONA = "America/Argentina/Buenos_Aires"; // UTC-3 todo el año: sin horario de verano que mueva el resultado del test
+const GRILLA = ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30"];
+
+describe("momentoLocal", () => {
+  it("un instante UTC se pasa a la hora de la clínica", () => {
+    expect(momentoLocal("2026-10-08T12:00:00.000Z", ZONA)).toEqual({ fecha: "2026-10-08", minutos: 9 * 60 });
+  });
+
+  it("también con otra forma de dar la zona", () => {
+    expect(momentoLocal("2026-10-08T09:00:00-03:00", ZONA)).toEqual({ fecha: "2026-10-08", minutos: 9 * 60 });
+    expect(momentoLocal("2026-10-08T12:00:00+00:00", ZONA)).toEqual({ fecha: "2026-10-08", minutos: 9 * 60 });
+  });
+
+  it("una hora sin zona ya es la de la clínica y no se mueve", () => {
+    expect(momentoLocal("2026-10-08T09:00:00", ZONA)).toEqual({ fecha: "2026-10-08", minutos: 9 * 60 });
+    expect(momentoLocal("2026-10-08T09:30", ZONA)).toEqual({ fecha: "2026-10-08", minutos: 9 * 60 + 30 });
+  });
+
+  it("el cambio de día también se calcula en la zona de la clínica", () => {
+    expect(momentoLocal("2026-10-09T01:30:00.000Z", ZONA)).toEqual({ fecha: "2026-10-08", minutos: 22 * 60 + 30 });
+  });
+
+  it("basura devuelve null", () => {
+    for (const x of ["", "mañana", "2026-10-08", "2026-13-45T99:99:00", undefined as never, null as never]) expect(momentoLocal(x, ZONA)).toBeNull();
+  });
+});
+
+describe("turnosOcupados", () => {
+  it("una cita del panel de las 09:00 (guardada en UTC) ocupa el turno de las 09:00, no el de las 12:00", () => {
+    const ocupados = turnosOcupados({ start: "2026-10-08T12:00:00.000Z" }, "2026-10-08", GRILLA, ZONA);
+    expect(ocupados).toEqual(["09:00"]);
+  });
+
+  it("una reserva online (hora local sin zona) ocupa su turno", () => {
+    expect(turnosOcupados({ start: "2026-10-08T10:30:00", end: "2026-10-08T11:00:00" }, "2026-10-08", GRILLA, ZONA)).toEqual(["10:30"]);
+  });
+
+  it("una cita larga ocupa todos los turnos que pisa, no solo el primero", () => {
+    expect(turnosOcupados({ start: "2026-10-08T09:00:00", end: "2026-10-08T10:00:00" }, "2026-10-08", GRILLA, ZONA)).toEqual(["09:00", "09:30"]);
+    expect(turnosOcupados({ start: "2026-10-08T12:00:00.000Z", end: "2026-10-08T13:30:00.000Z" }, "2026-10-08", GRILLA, ZONA)).toEqual(["09:00", "09:30", "10:00"]);
+  });
+
+  it("una cita que empieza a mitad de un turno ocupa ese turno y el siguiente si lo pisa", () => {
+    expect(turnosOcupados({ start: "2026-10-08T09:15:00", end: "2026-10-08T09:45:00" }, "2026-10-08", GRILLA, ZONA)).toEqual(["09:00", "09:30"]);
+  });
+
+  it("sin fin, o con un fin que no tiene sentido, dura un turno", () => {
+    expect(turnosOcupados({ start: "2026-10-08T09:00:00" }, "2026-10-08", GRILLA, ZONA)).toEqual(["09:00"]);
+    expect(turnosOcupados({ start: "2026-10-08T09:00:00", end: "2026-10-08T08:00:00" }, "2026-10-08", GRILLA, ZONA)).toEqual(["09:00"]);
+    expect(turnosOcupados({ start: "2026-10-08T09:00:00", end: "basura" }, "2026-10-08", GRILLA, ZONA)).toEqual(["09:00"]);
+  });
+
+  it("una cita de otro día no ocupa nada", () => {
+    expect(turnosOcupados({ start: "2026-10-09T09:00:00" }, "2026-10-08", GRILLA, ZONA)).toEqual([]);
+    expect(turnosOcupados({ start: "2026-10-07T09:00:00", end: "2026-10-07T10:00:00" }, "2026-10-08", GRILLA, ZONA)).toEqual([]);
+  });
+
+  it("una cita que viene de la noche anterior y llega al otro día ocupa los primeros turnos", () => {
+    expect(turnosOcupados({ start: "2026-10-07T23:30:00", end: "2026-10-08T08:30:00" }, "2026-10-08", GRILLA, ZONA)).toEqual(["08:00"]);
+  });
+
+  it("una cita sin inicio válido no ocupa nada (y no rompe)", () => {
+    expect(turnosOcupados({ start: "" }, "2026-10-08", GRILLA, ZONA)).toEqual([]);
+    expect(turnosOcupados({ start: undefined as never }, "2026-10-08", GRILLA, ZONA)).toEqual([]);
   });
 });
