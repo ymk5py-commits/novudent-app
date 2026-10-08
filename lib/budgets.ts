@@ -20,10 +20,38 @@ export function budgetInteres(b: Pick<Budget, "financiamiento">): number {
   return Math.max(0, Math.round(b.financiamiento?.interes ?? 0));
 }
 
+export type ResultadoDescuento = { ok: true; valor: number } | { ok: false; error: string };
+
+/** Valida el % de descuento que escribe una persona (convenio o presupuesto): de 0 a 100,
+ *  con punto o con coma, hasta dos decimales. Lo que no sirve vuelve con el mensaje que le
+ *  dice qué corregir, en vez de guardarse y descontar más del total. */
+export function parsearDescuento(entrada: string | number): ResultadoDescuento {
+  let numero: number;
+  if (typeof entrada === "number") {
+    if (!Number.isFinite(entrada)) return { ok: false, error: "El descuento tiene que ser un número, por ejemplo 10 o 12,5." };
+    numero = entrada;
+  } else {
+    const texto = entrada.trim().replace(",", ".");
+    if (!texto) return { ok: false, error: "Escribí el porcentaje de descuento, por ejemplo 10." };
+    if (!/^-?\d+(\.\d+)?$/.test(texto)) return { ok: false, error: "El descuento tiene que ser un número, por ejemplo 10 o 12,5." };
+    numero = Number(texto);
+  }
+  if (numero < 0) return { ok: false, error: "El descuento no puede ser negativo." };
+  if (numero > 100) return { ok: false, error: "El descuento no puede pasar de 100 %." };
+  return { ok: true, valor: Math.round(numero * 100) / 100 || 0 };
+}
+
+/** El % guardado de un presupuesto, siempre entre 0 y 100. Un convenio cargado con
+ *  150 % (o un dato roto) no tiene que dar un total negativo ni un descuento mayor al plan. */
+export function descuentoSaneado(pct: number | undefined): number {
+  if (typeof pct !== "number" || !Number.isFinite(pct)) return 0;
+  return Math.min(100, Math.max(0, pct));
+}
+
 /** Monto del descuento (% manual o de convenio) sobre las prestaciones. */
 export function budgetDescuento(b: Pick<Budget, "items" | "discountPct">): number {
   const sub = budgetSubtotal(b);
-  return sub - Math.round(sub * (1 - (b.discountPct ?? 0) / 100));
+  return sub - Math.round(sub * (1 - descuentoSaneado(b.discountPct) / 100));
 }
 
 /** Total con descuento (% manual o de convenio), más el interés del financiamiento si lo
@@ -36,7 +64,7 @@ export function budgetTotal(b: Pick<Budget, "items" | "discountPct" | "financiam
  *  (el "Realizado" del panel financiero del Plan de tratamiento). */
 export function budgetRealizado(b: Pick<Budget, "items" | "discountPct">): number {
   const done = b.items.filter((i) => i.status === "realizado").reduce((s, i) => s + i.price, 0);
-  return Math.round(done * (1 - (b.discountPct ?? 0) / 100));
+  return Math.round(done * (1 - descuentoSaneado(b.discountPct) / 100));
 }
 
 export function budgetPaid(budgetId: string, payments: Payment[]): number {

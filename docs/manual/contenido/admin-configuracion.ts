@@ -506,7 +506,7 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Así se usa: al armar un presupuesto, elegís el convenio en **Convenio** y el descuento se completa solo ([[presentar-y-aceptar-un-presupuesto]]).", captura: "presupuesto" },
     ],
     avisos: [
-      { tipo: "ojo", texto: "El porcentaje tiene que estar entre 0 y 100, pero el campo no frena un número mayor: revisalo antes de tocar «Agregar convenio»." },
+      { tipo: "tip", texto: "El porcentaje tiene que estar entre 0 y 100. Si escribís otro número, el campo se marca en rojo con el motivo y «Agregar convenio» queda apagado hasta que lo corrijas." },
       { tipo: "ojo", texto: "El tachito saca el convenio al instante, sin pedir confirmación. Los presupuestos que ya lo usaban conservan su descuento." },
       { tipo: "tip", texto: "Los nombres de los convenios también se ofrecen como sugerencia en el campo **Convenio** al cargar un paciente nuevo." },
       { tipo: "revisar", texto: "El convenio es solo un porcentaje de descuento sobre el total del presupuesto: no hay lista de precios propia ni topes por prestación. Confirmar con las clínicas si alcanza." },
