@@ -17,6 +17,7 @@
     "manual:pdf": "playwright test -c docs/manual/playwright.manual.config.ts generar"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "firebase": "^12.14.0",
     "framer-motion": "^12.43.0",
     "lucide-react": "0.451.0",
