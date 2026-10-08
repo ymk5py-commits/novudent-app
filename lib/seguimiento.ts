@@ -54,8 +54,11 @@ const PLAN_VIGENTE: ReadonlySet<BudgetStatus> = new Set(["borrador", "presentado
 const DIA_MS = 86_400_000;
 
 const instante = (iso: string): number => Date.parse(iso);
+/** El instante de una fecha guardada; una que no se lee cuenta como la más vieja de todas. */
+const cuando = (iso: string): number => (Number.isFinite(instante(iso)) ? instante(iso) : -Infinity);
+/** El más reciente por `createdAt`; si hay empate gana el primero. */
 const masNuevo = <T extends { createdAt: string }>(xs: readonly T[]): T | undefined =>
-  xs.reduce<T | undefined>((m, x) => (!m || (Number.isFinite(instante(x.createdAt)) && instante(x.createdAt) > (Number.isFinite(instante(m.createdAt)) ? instante(m.createdAt) : -Infinity)) ? x : m), undefined);
+  xs.reduce<T | undefined>((m, x) => (!m || cuando(x.createdAt) > cuando(m.createdAt) ? x : m), undefined);
 
 /** Limpia el registro de quita que viene de Firestore (que se puede editar a mano o venir de una versión vieja): `cerradoAt` tiene que ser
  *  una fecha legible y el motivo no puede estar vacío; el resto se descarta. `undefined` = no hay una quita que valga. */
