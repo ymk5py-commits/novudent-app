@@ -5,7 +5,7 @@ import { SeccionOdontograma } from "@/components/Landing";
 export const metadata: Metadata = {
   title: "Odontograma digital por superficies FDI",
   description:
-    "32 piezas FDI con morfología real y 5 superficies marcables por pieza (M·D·V·L·O). Caries, coronas, endodoncia e implantes con autor y fecha: el odontograma de Novudent es interactivo — probalo acá mismo.",
+    "Odontograma interactivo: 32 piezas FDI con 5 superficies cada una. Caries, coronas, endodoncias e implantes con autor y fecha. Probalo acá mismo.",
   alternates: { canonical: "/odontograma" },
 };
 

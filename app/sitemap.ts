@@ -1,26 +1,19 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
+import { PAGINAS_PUBLICAS } from "@/lib/seo";
 
 /**
  * Sitemap del sitio público.
  *
- * Cada sección de la landing es también una PÁGINA con metadata propia (ver
- * components/landing/Chrome.tsx): eso es lo que hace crecer este archivo. Las
- * páginas por-token (reserva, firma, encuesta, pago, videoconsulta) quedan
- * fuera a propósito — ver robots.ts.
+ * Sale de `PAGINAS_PUBLICAS` (lib/seo.ts), con la fecha en que cambió el contenido de cada página: antes era la del pedido, y un sitemap
+ * que dice «todo cambió hoy» siempre deja de ser creíble para Google. Las páginas por-token (reserva, firma, encuesta, pago,
+ * videoconsulta) y el panel quedan fuera a propósito — ver robots.ts.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const ahora = new Date();
-  return [
-    { url: SITE_URL, lastModified: ahora, changeFrequency: "weekly", priority: 1 },
-    { url: `${SITE_URL}/odontograma`, lastModified: ahora, changeFrequency: "monthly", priority: 0.9 },
-    { url: `${SITE_URL}/capacidades`, lastModified: ahora, changeFrequency: "monthly", priority: 0.9 },
-    { url: `${SITE_URL}/como-se-trabaja`, lastModified: ahora, changeFrequency: "monthly", priority: 0.8 },
-    { url: `${SITE_URL}/en-accion`, lastModified: ahora, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${SITE_URL}/precios`, lastModified: ahora, changeFrequency: "monthly", priority: 0.9 },
-    { url: `${SITE_URL}/acceso`, lastModified: ahora, changeFrequency: "yearly", priority: 0.5 },
-    { url: `${SITE_URL}/privacidad`, lastModified: ahora, changeFrequency: "yearly", priority: 0.2 },
-    { url: `${SITE_URL}/terminos`, lastModified: ahora, changeFrequency: "yearly", priority: 0.2 },
-    { url: `${SITE_URL}/cookies`, lastModified: ahora, changeFrequency: "yearly", priority: 0.2 },
-  ];
+  return PAGINAS_PUBLICAS.map((p) => ({
+    url: p.ruta === "/" ? SITE_URL : `${SITE_URL}${p.ruta}`,
+    lastModified: p.actualizado,
+    changeFrequency: p.frecuencia,
+    priority: p.prioridad,
+  }));
 }

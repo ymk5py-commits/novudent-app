@@ -22,6 +22,7 @@ import { RUTAS_LEGALES, RUTAS_PUBLICAS } from "@/lib/landing/rutas";
 import { Logotipo } from "@/components/Marca";
 import type { Tono } from "@/lib/marca";
 import { SaltarAlContenido } from "@/components/SaltarAlContenido";
+import { jsonLdMigas } from "@/lib/seo";
 
 export { RUTAS_PUBLICAS, RUTAS_LEGALES } from "@/lib/landing/rutas";
 
@@ -255,6 +256,8 @@ export function PaginaSeccion({
       <NavLanding />
       <section className="lp-manchas pb-14 pt-28 sm:pb-20 sm:pt-36">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          {/* La misma miga de pan, como dato estructurado: Google la muestra en el resultado en vez de la URL (lib/seo.ts). */}
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdMigas(etiqueta, activa)) }} />
           <nav aria-label="Ruta" className="mb-5 flex items-center gap-2 text-[13px] font-medium text-lp-muted">
             <Link href="/" className="transition-colors hover:text-lp-primary">Inicio</Link>
             <span aria-hidden>/</span>
