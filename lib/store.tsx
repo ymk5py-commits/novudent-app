@@ -54,6 +54,7 @@ import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
 import { can, aplicarRolesDeLaClinica, mismaConfiguracionDeRoles } from "./rbac";
 import { historiaClinicaPendiente, historiasClinicasPendientes, plantillasDeClinica } from "./documentosClinicos";
+import { aplicarDatosClinica, type DatosClinica } from "./datosClinica";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { worstSeverity } from "./recovery";
 import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
@@ -489,6 +490,9 @@ interface Ctx {
   /* — Configuración — */
   /** `true` si se guardó (o no hay servidor); `false` si Firestore la rechazó (queda el aviso «No se guardó»). Se puede ignorar el resultado. */
   updateClinicConfig: (patch: Partial<Clinic["config"]>) => Promise<boolean>;
+  /** Nombre (campo `name` del documento de la clínica), dirección y teléfono (`config`) de una sola vez, para que un solo guardado
+   *  no pise al otro. Los datos tienen que venir revisados (`revisarDatosClinica`). Mismo resultado que `updateClinicConfig`. */
+  updateClinicProfile: (datos: DatosClinica) => Promise<boolean>;
   importPatients: (list: Patient[]) => void;
   /* — Integración Botika (outbox) — */
   addOutboxTask: (t: OutboxTask) => void;
@@ -1377,6 +1381,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const next = { ...db, clinics: [nextClinic] };
         // Estado local desde `prev` (el último): con `next` armado sobre `db`, una acción encadenada pisaba a la anterior.
         persist((prev) => ({ ...prev, clinics: [{ ...prev.clinics[0], config: { ...prev.clinics[0].config, ...patch } }] }));
+        return fsMeta(next);
+      },
+      updateClinicProfile: (datos) => {
+        const c = db.clinics[0];
+        if (!c) return Promise.resolve(false);
+        const next = { ...db, clinics: [aplicarDatosClinica(c, datos)] };
+        // Estado local desde `prev` (el último), como `updateClinicConfig`.
+        persist((prev) => ({ ...prev, clinics: [aplicarDatosClinica(prev.clinics[0], datos)] }));
         return fsMeta(next);
       },
       importPatients: (list) => {

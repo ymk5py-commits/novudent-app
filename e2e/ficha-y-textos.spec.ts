@@ -327,3 +327,70 @@ test.describe("B5 · Textos del odontograma y de radiografías", () => {
   });
 });
 
+/* ═══════════════════════ B6 · Configuración ═══════════════════════ */
+
+test.describe("B6 · Datos de la clínica y color de cada usuario", () => {
+  test("el administrador edita nombre, dirección y teléfono de la clínica", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.admin);
+    await page.goto("/app/configuracion");
+    const datos = tarjeta(page, "Datos de la clínica");
+    await datos.getByLabel("Nombre").fill("Clínica Sonrisa Norte");
+    await datos.getByLabel("Dirección").fill("Av. España 1234, Asunción");
+    await datos.getByLabel("Teléfono").fill("+595 21 555 000");
+    await datos.getByRole("button", { name: "Guardar datos" }).click();
+    await expect(datos.getByRole("status")).toContainText("Datos guardados");
+    const clinica = (await leerDB(page)).clinics[0];
+    expect(clinica).toMatchObject({ name: "Clínica Sonrisa Norte", config: { address: "Av. España 1234, Asunción", phone: "+595 21 555 000" } });
+    await expect(page.getByRole("banner")).toContainText("Clínica Sonrisa Norte");
+    // Sigue ahí después de recargar, y la moneda convive en la misma tarjeta.
+    await page.reload();
+    await expect(tarjeta(page, "Datos de la clínica").getByLabel("Nombre")).toHaveValue("Clínica Sonrisa Norte");
+    await expect(tarjeta(page, "Datos de la clínica").getByRole("combobox")).toBeVisible();
+  });
+
+  test("el nombre es obligatorio y no puede ser larguísimo; dirección y teléfono se pueden dejar vacíos", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.admin);
+    await page.goto("/app/configuracion");
+    const antes = (await leerDB(page)).clinics[0].name;
+    const datos = tarjeta(page, "Datos de la clínica");
+    await datos.getByLabel("Nombre").fill("   ");
+    await datos.getByRole("button", { name: "Guardar datos" }).click();
+    await expect(datos.getByRole("alert")).toContainText("Escribí el nombre de la clínica");
+    expect((await leerDB(page)).clinics[0].name).toBe(antes);
+
+    await datos.getByLabel("Nombre").fill("Clínica Sin Dirección");
+    await datos.getByLabel("Dirección").fill("");
+    await datos.getByLabel("Teléfono").fill("");
+    await datos.getByRole("button", { name: "Guardar datos" }).click();
+    await expect(datos.getByRole("status")).toContainText("Datos guardados");
+    expect((await leerDB(page)).clinics[0]).toMatchObject({ name: "Clínica Sin Dirección", config: { address: "", phone: "" } });
+  });
+
+  test("cada usuario tiene su selector de color en la fila, con paleta de 8", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.admin);
+    await page.goto("/app/configuracion");
+    await page.getByRole("button", { name: "Cambiar el color de agenda de Dra. Sofía Benítez" }).click();
+    const paleta = page.getByRole("radiogroup", { name: "Color de agenda de Dra. Sofía Benítez" });
+    await expect(paleta.getByRole("radio")).toHaveCount(8);
+    await expect(paleta.getByRole("radio", { name: "Verde" })).toBeChecked(); // #0E9F6E, el de la demo
+    await paleta.getByRole("radio", { name: "Violeta" }).click();
+    await expect.poll(async () => ((await leerDB(page)).users as { id: string; color: string }[]).find((u) => u.id === "u2")?.color).toBe("#7C3AED");
+  });
+
+  test("«Agregar usuario» propone el color del rol y respeta el que se eligió", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.admin);
+    await page.goto("/app/configuracion");
+    await page.getByRole("button", { name: "Agregar usuario" }).click();
+    const modal = page.getByRole("dialog", { name: "Agregar usuario" });
+    const paleta = modal.getByRole("radiogroup", { name: "Color en la agenda" });
+    await expect(paleta.getByRole("radio")).toHaveCount(8);
+    await expect(paleta.getByRole("radio", { name: "Rosa" })).toBeChecked(); // recepción
+    await modal.getByLabel("Rol").selectOption("dentist");
+    await expect(paleta.getByRole("radio", { name: "Verde" })).toBeChecked(); // dentista
+    await expect(modal).toContainText("ya lo usa Dra. Sofía Benítez"); // aviso, no impedimento
+    await paleta.getByRole("radio", { name: "Rojo" }).click();
+    await modal.getByLabel("Rol").selectOption("assistant");
+    await expect(paleta.getByRole("radio", { name: "Rojo" })).toBeChecked(); // el que se eligió a mano no vuelve al del rol
+  });
+});
+

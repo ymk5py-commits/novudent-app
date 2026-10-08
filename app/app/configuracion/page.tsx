@@ -1,11 +1,10 @@
 "use client";
 import Link from "next/link";
-/** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
+/** Configuración de la práctica (solo Administrador): datos de la clínica, usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, UserCog, Users, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, FileText, Image as ImageIcon, MapPin, ListChecks, Ban, Power } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Users, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, FileText, Image as ImageIcon, MapPin, ListChecks, Ban, Power } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
-import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
 import { can, rolLabel, rolDescripcion, rolesParaElegir } from "@/lib/rbac";
 import { planUserLimitError } from "@/lib/plan";
 import { PlazosTareas } from "@/components/tareas/PlazosTareas";
@@ -24,6 +23,9 @@ import { ArancelPrecios } from "@/components/ArancelPrecios";
 import { BancosEntidades } from "@/components/BancosEntidades";
 import { PermisosDelEquipo } from "@/components/PermisosDelEquipo";
 import { Logotipo } from "@/components/Marca";
+import { DatosClinica } from "@/components/DatosClinica";
+import { ColorDeUsuario, SelectorDeColor } from "@/components/ColorDeAgenda";
+import { colorDelRol, usuariosConColor } from "@/lib/coloresUsuario";
 
 const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> = {
   diasGatillo: 5,
@@ -72,26 +74,9 @@ export default function ConfigPage() {
         <p className="text-sm text-clinic-muted">Usuarios, servicios y datos de la clínica.</p>
       </div>
 
-      {/* Clínica */}
+      {/* Datos de la clínica: nombre, dirección y teléfono editables, y la moneda (id="moneda" vive adentro) */}
       <Reveal>
-      <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><Building2 className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Clínica</h2></div>
-        <div className="grid gap-3 text-sm sm:grid-cols-2">
-          <div><span className="text-clinic-muted">Nombre:</span> <b>{clinic?.name}</b></div>
-          <div id="moneda" className="scroll-mt-24"><span className="text-clinic-muted">Moneda:</span>{" "}
-            <select
-              value={clinic?.config.currency ?? "PYG"}
-              onChange={(e) => updateClinicConfig({ currency: e.target.value as CurrencyCode })}
-              className="ml-1 rounded-lg border border-clinic-border bg-white px-2 py-1 text-sm font-bold text-clinic-text focus:border-azure-400"
-            >
-              {CURRENCY_LIST.map((c) => <option key={c.code} value={c.code}>{c.symbol} · {c.name} ({c.code})</option>)}
-            </select>
-          </div>
-          <div><span className="text-clinic-muted">Dirección:</span> <b>{clinic?.config.address}</b></div>
-          <div><span className="text-clinic-muted">Teléfono:</span> <b>{clinic?.config.phone}</b></div>
-        </div>
-        <p className="mt-3 text-[11px] text-clinic-muted">Cambiar la moneda afecta el formato en toda la app (presupuestos, pagos, caja, reportes). No convierte montos por tipo de cambio.</p>
-      </Card>
+        <DatosClinica />
       </Reveal>
 
       <span id="sucursales" className="block scroll-mt-24" aria-hidden="true" />
@@ -181,9 +166,7 @@ export default function ConfigPage() {
             };
             return (
             <div key={u.id} className={`flex min-w-0 flex-wrap items-center gap-3 py-3 ${activo ? "" : "opacity-55"}`}>
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-bold text-white" style={{ background: u.color }}>
-                {u.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-              </span>
+              <ColorDeUsuario usuario={u} onCambiar={(color) => upsertUser({ ...u, color })} />
               <span className="min-w-0 flex-1 basis-[calc(100%-3rem)] sm:basis-auto">
                 <span className="flex flex-wrap items-center gap-2 text-sm font-bold text-clinic-text">{u.name}{!activo && <Badge tone="warn">Inactivo</Badge>}</span>
                 <span className="block break-all text-xs text-clinic-muted">{u.email}{u.phone ? ` · ${u.phone}` : ""}{u.specialty ? ` · ${u.specialty}` : ""}</span>
@@ -255,6 +238,7 @@ export default function ConfigPage() {
           })}
         </div>
         <p className="mt-2 text-[11px] text-clinic-muted">El % de comisión de cada dentista alimenta el cálculo de pago en <Link href="/app/reportes" className="font-bold text-azure-700">Reportes</Link>.</p>
+        <p className="mt-1 text-[11px] text-clinic-muted">El círculo de color de cada persona es el color con el que se ve en la agenda: tocalo para cambiarlo.</p>
       </Card>
       </Reveal>
 
@@ -598,11 +582,14 @@ function NewUser({
   onClose: () => void;
   onCreate: (d: { name: string; email: string; role: RolId; password: string; color: string; phone?: string }) => Promise<void>;
 }) {
+  const { db } = useStore();
   const [f, setF] = useState({ name: "", email: "", role: "receptionist" as RolId, password: "", phone: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // El color de agenda sale del rol; un rol propio usa un gris azulado.
-  const COLORS: Record<string, string> = { admin: "#1769E0", cashier: "#7C3AED", receptionist: "#DB2777", commercial: "#0891B2", dentist: "#0E9F6E", assistant: "#B45309" };
+  // El color de agenda arranca con el del rol y se puede cambiar; lo que se eligió a mano no vuelve al del rol si se cambia el rol.
+  const [colorElegido, setColorElegido] = useState<string | null>(null);
+  const color = colorElegido ?? colorDelRol(f.role);
+  const yaLoUsan = usuariosConColor(db.users, color);
 
   return (
     <Modal title="Agregar usuario" onClose={onClose}>
@@ -613,7 +600,7 @@ function NewUser({
           setBusy(true);
           setError(null);
           try {
-            await onCreate({ name: f.name, email: f.email, role: f.role, password: f.password, color: COLORS[f.role] ?? "#475569", phone: f.phone || undefined });
+            await onCreate({ name: f.name, email: f.email, role: f.role, password: f.password, color, phone: f.phone || undefined });
           } catch (err: any) {
             const code = err?.code ?? "";
             setError(
@@ -647,6 +634,16 @@ function NewUser({
             {rolesParaElegir().map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
           </select>
         </Field>
+        <div>
+          <span className="mb-1 block text-[13px] font-semibold text-clinic-text">Color en la agenda</span>
+          <SelectorDeColor valor={color} aria="Color en la agenda" onChange={setColorElegido} />
+          <span className="mt-1 block text-[12px] text-clinic-muted">Es el color con el que se ve a esta persona en la agenda. Podés cambiarlo después, desde su fila.</span>
+          {yaLoUsan.length > 0 && (
+            <span role="status" className="mt-1 block text-[12px] font-semibold text-state-warn">
+              Ojo: ya lo {yaLoUsan.length > 1 ? "usan" : "usa"} {yaLoUsan.map((u) => u.name).join(", ")}. Elegí otro si querés distinguirlos en la agenda.
+            </span>
+          )}
+        </div>
         {f.role === "assistant" && (
           <p className="rounded-xl bg-clinic-bg p-3 text-xs leading-relaxed text-clinic-muted">
             Después de crearlo, elegí en la lista a qué doctores asiste: sin doctores asignados no ve agendas ni pacientes.
