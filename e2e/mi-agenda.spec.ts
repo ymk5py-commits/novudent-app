@@ -189,8 +189,9 @@ test.describe("Mi agenda — administrador", () => {
     await expect(hecha).toContainText("Se tachó sola");
     await expect(hecha.getByRole("button", { name: /^Marcar como/ })).toHaveCount(0); // sin casillero: no se destilda a mano
 
-    // La bandeja la muestra como completada por el sistema.
+    // La bandeja la muestra como completada por el sistema (en «Tareas del día»: «Todas las pendientes», que es la que abre, solo trae pendientes).
     await page.goto("/app/tareas");
+    await page.getByRole("tab", { name: /Tareas del día/ }).click();
     await page.getByLabel("Esconder tareas completadas por sistema").uncheck();
     await expect(page.locator("main").getByText("Avisarle que su saldo está pendiente")).toBeVisible();
 

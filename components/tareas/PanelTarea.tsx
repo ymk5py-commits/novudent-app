@@ -164,7 +164,8 @@ function Linea({ icono: Icono, etiqueta, children, tono }: { icono: typeof User;
   return (
     <div className="flex items-start gap-2.5">
       <dt className="shrink-0"><Icono aria-hidden className={`mt-0.5 h-4 w-4 ${tono === "err" ? "text-state-err" : "text-clinic-muted"}`} /><span className="sr-only">{etiqueta}</span></dt>
-      <dd className="min-w-0 flex-1 text-clinic-text">{children}</dd>
+      {/* break-words: un texto largo sin espacios (un link pegado en el detalle) no tiene que ensanchar el panel ni la página. */}
+      <dd className="min-w-0 flex-1 break-words text-clinic-text">{children}</dd>
     </div>
   );
 }
