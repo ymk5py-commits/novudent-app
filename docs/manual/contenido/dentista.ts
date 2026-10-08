@@ -621,7 +621,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "Revisá el texto antes de tocar «Firmar y guardar»: una vez guardada, no hay botón para editar ni para borrar la nota." },
       { tipo: "tip", texto: "Con el plan Clínica, «Dictar nota» (en **Historial**) te deja contar la evolución hablando: la IA la transcribe y la redacta como nota clínica, y vos la revisás antes de guardarla." },
       { tipo: "revisar", texto: "Las plantillas SOAP («Control de ortodoncia», «Urgencia por dolor», «Profilaxis» y «Post-quirúrgico») son textos de ejemplo de Novudent, algunas con «…» para completar: confirmar con un odontólogo que sirven." },
-      { tipo: "ojo", texto: "Una evolución vacía no se firma: si todos los casilleros están vacíos (o solo tienen espacios), aparece un aviso en rojo («Escribí al menos uno de los cuatro campos…») y la nota no se guarda." },
+      { tipo: "ojo", texto: "Una evolución vacía no se firma: si todos los casilleros están vacíos (o solo tienen espacios), aparece un aviso en rojo («Escribí al menos uno de los cuatro campos…» en SOAP, «Escribí el detalle de la evolución…» en nota libre) y la nota no se guarda." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -659,7 +659,7 @@ export const procedimientos: Procedimiento[] = [
       await c.expect(modal.getByLabel("Detalle")).toBeVisible();
       await modal.getByRole("button", { name: "Firmar y guardar" }).click();
       await c.expect(modal).toBeVisible(); // vacía, no guarda
-      await c.expect(modal.getByRole("alert")).toContainText("Escribí al menos uno");
+      await c.expect(modal.getByRole("alert")).toContainText(/Escribí (al menos uno|el detalle)/);
       await modal.getByRole("button", { name: "Cancelar" }).click();
       await boton(page, "Historial").click();
       await c.expect(page.getByText(/S: Asintomático, consulta de control/)).toBeVisible();

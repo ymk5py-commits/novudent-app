@@ -484,7 +484,7 @@ export const procedimientos: Procedimiento[] = [
       // Este ítem recarga la página (va a la ficha con la pestaña pedida).
       await irDatos.click();
       await page.waitForURL(/tab=datos/);
-      await c.expect(main.getByText("Datos requeridos")).toBeVisible();
+      await c.expect(main.getByRole("heading", { name: "Datos requeridos" })).toBeVisible();
 
       const email = main.getByLabel("Email");
       await email.fill("lucia@example.com");

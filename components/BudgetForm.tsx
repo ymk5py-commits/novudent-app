@@ -133,7 +133,7 @@ export function BudgetForm({ budget, onClose, onSave, sinMontos = false, pacient
           </div>
         </div>
 
-        <Field label="Nombre del plan (opcional)" hint="Se ve en la lista de planes del paciente. Ej.: Ortodoncia fija, Rehabilitación superior.">
+        <Field label="Nombre del plan (opcional)" hint="Se ve en la lista de planes. Ej.: Ortodoncia fija, Rehabilitación superior.">
           <input className={inputCls} maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
 
