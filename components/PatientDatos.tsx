@@ -1,15 +1,26 @@
 "use client";
 /** Sub-tab "Datos personales" de la ficha: form completo estilo Dentalink
- *  (Datos requeridos + Datos opcionales). */
-import { useState } from "react";
+ *  (Datos requeridos + Datos opcionales).
+ *
+ *  «Datos requeridos» es lo que la clínica configuró como obligatorio para un paciente nuevo
+ *  (Pacientes › Configuración de campos, contexto «Nuevo paciente»; de fábrica: nombre, apellidos, CI,
+ *  fecha de nacimiento, sexo, género, teléfono y email, y el responsable si es menor), no una lista fija:
+ *  lo demás va en «Datos opcionales».
+ *
+ *  «Guardar datos» no deja VACIAR un dato obligatorio, pero no obliga a inventar uno que el paciente nunca
+ *  tuvo (importado, o cargado cuando el campo no era obligatorio): ese solo se avisa. Si no, corregir un
+ *  teléfono de un paciente viejo exigiría un email que nadie tiene a mano. */
+import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import { Save } from "lucide-react";
-import { useStore } from "@/lib/store";
+import { useStore, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
+import { camposDe, faltantes, pacientesConCI, requeridos, vaciados, valoresDe } from "@/lib/camposPaciente";
 import type { Patient } from "@/lib/types";
 import { Card, Btn, Field, inputCls } from "@/components/ui";
 
 export function DatosTab({ patient }: { patient: Patient }) {
-  const { session, upsertPatient } = useStore();
+  const { db, session, upsertPatient } = useStore();
   const canEdit = session ? can(session.role, "patients.personal") : false; // roles v3: recepción, caja y admin
 
   const orig = {
@@ -26,8 +37,18 @@ export function DatosTab({ patient }: { patient: Patient }) {
     emergencyContact: patient.emergencyContact ?? "", emergencyPhone: patient.emergencyPhone ?? "",
   };
   const [f, setF] = useState(orig);
+  const [intento, setIntento] = useState(false);
   const set = (patch: Partial<typeof f>) => setF((x) => ({ ...x, ...patch }));
   const dirty = JSON.stringify(f) !== JSON.stringify(orig);
+
+  // Lo que la clínica exige (la misma cuenta que el alta) y lo que esta edición dejaría vacío.
+  const campos = camposDe(db.clinics[0]?.config.patientFields, "nuevo");
+  const valores = valoresDe(f);
+  const exigidos = new Set<string>(requeridos(campos, valores).map((c) => c.prop));
+  const faltan = faltantes(campos, valores);
+  const aVaciar = vaciados(campos, valoresDe(orig), valores);
+  // Otro paciente con la misma CI: solo se avisa (acá se está corrigiendo una ficha que ya existe, no creando una).
+  const repetidos = pacientesConCI(db.patients, f.document, patient.id);
 
   const T = (label: string, k: keyof typeof f, type = "text") => (
     <Field label={label}>
@@ -35,7 +56,9 @@ export function DatosTab({ patient }: { patient: Patient }) {
     </Field>
   );
 
-  const save = () =>
+  const save = () => {
+    if (aVaciar.length > 0) { setIntento(true); return; }
+    setIntento(false);
     upsertPatient({
       ...patient,
       tipo: f.tipo.trim() || undefined,
@@ -54,6 +77,96 @@ export function DatosTab({ patient }: { patient: Patient }) {
       razonSocial: f.razonSocial.trim() || undefined, codigoReferido: f.codigoReferido.trim() || undefined,
       emergencyContact: f.emergencyContact.trim() || undefined, emergencyPhone: f.emergencyPhone.trim() || undefined,
     });
+  };
+
+  /** Todos los datos, en el orden del formulario de alta; cada uno va a «requeridos» u «opcionales» según la configuración. */
+  const datos: { prop: string; nodo: ReactNode; ancho?: boolean }[] = [
+    { prop: "firstName", nodo: T("Nombre legal", "firstName") },
+    { prop: "lastName", nodo: T("Apellidos", "lastName") },
+    {
+      prop: "document",
+      nodo: (
+        <div>
+          <Field label="Cédula identidad / DNI">
+            <div className="flex items-center gap-2">
+              <input className={inputCls} value={f.document} disabled={!canEdit} onChange={(e) => set({ document: e.target.value })} />
+              <label className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-clinic-muted">
+                <input type="checkbox" checked={f.foreigner} disabled={!canEdit} onChange={(e) => set({ foreigner: e.target.checked })} /> Extranjero
+              </label>
+            </div>
+          </Field>
+          {repetidos.length > 0 && (
+            <p role="status" className="mt-1 text-xs font-semibold text-state-warn">
+              Otro paciente tiene esta misma CI:{" "}
+              {repetidos.map((p, i) => (
+                <span key={p.id}>{i > 0 && ", "}<Link href={`/app/pacientes/${p.id}`} className="underline">{fullName(p)}</Link></span>
+              ))}
+              . Si es la misma persona, el administrador puede unir las fichas en «Fusión de fichas».
+            </p>
+          )}
+        </div>
+      ),
+    },
+    { prop: "birthDate", nodo: T("Fecha de nacimiento", "birthDate", "date") },
+    {
+      prop: "sex",
+      nodo: (
+        <Field label="Sexo">
+          <select className={inputCls} value={f.sex} disabled={!canEdit} onChange={(e) => set({ sex: e.target.value as typeof f.sex })}>
+            <option value="">Sin especificar</option>
+            <option value="F">Femenino</option>
+            <option value="M">Masculino</option>
+          </select>
+        </Field>
+      ),
+    },
+    {
+      prop: "gender",
+      nodo: (
+        <Field label="Género">
+          <select className={inputCls} value={f.gender} disabled={!canEdit} onChange={(e) => set({ gender: e.target.value as typeof f.gender })}>
+            <option value="">Sin especificar</option>
+            <option value="F">Femenino</option>
+            <option value="M">Masculino</option>
+            <option value="nd">Prefiero no decirlo</option>
+            {f.gender === "otro" && <option value="otro">Otro</option>}
+          </select>
+        </Field>
+      ),
+    },
+    { prop: "phone", nodo: T("Teléfono móvil", "phone") },
+    { prop: "email", nodo: T("Email", "email", "email") },
+    { prop: "tipo", nodo: T("Tipo", "tipo") },
+    { prop: "socialName", nodo: T("Nombre social", "socialName") },
+    { prop: "insurer", nodo: T("Convenio / seguro", "insurer") },
+    { prop: "internalNumber", nodo: T("Número interno", "internalNumber") },
+    { prop: "city", nodo: T("Ciudad", "city") },
+    { prop: "municipio", nodo: T("Municipio / comuna", "municipio") },
+    { prop: "barrio", nodo: T("Barrio", "barrio") },
+    { prop: "address", nodo: T("Dirección", "address") },
+    { prop: "activity", nodo: T("Actividad o profesión", "activity") },
+    { prop: "employer", nodo: T("Empleador", "employer") },
+    { prop: "landline", nodo: T("Teléfono fijo", "landline") },
+    { prop: "guardian", nodo: T("Responsable (paciente menor)", "guardian") },
+    { prop: "legalRepDoc", nodo: T("CI del responsable", "legalRepDoc") },
+    { prop: "parentesco", nodo: T("Qué es del paciente", "parentesco") },
+    { prop: "ruc", nodo: T("RUC", "ruc") },
+    { prop: "razonSocial", nodo: T("Razón social", "razonSocial") },
+    { prop: "referencia", nodo: T("Referido por (de quién)", "referencia") },
+    { prop: "codigoReferido", nodo: T("Código de referido", "codigoReferido") },
+    { prop: "emergencyContact", nodo: T("Contacto de emergencia", "emergencyContact") },
+    { prop: "emergencyPhone", nodo: T("Teléfono de emergencia", "emergencyPhone", "tel") },
+    {
+      prop: "observaciones", ancho: true,
+      nodo: (
+        <Field label="Observaciones">
+          <textarea rows={2} className={inputCls} value={f.observaciones} disabled={!canEdit} onChange={(e) => set({ observaciones: e.target.value })} />
+        </Field>
+      ),
+    },
+  ];
+  const grilla = (lista: typeof datos) =>
+    lista.map((d) => <div key={d.prop} className={d.ancho ? "sm:col-span-2 lg:col-span-3" : undefined}>{d.nodo}</div>);
 
   return (
     <div className="space-y-4">
@@ -66,70 +179,23 @@ export function DatosTab({ patient }: { patient: Patient }) {
         )}
       </div>
 
+      {intento && aVaciar.length > 0 && (
+        <p role="alert" className="rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold text-state-err">
+          No se guardó. Son datos obligatorios y no se pueden dejar vacíos: {aVaciar.join(", ")}.
+        </p>
+      )}
+
       <Card className="p-5">
         <h4 className="mb-3 text-[13px] font-bold text-clinic-muted">Datos requeridos</h4>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {T("Tipo", "tipo")}
-          {T("Nombre legal", "firstName")}
-          {T("Apellidos", "lastName")}
-          <Field label="Cédula identidad / DNI">
-            <div className="flex items-center gap-2">
-              <input className={inputCls} value={f.document} disabled={!canEdit} onChange={(e) => set({ document: e.target.value })} />
-              <label className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-clinic-muted">
-                <input type="checkbox" checked={f.foreigner} disabled={!canEdit} onChange={(e) => set({ foreigner: e.target.checked })} /> Extranjero
-              </label>
-            </div>
-          </Field>
-          {T("Email", "email", "email")}
-          {T("Teléfono móvil", "phone")}
-          {T("Fecha de nacimiento", "birthDate", "date")}
-        </div>
+        {faltan.length > 0 && (
+          <p role="status" className="mb-3 text-xs font-semibold text-state-warn">Faltan datos requeridos: {faltan.join(", ")}.</p>
+        )}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{grilla(datos.filter((d) => exigidos.has(d.prop)))}</div>
       </Card>
 
       <Card className="p-5">
         <h4 className="mb-3 text-[13px] font-bold text-clinic-muted">Datos opcionales</h4>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {T("Nombre social", "socialName")}
-          {T("Convenio / seguro", "insurer")}
-          {T("Número interno", "internalNumber")}
-          <Field label="Sexo">
-            <select className={inputCls} value={f.sex} disabled={!canEdit} onChange={(e) => set({ sex: e.target.value as typeof f.sex })}>
-              <option value="">Sin especificar</option>
-              <option value="F">Femenino</option>
-              <option value="M">Masculino</option>
-            </select>
-          </Field>
-          <Field label="Género">
-            <select className={inputCls} value={f.gender} disabled={!canEdit} onChange={(e) => set({ gender: e.target.value as typeof f.gender })}>
-              <option value="">Sin especificar</option>
-              <option value="F">Femenino</option>
-              <option value="M">Masculino</option>
-              <option value="nd">Prefiero no decirlo</option>
-              {f.gender === "otro" && <option value="otro">Otro</option>}
-            </select>
-          </Field>
-          {T("Ciudad", "city")}
-          {T("Municipio / comuna", "municipio")}
-          {T("Barrio", "barrio")}
-          {T("Dirección", "address")}
-          {T("Actividad o profesión", "activity")}
-          {T("Empleador", "employer")}
-          {T("Teléfono fijo", "landline")}
-          {T("Responsable (paciente menor)", "guardian")}
-          {T("CI del responsable", "legalRepDoc")}
-          {T("Qué es del paciente", "parentesco")}
-          {T("RUC", "ruc")}
-          {T("Razón social", "razonSocial")}
-          {T("Referido por (de quién)", "referencia")}
-          {T("Código de referido", "codigoReferido")}
-          {T("Contacto de emergencia", "emergencyContact")}
-          {T("Teléfono de emergencia", "emergencyPhone", "tel")}
-        </div>
-        <div className="mt-3">
-          <Field label="Observaciones">
-            <textarea rows={2} className={inputCls} value={f.observaciones} disabled={!canEdit} onChange={(e) => set({ observaciones: e.target.value })} />
-          </Field>
-        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{grilla(datos.filter((d) => !exigidos.has(d.prop)))}</div>
       </Card>
 
       {!canEdit && <p className="text-xs text-clinic-muted">Tu rol tiene acceso de solo lectura a los datos del paciente.</p>}

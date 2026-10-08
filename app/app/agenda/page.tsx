@@ -344,7 +344,7 @@ export default function AgendaPage() {
 
       {alcance.sinDoctores && (
         <p role="status" className="rounded-xl bg-state-warnbg px-4 py-3 text-sm font-semibold text-state-warn">
-          Todavía no tenés doctores asignados, así que no ves ninguna agenda. Pedile al administrador que te asigne en Configuración → Usuarios.
+          Todavía no tenés doctores asignados, así que no ves ninguna agenda. Pedile al administrador que te asigne en Administración › Usuarios y profesionales.
         </p>
       )}
       {(tab === "semanal" || tab === "mensual" || tab === "reprog") && (

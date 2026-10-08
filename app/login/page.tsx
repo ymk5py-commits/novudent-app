@@ -270,7 +270,7 @@ export default function Login() {
                 </button>
                 <p className="text-center text-[11px] leading-relaxed text-clinic-muted">
                   ¿Sin cuenta? Las cuentas las crea el <b>administrador</b> de tu clínica
-                  (Configuración → Usuarios). ¿Querés conocer Novudent? <a href="/#acceso" className="font-bold text-azure-700 hover:underline">Pedí tu acceso</a>.
+                  (Administración › Usuarios y profesionales). ¿Querés conocer Novudent? <a href="/#acceso" className="font-bold text-azure-700 hover:underline">Pedí tu acceso</a>.
                 </p>
               </form>
             ) : (

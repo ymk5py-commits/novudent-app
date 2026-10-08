@@ -1,6 +1,6 @@
 "use client";
 /**
- * Análisis IA de radiografías — RadiografiasTab.
+ * Radiografías — RadiografiasTab (con análisis por IA opcional).
  *
  * El profesional sube una radiografía (panorámica/bitewing/periapical), la IA
  * (Gemini Vision, vía /api/ia/radiografia) propone hallazgos como cajas sobre la
@@ -320,9 +320,9 @@ function RadiografiasInner({ patient, canEdit }: { patient: Patient; canEdit: bo
               <ScanLine className="h-5 w-5" />
             </span>
             <div>
-              <h2 className="font-bold text-clinic-text">Análisis IA de radiografías</h2>
+              <h2 className="font-bold text-clinic-text">Subir una radiografía</h2>
               <p className="text-xs text-clinic-muted">
-                Subí una radiografía, la IA marca hallazgos sobre la imagen y vos los ajustás.
+                Elegí el tipo de estudio y subí la imagen. Marcá los hallazgos a mano, o pedile a la IA que los proponga con «Analizar con IA» y ajustalos vos antes de guardar.
               </p>
             </div>
           </div>

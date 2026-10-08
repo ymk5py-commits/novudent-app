@@ -72,7 +72,7 @@ export default function SuperAdminPage() {
       `Agenda online para tus pacientes:`,
       `${location.origin}${created.bookingUrl}`,
       ``,
-      `Desde Configuración → Usuarios del equipo podés crear las cuentas de tus doctores y asistentes.`,
+      `Desde Administración › Usuarios y profesionales podés crear las cuentas de tus doctores y asistentes.`,
     ].join("\n");
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
@@ -120,7 +120,7 @@ export default function SuperAdminPage() {
               <div className="rounded-2xl border border-azure-200 bg-azure-50 p-4">
                 <p className="text-sm font-extrabold text-navy-800">Siguiente paso: cargar el equipo</p>
                 <p className="mt-1 text-xs leading-relaxed text-clinic-muted">
-                  Entrá con el email de administrador y la contraseña temporal que acabás de crear. Después de cambiarla, abrí Configuración → Usuarios del equipo para agregar a cada persona.
+                  Entrá con el email de administrador y la contraseña temporal que acabás de crear. Después de cambiarla, abrí Administración › Usuarios y profesionales para agregar a cada persona.
                 </p>
                 <a href="/login" className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-azure-600 px-4 text-center text-sm font-bold text-white hover:bg-azure-700">
                   Ingresar como administrador <ArrowRight className="h-4 w-4" />
@@ -137,7 +137,7 @@ export default function SuperAdminPage() {
                 <span className="inline-flex items-center gap-2"><Plus className="h-4 w-4" /> Crear otra clínica</span>
               </button>
               <p className="text-center text-[11px] leading-relaxed text-clinic-muted">
-                El admin de la clínica crea a sus doctores y asistentes desde <b>Configuración → Usuarios del equipo</b>.
+                El admin de la clínica crea a sus doctores y asistentes desde <b>Administración › Usuarios y profesionales</b>.
               </p>
             </div>
           ) : (

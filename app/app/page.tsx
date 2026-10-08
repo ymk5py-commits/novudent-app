@@ -382,7 +382,7 @@ export default function Dashboard() {
             <Badge tone="info">RBAC</Badge>
             <span>
               {rolDescripcion(session.role)}
-              {alcance.sinDoctores && <> Todavía no tenés doctores asignados: pedile al administrador que te asigne en Usuarios.</>}
+              {alcance.sinDoctores && <> Todavía no tenés doctores asignados: pedile al administrador que te asigne en Administración › Usuarios y profesionales.</>}
             </span>
           </div>
         </Card>

@@ -305,6 +305,15 @@ export function historiaClinicaPendiente(o: {
   return plantilla ? nuevoDocumento({ id: o.id, clinicId: o.clinicId, patientId: o.patientId, plantilla, by: o.by, now: o.now }) : null;
 }
 
+/** Las Historias Clínicas pendientes de varios pacientes recién cargados a la vez (la importación de pacientes). Cada
+ *  una lleva el mismo id que le pone `crearPaciente` al alta de uno solo: repetir la carga no duplica el documento. */
+export function historiasClinicasPendientes(
+  pacientes: readonly Pick<Patient, "id" | "clinicId">[],
+  o: { plantillas: readonly PlantillaDocumento[]; by: { id: string; name: string }; now: string },
+): DocumentoClinico[] {
+  return pacientes.flatMap((p) => historiaClinicaPendiente({ id: `cd_${p.id}_hc`, clinicId: p.clinicId, patientId: p.id, ...o }) ?? []);
+}
+
 /* ═══ Permisos y etiquetas ═══ */
 
 /** Ver Documentos clínicos: quien gestiona formularios o puede leer la ficha. */

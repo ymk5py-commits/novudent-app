@@ -62,6 +62,8 @@ import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
 import { registrarFallo, resolverFallo, clasificarError, vigilarEscritura } from "./write-errors";
 import { parseFecha } from "./tareas";
 import { idCheck, type PasoId } from "./rutinaAdmin";
+import { historiasClinicasPendientes } from "./documentosClinicos";
+import { aplicarDatosClinica, type DatosClinica } from "./datosClinica";
 
 const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
@@ -490,6 +492,9 @@ interface Ctx {
   /* — Configuración — */
   /** `true` si se guardó (o no hay servidor); `false` si Firestore la rechazó (queda el aviso «No se guardó»). Se puede ignorar el resultado. */
   updateClinicConfig: (patch: Partial<Clinic["config"]>) => Promise<boolean>;
+  /** Nombre (campo `name` del documento de la clínica), dirección y teléfono (`config`) de una sola vez, para que un solo guardado
+   *  no pise al otro. Los datos tienen que venir revisados (`revisarDatosClinica`). Mismo resultado que `updateClinicConfig`. */
+  updateClinicProfile: (datos: DatosClinica) => Promise<boolean>;
   importPatients: (list: Patient[]) => void;
   /* — Integración Botika (outbox) — */
   addOutboxTask: (t: OutboxTask) => void;
@@ -1369,9 +1374,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         persist((prev) => ({ ...prev, clinics: [{ ...prev.clinics[0], config: { ...prev.clinics[0].config, ...patch } }] }));
         return fsMeta(next);
       },
+      updateClinicProfile: (datos) => {
+        const c = db.clinics[0];
+        if (!c) return Promise.resolve(false);
+        const next = { ...db, clinics: [aplicarDatosClinica(c, datos)] };
+        // Estado local desde `prev` (el último), como `updateClinicConfig`.
+        persist((prev) => ({ ...prev, clinics: [aplicarDatosClinica(prev.clinics[0], datos)] }));
+        return fsMeta(next);
+      },
       importPatients: (list) => {
-        persist((prev) => ({ ...prev, patients: [...prev.patients, ...list] }));
+        if (list.length === 0) return;
+        // Igual que el alta de la recepción (`crearPaciente`): cada paciente importado queda con la Historia Clínica pendiente.
+        const hcs = historiasClinicasPendientes(list, {
+          plantillas: plantillasDeClinica(db.clinics[0]?.config),
+          by: { id: session?.userId ?? "", name: session?.name ?? "Importación" },
+          now: new Date().toISOString(),
+        });
+        const idsHc = new Set(hcs.map((h) => h.id));
+        persist((prev) => ({
+          ...prev,
+          patients: [...prev.patients, ...list],
+          clinicalDocs: [...hcs, ...prev.clinicalDocs.filter((x) => !idsHc.has(x.id))],
+        }));
         list.forEach((p) => fsSave("patients", p.id, p));
+        hcs.forEach((h) => fsSave("clinicalDocs", h.id, h));
       },
       /* — Integración Botika (outbox) — */
       addOutboxTask: (t) => {
