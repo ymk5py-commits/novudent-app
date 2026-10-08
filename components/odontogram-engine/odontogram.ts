@@ -5664,6 +5664,8 @@ function wireControls(){
   });
 
   $("#btnResetAll").addEventListener("click", ()=>{
+    // Novudent: borra TODAS las piezas, así que se pide confirmación (antes borraba sin preguntar).
+    if(!window.confirm(t("status.resetAllConfirm"))) return;
     setEdentulous(false);
     for(const toothNo of ALL_TEETH){
       toothState.set(toothNo, defaultState());
@@ -5674,6 +5676,9 @@ function wireControls(){
       setControlsEnabled(true);
       syncControlsFromState(toothState.get(activeTooth));
     }
+    // Novudent: `setEdentulous(false)` avisa el cambio ANTES de borrar las piezas, así que «Información dental» seguía mostrando lo viejo.
+    // Se vuelve a avisar cuando el estado ya es el nuevo.
+    notifyStateChange();
   });
 
   $("#btnPrimaryDentition").addEventListener("click", ()=>{

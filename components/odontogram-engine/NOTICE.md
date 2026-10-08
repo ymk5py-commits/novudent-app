@@ -91,3 +91,6 @@ environment jsdom + `plugins: [react()]`), ver el `README.md` del repo origen.
   sola arcada corrían la fila de abajo 6 columnas. En `index.css`, una regla
   `.tooth-tile.occl-view.tpl-11/.tpl-13` les da 64×64 (si no, les ganaba la regla de su plantilla
   lateral, 60×102). Lo cubren `lib/odontogram-svg.test.ts` y `e2e/odontograma-realista.spec.ts`.
+- `odontogram.ts` (`#btnResetAll`, oct-2026): «Restablecer boca» borraba las 32 piezas sin preguntar y dejaba «Información dental» con lo
+  viejo, porque `setEdentulous(false)` avisa el cambio (`notifyStateChange`) antes de borrar las piezas. Ahora pide confirmación
+  (`status.resetAllConfirm`, locales `es` y `en`; los demás caen en inglés) y avisa de nuevo al terminar. Lo cubre `e2e/bugs-datos.spec.ts`.
