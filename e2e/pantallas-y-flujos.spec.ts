@@ -162,3 +162,87 @@ test.describe("Agenda: el menú «Estado de la cita»", () => {
     await expect.poll(async () => (await leerDB(page)).appointments.find((a: { id: string }) => a.id === "a_e2e_hoy")?.estadoId).toBe("propio_20");
   });
 });
+
+/* ═══ Ficha del paciente ═══ */
+
+test.describe("Ficha clínica › Evoluciones › Nueva evolución", () => {
+  const emrDeP1 = async (page: Page) => (await leerDB(page)).patients.find((p: { id: string }) => p.id === "p1").emr as { text: string; soap?: Record<string, string> }[];
+
+  test.beforeEach(async ({ page }) => {
+    await entrarDemo(page);
+    await page.goto("/app/pacientes/p1?tab=evoluciones");
+    await main(page).getByRole("button", { name: "Nueva evolución" }).click();
+  });
+
+  test("«Firmar y guardar» con los cuatro campos SOAP vacíos avisa por qué y no guarda nada", async ({ page }) => {
+    const antes = (await emrDeP1(page)).length;
+    const dialogo = page.getByRole("dialog", { name: "Nueva evolución clínica" });
+    await dialogo.getByRole("button", { name: "Firmar y guardar" }).click();
+    await expect(dialogo.getByRole("alert")).toContainText("antes de firmar");
+    await expect(dialogo).toBeVisible();
+    expect(await emrDeP1(page)).toHaveLength(antes);
+    // Con espacios solos tampoco: no hay nada que firmar.
+    await dialogo.getByLabel("S — Subjetivo").fill("   ");
+    await dialogo.getByRole("button", { name: "Firmar y guardar" }).click();
+    await expect(dialogo.getByRole("alert")).toBeVisible();
+    expect(await emrDeP1(page)).toHaveLength(antes);
+  });
+
+  test("en «Nota libre» sin detalle pasa lo mismo, y el aviso se va al escribir", async ({ page }) => {
+    const antes = (await emrDeP1(page)).length;
+    const dialogo = page.getByRole("dialog", { name: "Nueva evolución clínica" });
+    await dialogo.getByRole("button", { name: "Nota libre" }).click();
+    await dialogo.getByRole("button", { name: "Firmar y guardar" }).click();
+    await expect(dialogo.getByRole("alert")).toContainText("antes de firmar");
+    expect(await emrDeP1(page)).toHaveLength(antes);
+    await dialogo.getByLabel("Detalle").fill("Control sin novedades.");
+    await expect(dialogo.getByRole("alert")).toHaveCount(0);
+  });
+
+  test("con un solo campo completo sí firma y guarda", async ({ page }) => {
+    const antes = (await emrDeP1(page)).length;
+    const dialogo = page.getByRole("dialog", { name: "Nueva evolución clínica" });
+    await dialogo.getByLabel("P — Plan").fill("Control en 6 meses.");
+    await dialogo.getByRole("button", { name: "Firmar y guardar" }).click();
+    await expect(dialogo).toBeHidden();
+    const emr = await emrDeP1(page);
+    expect(emr).toHaveLength(antes + 1);
+    expect(emr[0].soap).toMatchObject({ p: "Control en 6 meses." });
+  });
+});
+
+test.describe("Ficha clínica › Resumen e Historial", () => {
+  test.beforeEach(async ({ page }) => {
+    await entrarDemo(page);
+    await conDemo(page, (db: any) => {
+      const dia = (n: number, h: number) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(h, 0, 0, 0); return d.toISOString(); };
+      const base = { clinicId: db.clinics[0].id, patientId: "p1", dentistId: "u2", amount: 0, discount: 0 };
+      db.appointments.push(
+        { ...base, id: "a_e2e_anulada", title: "Cita anulada E2E", start: dia(2, 15), end: dia(2, 16), status: "cancelada" },
+        { ...base, id: "a_e2e_vigente", title: "Cita vigente E2E", start: dia(3, 15), end: dia(3, 16), status: "confirmada" },
+      );
+    });
+  });
+
+  test("«Próximas citas» no lista las citas anuladas", async ({ page }) => {
+    await page.goto("/app/pacientes/p1");
+    const proximas = page.getByRole("heading", { name: "Próximas citas" }).locator("xpath=..");
+    await expect(proximas).toContainText("Cita vigente E2E");
+    await expect(proximas).not.toContainText("Cita anulada E2E");
+    await expect(proximas).not.toContainText("Anulado");
+    // Las anuladas siguen estando en la pestaña Citas (ahí sí van, con su etiqueta).
+    await page.goto("/app/pacientes/p1?tab=citas");
+    await expect(main(page).getByRole("row", { name: /Cita anulada E2E/ })).toContainText("Anulado");
+  });
+
+  test("el tipo de nota se lee igual en Resumen, Historial y Evoluciones («Diagnóstico», no «diagnostico»)", async ({ page }) => {
+    for (const pestana of ["resumen", "historial", "evoluciones"]) {
+      await page.goto(`/app/pacientes/p1?tab=${pestana}`);
+      await expect(main(page).getByText("Diagnóstico", { exact: true }).first(), pestana).toBeVisible();
+      await expect(main(page).getByText("Plan", { exact: true }).first(), pestana).toBeVisible();
+      for (const crudo of ["diagnostico", "tratamiento", "plan", "nota"]) {
+        await expect(main(page).getByText(crudo, { exact: true }), `«${crudo}» crudo en ${pestana}`).toHaveCount(0);
+      }
+    }
+  });
+});
