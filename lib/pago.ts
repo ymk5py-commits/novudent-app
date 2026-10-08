@@ -1,4 +1,4 @@
-import type { Payment, PaymentMethod } from "./types";
+import type { FiscalDoc, Payment, PaymentMethod } from "./types";
 import { fechaLocal } from "./tareas";
 
 /* Ingresar un pago (paridad Dentalink): un mismo pago puede abonar a varios planes,
@@ -139,4 +139,10 @@ export function comprobanteDe(receiptNumber: string, payments: readonly Payment[
  *  quedaba antes de que se abriera y no entraba nunca (el saldo del paciente sí bajaba). Un pago de otro día queda al mediodía de ese día. */
 export function fechaDelPago(dia: string, ahora: Date = new Date()): string {
   return dia === fechaLocal(ahora) ? ahora.toISOString() : new Date(`${dia}T12:00:00`).toISOString();
+}
+
+/** La devolución ya registrada de un pago, si la hay. Un pago se devuelve una sola vez:
+ *  la pantalla esconde el botón y no deja repetirla. */
+export function devolucionDelPago(docs: FiscalDoc[], paymentId: string): FiscalDoc | undefined {
+  return docs.find((d) => d.kind === "devolucion" && d.paymentId === paymentId);
 }

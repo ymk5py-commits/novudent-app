@@ -143,7 +143,14 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
                       <span className="block text-[11px] leading-4 text-clinic-muted">{fmtTime(p.date)} · {PAYMENT_METHOD_LABEL[p.method]} · {p.receivedBy}</span>
                     </span>
                     <span className="col-start-2 shrink-0 tabular-nums text-sm font-bold text-state-ok">+ {fmtGs(p.amount)}</span>
-                    {isAdmin && <button onClick={() => store.deletePayment(p.id)} className="col-start-3 grid h-10 w-10 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err sm:h-8 sm:w-8" title="Eliminar pago"><Trash2 className="h-3.5 w-3.5" /></button>}
+                    {isAdmin && session && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`¿Anular el pago de ${fmtGs(p.amount)}${patient ? ` de ${fullName(patient)}` : ""}?\n\nDeja de contar en la caja y en el saldo del paciente, y queda en «Pagos eliminados» de su ficha.`)) store.voidPayment(p.id, session.name);
+                        }}
+                        className="col-start-3 grid h-10 w-10 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err sm:h-8 sm:w-8" title="Anular pago" aria-label="Anular pago"
+                      ><Trash2 className="h-3.5 w-3.5" /></button>
+                    )}
                   </li>
                 );
               })}

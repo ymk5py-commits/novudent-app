@@ -466,7 +466,6 @@ interface Ctx {
   deleteBudget: (id: string) => void;
   /* — Caja — */
   addPayment: (p: Payment) => void;
-  deletePayment: (id: string) => void;
   addExpense: (e: Expense) => void;
   updateExpense: (e: Expense) => void;
   deleteExpense: (id: string) => void;
@@ -1301,10 +1300,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // cada iteración parte del estado previo y acumula, sin last-write-wins.
         persist((prev) => ({ ...prev, payments: [...prev.payments, p] }));
         fsSave("payments", p.id, p);
-      },
-      deletePayment: (id) => {
-        persist((prev) => ({ ...prev, payments: prev.payments.filter((x) => x.id !== id) }));
-        fsDelete("payments", id);
       },
       addExpense: (e) => {
         persist((prev) => ({ ...prev, expenses: [...prev.expenses, e] }));
