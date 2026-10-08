@@ -378,6 +378,27 @@ describe("la reserva online mira solo lo del día y busca al paciente por CI en 
     expect(llamadas().some(([path]) => path.includes("/patients/"))).toBe(false);
   });
 
+  it("si la consulta del día falla (índice, permisos…), la disponibilidad cae a la lectura de antes en vez de romper la reserva", async () => {
+    queryRange.mockImplementationOnce(async () => { throw new Error("query appointments.start falló (400)"); });
+    listCollection.mockImplementation((async (_parent: string, col: string) =>
+      col === "users" ? [{ id: "u2", data: { role: "dentist", active: true, name: "Dra. Prueba" } }]
+        : col === "appointments" ? [{ id: "a1", data: { dentistId: "u2", status: "confirmada", start: "2026-08-07T12:00:00.000Z", end: "2026-08-07T12:30:00.000Z" } }]
+        : []) as unknown as typeof listaOriginal);
+    const r = await GET(req(`http://x/api/reservas?clinicId=cl_demo&date=${MANANA}`));
+    expect(r.status).toBe(200);
+    expect((await r.json()).slots.u2).not.toContain("09:00"); // la cita se ve igual
+  });
+
+  it("si la búsqueda del paciente por CI falla, se revisan las primeras fichas y la reserva sigue", async () => {
+    queryIn.mockImplementationOnce(async () => { throw new Error("query patients.document falló (400)"); });
+    listCollection.mockImplementation((async (_parent: string, col: string) =>
+      col === "users" ? [{ id: "u2", data: { role: "dentist", active: true, name: "Dra. Prueba" } }]
+        : col === "patients" ? [{ id: "p9", data: { document: "1234567" } }]
+        : []) as unknown as typeof listaOriginal);
+    expect((await POST(post(turno))).status).toBe(200);
+    expect(llamadas().some(([path]) => path.includes("/patients/"))).toBe(false); // encontró al existente: no creó otro
+  });
+
   it("una CI que nadie tiene crea el paciente (con su Historia Clínica pendiente)", async () => {
     expect((await POST(post(turno))).status).toBe(200);
     expect(llamadas().some(([path]) => path.includes("/patients/"))).toBe(true);

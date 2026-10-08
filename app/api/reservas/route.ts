@@ -64,15 +64,27 @@ function sumarDias(fecha: string, dias: number): string {
  *  colección (las de menor id = las MÁS VIEJAS): con más de 500 citas la disponibilidad no veía las recientes y se reservaba encima.
  *  El rango va de la víspera al día siguiente porque las citas del panel guardan un instante UTC («…T12:00:00.000Z») y las online la hora
  *  local sin zona: ambas empiezan con AAAA-MM-DD, y un día de la clínica toca el día anterior o el siguiente en UTC. */
-const citasAlrededorDe = (clinicId: string, date: string) =>
-  queryRange(`clinics/${clinicId}`, "appointments", "start", sumarDias(date, -1), sumarDias(date, 2), 500);
+async function citasAlrededorDe(clinicId: string, date: string) {
+  try {
+    return await queryRange(`clinics/${clinicId}`, "appointments", "start", sumarDias(date, -1), sumarDias(date, 2), 500);
+  } catch (e) {
+    // Si la consulta filtrada falla (un índice, un permiso…) se vuelve a la lectura de antes: es peor para una clínica con muchas citas,
+    // pero una reserva nunca se rompe por esto.
+    console.error("[reservas] queryRange falló, se lee la colección:", e instanceof Error ? e.message : e);
+    return listCollection(`clinics/${clinicId}`, "appointments", 500);
+  }
+}
 
 /** El paciente de esa CI: se busca en Firestore con y sin puntos («4123456» / «4.123.456»: así la guardan las clínicas) y, si no está,
  *  se revisan las primeras 500 fichas por si la CI está escrita de otra forma («4 123 456»). `null` si no existe. */
 async function pacienteDeLaCI(clinicId: string, ci: string): Promise<string | null> {
   const conPuntos = ci.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  const exactos = await queryIn(`clinics/${clinicId}`, "patients", "document", [...new Set([ci, conPuntos])], 5);
-  if (exactos[0]) return exactos[0].id;
+  try {
+    const exactos = await queryIn(`clinics/${clinicId}`, "patients", "document", [...new Set([ci, conPuntos])], 5);
+    if (exactos[0]) return exactos[0].id;
+  } catch (e) {
+    console.error("[reservas] queryIn falló, se revisan las primeras fichas:", e instanceof Error ? e.message : e);
+  }
   const clave = claveDeCI(ci);
   const todos = await listCollection(`clinics/${clinicId}`, "patients", 500);
   return todos.find((p) => {
