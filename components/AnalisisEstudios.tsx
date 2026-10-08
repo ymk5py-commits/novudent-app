@@ -183,11 +183,11 @@ function TablaEstudio({ vista }: { vista: Exclude<Vista, "ortodoncia"> }) {
     { id: "paciente", titulo: "Paciente", fija: true, csv: csvDelNombre, celda: celdaDelNombre },
     ...(verPersonales ? [{
       id: "contacto", titulo: "Contacto",
-      csv: [{ titulo: "Teléfono", texto: (f: Fila) => f.p.phone || "—" }, { titulo: "Correo", texto: (f: Fila) => f.p.email || "—" }],
+      csv: [{ titulo: "Teléfono", texto: (f: Fila) => (f.p.phone ?? "").trim() || "—" }, { titulo: "Correo", texto: (f: Fila) => f.p.email || "—" }],
       celda: (f: Fila) => (
         <div>
-          <div className="tabular-nums">{f.p.phone || "—"}</div>
-          <div className="max-w-[190px] truncate text-[11px] text-clinic-muted" title={f.p.email || undefined}>{f.p.email || "—"}</div>
+          <div className="tabular-nums">{(f.p.phone ?? "").trim() || "—"}</div>
+          {f.p.email && <div className="max-w-[190px] truncate text-[11px] text-clinic-muted" title={f.p.email}>{f.p.email}</div>}
         </div>
       ),
     }] : []),
@@ -258,8 +258,8 @@ function TablaEstudio({ vista }: { vista: Exclude<Vista, "ortodoncia"> }) {
     { id: "paciente", titulo: "Paciente", fija: true, csv: csvDelNombre, celda: celdaDelNombre },
     ...(verPersonales ? [{
       id: "telefono", titulo: "Teléfono",
-      csv: [{ titulo: "Teléfono", texto: (f: Fila) => f.p.phone || "—" }],
-      celda: (f: Fila) => <span className="tabular-nums">{f.p.phone || "—"}</span>,
+      csv: [{ titulo: "Teléfono", texto: (f: Fila) => (f.p.phone ?? "").trim() || "—" }],
+      celda: (f: Fila) => <span className="tabular-nums">{(f.p.phone ?? "").trim() || "—"}</span>,
     }] : []),
     columnaDeUltima,
     {
