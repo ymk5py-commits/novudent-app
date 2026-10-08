@@ -6,7 +6,7 @@ real de referencia es **Aura Esthetic Center** (hoy en Dentalink — el norte es
 
 Stack: **Next.js 14 App Router + TypeScript**, **Firestore** (Web SDK, el navegador
 escribe Firestore DIRECTO con Firebase Auth), **Gemini** (IA: voz, visión, texto),
-**vitest**, Tailwind, Recharts, framer-motion. Deploya a **novudent-app.vercel.app**
+**vitest**, Tailwind, Recharts, framer-motion. Deploya a **novudent.novumholding.lat** (dominio propio; `novudent-app.vercel.app` redirige ahí salvo `/api/`)
 desde `main`.
 
 ## Reglas duras
@@ -194,7 +194,7 @@ muestra un aviso con los que faltan. La regla de Firestore `routineChecks` deja 
 **Menú y Configuración (oct-2026, pedido de Camila):** `components/Shell.tsx` (`NAV`): «Liquidaciones» está **una sola vez**
 (Administración › Gestión; es la misma página que antes colgaba también de Cobranza), «Encuestas y NPS» va dentro de **CRM**,
 «Videos 3D» es un enlace suelto junto a Pacientes (perm `emr.read`: lo ven admin, dentista y asistente) y «Campos del paciente»
-lleva a `/app/pacientes#configuracion` (la pestaña se abre sola por el hash). En Administración › Configuración: **Agenda online**
+lleva a `/app/pacientes/configuracion` (URL limpia; ver «URLs limpias y SEO» más abajo). En Administración › Configuración: **Agenda online**
 (`components/AgendaOnline`: link, QR y anticipación mínima en una sola tarjeta), **Arancel de precios** y **Bancos y entidades
 financieras**. **Pago online** (`components/PagoOnline`, `lib/pagoOnline.ts`) guarda con botón y avisa; antes guardaba en silencio
 al salir del campo y un link sin `https://` quedaba guardado pero `/pagar/{cid}` lo ignoraba. Vaciar un campo de `config` se guarda
@@ -273,6 +273,39 @@ devuelve `ResultadoFusion` y se frena sin tocar nada si la ficha resultante no e
 `fsMeta`) sí usa merge (vaciar un campo = `""`). **Dinero:** un pago no se borra, se anula (`voidPayment`); «Registrar devolución» solo deja un
 registro (no mueve saldo ni caja: decisión pendiente); los descuentos pasan por `parsearDescuento` / `descuentoSaneado`. **Menús flotantes:**
 `Desplegable` + `lib/ubicarPanel.ts` (se reubican y recorren con scroll). El texto del odontograma está en voseo (`lib/odontogram-voseo.test.ts`).
+
+**Pedidos de Camila del 8-oct-2026 (agenda, análisis de estudios, plan y arancel, tareas)** — spec en
+`docs/superpowers/specs/2026-10-08-pedidos-de-camila-agenda-ficha-plan-tareas.md`. **Agenda:** la semanal tiene celdas de 30 min con menú por espacio
+(cita presencial, videoconsulta, múltiples, sobreagendar, bloquear); la geometría es pura (`lib/agendaSemana.ts`, `columnasSuperpuestas`). Los
+**bloqueos** son la colección `agendaBlocks` (`lib/bloqueos.ts`: un bloqueo por día, `dentistId: "*"` = todos, `boxId` opcional, `serieId` para las
+repeticiones de hasta un año) y **nadie reserva encima**: `huecosDelDia` recibe `bloqueos` (y `permitirSuperponer` para el sobrecupo, que nunca salta
+un bloqueo) y `/api/reservas` los lee con `queryRange` (respaldo: la colección; si no se puede, sigue sin ellos y lo loguea). `Appointment.sobrecupo` y
+`Appointment.prestaciones` (lo que se hace en la cita, del plan o del arancel; `lib/prestacionesCita.ts`). **Colección nueva = sumarla también a
+`completarCache` (`lib/cacheLocal.ts`)**, si no el caché local viejo rompe las pantallas. **Análisis de estudios:** quién cae en «Sin próxima cita» lo
+decide `lib/seguimiento.ts` (asistió o tiene plan vigente, sin cita futura, sin plan finalizado ni quita vigente); la quita es `Patient.seguimiento` y se
+guarda con `setSeguimientoPaciente`, que escribe **solo ese campo** (`fsCampo` → `updateDoc`/`deleteField`): para editar un campo suelto desde una
+pantalla que puede tener la ficha vieja en memoria usá ese patrón, no `upsertPatient` (`setDoc` sin merge pisaría lo que otro cargó después).
+**Plan y arancel:** «Nuevo plan de tratamiento» arma el plan en la ficha (`BudgetForm` con paciente fijo); las prestaciones y los pacientes se eligen con
+`BuscadorPrestacion` / `BuscadorPaciente` (nunca un `<select>` con todo el arancel). El arancel se carga desde `.xlsx` con el lector propio
+`lib/xlsx.ts` (fflate con `import()` dinámico; topes de 8 MB, 20.000 filas y 64 MB descomprimidos, revisados ANTES de inflar; `.xls` y archivos con
+contraseña se rechazan con mensaje) y `analizarCargaDeFilas` (comparte núcleo con el pegado; sin columna de código empareja por nombre o crea `S0001`…;
+hasta 3.000 filas). **Tareas:** la bandeja abre en «Todas las pendientes» (`todasLasPendientes`); con `?fecha=` abre «Tareas del día» de esa fecha; Mi
+agenda suma «Todas».
+
+**URLs limpias y SEO (8-oct-2026, pedido de Croman)** — spec en `docs/superpowers/specs/2026-10-08-urls-limpias-y-seo.md`. Las secciones del panel son
+rutas reales, sin `#`: `/app/configuracion/permisos`, `/app/reportes/graficos`, `/app/tareas/plazos`, `/app/pacientes/configuracion`,
+`/app/pacientes/<id>/planes`. La tabla nombre-en-la-URL → sección y las funciones están en `lib/rutasPanel.ts` (`rutaDeSeccion`, `seccionDeRuta`,
+`rutaDeFicha`, `rutaLimpia`, `hrefActivo`); las rutas `[seccion]` / `[pestana]` reusan la misma página (`export { default } from "../page"`). Las
+pestañas cambian la URL con `window.history.pushState` (Reportes, Pacientes, Tareas: «atrás» vuelve a la anterior) o `replaceState` (la ficha), que Next
+sincroniza con `usePathname`. **Los enlaces viejos con `#` o `?tab=` siguen andando**: el Shell los pasa a la URL limpia (`rutaLimpia`) y las pantallas
+igual los entienden. **Para sumar una sección:** agregala a `SECCIONES` y usá `rutaDeSeccion` en los enlaces (nunca escribas `#…` a mano). **El panel
+no se indexa** (`noindex` en `app/app/layout.tsx` y en los layouts de `/login`, `/superadmin`, `/reservar`, `/firmar`, `/confirmar`, `/pagar`,
+`/encuestas`, `/videoconsulta`, además del `disallow` de `app/robots.ts`). Lo que se indexa sale de `PAGINAS_PUBLICAS` (`lib/seo.ts`): **al cambiar el
+contenido de una página pública, actualizá su fecha `actualizado`** (va al sitemap). `next.config.mjs` redirige `novudent-app.vercel.app` al dominio
+propio con 308, salvo `/api/` (hay integraciones que la llaman directo). La verificación de Search Console y Bing sale de las variables
+`GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION` de Vercel; la clave de **IndexNow** está en `public/<clave>.txt` y `npm run indexnow` avisa las URLs
+del sitemap (correrlo después de publicar). `e2e/seo.spec.ts` cuida título (≤ 70), descripción (70–170), canónica, un solo `<h1>`, `alt` y el `noindex`
+de lo privado.
 
 ## Diferenciadores (cross-repo con Botika)
 

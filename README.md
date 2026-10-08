@@ -4,7 +4,7 @@ SaaS de gestión para clínicas dentales (LATAM, español rioplatense). Agenda, 
 paciente con odontograma, planes de tratamiento, caja y facturación, inventario, IA
 clínica y cobro por suscripción.
 
-**Producción:** [novudent-app.vercel.app](https://novudent-app.vercel.app) · deploy
+**Producción:** [novudent.novumholding.lat](https://novudent.novumholding.lat) (`novudent-app.vercel.app` redirige ahí) · deploy
 automático desde `main`.
 
 | Documento | Para qué |
