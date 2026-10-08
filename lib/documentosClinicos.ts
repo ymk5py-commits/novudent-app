@@ -90,6 +90,19 @@ export function plantillasDeClinica(config: { plantillasDocumento?: PlantillaDoc
   return Array.isArray(guardadas) ? normalizarPlantillas(guardadas) : PLANTILLAS_DE_FABRICA;
 }
 
+/** ¿La lista con la que se está trabajando en Configuración tiene cambios que todavía no se guardaron?
+ *
+ *  Se comparan las dos NORMALIZADAS. Lo que se guarda siempre pasa por `normalizarPlantillas`, que además reordena las claves de cada
+ *  objeto; la lista de trabajo conserva el orden con el que se la fue armando (`{ ...x, inactiva: true }` deja `inactiva` al final) y
+ *  `JSON.stringify` depende de ese orden. Comparar la de trabajo cruda con la guardada daba «hay cambios» para siempre: la barra
+ *  «Descartar / Guardar plantillas» no se iba y nunca aparecía «Plantillas guardadas», aunque los cambios sí se habían guardado. */
+export function hayPlantillasSinGuardar(
+  lista: readonly PlantillaDocumento[],
+  config: { plantillasDocumento?: PlantillaDocumento[] } | undefined,
+): boolean {
+  return JSON.stringify(normalizarPlantillas(lista)) !== JSON.stringify(normalizarPlantillas(plantillasDeClinica(config)));
+}
+
 /** Las que se ofrecen al crear un documento. */
 export const plantillasActivas = (lista: readonly PlantillaDocumento[]): PlantillaDocumento[] => lista.filter((p) => !p.inactiva);
 

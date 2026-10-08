@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildHistorial } from "./historial";
+import { buildHistorial, etiquetaDeNota } from "./historial";
 
 describe("buildHistorial", () => {
   it("combina las 5 fuentes y ordena descendente por fecha", () => {
@@ -55,5 +55,33 @@ describe("buildHistorial · documentos clínicos", () => {
       documentos: [doc("d1", {})],
     });
     expect(r.map((e) => e.kind)).toEqual(["nota", "documento"]);
+  });
+});
+
+/* El Historial mostraba el tipo de la nota tal como se guarda («diagnostico», «plan») mientras que Evoluciones lo mostraba bien
+   («Diagnóstico»): las dos pantallas tienen que decir lo mismo. */
+describe("etiquetaDeNota y la insignia de las notas del Historial", () => {
+  it("cada tipo de nota tiene su nombre en español, con tilde", () => {
+    expect(etiquetaDeNota("diagnostico")).toBe("Diagnóstico");
+    expect(etiquetaDeNota("tratamiento")).toBe("Tratamiento");
+    expect(etiquetaDeNota("plan")).toBe("Plan");
+    expect(etiquetaDeNota("nota")).toBe("Nota");
+  });
+
+  it("un tipo que no conoce se muestra como vino, en vez de romper", () => {
+    expect(etiquetaDeNota("otro_tipo")).toBe("otro_tipo");
+    expect(etiquetaDeNota("")).toBe("");
+    // Un dato raro que se llame como una propiedad de Object tampoco rompe: sigue siendo texto.
+    expect(etiquetaDeNota("constructor")).toBe("constructor");
+    expect(etiquetaDeNota("toString")).toBe("toString");
+  });
+
+  it("la nota del timeline lleva la etiqueta legible, no el valor guardado", () => {
+    const nota = (kind: string, id: string) => ({ id, createdAt: "2026-06-01T10:00:00Z", kind, text: "x", authorName: "Dra" }) as any;
+    const r = buildHistorial({
+      appointments: [], budgets: [], payments: [],
+      emr: [nota("diagnostico", "n1"), nota("plan", "n2"), nota("tratamiento", "n3"), nota("nota", "n4")],
+    });
+    expect(r.map((e) => e.badge).sort()).toEqual(["Diagnóstico", "Nota", "Plan", "Tratamiento"]);
   });
 });

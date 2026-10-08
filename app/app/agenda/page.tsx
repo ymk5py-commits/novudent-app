@@ -13,6 +13,7 @@ import { useStore, fmtGs, fmtTime, fmtDate, fullName } from "@/lib/store";
 import { linkConfirmacion } from "@/lib/confirmacionCita";
 import { useAlcance } from "@/lib/useAlcance";
 import { estadoDeCita } from "@/lib/estadosCita";
+import { reservasPorValidar } from "@/lib/citas";
 import { useEstadosCita } from "@/lib/useEstadosCita";
 import type { EstadoCita } from "@/lib/types";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
@@ -135,6 +136,8 @@ export default function AgendaPage() {
   const estados = useEstadosCita();
   const estadoDe = (x: Appointment) => estadoDeCita(x, estados);
   const [statusFilter, setStatusFilter] = useState<Set<string>>(() => new Set(estados.map((e) => e.id)));
+  // «Ver y validar» del cartel de reservas online: muestra solo las que entraron por la web (ver `verYValidar`).
+  const [soloOnline, setSoloOnline] = useState(false);
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [preseleccion, setPreseleccion] = useState<{ fecha: Date; hora: string } | undefined>(undefined);
@@ -181,11 +184,12 @@ export default function AgendaPage() {
     const t = q.trim().toLowerCase();
     return dayAllPro.filter((a) => {
       if (!statusFilter.has(estadoDe(a).id)) return false;
+      if (soloOnline && a.source !== "online") return false;
       if (!t) return true;
       const p = db.patients.find((x) => x.id === a.patientId);
       return p ? fullName(p).toLowerCase().includes(t) : false;
     });
-  }, [dayAllPro, statusFilter, q, db.patients]);
+  }, [dayAllPro, statusFilter, soloOnline, q, db.patients]);
 
   /* — Filtro de profesional y sucursal, el mismo en todas las vistas — */
   const pasaFiltros = (a: Appointment) =>
@@ -210,7 +214,10 @@ export default function AgendaPage() {
     return citas.filter((a) => { const t = new Date(a.start); return t.getFullYear() === y && t.getMonth() === m && pasaFiltros(a); });
   }, [citas, day, proFilter, branchFilter, mainBranchId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const porValidar = dayAllPro.filter((a) => a.source === "online" && a.status === "pendiente").length;
+  /* Reservas que entraron por la web y nadie validó, de hoy en adelante y de TODOS los días (no solo del día abierto), dentro de los
+     filtros de profesional y sucursal. Solo las ve quien puede validarlas (agenda.edit). */
+  const reservas = reservasPorValidar(citas.filter(pasaFiltros), new Date(new Date().setHours(0, 0, 0, 0)));
+  const porValidar = reservas.length;
   const headerCount = tab === "semanal" ? weekAppointments.length : tab === "mensual" ? monthAppts.length : tab === "reprog" ? reprog.length : dayAppts.length;
 
   /** Cita en blanco para «Dar cita»: la fecha y la hora salen de la grilla. */
@@ -240,6 +247,17 @@ export default function AgendaPage() {
   };
   const toggleStatus = (s: string) =>
     setStatusFilter((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
+  /** «Ver y validar»: solo las reservas online sin validar. Si el día abierto no tiene ninguna, va al primer día que sí. */
+  const verYValidar = () => {
+    setStatusFilter(new Set(estados.filter((e) => e.base === "pendiente").map((e) => e.id)));
+    setSoloOnline(true);
+    setQ("");
+    if (reservas.length > 0 && !reservas.some((a) => dayKeyOf(a.start) === selKey)) {
+      const d = new Date(reservas[0].start); d.setHours(0, 0, 0, 0);
+      setDay(d);
+    }
+  };
+  const verTodasLasCitas = () => { setSoloOnline(false); setStatusFilter(new Set(estados.map((e) => e.id))); };
 
   /* Cambiar estado; cancelada/ausente piden motivo. */
   const setEstado = (a: Appointment, e: EstadoCita) => {
@@ -311,11 +329,17 @@ export default function AgendaPage() {
       )}
 
       {/* Banner: citas por validar */}
-      {(tab === "diaria" || tab === "global") && porValidar > 0 && (
+      {(tab === "diaria" || tab === "global") && puedeEditar && porValidar > 0 && (
         <Reveal className="flex flex-wrap items-center gap-2 rounded-xl border border-state-ok/30 bg-state-okbg px-4 py-2.5 text-sm text-state-ok">
           <BellRing className="h-4 w-4" /> Hay {porValidar} agendamiento(s) online que deben ser validados.
-          <button onClick={() => setStatusFilter(new Set(estados.filter((e) => e.base === "pendiente").map((e) => e.id)))} className="font-bold underline">Ver y validar</button>
+          <button onClick={verYValidar} className="font-bold underline">Ver y validar</button>
         </Reveal>
+      )}
+      {(tab === "diaria" || tab === "global") && soloOnline && (
+        <p role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-azure-300/50 bg-azure-50 px-4 py-2 text-sm text-azure-700 print:hidden">
+          Mostrando solo las reservas online sin validar.
+          <button onClick={verTodasLasCitas} className="font-bold underline">Ver todas las citas</button>
+        </p>
       )}
 
       {alcance.sinDoctores && (
@@ -495,7 +519,7 @@ export default function AgendaPage() {
               <div className="overflow-x-auto pb-1">
                 <div className="flex gap-3" style={{ minWidth: Math.max(1, dentists.filter((d) => proFilter === "all" || d.id === proFilter).length) * 210 }}>
                   {dentists.filter((d) => proFilter === "all" || d.id === proFilter).map((d) => {
-                    const list = dayAll.filter((a) => a.dentistId === d.id && statusFilter.has(estadoDe(a).id) && pasaFiltros(a)).sort((a, b) => a.start.localeCompare(b.start));
+                    const list = dayAll.filter((a) => a.dentistId === d.id && statusFilter.has(estadoDe(a).id) && (!soloOnline || a.source === "online") && pasaFiltros(a)).sort((a, b) => a.start.localeCompare(b.start));
                     return (
                       <div key={d.id} className="min-w-[200px] flex-1">
                         <div className="mb-2 flex items-center gap-2 rounded-xl bg-clinic-bg px-3 py-2">

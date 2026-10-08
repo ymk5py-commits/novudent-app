@@ -504,6 +504,7 @@ export default function ConfigPage() {
       </Card>
       </Reveal>
 
+      <span id="consentimientos" className="block scroll-mt-24" aria-hidden="true" />
       {/* Plantillas de consentimiento */}
       <Reveal>
       <ConsentTemplatesCard

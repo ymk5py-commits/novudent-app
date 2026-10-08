@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   anularDocumento, camposVisibles, completarDocumento, cuerpoConDatos, documentoHtml, documentosDelPaciente, etiquetaPlan,
-  guardarCambios, historiaClinicaPendiente, idUnico, limpiarValores, mover, normalizarPlantillas, nuevoDocumento,
+  guardarCambios, hayPlantillasSinGuardar, historiaClinicaPendiente, idUnico, limpiarValores, mover, normalizarPlantillas, nuevoDocumento,
   pendientesPorPaciente, plantillasActivas, plantillasDeClinica, puedeEditarDocumentos, puedeVerDocumentos,
   respuestasParaImprimir, sexoDe, slug, valorVacio,
 } from "./documentosClinicos";
@@ -149,6 +149,53 @@ describe("plantillasDeClinica", () => {
 
   it("una lista guardada vacía es una decisión de la clínica: no vuelve a las de fábrica", () => {
     expect(plantillasDeClinica({ plantillasDocumento: [] })).toEqual([]);
+  });
+});
+
+/* «Guardar plantillas» (Configuración › Documentos clínicos) dejaba la barra «Descartar / Guardar plantillas» prendida para
+   siempre: lo que se guarda pasa por `normalizarPlantillas`, que además reordena las claves de cada objeto, y la pantalla
+   comparaba esa lista guardada con la de trabajo SIN normalizar (JSON.stringify depende del orden de las claves). */
+describe("hayPlantillasSinGuardar", () => {
+  /** Lo que hace «Desactivar» en la pantalla: `{ ...x, inactiva: true }`, con la clave nueva al final. */
+  const desactivada = (p: PlantillaDocumento): PlantillaDocumento => ({ ...p, inactiva: true });
+  /** Lo que guarda la pantalla en `config.plantillasDocumento`. */
+  const guardar = (lista: PlantillaDocumento[]) => ({ plantillasDocumento: normalizarPlantillas(lista) });
+
+  it("sin tocar nada no hay nada que guardar (con o sin plantillas propias guardadas)", () => {
+    expect(hayPlantillasSinGuardar(PLANTILLAS_DE_FABRICA, undefined)).toBe(false);
+    expect(hayPlantillasSinGuardar(PLANTILLAS_DE_FABRICA, {})).toBe(false);
+    const propias = guardar(PLANTILLAS_DE_FABRICA);
+    expect(hayPlantillasSinGuardar(propias.plantillasDocumento, propias)).toBe(false);
+  });
+
+  it("un cambio real sí cuenta: desactivar una plantilla o cambiarle el nombre", () => {
+    const [primera, ...resto] = PLANTILLAS_DE_FABRICA;
+    expect(hayPlantillasSinGuardar([desactivada(primera), ...resto], undefined)).toBe(true);
+    expect(hayPlantillasSinGuardar([{ ...primera, nombre: "Otra" }, ...resto], undefined)).toBe(true);
+  });
+
+  it("sacar una plantilla cuenta, y también agregar una", () => {
+    expect(hayPlantillasSinGuardar(PLANTILLAS_DE_FABRICA.slice(1), undefined)).toBe(true);
+    expect(hayPlantillasSinGuardar([...PLANTILLAS_DE_FABRICA, { id: "n", nombre: "Nueva", tipo: "texto", cuerpo: "x" }], undefined)).toBe(true);
+  });
+
+  it("después de guardar, lo guardado ya no es una diferencia (aunque las claves estén en otro orden)", () => {
+    const [primera, ...resto] = PLANTILLAS_DE_FABRICA;
+    const trabajo = [desactivada(primera), ...resto];
+    // Éste es el caso del defecto: el orden de claves de `trabajo` no es el de lo normalizado.
+    expect(JSON.stringify(trabajo)).not.toBe(JSON.stringify(guardar(trabajo).plantillasDocumento));
+    expect(hayPlantillasSinGuardar(trabajo, guardar(trabajo))).toBe(false);
+  });
+
+  it("marcar como revisada y guardar tampoco deja la barra prendida", () => {
+    const trabajo = PLANTILLAS_DE_FABRICA.map((p) => { const { porRevisar: _fuera, ...resto } = p; return resto as PlantillaDocumento; });
+    expect(hayPlantillasSinGuardar(trabajo, undefined)).toBe(true);
+    expect(hayPlantillasSinGuardar(trabajo, guardar(trabajo))).toBe(false);
+  });
+
+  it("una lista guardada vacía es una decisión: vaciar la de trabajo no es un cambio, volver a la de fábrica sí", () => {
+    expect(hayPlantillasSinGuardar([], { plantillasDocumento: [] })).toBe(false);
+    expect(hayPlantillasSinGuardar(PLANTILLAS_DE_FABRICA, { plantillasDocumento: [] })).toBe(true);
   });
 });
 

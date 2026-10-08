@@ -36,6 +36,41 @@ export const AUTOMATION_LABEL: Record<BotikaAutoKey, string> = {
   negociacion: "Negociación de presupuestos",
 };
 
+/* ===== Editor de plantillas (Integraciones › Plantillas de mensajes) =====
+ * El editor arma un borrador por CADA plantilla que tiene un default (antes armaba cuatro a mano y la quinta, la de «Negociación de
+ * presupuestos», salía vacía y dejaba «Guardar plantillas» prendido para siempre).
+ *
+ * Un texto vacío vale como «el de fábrica» (igual que en `botikaMessage` y en /api/reservas, que usan `||`): así «Restaurar default»
+ * se puede guardar. No alcanza con omitir la clave: el documento de la clínica se guarda con `setDoc(…, { merge: true })`, que no borra
+ * un campo ausente, y el texto propio anterior volvería a aparecer al recargar. */
+
+export type PlantillasBotika = Record<BotikaAutoKey, string>;
+
+const CLAVES_DE_PLANTILLAS = Object.keys(DEFAULT_TEMPLATES) as BotikaAutoKey[];
+
+/** Los textos con los que arranca el editor: lo que la clínica guardó para cada automatización o, si no hay (o está vacío), el de fábrica. */
+export function borradoresDePlantillas(guardadas?: BotikaConfig["templates"]): PlantillasBotika {
+  const out = {} as PlantillasBotika;
+  for (const k of CLAVES_DE_PLANTILLAS) out[k] = guardadas?.[k] || DEFAULT_TEMPLATES[k];
+  return out;
+}
+
+/** ¿Hay algo para guardar? (Cuándo aparece «Guardar plantillas».) */
+export function plantillasModificadas(borradores: PlantillasBotika, guardadas?: BotikaConfig["templates"]): boolean {
+  return CLAVES_DE_PLANTILLAS.some((k) => borradores[k] !== (guardadas?.[k] || DEFAULT_TEMPLATES[k]));
+}
+
+/** Lo que va a `botika.templates`: el texto de las plantillas que difieren del de fábrica y, para una que tenía texto propio y se
+ *  devolvió al de fábrica, un texto vacío (que sobrescribe al anterior). Las que nunca se personalizaron no se escriben. */
+export function plantillasParaGuardar(borradores: PlantillasBotika, guardadas?: BotikaConfig["templates"]): NonNullable<BotikaConfig["templates"]> {
+  const out: NonNullable<BotikaConfig["templates"]> = {};
+  for (const k of CLAVES_DE_PLANTILLAS) {
+    if (borradores[k] !== DEFAULT_TEMPLATES[k]) out[k] = borradores[k];
+    else if (guardadas?.[k]) out[k] = "";
+  }
+  return out;
+}
+
 type TemplateVars = Partial<Record<"paciente" | "clinica" | "fecha" | "hora" | "titulo" | "saldo", string>>;
 
 /** Mensaje final: plantilla personalizada (Integraciones) o default, con variables rellenas */

@@ -18,7 +18,7 @@
  *  garantía. Un store externo con pub/sub sí puede llamarse desde ahí.
  */
 
-export type CausaFallo = "permiso" | "conexion" | "desconocido";
+export type CausaFallo = "permiso" | "suscripcion" | "conexion" | "desconocido";
 
 export interface EscrituraFallida {
   /** Identidad estable: si la misma fila falla dos veces, es UN problema. */
@@ -53,9 +53,24 @@ export function clasificarError(e: unknown): CausaFallo {
   return "desconocido";
 }
 
+/** La causa que se le muestra al usuario. `clasificarError` solo ve el error de Firestore y no sabe de suscripciones: con la suscripción
+ *  vencida la clínica está en solo lectura y `firestore.rules` rechaza TODA escritura con `permission-denied`, igual que un rol sin permiso.
+ *  Quien muestra el aviso sí sabe si la suscripción venció (`accessMode`), y en ese caso el rechazo es por la suscripción, no por el rol:
+ *  decirle «no tenés permiso» mandaba a buscar un problema que no existe. */
+export function causaMostrada(causa: CausaFallo, suscripcionVencida: boolean): CausaFallo {
+  return causa === "permiso" && suscripcionVencida ? "suscripcion" : causa;
+}
+
 /** Lo que se le dice al usuario. Sin códigos ni jerga: qué pasó y qué hacer. */
 export function mensajeDe(causa: CausaFallo): { titulo: string; ayuda: string } {
   switch (causa) {
+    case "suscripcion":
+      return {
+        titulo: "No se guardó: la suscripción está vencida y la clínica está en solo lectura",
+        ayuda:
+          "Con la suscripción vencida se puede consultar y exportar todo, pero no guardar cambios. " +
+          "Regularizá el pago en Administración › Suscripción y volvé a cargar lo que estabas haciendo — reintentar antes de pagar no lo va a resolver.",
+      };
     case "permiso":
       return {
         titulo: "No se guardó: no tenés permiso para este cambio",

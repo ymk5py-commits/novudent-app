@@ -12,18 +12,22 @@
  *  · Ante falta de permiso no se ofrece reintentar — no lo va a resolver, y el
  *    botón sería una mentira. Se ofrece copiar el detalle para el administrador.
  *  · Se puede descartar, pero el texto deja claro que descartar no guarda nada.
+ *  · Con la suscripción vencida la clínica está en solo lectura y Firestore rechaza toda escritura como si fuera un permiso:
+ *    el aviso dice la causa real (suscripción vencida), no «no tenés permiso». La interfaz NO se deshabilita por eso.
  */
 import { useEffect, useState } from "react";
 import { AlertTriangle, RefreshCw, X, Copy, Check } from "lucide-react";
 import {
-  suscribirFallos, reintentarTodo, limpiarFallos, mensajeDe,
+  suscribirFallos, reintentarTodo, limpiarFallos, mensajeDe, causaMostrada,
   type EscrituraFallida,
 } from "@/lib/write-errors";
+import { useAccessMode } from "@/components/PlanGate";
 
 export default function AvisoNoGuardado() {
   const [fallos, setFallos] = useState<EscrituraFallida[]>([]);
   const [reintentando, setReintentando] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const suscripcionVencida = useAccessMode() === "readonly";
 
   useEffect(() => suscribirFallos(setFallos), []);
 
@@ -32,12 +36,12 @@ export default function AvisoNoGuardado() {
   /* La causa más grave manda el mensaje: si hay aunque sea un problema de
      permisos, no se puede prometer que reintentar alcanza. */
   const hayPermiso = fallos.some((f) => f.causa === "permiso");
-  const causa = hayPermiso ? "permiso" : fallos.some((f) => f.causa === "conexion") ? "conexion" : "desconocido";
+  const causa = causaMostrada(hayPermiso ? "permiso" : fallos.some((f) => f.causa === "conexion") ? "conexion" : "desconocido", suscripcionVencida);
   const { titulo, ayuda } = mensajeDe(causa);
   const puedeReintentar = !hayPermiso && fallos.some((f) => f.reintentar);
 
   const detalleTecnico = fallos
-    .map((f) => `${f.clave} · ${f.causa} · ${f.detalle} · ${f.intentos} intento(s)`)
+    .map((f) => `${f.clave} · ${causaMostrada(f.causa, suscripcionVencida)} · ${f.detalle} · ${f.intentos} intento(s)`)
     .join("\n");
 
   return (

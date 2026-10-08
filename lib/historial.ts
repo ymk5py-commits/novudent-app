@@ -17,6 +17,19 @@ export interface HistorialEntry {
 
 const APPT_LABEL: Record<string, string> = ESTADO_LABEL;
 
+/** Cómo se llama cada tipo de nota clínica en pantalla. Lo usan el Historial, el Resumen y Evoluciones: las tres tienen que decir lo
+ *  mismo (el Historial mostraba el valor tal como se guarda, «diagnostico», «plan»). */
+export const NOTA_LABEL: Record<EmrNote["kind"], string> = {
+  diagnostico: "Diagnóstico",
+  tratamiento: "Tratamiento",
+  plan: "Plan",
+  nota: "Nota",
+};
+
+/** El nombre en español de un tipo de nota; si el tipo no se conoce (dato viejo o de otro origen), se muestra como vino. */
+export const etiquetaDeNota = (kind: string): string =>
+  Object.prototype.hasOwnProperty.call(NOTA_LABEL, kind) ? NOTA_LABEL[kind as EmrNote["kind"]] : kind;
+
 /** Agrega citas + evoluciones de ortodoncia + prestaciones realizadas + pagos + notas EMR
  *  en una lista cronológica (desc). Puro y tolerante a datos faltantes. */
 export function buildHistorial(opts: {
@@ -52,7 +65,7 @@ export function buildHistorial(opts: {
     out.push({ id: `pago_${p.id}`, at: p.date, kind: "pago", title: "Pago recibido", detail: p.concept, by: p.receivedBy, amount: p.amount });
   }
   for (const n of opts.emr) {
-    out.push({ id: `nota_${n.id}`, at: n.createdAt, kind: "nota", title: "Nota clínica", detail: n.text, by: n.authorName, badge: n.kind });
+    out.push({ id: `nota_${n.id}`, at: n.createdAt, kind: "nota", title: "Nota clínica", detail: n.text, by: n.authorName, badge: etiquetaDeNota(n.kind) });
   }
 
   for (const d of opts.documentos ?? []) {
