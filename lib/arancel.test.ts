@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Procedure } from "./types";
 import {
   parsearPrecio, parsearPorcentaje, normalizarCodigo, filtrarServicios, ajustarPrecio, planAjuste, aplicarCambios,
-  analizarCargaDePrecios, procedimientosDeLaCarga, filasParaExportar, totalDelArancel,
+  analizarCargaDePrecios, procedimientosDeLaCarga, filasParaExportar, totalDelArancel, buscarPrestaciones,
 } from "./arancel";
 
 const P = (cpt: string, description: string, price: number, category?: Procedure["category"], extra: Partial<Procedure> = {}): Procedure =>
@@ -231,5 +231,56 @@ describe("filasParaExportar — la tabla de precios para llevar a Excel y volver
     expect(a.iguales).toBe(4);
     expect(a.errores).toBe(0);
     expect(procedimientosDeLaCarga(a, CATALOGO)).toEqual([]);
+  });
+});
+
+describe("buscarPrestaciones — el buscador del plan con un arancel de cientos de servicios", () => {
+  const MUCHOS: Procedure[] = [
+    P("D0120", "Evaluación oral periódica", 150000, "diagnostico"),
+    P("D1110", "Profilaxis dental — adulto", 200000, "prevencion"),
+    P("D2330", "Resina compuesta — 1 superficie", 420000, "operatoria"),
+    P("D2391", "Resina posterior — 1 superficie", 480000, "operatoria"),
+    P("D3310", "Endodoncia — anterior", 1200000, "endodoncia"),
+    P("D7140", "Exodoncia simple", 600000, "cirugia"),
+    P("S0001", "Limpieza con ultrasonido", 180000),
+  ];
+
+  it("sin escribir nada ofrece los primeros, en el orden del arancel, y dice cuántos hay", () => {
+    const r = buscarPrestaciones(MUCHOS, "", 3);
+    expect(r.visibles.map((p) => p.cpt)).toEqual(["D0120", "D1110", "D2330"]);
+    expect(r.total).toBe(7);
+  });
+
+  it("sin importar mayúsculas ni tildes, y con todas las palabras", () => {
+    expect(buscarPrestaciones(MUCHOS, "EVALUACION", 10).visibles.map((p) => p.cpt)).toEqual(["D0120"]);
+    expect(buscarPrestaciones(MUCHOS, "resina superficie", 10).visibles.map((p) => p.cpt)).toEqual(["D2330", "D2391"]);
+    expect(buscarPrestaciones(MUCHOS, "zzz", 10)).toEqual({ visibles: [], total: 0 });
+  });
+
+  it("el código exacto va primero, después los que empiezan con lo escrito y después los que lo contienen", () => {
+    const catalogo: Procedure[] = [
+      P("X1", "Corona sobre D23 provisoria", 1),
+      P("D2330", "Resina compuesta", 2),
+      P("D23", "Código exacto", 3),
+      P("D2391", "Resina posterior", 4),
+    ];
+    expect(buscarPrestaciones(catalogo, "d23", 10).visibles.map((p) => p.cpt)).toEqual(["D23", "D2330", "D2391", "X1"]);
+  });
+
+  it("los que empiezan con la palabra del nombre van antes que los que solo la contienen", () => {
+    const catalogo: Procedure[] = [P("A1", "Control de endodoncia", 1), P("A2", "Endodoncia — anterior", 2), P("A3", "Retratamiento de endodoncia", 3)];
+    expect(buscarPrestaciones(catalogo, "endodoncia", 10).visibles.map((p) => p.cpt)).toEqual(["A2", "A1", "A3"]);
+  });
+
+  it("no ofrece los que se excluyen (los que el plan ya tiene) y el total los descuenta", () => {
+    const r = buscarPrestaciones(MUCHOS, "resina", 10, new Set(["D2330"]));
+    expect(r.visibles.map((p) => p.cpt)).toEqual(["D2391"]);
+    expect(r.total).toBe(1);
+  });
+
+  it("corta en el máximo pero cuenta todos los que coinciden", () => {
+    const r = buscarPrestaciones(MUCHOS, "d", 2);
+    expect(r.visibles).toHaveLength(2);
+    expect(r.total).toBeGreaterThan(2);
   });
 });
