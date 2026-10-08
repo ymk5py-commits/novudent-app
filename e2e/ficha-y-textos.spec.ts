@@ -192,3 +192,49 @@ test.describe("B8 · «Completá: …» aparece de verdad", () => {
   });
 });
 
+/* ═══════════════════════ B2 · Importación de pacientes ═══════════════════════ */
+
+test.describe("B2 · Importar pacientes", () => {
+  test("texto neutro, sin duplicar CI (ni contra los que ya existen) y con la Historia Clínica pendiente", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.admin);
+    await page.goto("/app/configuracion");
+    await expect(main(page).getByRole("heading", { name: /Migración/ })).toBeVisible();
+    await expect(main(page)).not.toContainText("Dentalink");
+
+    await main(page).getByRole("button", { name: "Iniciar migración" }).click();
+    const modal = page.getByRole("dialog");
+    await expect(modal).not.toContainText("Dentalink");
+    // Ana Uno y Beto Dos son nuevos; la segunda «Ana» repite la CI de la primera (escrita sin puntos); Carla ya existe (María González).
+    await modal.locator("textarea").fill([
+      "Nombre;Apellido;CI;Teléfono;Email;Deuda",
+      "Ana;Uno;7.000.001;0981 100 001;;150000",
+      "Beto;Dos;7.000.002;0981 100 002;;",
+      "Ana;Repetida;7000001;0981 100 003;;",
+      "Carla;Existe;3.456.789;0981 100 004;;",
+    ].join("\n"));
+    await modal.getByRole("button", { name: "Continuar" }).click();
+    await modal.getByRole("button", { name: "Vista previa" }).click();
+    await expect(modal).toContainText("2 nuevos");
+    await expect(modal).toContainText("1 ya cargado");
+    await expect(modal).toContainText("1 repetido en el archivo");
+    await modal.getByRole("button", { name: "Importar 2 pacientes" }).click();
+    await expect(modal).toContainText("2 pacientes importados");
+    await expect(modal).toContainText("2 duplicados omitidos");
+
+    const db = await leerDB(page);
+    const nuevos = (db.patients as Paciente[]).filter((p) => ["7.000.001", "7.000.002"].includes(p.document));
+    expect(nuevos.map((p) => p.firstName).sort()).toEqual(["Ana", "Beto"]);
+    expect((db.patients as Paciente[]).filter((p) => /Repetida|Existe/.test(p.lastName))).toHaveLength(0);
+    // Igual que el alta de la recepción: cada paciente importado queda con la Historia Clínica pendiente.
+    for (const p of nuevos) {
+      const hc = (db.clinicalDocs as { patientId: string; plantillaId: string; estado: string }[]).filter((d) => d.patientId === p.id && d.plantillaId === "historia_clinica");
+      expect(hc, `Historia Clínica de ${p.firstName}`).toHaveLength(1);
+      expect(hc[0].estado).toBe("pendiente");
+    }
+    // El saldo migrado (Cuentas por cobrar) tampoco nombra a otro sistema.
+    const saldo = (db.budgets as { patientId: string; items: { description: string }[]; history?: { action: string }[] }[]).find((b) => b.patientId === nuevos.find((p) => p.firstName === "Ana")!.id)!;
+    expect(JSON.stringify(saldo)).not.toContain("Dentalink");
+    expect(saldo.items[0].description).toBe("Saldo migrado de otro sistema");
+  });
+});
+

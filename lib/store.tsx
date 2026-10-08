@@ -53,7 +53,7 @@ import type {
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
 import { can, aplicarRolesDeLaClinica, mismaConfiguracionDeRoles } from "./rbac";
-import { historiaClinicaPendiente, plantillasDeClinica } from "./documentosClinicos";
+import { historiaClinicaPendiente, historiasClinicasPendientes, plantillasDeClinica } from "./documentosClinicos";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { worstSeverity } from "./recovery";
 import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
@@ -1380,8 +1380,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         return fsMeta(next);
       },
       importPatients: (list) => {
-        persist((prev) => ({ ...prev, patients: [...prev.patients, ...list] }));
+        if (list.length === 0) return;
+        // Igual que el alta de la recepción (`crearPaciente`): cada paciente importado queda con la Historia Clínica pendiente.
+        const hcs = historiasClinicasPendientes(list, {
+          plantillas: plantillasDeClinica(db.clinics[0]?.config),
+          by: { id: session?.userId ?? "", name: session?.name ?? "Importación" },
+          now: new Date().toISOString(),
+        });
+        const idsHc = new Set(hcs.map((h) => h.id));
+        persist((prev) => ({
+          ...prev,
+          patients: [...prev.patients, ...list],
+          clinicalDocs: [...hcs, ...prev.clinicalDocs.filter((x) => !idsHc.has(x.id))],
+        }));
         list.forEach((p) => fsSave("patients", p.id, p));
+        hcs.forEach((h) => fsSave("clinicalDocs", h.id, h));
       },
       /* — Integración Botika (outbox) — */
       addOutboxTask: (t) => {

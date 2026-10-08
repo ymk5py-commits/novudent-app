@@ -412,17 +412,17 @@ export default function ConfigPage() {
       </Card>
       </Reveal>
 
-      {/* Migración desde Dentalink / carga masiva */}
+      {/* Migración desde el sistema anterior / carga masiva (sin nombrar a otro sistema en pantalla) */}
       <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2"><UploadCloud className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Migración desde Dentalink</h2></div>
+          <div className="flex items-center gap-2"><UploadCloud className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Migración desde otro sistema</h2></div>
           <Btn onClick={() => setImporting(true)}><UploadCloud className="h-4 w-4" /> Iniciar migración</Btn>
         </div>
         <p className="text-xs leading-relaxed text-clinic-muted">
-          Traé toda tu base sin complicaciones: exportá <b>Reportes → Pacientes → Excel</b> en Dentalink, copiá y pegá (o subí el CSV) —
+          Traé toda tu base sin complicaciones: exportá la lista de <b>pacientes a Excel</b> desde tu sistema anterior, copiá y pegá (o subí el CSV) —
           Novudent detecta las columnas solo, omite duplicados por CI y si hay columna de <b>deuda</b> la carga directo en Cuentas por cobrar.
-          Sirve también para cualquier otro software o planilla propia.
+          Sirve también para cualquier otra planilla propia.
         </p>
       </Card>
       </Reveal>

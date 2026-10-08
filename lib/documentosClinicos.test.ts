@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   anularDocumento, camposVisibles, completarDocumento, cuerpoConDatos, documentoHtml, documentosDelPaciente, etiquetaPlan,
-  guardarCambios, historiaClinicaPendiente, idUnico, limpiarValores, mover, normalizarPlantillas, nuevoDocumento,
+  guardarCambios, historiaClinicaPendiente, historiasClinicasPendientes, idUnico, limpiarValores, mover, normalizarPlantillas, nuevoDocumento,
   pendientesPorPaciente, plantillasActivas, plantillasDeClinica, puedeEditarDocumentos, puedeVerDocumentos,
   respuestasParaImprimir, sexoDe, slug, valorVacio,
 } from "./documentosClinicos";
@@ -365,6 +365,30 @@ describe("historiaClinicaPendiente", () => {
     expect(historiaClinicaPendiente({ ...base, plantillas: [] })).toBeNull();
     const apagada = PLANTILLAS_DE_FABRICA.map((p) => (p.id === "historia_clinica" ? { ...p, inactiva: true } : p));
     expect(historiaClinicaPendiente({ ...base, plantillas: apagada })).toBeNull();
+  });
+});
+
+describe("historiasClinicasPendientes (la importación de pacientes)", () => {
+  const por = { plantillas: PLANTILLAS_DE_FABRICA, by: BY, now: AHORA };
+
+  it("deja una Historia Clínica pendiente por paciente, con el mismo id que le pone el alta de uno solo", () => {
+    const docs = historiasClinicasPendientes([{ id: "p_1_0", clinicId: "c1" }, { id: "p_1_1", clinicId: "c1" }], por);
+    expect(docs.map((d) => d.id)).toEqual(["cd_p_1_0_hc", "cd_p_1_1_hc"]);
+    expect(docs.map((d) => d.patientId)).toEqual(["p_1_0", "p_1_1"]);
+    for (const d of docs) expect(d).toMatchObject({ clinicId: "c1", plantillaId: "historia_clinica", estado: "pendiente", createdByName: "Laura Recepción" });
+    // El id coincide con el que arma historiaClinicaPendiente para el alta suelta (así repetir la carga no duplica nada).
+    expect(docs[0]).toEqual(historiaClinicaPendiente({ id: "cd_p_1_0_hc", clinicId: "c1", patientId: "p_1_0", ...por }));
+  });
+
+  it("cuentan como pendientes de cada paciente (campana, Inicio, cabecera de la ficha)", () => {
+    const pacientes = [{ id: "p_1_0", clinicId: "c1", forms: [] as PatientForm[] }, { id: "p_1_1", clinicId: "c1", forms: [] as PatientForm[] }];
+    const pendientes = pendientesPorPaciente(pacientes, historiasClinicasPendientes(pacientes, por));
+    expect([...pendientes.entries()]).toEqual([["p_1_0", 1], ["p_1_1", 1]]);
+  });
+
+  it("sin la plantilla activa no crea nada, y sin pacientes tampoco", () => {
+    expect(historiasClinicasPendientes([{ id: "p_1_0", clinicId: "c1" }], { ...por, plantillas: [] })).toEqual([]);
+    expect(historiasClinicasPendientes([], por)).toEqual([]);
   });
 });
 
