@@ -256,8 +256,10 @@ function RxForm({ base, planes, onClose, onSave }: { base?: RxBase; planes: { id
 }
 
 function RxPrint({ rx, patient, onClose }: { rx: Prescription; patient: Patient; onClose: () => void }) {
-  const { db } = useStore();
+  const { db, session } = useStore();
   const clinic = db.clinics[0];
+  // La CI es un dato personal: sale en la receta solo si quien imprime puede verlo (el dentista no; el nombre alcanza para identificar).
+  const verCI = !!session && can(session.role, "patients.personal");
   return (
     <Modal title="Receta" onClose={onClose}>
       <div className="print-area space-y-5">
@@ -266,7 +268,7 @@ function RxPrint({ rx, patient, onClose }: { rx: Prescription; patient: Patient;
           <div className="text-xs text-clinic-muted">{clinic.name} · {clinic.config.address} · {clinic.config.phone}</div>
         </div>
         <div className="text-sm">
-          <div><span className="text-clinic-muted">Paciente:</span> <b>{fullName(patient)}</b> · CI {patient.document}</div>
+          <div><span className="text-clinic-muted">Paciente:</span> <b>{fullName(patient)}</b>{verCI && <> · CI {patient.document}</>}</div>
           <div><span className="text-clinic-muted">Fecha:</span> {new Date(rx.date).toLocaleDateString("es-PY")}</div>
         </div>
         <div className="rounded-xl border border-clinic-border p-4">
