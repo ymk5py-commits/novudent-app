@@ -132,33 +132,53 @@ export function aplicarCambios(procs: Procedure[], cambios: CambioDePrecio[], se
 
 /* ───────────── Cargar desde una planilla ───────────── */
 
+/** `porNombre`: la fila no traía código y se buscó el servicio por su nombre (o se le dio un código automático, si es nuevo). */
 export type FilaDeCarga =
-  | { linea: number; estado: "nuevo"; cpt: string; description: string; price: number; category?: ProcedureCategory }
+  | { linea: number; estado: "nuevo"; cpt: string; description: string; price: number; category?: ProcedureCategory; porNombre?: true }
   | {
       linea: number; estado: "cambia"; cpt: string; description: string; price: number; category?: ProcedureCategory;
-      antes: { description: string; price: number; category?: ProcedureCategory };
+      antes: { description: string; price: number; category?: ProcedureCategory }; porNombre?: true;
     }
-  | { linea: number; estado: "igual"; cpt: string }
+  | { linea: number; estado: "igual"; cpt: string; description?: string; porNombre?: true }
   | { linea: number; estado: "error"; texto: string; motivo: string };
 
-export type AnalisisDeCarga = { filas: FilaDeCarga[]; nuevos: number; cambian: number; iguales: number; errores: number; truncado: boolean };
+export type AnalisisDeCarga = {
+  filas: FilaDeCarga[]; nuevos: number; cambian: number; iguales: number; errores: number; truncado: boolean;
+  /** La línea (o la fila de la hoja) del encabezado; `null` si no tiene. */
+  lineaDelEncabezado: number | null;
+  /** Filas con algo escrito arriba del encabezado (un título, el nombre de la clínica…): se saltean. */
+  filasAntesDelEncabezado: number;
+};
 
-export const MAX_FILAS_DE_CARGA = 500;
+/** Una fila de la planilla: su número (la línea del texto pegado o la fila de la hoja de Excel) y sus celdas como texto.
+ *  `texto` es la línea tal como vino, para mostrarla si tiene un error (sin él se muestran las celdas separadas por «|»). */
+export type FilaDeEntrada = { linea: number; campos: string[]; texto?: string };
+
+export const MAX_FILAS_DE_CARGA = 3000;
 const PRECIO_MAXIMO = 1_000_000_000_000;
 const LARGO_MAXIMO_DESCRIPCION = 200;
+/** El encabezado se busca en las primeras filas con algo escrito: arriba suele haber un título. */
+const FILAS_PARA_BUSCAR_ENCABEZADO = 10;
 
 type Columna = "codigo" | "descripcion" | "categoria" | "precio";
+/** Cómo se puede llamar cada columna, del nombre más claro al menos claro: si dos columnas dicen ser el precio («Costo» y
+ *  «Precio»), gana la de nombre más claro. Vale el nombre entero o su primera palabra («Precio (Gs.)», «Código CDT»). */
 const NOMBRES_DE_COLUMNA: Record<Columna, string[]> = {
-  codigo: ["codigo", "cod", "code", "cpt", "cdt"],
-  descripcion: ["descripcion", "servicio", "prestacion", "nombre", "detalle", "tratamiento"],
+  codigo: ["codigo", "cod", "cdt", "cpt", "code"],
+  descripcion: ["descripcion", "prestacion", "servicio", "procedimiento", "tratamiento", "nombre", "detalle", "item"],
   categoria: ["categoria", "tipo", "rubro"],
-  precio: ["precio", "arancel", "valor", "monto", "costo", "importe", "tarifa"],
+  precio: ["precio", "arancel", "valor", "importe", "tarifa", "monto", "costo"],
 };
 const COLUMNAS_SEGUN_CANTIDAD: Record<number, Columna[]> = {
   2: ["codigo", "precio"],
   3: ["codigo", "descripcion", "precio"],
   4: ["codigo", "descripcion", "categoria", "precio"],
 };
+
+/** Para comparar nombres de servicios y de columnas: sin tildes, mayúsculas ni signos («Resina — 1 sup.» = «resina 1 sup»). */
+const claveDeNombre = (s: string) => sinTildes(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+/** Los espacios de más (y los saltos de línea dentro de una celda de Excel) quedan como un espacio. */
+const espaciosSimples = (s: string) => s.replace(/\s+/g, " ").trim();
 
 /** Delimitador de una línea mirando solo fuera de comillas: tabulación (Excel) › punto y coma (CSV de acá) › coma. */
 function delimitadorDe(linea: string): string | null {
@@ -193,17 +213,56 @@ function dividirLinea(linea: string): string[] {
   return campos;
 }
 
-/** Si la línea es un encabezado («Código;Descripción;Precio»), en qué posición está cada columna. */
+/** Si la fila es un encabezado («Código;Descripción;Precio», «Prestación | Precio (Gs.)»), en qué posición está cada columna.
+ *  Hacen falta al menos dos celdas reconocidas: un título de una celda («Precio de lista 2026») no es un encabezado. */
 function leerEncabezado(campos: string[]): Partial<Record<Columna, number>> | null {
-  const mapa: Partial<Record<Columna, number>> = {};
+  const mejor: Partial<Record<Columna, { pos: number; puntaje: number }>> = {};
   let reconocidos = 0;
-  campos.forEach((campo, i) => {
-    const palabra = sinTildes(campo);
+  campos.forEach((campo, pos) => {
+    const nombre = claveDeNombre(campo);
+    if (!nombre) return;
+    const primera = nombre.split(" ")[0];
     for (const col of Object.keys(NOMBRES_DE_COLUMNA) as Columna[]) {
-      if (NOMBRES_DE_COLUMNA[col].includes(palabra) && mapa[col] === undefined) { mapa[col] = i; reconocidos++; }
+      const exacto = NOMBRES_DE_COLUMNA[col].indexOf(nombre);
+      const porPrimera = NOMBRES_DE_COLUMNA[col].indexOf(primera);
+      // El nombre entero gana sobre la primera palabra; entre iguales, el nombre más claro y después la columna de más a la izquierda.
+      const puntaje = exacto >= 0 ? exacto : porPrimera >= 0 ? 100 + porPrimera : -1;
+      if (puntaje < 0) continue;
+      reconocidos++;
+      const actual = mejor[col];
+      if (!actual || puntaje < actual.puntaje) mejor[col] = { pos, puntaje };
+      break;
     }
   });
-  return reconocidos >= 2 || (reconocidos > 0 && reconocidos === campos.length) ? mapa : null;
+  if (reconocidos < 2) return null;
+  const mapa: Partial<Record<Columna, number>> = {};
+  for (const col of Object.keys(mejor) as Columna[]) mapa[col] = mejor[col]?.pos;
+  return mapa;
+}
+
+/** Una fila que ya trae datos (dos celdas o más y alguna es un monto): de ahí para abajo no se busca más el encabezado. */
+const pareceDatos = (campos: string[]) => campos.filter((c) => c.trim() !== "").length >= 2 && campos.some((c) => parsearPrecio(c) !== null);
+
+/** Sin encabezado y con dos columnas, la primera es un nombre (no un código) si tiene espacios, más de 20 letras o ningún número;
+ *  un código que ya existe en el arancel sigue siendo un código aunque no tenga números («ORTO»). */
+function primeraEsNombre(texto: string, porCodigo: Map<string, Procedure>): boolean {
+  const t = texto.trim();
+  if (t === "") return false;
+  const comoCodigo = normalizarCodigo(t);
+  if (comoCodigo && porCodigo.has(comoCodigo)) return false;
+  return /\s/.test(t) || t.length > 20 || !/\d/.test(t);
+}
+
+function textoDeLaFila(fila: FilaDeEntrada): string {
+  if (fila.texto !== undefined) return fila.texto;
+  const campos = [...fila.campos];
+  while (campos.length > 0 && campos[campos.length - 1].trim() === "") campos.pop();
+  return campos.join(" | ");
+}
+
+/** Las líneas del texto pegado (o de un CSV), cada una con su número y sus campos. */
+function filasDeTexto(texto: string): FilaDeEntrada[] {
+  return texto.replace(/^\uFEFF/, "").split(/\r\n|\r|\n/).map((cruda, i) => ({ linea: i + 1, campos: dividirLinea(cruda), texto: cruda }));
 }
 
 function categoriaDesdeTexto(texto: string): ProcedureCategory | null {
@@ -215,82 +274,173 @@ function categoriaDesdeTexto(texto: string): ProcedureCategory | null {
 }
 
 /** Lee filas pegadas desde Excel / Google Sheets (o un CSV) y dice, fila por fila, qué pasaría al aplicarlas.
- *  Columnas: código · descripción · [categoría] · precio. Con solo código y precio se actualizan precios de servicios que ya existen.
- *  Con un encabezado en la primera línea, las columnas pueden ir en cualquier orden. */
+ *  Es `analizarCargaDeFilas` sobre las líneas del texto (cada línea, partida en sus campos). */
 export function analizarCargaDePrecios(texto: string, existentes: Procedure[], decimales = 0): AnalisisDeCarga {
+  return analizarCargaDeFilas(filasDeTexto(texto), existentes, decimales);
+}
+
+/** El análisis de una carga, igual para el texto pegado y para las filas de un archivo de Excel: dice, fila por fila, qué pasaría al
+ *  aplicarla (nuevo, cambia, sin cambios o error). Nada se guarda acá.
+ *
+ *  - Columnas: código · descripción · [categoría] · precio. Con solo código y precio se actualizan precios de servicios que ya existen.
+ *  - Con encabezado, las columnas pueden ir en cualquier orden, y el encabezado puede tener un título arriba (se busca en las primeras
+ *    filas). **Sin columna de código** («Prestación | Precio») cada fila se busca por su nombre (sin tildes, mayúsculas ni signos): si
+ *    el servicio existe se le cambia el precio y si no, se crea con un código automático `S0001`, `S0002`… que no choca con ninguno.
+ *  - Sin encabezado y con dos columnas, la primera es un nombre si tiene espacios, más de 20 letras o ningún número (`primeraEsNombre`).
+ *  - Un código o un nombre repetido en la planilla es un error de esa fila. Se leen hasta `MAX_FILAS_DE_CARGA` filas. */
+export function analizarCargaDeFilas(entrada: FilaDeEntrada[], existentes: Procedure[], decimales = 0): AnalisisDeCarga {
   const porCodigo = new Map(existentes.map((p) => [p.cpt, p]));
-  const vistos = new Map<string, number>();
+  const porNombre = new Map<string, Procedure[]>();
+  for (const p of existentes) {
+    const k = claveDeNombre(p.description);
+    if (k) porNombre.set(k, [...(porNombre.get(k) ?? []), p]);
+  }
   const filas: FilaDeCarga[] = [];
-  let truncado = false;
+  const conDatos = entrada.filter((f) => f.campos.some((c) => c.trim() !== ""));
+
+  // El encabezado se busca en las primeras filas, hasta la primera que ya trae datos.
   let encabezado: Partial<Record<Columna, number>> | null = null;
-  let primeraLinea = true;
+  let desde = 0;
+  for (let i = 0; i < Math.min(conDatos.length, FILAS_PARA_BUSCAR_ENCABEZADO); i++) {
+    const e = leerEncabezado(conDatos[i].campos);
+    if (e) { encabezado = e; desde = i + 1; break; }
+    if (pareceDatos(conDatos[i].campos)) break;
+  }
+  let truncado = false;
+  const resumen = (): AnalisisDeCarga => {
+    const cuenta = (e: FilaDeCarga["estado"]) => filas.filter((f) => f.estado === e).length;
+    return {
+      filas, nuevos: cuenta("nuevo"), cambian: cuenta("cambia"), iguales: cuenta("igual"), errores: cuenta("error"), truncado,
+      lineaDelEncabezado: encabezado ? conDatos[desde - 1].linea : null,
+      filasAntesDelEncabezado: encabezado ? desde - 1 : 0,
+    };
+  };
 
-  const lineas = texto.replace(/^\uFEFF/, "").split(/\r\n|\r|\n/);
-  for (let i = 0; i < lineas.length; i++) {
-    const linea = i + 1;
-    const cruda = lineas[i];
-    const campos = dividirLinea(cruda);
-    if (campos.every((c) => c === "")) continue;
+  if (encabezado) {
+    const fila = conDatos[desde - 1];
+    const falta = encabezado.precio === undefined
+      ? "El encabezado necesita la columna Precio."
+      : encabezado.codigo === undefined && encabezado.descripcion === undefined
+        ? "El encabezado necesita la columna Código o la del nombre de la prestación (Prestación, Descripción…)."
+        : null;
+    if (falta) {
+      filas.push({ linea: fila.linea, estado: "error", texto: textoDeLaFila(fila), motivo: falta });
+      return resumen();
+    }
+  }
 
-    if (primeraLinea) {
-      primeraLinea = false;
-      encabezado = leerEncabezado(campos);
-      if (encabezado) {
-        if (encabezado.codigo === undefined || encabezado.precio === undefined) {
-          filas.push({ linea, estado: "error", texto: cruda, motivo: "El encabezado necesita al menos las columnas Código y Precio." });
-          break;
-        }
+  const datos = conDatos.slice(desde);
+  // Los códigos automáticos no usan uno que ya existe ni uno que el mismo archivo trae (sin encabezado se pueden mezclar códigos y nombres).
+  const usados = new Set(porCodigo.keys());
+  if (!encabezado) for (const f of datos) { const c = normalizarCodigo(f.campos[0] ?? ""); if (c) usados.add(c); }
+  let siguiente = 1;
+  const codigoAutomatico = () => {
+    let c: string;
+    do c = `S${String(siguiente++).padStart(4, "0")}`; while (usados.has(c));
+    usados.add(c);
+    return c;
+  };
+  const lineaDelCodigo = new Map<string, number>();
+  const lineaDelNombre = new Map<string, number>();
+
+  for (const fila of datos) {
+    if (filas.length >= MAX_FILAS_DE_CARGA) { truncado = true; break; }
+    const { linea } = fila;
+    const error = (motivo: string) => { filas.push({ linea, estado: "error", texto: textoDeLaFila(fila), motivo }); };
+
+    let campos = fila.campos;
+    if (!encabezado) {
+      // Las celdas vacías del final no cuentan como columnas (el CSV que guarda Excel con columnas sobrantes, o la fila de una hoja).
+      campos = [...campos];
+      while (campos.length > 0 && campos[campos.length - 1].trim() === "") campos.pop();
+      if (!COLUMNAS_SEGUN_CANTIDAD[campos.length]) {
+        error("Se esperan 2, 3 o 4 columnas: código, descripción, categoría y precio (o solo el nombre y el precio).");
         continue;
       }
     }
-    if (filas.length >= MAX_FILAS_DE_CARGA) { truncado = true; break; }
-
-    const error = (motivo: string) => filas.push({ linea, estado: "error", texto: cruda, motivo });
-
     const dato = (col: Columna): string => {
       if (encabezado) return (campos[encabezado[col] ?? -1] ?? "").trim();
-      const orden = COLUMNAS_SEGUN_CANTIDAD[campos.length];
-      const pos = orden ? orden.indexOf(col) : -1;
+      const pos = COLUMNAS_SEGUN_CANTIDAD[campos.length].indexOf(col);
       return pos >= 0 ? campos[pos].trim() : "";
     };
-    if (!encabezado && !COLUMNAS_SEGUN_CANTIDAD[campos.length]) {
-      error("Se esperan 2, 3 o 4 columnas: código, descripción, categoría y precio.");
+
+    const precioCrudo = dato("precio");
+    const leido = precioCrudo === "" ? null : parsearPrecio(precioCrudo);
+    const errorDePrecio = precioCrudo === "" ? "Falta el precio."
+      : leido === null ? `Precio inválido «${precioCrudo}».`
+        : leido > PRECIO_MAXIMO ? "El monto es demasiado grande." : null;
+    const price = leido === null ? 0 : Number(leido.toFixed(decimales));
+
+    const categoriaCruda = dato("categoria");
+    const categoria = categoriaCruda === "" ? undefined : categoriaDesdeTexto(categoriaCruda);
+    const errorDeCategoria = categoria === null ? `La categoría «${categoriaCruda}» no existe. Usá: ${Object.values(CATEGORY_LABEL).join(", ")}.` : null;
+    const conCategoria = (c: ProcedureCategory | null | undefined) => (c ? { category: c } : {});
+
+    /* ── Sin código: se busca el servicio por su nombre ── */
+    const sinCodigo = encabezado ? encabezado.codigo === undefined : campos.length === 2 && primeraEsNombre(campos[0], porCodigo);
+    if (sinCodigo) {
+      const nombre = espaciosSimples(encabezado ? dato("descripcion") : campos[0]);
+      const clave = claveDeNombre(nombre);
+      if (clave === "") { error("Falta el nombre de la prestación."); continue; }
+      if (nombre.length > LARGO_MAXIMO_DESCRIPCION) { error(`El nombre es muy largo (máximo ${LARGO_MAXIMO_DESCRIPCION} letras).`); continue; }
+      if (errorDePrecio) { error(errorDePrecio); continue; }
+      const repetido = lineaDelNombre.get(clave);
+      if (repetido !== undefined) { error(`Nombre repetido: ya está en la línea ${repetido}.`); continue; }
+      if (errorDeCategoria) { error(errorDeCategoria); continue; }
+      lineaDelNombre.set(clave, linea);
+
+      const candidatos = porNombre.get(clave) ?? [];
+      if (candidatos.length > 1) {
+        error(`Hay ${candidatos.length} servicios llamados «${nombre}» en el arancel (${candidatos.map((p) => p.cpt).join(", ")}): para elegir cuál, cargalo con su código.`);
+        continue;
+      }
+      const actual = candidatos[0];
+      if (!actual) {
+        const cpt = codigoAutomatico();
+        lineaDelCodigo.set(cpt, linea);
+        filas.push({ linea, estado: "nuevo", cpt, description: nombre, price, ...conCategoria(categoria), porNombre: true });
+        continue;
+      }
+      const otra = lineaDelCodigo.get(actual.cpt);
+      if (otra !== undefined) { error(`«${actual.description}» (${actual.cpt}) ya está en la línea ${otra}.`); continue; }
+      lineaDelCodigo.set(actual.cpt, linea);
+      // El nombre guardado no se toca: el de la planilla puede venir sin tildes o con otros signos.
+      const nuevaCategoria = categoria ?? actual.category;
+      if (price === actual.price && nuevaCategoria === actual.category) {
+        filas.push({ linea, estado: "igual", cpt: actual.cpt, description: actual.description, porNombre: true });
+        continue;
+      }
+      filas.push({
+        linea, estado: "cambia", cpt: actual.cpt, description: actual.description, price, ...conCategoria(nuevaCategoria), porNombre: true,
+        antes: { description: actual.description, price: actual.price, ...conCategoria(actual.category) },
+      });
       continue;
     }
-    const sinDescripcion = encabezado ? encabezado.descripcion === undefined : campos.length === 2;
 
+    /* ── Con código ── */
+    const sinDescripcion = encabezado ? encabezado.descripcion === undefined : campos.length === 2;
     const cptCrudo = dato("codigo");
     if (cptCrudo === "") { error("Falta el código."); continue; }
     const cpt = normalizarCodigo(cptCrudo);
     if (!cpt) { error(`Código inválido «${cptCrudo}»: usá letras, números, punto o guion (hasta 20).`); continue; }
-
-    const precioCrudo = dato("precio");
-    const leido = parsearPrecio(precioCrudo);
-    if (leido === null) { error(`Precio inválido «${precioCrudo}».`); continue; }
-    if (leido > PRECIO_MAXIMO) { error("El monto es demasiado grande."); continue; }
-    const price = Number(leido.toFixed(decimales));
-
-    const primeraVez = vistos.get(cpt);
+    if (errorDePrecio) { error(errorDePrecio); continue; }
+    const primeraVez = lineaDelCodigo.get(cpt);
     if (primeraVez !== undefined) { error(`Código repetido: ya está en la línea ${primeraVez}.`); continue; }
+    if (errorDeCategoria) { error(errorDeCategoria); continue; }
 
-    const categoriaCruda = dato("categoria");
-    let categoria: ProcedureCategory | undefined;
-    if (categoriaCruda !== "") {
-      const c = categoriaDesdeTexto(categoriaCruda);
-      if (!c) { error(`La categoría «${categoriaCruda}» no existe. Usá: ${Object.values(CATEGORY_LABEL).join(", ")}.`); continue; }
-      categoria = c;
-    }
-
-    const descripcion = dato("descripcion");
+    const descripcion = espaciosSimples(dato("descripcion"));
     if (descripcion.length > LARGO_MAXIMO_DESCRIPCION) { error(`La descripción es muy larga (máximo ${LARGO_MAXIMO_DESCRIPCION} letras).`); continue; }
 
     const actual = porCodigo.get(cpt);
-    vistos.set(cpt, linea);
+    lineaDelCodigo.set(cpt, linea);
+    // Si más abajo una fila sin código trae este mismo nombre, es el mismo servicio: se marca como repetido.
+    const claveDescripcion = claveDeNombre(descripcion || actual?.description || "");
+    if (claveDescripcion && !lineaDelNombre.has(claveDescripcion)) lineaDelNombre.set(claveDescripcion, linea);
 
     if (!actual) {
       if (sinDescripcion) { error(`El código ${cpt} no existe: para crearlo agregá la descripción.`); continue; }
       if (descripcion === "") { error(`Falta la descripción del servicio nuevo ${cpt}.`); continue; }
-      filas.push({ linea, estado: "nuevo", cpt, description: descripcion, price, ...(categoria ? { category: categoria } : {}) });
+      filas.push({ linea, estado: "nuevo", cpt, description: descripcion, price, ...conCategoria(categoria) });
       continue;
     }
 
@@ -299,13 +449,12 @@ export function analizarCargaDePrecios(texto: string, existentes: Procedure[], d
     const cambia = price !== actual.price || nuevaDescripcion !== actual.description || nuevaCategoria !== actual.category;
     if (!cambia) { filas.push({ linea, estado: "igual", cpt }); continue; }
     filas.push({
-      linea, estado: "cambia", cpt, description: nuevaDescripcion, price, ...(nuevaCategoria ? { category: nuevaCategoria } : {}),
-      antes: { description: actual.description, price: actual.price, ...(actual.category ? { category: actual.category } : {}) },
+      linea, estado: "cambia", cpt, description: nuevaDescripcion, price, ...conCategoria(nuevaCategoria),
+      antes: { description: actual.description, price: actual.price, ...conCategoria(actual.category) },
     });
   }
 
-  const cuenta = (e: FilaDeCarga["estado"]) => filas.filter((f) => f.estado === e).length;
-  return { filas, nuevos: cuenta("nuevo"), cambian: cuenta("cambia"), iguales: cuenta("igual"), errores: cuenta("error"), truncado };
+  return resumen();
 }
 
 /** Los servicios a guardar: los nuevos y los que cambian (con sus otros datos intactos). Sin los iguales ni los que tienen error. */
