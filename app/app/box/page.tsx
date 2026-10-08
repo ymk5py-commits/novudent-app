@@ -10,11 +10,13 @@ import { planOf } from "@/lib/plan";
 import { PlanLocked } from "@/components/PlanGate";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
+import { citasDelBox, diaDeLaCita } from "@/lib/boxes";
+import { fechaLocal } from "@/lib/tareas";
 import type { Box } from "@/lib/types";
 
 /* ===== helpers ===== */
 function toDateKey(d: Date): string {
-  return d.toISOString().slice(0, 10); // "YYYY-MM-DD"
+  return fechaLocal(d); // "YYYY-MM-DD" en hora local
 }
 function addDays(d: Date, n: number): Date {
   const x = new Date(d);
@@ -22,7 +24,7 @@ function addDays(d: Date, n: number): Date {
   return x;
 }
 function sameDay(iso: string, d: Date): boolean {
-  return iso.slice(0, 10) === toDateKey(d);
+  return diaDeLaCita(iso) === toDateKey(d);
 }
 
 /* ===== Paleta de colores para los boxes ===== */
@@ -59,8 +61,10 @@ export default function BoxPage() {
 
   // ── Datos del día ──────────────────────────────────────────────────────────
   const dayAppts = db.appointments.filter((a) => sameDay(a.start, selectedDate));
-  const assigned = dayAppts.filter((a) => a.boxId);
-  const unassigned = dayAppts.filter((a) => !a.boxId);
+  // Una cita con un box que ya no existe (se borró) cuenta como «sin asignar»: así no queda sin columna.
+  const boxIds = new Set(db.boxes.map((b) => b.id));
+  const assigned = dayAppts.filter((a) => a.boxId && boxIds.has(a.boxId));
+  const unassigned = dayAppts.filter((a) => !a.boxId || !boxIds.has(a.boxId));
 
   return (
     <div className="space-y-6">
@@ -112,7 +116,13 @@ export default function BoxPage() {
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        onClick={() => deleteBox(box.id)}
+                        onClick={() => {
+                          const n = citasDelBox(db.appointments, box.id);
+                          const aviso = n > 0
+                            ? `¿Eliminar ${box.name}? Hay ${n} ${n === 1 ? "cita" : "citas"} con este box: ${n === 1 ? "queda" : "quedan"} sin box asignado, no se ${n === 1 ? "borra" : "borran"}.`
+                            : `¿Eliminar ${box.name}?`;
+                          if (confirm(aviso)) deleteBox(box.id);
+                        }}
                         className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted transition-colors hover:bg-state-errbg hover:text-state-err"
                         aria-label={`Eliminar ${box.name}`}
                       >

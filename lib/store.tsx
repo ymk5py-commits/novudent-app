@@ -54,6 +54,7 @@ import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
 import { can, aplicarRolesDeLaClinica, mismaConfiguracionDeRoles } from "./rbac";
 import { fusionarFichas } from "./fusionFichas";
+import { citasSinBox } from "./boxes";
 import { historiaClinicaPendiente, plantillasDeClinica } from "./documentosClinicos";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { worstSeverity } from "./recovery";
@@ -1659,8 +1660,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         fsSave("boxes", b.id, b);
       },
       deleteBox: (id: string) => {
-        persist((prev) => ({ ...prev, boxes: prev.boxes.filter((x) => x.id !== id) }));
+        // Las citas de ese box quedan sin box (no se borran ni quedan apuntando a un box que ya no existe).
+        const sueltas = citasSinBox(db.appointments, id);
+        persist((prev) => ({
+          ...prev,
+          boxes: prev.boxes.filter((x) => x.id !== id),
+          appointments: prev.appointments.map((a) => (a.boxId === id ? { ...a, boxId: "" } : a)),
+        }));
         fsDelete("boxes", id);
+        for (const a of sueltas) fsSave("appointments", a.id, a);
       },
       /* — Negociación de presupuestos — */
       confirmNegociacion: (budgetId, by) => {
