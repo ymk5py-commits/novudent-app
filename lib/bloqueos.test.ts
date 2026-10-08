@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  bloqueoAplica, expandirRepeticion, errorDeBloqueo, armarBloqueos, citasQuePisan, rangoDeBloqueo,
+  bloqueoAplica, expandirRepeticion, errorDeBloqueo, armarBloqueos, citasQuePisan, rangoDeBloqueo, etiquetaDeBloqueo,
   TODOS_LOS_PROFESIONALES, MOTIVOS_SUGERIDOS, type FormBloqueo,
 } from "./bloqueos";
 
@@ -123,6 +123,14 @@ describe("errorDeBloqueo", () => {
   it("«Hasta 24:00» es todo el resto del día (vacaciones, feriado); «Desde 24:00» no", () => {
     expect(errorDeBloqueo(form({ desde: "00:00", hasta: "24:00" }))).toBeNull();
     expect(errorDeBloqueo(form({ desde: "24:00", hasta: "24:00" }))).toMatch(/hora/);
+  });
+});
+
+describe("etiquetaDeBloqueo", () => {
+  it("dice qué está bloqueado: horario, motivo, profesional y box («Bloqueado 12:00–13:00 · Almuerzo · Dra. Sofía Benítez · Box 2»)", () => {
+    const b = { dentistId: "u2", start: local("2026-10-12", "12:00"), end: local("2026-10-12", "13:00"), reason: "Almuerzo" };
+    expect(etiquetaDeBloqueo(b, "Dra. Sofía Benítez", "Box 2")).toBe("Bloqueado 12:00–13:00 · Almuerzo · Dra. Sofía Benítez · Box 2");
+    expect(etiquetaDeBloqueo({ ...b, reason: undefined }, "Todos los profesionales")).toBe("Bloqueado 12:00–13:00 · Todos los profesionales");
   });
 });
 

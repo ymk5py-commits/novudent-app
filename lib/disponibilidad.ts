@@ -36,13 +36,14 @@ function ocupacionesDe(opts: { dentistId: string; citas: Ocupacion[]; boxId?: st
 
 /** Horarios de inicio ("HH:MM") en que entra una consulta de `duracionMin` el día `fecha` sin pisar otra cita del profesional (ni del
  *  box, si se eligió), ni un espacio bloqueado (lib/bloqueos.ts), ni quedar en el pasado. Con `permitirSuperponer` («Sobreagendar»)
- *  las citas no ocupan; los bloqueos, el pasado y el horario de atención se respetan siempre. */
+ *  las citas no ocupan; los bloqueos, el pasado y el horario de atención se respetan siempre. `incluir` suma horarios fuera de los pasos
+ *  de la grilla (sobreagendar una cita que empieza 09:20), con las mismas condiciones. */
 export function huecosDelDia(
   fecha: Date,
   duracionMin: number,
   opts: {
     dentistId: string; citas: Ocupacion[]; ahora: number; boxId?: string; horario?: Horario; paso?: number; ignorarId?: string;
-    bloqueos?: readonly Bloqueo[]; permitirSuperponer?: boolean;
+    bloqueos?: readonly Bloqueo[]; permitirSuperponer?: boolean; incluir?: readonly string[];
   },
 ): string[] {
   const horario = opts.horario ?? HORARIO_POR_DEFECTO;
@@ -53,8 +54,17 @@ export function huecosDelDia(
   const bloqueadas = (opts.bloqueos ?? [])
     .filter((b) => bloqueoAplica(b, { dentistId: opts.dentistId, boxId: opts.boxId }))
     .map((b) => [Date.parse(b.start), Date.parse(b.end)] as const);
+  const desde = aMin(horario.desde);
+  const hasta = aMin(horario.hasta);
+  const candidatos = new Set<number>();
+  for (let t = desde; t + duracionMin <= hasta; t += paso) candidatos.add(t);
+  for (const h of opts.incluir ?? []) {
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(h)) continue;
+    const t = aMin(h);
+    if (t >= desde && t + duracionMin <= hasta) candidatos.add(t);
+  }
   const out: string[] = [];
-  for (let t = aMin(horario.desde); t + duracionMin <= aMin(horario.hasta); t += paso) {
+  for (const t of [...candidatos].sort((a, b) => a - b)) {
     const ini = base.getTime() + t * 60_000;
     const fin = ini + duracionMin * 60_000;
     if (ini < opts.ahora) continue;

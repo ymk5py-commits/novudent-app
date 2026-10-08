@@ -119,6 +119,17 @@ describe("bloqueos y sobreagendar", () => {
     expect(huecosDelDia(DOMINGO, 30, { dentistId: "u2", citas: [], ahora: ANTES, permitirSuperponer: true })).toEqual([]);
   });
 
+  it("«incluir» ofrece también un horario fuera de los pasos de 30 min (sobreagendar una cita de las 09:20), si entra y no está bloqueado", () => {
+    const citas = [cita(9, 20, 20)];
+    const sobre = { dentistId: "u2", citas, ahora: ANTES, permitirSuperponer: true };
+    expect(huecosDelDia(MARTES, 30, { ...sobre, incluir: ["09:20"] })).toEqual(expect.arrayContaining(["09:00", "09:20", "09:30"]));
+    const h = huecosDelDia(MARTES, 30, { ...sobre, incluir: ["09:20"] });
+    expect(h.indexOf("09:20")).toBe(h.indexOf("09:00") + 1); // en orden
+    expect(huecosDelDia(MARTES, 30, { ...sobre, incluir: ["09:20"], bloqueos: [bloqueo(9, 0, 60)] })).not.toContain("09:20");
+    expect(huecosDelDia(MARTES, 30, { dentistId: "u2", citas, ahora: ANTES, incluir: ["09:20"] })).not.toContain("09:20"); // sin sobreagendar está ocupado
+    expect(huecosDelDia(MARTES, 30, { ...sobre, incluir: ["17:50", "basura"] })).not.toContain("17:50"); // no entra antes del cierre
+  });
+
   it("citasEnElHueco cuenta las citas del profesional o del box que pisa ese horario (para marcarlo «Ya hay 1 cita»)", () => {
     const citas = [
       cita(9, 0, 60), cita(9, 30, 30, { dentistId: "u4", boxId: "box1" }), cita(9, 0, 30, { dentistId: "u4" }),

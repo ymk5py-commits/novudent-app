@@ -58,7 +58,7 @@ function minutosDe(hhmm: string | undefined): number | null {
 const diaDeLaSemana = (fecha: string) => new Date(`${fecha}T12:00:00Z`).getUTCDay();
 
 /** La misma fecha un año después (el tope de «Repetir hasta»). */
-function unAnioDespues(fecha: string): string {
+export function unAnioDespues(fecha: string): string {
   const d = new Date(`${fecha}T12:00:00Z`);
   d.setUTCFullYear(d.getUTCFullYear() + 1);
   return d.toISOString().slice(0, 10);
@@ -150,6 +150,12 @@ export function citasQuePisan<C extends { dentistId: string; boxId?: string; sta
     const fin = Date.parse(c.end);
     return bloqueos.some((b) => bloqueoAplica(b, c) && ini < Date.parse(b.end) && fin > Date.parse(b.start));
   });
+}
+
+/** Qué está bloqueado, en una línea (el nombre accesible del bloqueo en la grilla): «Bloqueado 12:00–13:00 · Almuerzo · Dra. Sofía
+ *  Benítez · Box 2». `quien` es el nombre del profesional o «Todos los profesionales». */
+export function etiquetaDeBloqueo(b: { start: string; end: string; reason?: string }, quien: string, box?: string): string {
+  return [`Bloqueado ${rangoDeBloqueo(b)}`, b.reason, quien, box].filter(Boolean).join(" · ");
 }
 
 /** «12:00–13:00» en la hora local; un bloqueo que termina a la medianoche siguiente dice «24:00». */
