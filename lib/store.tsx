@@ -8,7 +8,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, onSnapshot, query, where, type Query,
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, writeBatch, onSnapshot, query, where, type Query,
 } from "firebase/firestore";
 import { app, fsdb, signInEmail, currentIdToken, signOutUser, currentAuthUid, signInAnonymousIfNeeded } from "./firebase";
 
@@ -48,7 +48,7 @@ async function ensureAuth() {
 }
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, OdontogramStatus, OdontogramToothState, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic, OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, DirectMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo, Branch, CrmCard, Campaign, LabOrder, Settlement, Box, Subscription,
-  DocumentoClinico, RutinaCheck, RolId,
+  DocumentoClinico, RutinaCheck, RolId, QuitaDeLista,
 } from "./types";
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
@@ -438,6 +438,10 @@ interface Ctx {
   upsertAppointment: (a: Appointment) => void;
   deleteAppointment: (id: string) => void;
   upsertPatient: (p: Patient) => void;
+  /** Quita a un paciente de «Sin próxima cita» o, con `null`, lo vuelve a incluir. A diferencia de `upsertPatient`, en Firestore escribe SOLO ese campo
+   *  (`updateDoc`): la ficha que tiene la pantalla puede estar vieja y reescribirla entera (`setDoc` sin merge) pisaría lo que otra persona cargó
+   *  después —el odontograma, las evoluciones—, sin ningún aviso. */
+  setSeguimientoPaciente: (patientId: string, quita: QuitaDeLista | null) => void;
   /** Alta de un paciente nuevo: lo guarda y le deja la Historia Clínica pendiente (si la clínica la tiene). */
   crearPaciente: (p: Patient, por: { id: string; name: string }) => void;
   completeForm: (patientId: string, formId: string, fields: { label: string; value: string }[], completedAt: string) => void;
@@ -881,6 +885,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
     );
   }, []);
+  /** Cambia UN campo de un documento (`undefined` lo borra) sin reescribir el resto: es para lo que se edita desde pantallas que pueden tener la
+   *  ficha vieja en memoria. Mismo aviso «No se guardó» (y mismo reintento) que `fsSave`. */
+  const fsCampo = useCallback((colName: string, id: string, campo: string, valor: unknown) => {
+    if (backendRef.current !== "firebase") return;
+    if (!id) { console.warn("fsCampo: id vacío, se omite", colName); return; }
+    // `clean` pasa el valor por JSON (saca los `undefined`) y rompería el marcador de `deleteField()`: por eso se lo aplica solo al valor.
+    const escribir = () => updateDoc(doc(fsdb, "clinics", clinicIdRef.current, colName, id), { [campo]: valor === undefined ? deleteField() : clean(valor) });
+    escribir().then(
+      () => resolverFallo(`${colName}/${id}`),
+      (e) => {
+        console.warn("fsCampo", e);
+        registrarFallo({
+          coleccion: colName, docId: id,
+          causa: clasificarError(e),
+          detalle: (e as { code?: string })?.code ?? String(e),
+          reintentar: async () => { await escribir(); },
+        });
+      },
+    );
+  }, []);
   /** Guarda el documento de la clínica (su configuración). Devuelve `true` si se guardó o si no hay servidor (modo local) y `false` si
    *  Firestore la rechazó: en ese caso queda el aviso «No se guardó» (lib/write-errors.ts), igual que para cualquier otro documento.
    *  Antes terminaba en un `.catch(() => {})`: un link de pago, un plazo o una plantilla se veían guardados y no lo estaban. El botón
@@ -1149,6 +1173,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       upsertPatient: (p) => {
         persist((prev) => ({ ...prev, patients: prev.patients.some((x) => x.id === p.id) ? prev.patients.map((x) => (x.id === p.id ? p : x)) : [...prev.patients, p] }));
         fsSave("patients", p.id, p);
+      },
+      setSeguimientoPaciente: (patientId, quita) => {
+        persist((prev) => ({
+          ...prev,
+          patients: prev.patients.map((x) => {
+            if (x.id !== patientId) return x;
+            if (quita) return { ...x, seguimiento: quita };
+            const { seguimiento: _quitado, ...sinQuita } = x;
+            void _quitado;
+            return sinQuita;
+          }),
+        }));
+        fsCampo("patients", patientId, "seguimiento", quita ?? undefined);
       },
       crearPaciente: (p, por) => {
         // Id determinístico: si la pantalla guarda dos veces el mismo alta, no se duplica la Historia Clínica.

@@ -258,6 +258,17 @@ export interface EmrNote {
   signedAt?: string;
 }
 
+/** Un paciente al que se lo quitó a mano de «Sin próxima cita» (Pacientes › Análisis de estudios específicos).
+ *  Vuelve solo a la lista si después de `cerradoAt` se atiende de nuevo y no se le agenda otra cita (lib/seguimiento). */
+export interface QuitaDeLista {
+  /** Cuándo se lo quitó (ISO). */
+  cerradoAt: string;
+  /** Uno de los motivos de siempre (`MOTIVOS_DE_QUITA`) o el texto que se escribió en «Otro». */
+  motivo: string;
+  /** Nombre de quien lo quitó. */
+  por: string;
+}
+
 export interface Patient {
   id: string;
   clinicId: string;
@@ -327,6 +338,8 @@ export interface Patient {
   nps?: { score: number; comment?: string; at: string };
   /* Histórico completo de encuestas NPS (no se pierde ninguna respuesta) */
   npsHistory?: { score: number; comment?: string; at: string }[];
+  /** Se lo quitó a mano de «Sin próxima cita» (ver `QuitaDeLista`). Sin este campo, el paciente sigue las reglas de siempre. */
+  seguimiento?: QuitaDeLista;
 }
 
 /* ===== Periodontograma ===== */
