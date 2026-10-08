@@ -2,11 +2,12 @@
 import Link from "next/link";
 /** Módulo de Agenda estilo Dentalink: vista Diaria (sidebar fecha + profesional +
  *  leyenda de estados; tabla Hora/Paciente/Doctor/Estado/Situación) · Diaria global ·
- *  Semanal (grilla 24h) · Reprogramación. Modales VER/Lista de espera/Crear-editar. */
-import { useEffect, useMemo, useRef, useState } from "react";
+ *  Semanal (grilla de 30 min con menú por espacio, components/agenda/GrillaSemanal) · Reprogramación.
+ *  Modales VER/Lista de espera/Crear-editar/Bloquear espacio. */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ChevronLeft, ChevronRight, CalendarDays, CalendarRange, List, MoreHorizontal, Eye, Pencil, Trash2, Plus, User, Video,
-  Hourglass, BellRing, Users, AlertTriangle, Printer, Search, Phone, ChevronDown, Mail, Check, MessageSquareText, Link2,
+  ChevronLeft, ChevronRight, CalendarDays, CalendarRange, CalendarCheck, List, MoreHorizontal, Eye, Pencil, Trash2, Plus, User, Video,
+  Hourglass, BellRing, Users, AlertTriangle, Printer, Search, Phone, ChevronDown, Mail, Check, Link2, Lock,
 } from "lucide-react";
 import { newSignToken } from "@/lib/firma";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName } from "@/lib/store";
@@ -18,9 +19,15 @@ import { useEstadosCita } from "@/lib/useEstadosCita";
 import type { EstadoCita } from "@/lib/types";
 import { botikaEnabled, makeOutboxTask, botikaMessage } from "@/lib/botika";
 import { patientBalance } from "@/lib/budgets";
-import type { Appointment, AppointmentStatus, Patient } from "@/lib/types";
+import { etiquetaDeBloqueo, rangoDeBloqueo, TODOS_LOS_PROFESIONALES } from "@/lib/bloqueos";
+import { textoPrestacion } from "@/lib/prestacionesCita";
+import type { AgendaBlock, Appointment, Patient } from "@/lib/types";
 import { DarCita } from "@/components/DarCita";
 import { Desplegable, ItemMenu } from "@/components/Desplegable";
+import { GrillaSemanal, type AccionEspacio } from "@/components/agenda/GrillaSemanal";
+import { BloquearEspacio } from "@/components/agenda/BloquearEspacio";
+import { MenuBloqueo, quienBloquea } from "@/components/agenda/MenuBloqueo";
+import { ComentarioCita } from "@/components/agenda/ComentarioCita";
 import { enviarAvisoCita } from "@/lib/avisoCita";
 import { Card, Btn, Modal, Field, inputCls, StatusBadge, Badge, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
@@ -38,17 +45,10 @@ function addDays(d: Date, n: number) {
   return x;
 }
 const dayKeyOf = (d: Date | string) => new Date(d).toLocaleDateString("en-CA");
-const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-
-const STATUS_BG: Record<AppointmentStatus, string> = {
-  confirmada: "bg-state-okbg border-state-ok/30 text-state-ok",
-  en_atencion: "bg-azure-50 border-azure-400/50 text-azure-700",
-  en_sala: "bg-violet-50 border-violet-300/60 text-violet-700",
-  pendiente: "bg-state-warnbg border-state-warn/30 text-state-warn",
-  completada: "bg-state-infobg border-azure-300/40 text-azure-700",
-  cancelada: "bg-state-errbg border-state-err/30 text-state-err line-through",
-  ausente: "bg-state-warnbg border-state-warn/30 text-state-warn",
-};
+/** "HH:MM" local de un instante ISO. */
+const horaDe = (iso: string) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+/** Rayado gris de un espacio bloqueado (el mismo de la grilla semanal). */
+const RAYADO = "[background-image:repeating-linear-gradient(135deg,#eceff3_0,#eceff3_6px,#f7f8fa_6px,#f7f8fa_12px)]";
 /* Estados de cita (nombres, orden y colores en lib/estadosCita.ts) */
 
 type Tab = "diaria" | "global" | "semanal" | "mensual" | "reprog";
@@ -78,7 +78,7 @@ function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (
 
   return (
     <Reveal>
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-2 flex items-center gap-2 print:hidden">
         <button onClick={() => setDay(new Date(y, m - 1, 1))} className="grid h-9 w-9 place-items-center rounded-xl border border-clinic-border bg-white hover:bg-clinic-bg" aria-label="Mes anterior"><ChevronLeft className="h-4 w-4" /></button>
         <button onClick={() => setDay(new Date())} className="rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-azure-600 hover:bg-clinic-bg">Este mes</button>
         <button onClick={() => setDay(new Date(y, m + 1, 1))} className="grid h-9 w-9 place-items-center rounded-xl border border-clinic-border bg-white hover:bg-clinic-bg" aria-label="Mes siguiente"><ChevronRight className="h-4 w-4" /></button>
@@ -118,7 +118,7 @@ function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (
 }
 
 export default function AgendaPage() {
-  const { db, session, upsertAppointment, deleteAppointment, setOnboarding, addWaitlist, removeWaitlist, addOutboxTask } = useStore();
+  const { db, session, upsertAppointment, deleteAppointment, setOnboarding, addWaitlist, removeWaitlist, addOutboxTask, addAgendaBlocks, deleteAgendaBlocks } = useStore();
   const alcance = useAlcance();
   // Dentista y asistente de doctores: solo la agenda de sus doctores, en todas las vistas.
   const citas = useMemo(() => db.appointments.filter((a) => alcance.veDoctor(a.dentistId)), [db.appointments, alcance]);
@@ -133,6 +133,9 @@ export default function AgendaPage() {
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
   const [proFilter, setProFilter] = useState<string>("all");
   const [branchFilter, setBranchFilter] = useState<string>("all");
+  // Filtro de box (Dentalink: la agenda por sillón): solo con dos o más boxes.
+  const [boxFilter, setBoxFilter] = useState<string>("all");
+  const variosBoxes = db.boxes.length > 1;
   const estados = useEstadosCita();
   const estadoDe = (x: Appointment) => estadoDeCita(x, estados);
   const [statusFilter, setStatusFilter] = useState<Set<string>>(() => new Set(estados.map((e) => e.id)));
@@ -141,6 +144,13 @@ export default function AgendaPage() {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [preseleccion, setPreseleccion] = useState<{ fecha: Date; hora: string } | undefined>(undefined);
+  // Cómo se abre «Dar cita» desde el menú de un espacio, el «+» de una cita o el ⋮ de la Diaria.
+  const [abrirCon, setAbrirCon] = useState<{ sobreagendar?: boolean; multiconsulta?: boolean }>({});
+  // «Bloquear espacio» (desde el menú de un espacio de la semanal) y el menú de un bloqueo en la Diaria y la Diaria global.
+  const [bloqueando, setBloqueando] = useState<{ fecha: Date; hora: string } | null>(null);
+  const anclaBloqueo = useRef<HTMLElement | null>(null);
+  const [bloqueoAbierto, setBloqueoAbierto] = useState<AgendaBlock | null>(null);
+  const cerrarMenuBloqueo = useCallback(() => setBloqueoAbierto(null), []);
   const [viewing, setViewing] = useState<Appointment | null>(null);
   const [waitOpen, setWaitOpen] = useState(false);
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null);
@@ -176,9 +186,10 @@ export default function AgendaPage() {
     () => dayAll.filter((a) => {
       const okBranch = branchFilter === "all" || (a.branchId ?? mainBranchId) === branchFilter;
       const okPro = proFilter === "all" || a.dentistId === proFilter;
-      return okBranch && okPro;
+      const okBox = boxFilter === "all" || a.boxId === boxFilter;
+      return okBranch && okPro && okBox;
     }),
-    [dayAll, tab, proFilter, branchFilter, mainBranchId]
+    [dayAll, tab, proFilter, branchFilter, boxFilter, mainBranchId]
   );
   const dayAppts = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -191,28 +202,47 @@ export default function AgendaPage() {
     });
   }, [dayAllPro, statusFilter, soloOnline, q, db.patients]);
 
-  /* — Filtro de profesional y sucursal, el mismo en todas las vistas — */
+  /* — Filtro de profesional, sucursal y box, el mismo en todas las vistas — */
   const pasaFiltros = (a: Appointment) =>
-    (proFilter === "all" || a.dentistId === proFilter) && (branchFilter === "all" || (a.branchId ?? mainBranchId) === branchFilter);
+    (proFilter === "all" || a.dentistId === proFilter) && (branchFilter === "all" || (a.branchId ?? mainBranchId) === branchFilter)
+    && (boxFilter === "all" || a.boxId === boxFilter);
+
+  /* — Espacios bloqueados que ve la persona: los de sus doctores y los de «Todos», dentro de los filtros de profesional y box (un bloqueo
+     no tiene sucursal: aplica en todas) — */
+  const bloqueosVisibles = useMemo(
+    () => db.agendaBlocks.filter((b) =>
+      (b.dentistId === TODOS_LOS_PROFESIONALES || alcance.veDoctor(b.dentistId))
+      && (proFilter === "all" || b.dentistId === TODOS_LOS_PROFESIONALES || b.dentistId === proFilter)
+      && (boxFilter === "all" || !b.boxId || b.boxId === boxFilter)),
+    [db.agendaBlocks, alcance, proFilter, boxFilter],
+  );
+  const bloqueosDelDia = useMemo(
+    () => bloqueosVisibles.filter((b) => dayKeyOf(b.start) === selKey).sort((a, b) => a.start.localeCompare(b.start)),
+    [bloqueosVisibles, selKey],
+  );
 
   /* — Semanal — */
   const weekEnd = addDays(weekStart, 7);
   const weekAppointments = useMemo(
     () => citas.filter((a) => { const t = new Date(a.start); return t >= weekStart && t < weekEnd && pasaFiltros(a); }).sort((a, b) => a.start.localeCompare(b.start)),
-    [citas, weekStart, weekEnd, proFilter, branchFilter, mainBranchId] // eslint-disable-line react-hooks/exhaustive-deps
+    [citas, weekStart, weekEnd, proFilter, branchFilter, boxFilter, mainBranchId] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const weekBlocks = useMemo(
+    () => bloqueosVisibles.filter((b) => { const t = new Date(b.start); return t >= weekStart && t < weekEnd; }),
+    [bloqueosVisibles, weekStart, weekEnd],
   );
 
   /* — Reprogramación: canceladas a reagendar — */
   const reprog = useMemo(
     () => citas.filter((a) => a.status === "cancelada" && pasaFiltros(a)).sort((a, b) => b.start.localeCompare(a.start)),
-    [citas, proFilter, branchFilter, mainBranchId] // eslint-disable-line react-hooks/exhaustive-deps
+    [citas, proFilter, branchFilter, boxFilter, mainBranchId] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   /* — Mensual: citas del mes de `day` — */
   const monthAppts = useMemo(() => {
     const y = day.getFullYear(), m = day.getMonth();
     return citas.filter((a) => { const t = new Date(a.start); return t.getFullYear() === y && t.getMonth() === m && pasaFiltros(a); });
-  }, [citas, day, proFilter, branchFilter, mainBranchId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [citas, day, proFilter, branchFilter, boxFilter, mainBranchId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* Reservas que entraron por la web y nadie validó, de hoy en adelante y de TODOS los días (no solo del día abierto), dentro de los
      filtros de profesional y sucursal. Solo las ve quien puede validarlas (agenda.edit). */
@@ -220,12 +250,13 @@ export default function AgendaPage() {
   const porValidar = reservas.length;
   const headerCount = tab === "semanal" ? weekAppointments.length : tab === "mensual" ? monthAppts.length : tab === "reprog" ? reprog.length : dayAppts.length;
 
-  /** Cita en blanco para «Dar cita»: la fecha y la hora salen de la grilla. */
+  /** Cita en blanco para «Dar cita»: la fecha y la hora salen de la grilla; el profesional y el box, de los filtros de la agenda. */
   const citaBase = (extra: Partial<Appointment> = {}): Appointment => {
     const ahora = new Date().toISOString();
     return {
       id: `a_${Date.now()}`, clinicId: session!.clinicId, patientId: "", dentistId: proFilter !== "all" ? proFilter : dentists[0]?.id ?? "",
-      title: "", start: ahora, end: ahora, status: "pendiente", amount: 0, discount: 0, ...extra,
+      title: "", start: ahora, end: ahora, status: "pendiente", amount: 0, discount: 0,
+      ...(variosBoxes && boxFilter !== "all" ? { boxId: boxFilter } : {}), ...extra,
     };
   };
   function newAppt(base: Date) {
@@ -233,18 +264,41 @@ export default function AgendaPage() {
     const hoy0 = new Date(); hoy0.setHours(0, 0, 0, 0);
     // La grilla arranca en el día que se está mirando (o hoy, si es un día pasado).
     setPreseleccion(d > hoy0 ? { fecha: d, hora: "" } : undefined);
+    setAbrirCon({});
     setEditing(citaBase());
   }
-  function quickCreate(dayIdx: number, hour: number) {
-    const fecha = addDays(weekStart, dayIdx); fecha.setHours(0, 0, 0, 0);
-    setPreseleccion({ fecha, hora: `${String(hour).padStart(2, "0")}:00` });
-    setEditing(citaBase());
+  /** Lo que se eligió en el menú de un espacio de la semanal. */
+  function accionEspacio(accion: AccionEspacio, fecha: Date, hora: string) {
+    if (accion === "bloquear") { setBloqueando({ fecha, hora }); return; }
+    setPreseleccion({ fecha, hora });
+    setAbrirCon({ sobreagendar: accion === "sobreagendar", multiconsulta: accion === "multiples" });
+    setEditing(citaBase(accion === "video" ? { telemed: true } : {}));
+  }
+  /** «Sobreagendar en este horario» desde una cita (el «+» de la tarjeta, el ⋮ de la Diaria o «Ver»): mismo día, hora, profesional y box. */
+  function sobreagendarDesde(a: Appointment) {
+    const fecha = new Date(a.start); fecha.setHours(0, 0, 0, 0);
+    setPreseleccion({ fecha, hora: horaDe(a.start) });
+    setAbrirCon({ sobreagendar: true });
+    setEditing(citaBase({ dentistId: a.dentistId, ...(a.boxId ? { boxId: a.boxId } : {}), ...(a.branchId ? { branchId: a.branchId } : {}) }));
+    setViewing(null);
   }
   const reagendar = (a: Appointment) => {
     // Pre-carga la cita anulada (paciente, profesional, tipo, box) en una nueva.
     setPreseleccion(undefined);
-    setEditing({ ...a, id: `a_${Date.now()}`, status: "pendiente", estadoId: undefined, cancelReason: undefined, reminderSent: undefined, confirmedVia: undefined, videoToken: undefined, confirmToken: undefined, respondidaAt: undefined });
+    setAbrirCon({});
+    setEditing({ ...a, id: `a_${Date.now()}`, status: "pendiente", estadoId: undefined, cancelReason: undefined, reminderSent: undefined, confirmedVia: undefined, videoToken: undefined, confirmToken: undefined, respondidaAt: undefined, sobrecupo: undefined });
   };
+  const cerrarDarCita = useCallback(() => { setEditing(null); setFromWaitlist(null); setPreseleccion(undefined); setAbrirCon({}); }, []);
+  const cerrarBloquear = useCallback(() => setBloqueando(null), []);
+  /** Abre el menú de un bloqueo (Diaria y Diaria global). */
+  const abrirMenuBloqueo = (b: AgendaBlock, ancla: HTMLElement) => { anclaBloqueo.current = ancla; setBloqueoAbierto(b); };
+  const quitarBloqueos = (ids: string[]) => {
+    deleteAgendaBlocks(ids);
+    setAviso({ ok: true, texto: ids.length === 1 ? "Se quitó el bloqueo." : `Se quitaron ${ids.length} bloqueos.` });
+  };
+  /** Nombre accesible y texto de un bloqueo: «Bloqueado 12:00–13:00 · Almuerzo · Dra. Sofía Benítez · Box 2». */
+  const nombreDeBox = (id?: string) => (id ? db.boxes.find((x) => x.id === id)?.name : undefined);
+  const etiquetaBloqueo = (b: AgendaBlock) => etiquetaDeBloqueo(b, quienBloquea(b, db.users), nombreDeBox(b.boxId));
   const toggleStatus = (s: string) =>
     setStatusFilter((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
   /** «Ver y validar»: solo las reservas online sin validar. Si el día abierto no tiene ninguna, va al primer día que sí. */
@@ -288,6 +342,13 @@ export default function AgendaPage() {
       </>}
     </select>
   );
+  // Box (sillón): solo si la clínica tiene dos o más. Lo elegido viaja a «Dar cita» y a «Bloquear espacio».
+  const selectBox = variosBoxes ? (
+    <select aria-label="Filtrar por box" value={boxFilter} onChange={(e) => setBoxFilter(e.target.value)} className={inputCls}>
+      <option value="all">Todos los boxes</option>
+      {db.boxes.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+    </select>
+  ) : null;
   const VISTA: Record<Tab, string> = { diaria: "Diaria", global: "Diaria global", semanal: "Semanal", mensual: "Mensual", reprog: "Reprogramación" };
 
   const TABS: [Tab, string, any][] = [
@@ -348,9 +409,10 @@ export default function AgendaPage() {
         </p>
       )}
       {(tab === "semanal" || tab === "mensual" || tab === "reprog") && (
-        <div className="grid gap-2 sm:grid-cols-2 lg:max-w-xl print:hidden">
+        <div className={`grid gap-2 sm:grid-cols-2 print:hidden ${selectBox ? "lg:max-w-3xl lg:grid-cols-3" : "lg:max-w-xl"}`}>
           {selectProfesional}
           {selectSucursal}
+          {selectBox}
         </div>
       )}
 
@@ -364,77 +426,31 @@ export default function AgendaPage() {
             : day.toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           {proFilter !== "all" ? ` · ${db.users.find((u) => u.id === proFilter)?.name ?? ""}` : ""}
           {branchFilter !== "all" ? ` · ${db.branches.find((b) => b.id === branchFilter)?.name ?? ""}` : ""}
+          {boxFilter !== "all" ? ` · ${nombreDeBox(boxFilter) ?? ""}` : ""}
         </p>
       </div>
 
       {tab === "semanal" ? (
         /* ===== SEMANAL (grilla 24h) ===== */
         <Reveal>
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-2 flex items-center gap-2 print:hidden">
             <button onClick={() => setWeekStart(addDays(weekStart, -7))} className="grid h-9 w-9 place-items-center rounded-xl border border-clinic-border bg-white hover:bg-clinic-bg" aria-label="Semana anterior"><ChevronLeft className="h-4 w-4" /></button>
             <button onClick={() => setWeekStart(mondayOf(new Date()))} className="rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm font-bold text-azure-600 hover:bg-clinic-bg">Esta semana</button>
             <button onClick={() => setWeekStart(addDays(weekStart, 7))} className="grid h-9 w-9 place-items-center rounded-xl border border-clinic-border bg-white hover:bg-clinic-bg" aria-label="Semana siguiente"><ChevronRight className="h-4 w-4" /></button>
             <span className="ml-1 text-sm text-clinic-muted">Semana del {weekStart.toLocaleDateString("es-PY", { day: "numeric", month: "long" })}</span>
           </div>
-          <Card className="overflow-hidden">
-            <div className="grid border-b border-clinic-border" style={{ gridTemplateColumns: "56px repeat(7,1fr)" }}>
-              <div />
-              {DAYS.map((d, i) => {
-                const date = addDays(weekStart, i);
-                const isToday = date.toDateString() === today.toDateString();
-                return (
-                  <div key={d} className={`border-l border-clinic-border px-2 py-2.5 text-center ${isToday ? "bg-azure-50" : ""}`}>
-                    <div className="text-[13px] font-semibold text-clinic-muted">{d}</div>
-                    <div className={`text-lg font-bold ${isToday ? "text-azure-600" : "text-clinic-text"}`}>{date.getDate()}</div>
-                  </div>
-                );
-              })}
-            </div>
-            <div ref={gridRef} className="max-h-[560px] overflow-y-auto print:max-h-none print:overflow-visible">
-              <div className="relative grid" style={{ gridTemplateColumns: "56px repeat(7,1fr)" }}>
-                <div>
-                  {Array.from({ length: 24 }, (_, h) => (
-                    <div key={h} className="flex h-14 items-start justify-end border-b border-clinic-border/60 pr-2 pt-1">
-                      <span className="tabular-nums text-[11px] text-clinic-muted">{String(h).padStart(2, "0")}:00</span>
-                    </div>
-                  ))}
-                </div>
-                {Array.from({ length: 7 }, (_, dayIdx) => {
-                  const date = addDays(weekStart, dayIdx);
-                  const isToday = date.toDateString() === today.toDateString();
-                  const dayAppts2 = weekAppointments.filter((a) => new Date(a.start).getDay() === ((dayIdx + 1) % 7));
-                  return (
-                    <div key={dayIdx} className={`relative border-l border-clinic-border ${isToday ? "bg-azure-50/40" : ""}`}>
-                      {Array.from({ length: 24 }, (_, h) => puedeAgendar ? (
-                        <button key={h} onClick={() => quickCreate(dayIdx, h)} className="block h-14 w-full border-b border-clinic-border/60 transition-colors hover:bg-azure-50" aria-label={`Dar cita ${DAYS[dayIdx]} ${h}:00`} />
-                      ) : (
-                        <div key={h} className="h-14 border-b border-clinic-border/60" />
-                      ))}
-                      {dayAppts2.map((a) => {
-                        const s = new Date(a.start); const e = new Date(a.end);
-                        const top = (s.getHours() + s.getMinutes() / 60) * 56;
-                        const height = Math.max(28, ((e.getTime() - s.getTime()) / 3600000) * 56 - 3);
-                        const p = db.patients.find((x) => x.id === a.patientId);
-                        const dent = db.users.find((x) => x.id === a.dentistId);
-                        return (
-                          <div key={a.id} style={{ top, height }} className="absolute left-1 right-1 hover:z-10">
-                            <button onClick={(ev) => { ev.stopPropagation(); setViewing(a); }} className={`h-full w-full overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] font-semibold shadow-card transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 hover:-translate-y-px hover:shadow-pop ${STATUS_BG[a.status]} ${a.notes ? "pr-6" : ""}`}>
-                              <div className="flex items-center gap-1 truncate">
-                                {dent && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: dent.color }} title={dent.name} />}
-                                <span className="truncate">{fmtTime(a.start)} · {a.title || "Cita"}</span>
-                              </div>
-                              {p && <div className="truncate font-normal opacity-80">{fullName(p)}</div>}
-                            </button>
-                            <ComentarioCita texto={a.notes} className="absolute right-0.5 top-0.5 bg-white/80 print:hidden" />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </Card>
+          <GrillaSemanal
+            weekStart={weekStart}
+            citas={weekAppointments}
+            bloqueos={weekBlocks}
+            gridRef={gridRef}
+            puedeAgendar={puedeAgendar}
+            puedeBloquear={puedeEditar}
+            onVer={setViewing}
+            onAccion={accionEspacio}
+            onSobreagendar={sobreagendarDesde}
+            onQuitarBloqueos={quitarBloqueos}
+          />
         </Reveal>
       ) : tab === "mensual" ? (
         <MonthView day={day} setDay={setDay} setTab={setTab} appointments={monthAppts} />
@@ -490,6 +506,7 @@ export default function AgendaPage() {
             <Card className="space-y-2 p-3">
               {selectProfesional}
               {selectSucursal}
+              {selectBox}
             </Card>
 
             <Card className="p-3">
@@ -520,6 +537,8 @@ export default function AgendaPage() {
                 <div className="flex gap-3" style={{ minWidth: Math.max(1, dentists.filter((d) => proFilter === "all" || d.id === proFilter).length) * 210 }}>
                   {dentists.filter((d) => proFilter === "all" || d.id === proFilter).map((d) => {
                     const list = dayAll.filter((a) => a.dentistId === d.id && statusFilter.has(estadoDe(a).id) && (!soloOnline || a.source === "online") && pasaFiltros(a)).sort((a, b) => a.start.localeCompare(b.start));
+                    const bloqueos = bloqueosDelDia.filter((b) => b.dentistId === TODOS_LOS_PROFESIONALES || b.dentistId === d.id);
+                    const items = [...list.map((a) => ({ start: a.start, cita: a })), ...bloqueos.map((b) => ({ start: b.start, bloqueo: b }))].sort((x, y) => x.start.localeCompare(y.start));
                     return (
                       <div key={d.id} className="min-w-[200px] flex-1">
                         <div className="mb-2 flex items-center gap-2 rounded-xl bg-clinic-bg px-3 py-2">
@@ -528,14 +547,34 @@ export default function AgendaPage() {
                           <span className="ml-auto tabular-nums text-xs text-clinic-muted">{list.length}</span>
                         </div>
                         <div className="space-y-2">
-                          {list.length === 0 ? <p className="py-4 text-center text-xs text-clinic-muted">Sin citas</p> : list.map((a) => {
+                          {items.length === 0 ? <p className="py-4 text-center text-xs text-clinic-muted">Sin citas</p> : items.map((item) => {
+                            if ("bloqueo" in item && item.bloqueo) {
+                              const b = item.bloqueo;
+                              const contenido = (
+                                <>
+                                  <div className="tabular-nums text-[11px] font-bold text-clinic-text">{rangoDeBloqueo(b)}</div>
+                                  <div className="flex items-center gap-1 truncate text-sm font-semibold text-clinic-muted"><Lock aria-hidden className="h-3.5 w-3.5 shrink-0" /> {b.reason || "Bloqueado"}</div>
+                                  <div className="text-[11px] text-clinic-muted">Espacio bloqueado{b.boxId ? ` · ${nombreDeBox(b.boxId) ?? ""}` : ""}</div>
+                                </>
+                              );
+                              const cls = `block w-full rounded-xl border border-clinic-border p-2.5 text-left ${RAYADO}`;
+                              return puedeEditar ? (
+                                <button key={`b_${b.id}`} type="button" aria-haspopup="menu" aria-label={etiquetaBloqueo(b)} title={etiquetaBloqueo(b)} onClick={(ev) => abrirMenuBloqueo(b, ev.currentTarget)} className={`${cls} transition-colors hover:border-clinic-muted`}>{contenido}</button>
+                              ) : (
+                                <div key={`b_${b.id}`} title={etiquetaBloqueo(b)} className={cls}>{contenido}</div>
+                              );
+                            }
+                            const a = (item as { cita: Appointment }).cita;
                             const p = db.patients.find((x) => x.id === a.patientId);
                             return (
                               <div key={a.id} className="relative">
                                 <button onClick={() => setViewing(a)} className="block w-full rounded-xl border border-clinic-border border-l-4 bg-white p-2.5 text-left shadow-card transition-shadow hover:shadow-pop" style={{ borderLeftColor: estadoDe(a).color }}>
                                   <div className="tabular-nums text-[11px] font-bold text-clinic-text">{fmtTime(a.start)}–{fmtTime(a.end)}</div>
                                   <div className="truncate pr-6 text-sm font-semibold text-clinic-text">{p ? fullName(p) : "—"}</div>
-                                  <div className="truncate text-[11px] font-semibold" style={{ color: estadoDe(a).color }}>{estadoDe(a).label}</div>
+                                  <div className="flex items-center gap-1.5 truncate text-[11px] font-semibold" style={{ color: estadoDe(a).color }}>
+                                    {estadoDe(a).label}
+                                    {a.sobrecupo && <span className="rounded bg-amber-100 px-1 text-[10px] font-bold text-amber-800">Sobrecupo</span>}
+                                  </div>
                                 </button>
                                 <ComentarioCita texto={a.notes} className="absolute right-1.5 top-1.5 print:hidden" />
                               </div>
@@ -548,6 +587,19 @@ export default function AgendaPage() {
                 </div>
               </div>
             ) : (<>
+            {bloqueosDelDia.length > 0 && (
+              <section aria-label="Espacios bloqueados" className="flex flex-wrap items-center gap-2 rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm">
+                <span className="flex items-center gap-1.5 font-bold text-clinic-text"><Lock aria-hidden className="h-3.5 w-3.5 text-clinic-muted" /> Espacios bloqueados:</span>
+                {bloqueosDelDia.map((b) => (
+                  <span key={b.id} className={`inline-flex items-center gap-2 rounded-lg border border-clinic-border px-2 py-0.5 text-[13px] text-clinic-text ${RAYADO}`}>
+                    <span>{`${rangoDeBloqueo(b)} ${b.reason || "Bloqueado"} · ${quienBloquea(b, db.users)}${b.boxId ? ` · ${nombreDeBox(b.boxId) ?? ""}` : ""}`}</span>
+                    {puedeEditar && (
+                      <button type="button" aria-haspopup="menu" aria-label={`Quitar: ${etiquetaBloqueo(b)}`} onClick={(ev) => abrirMenuBloqueo(b, ev.currentTarget)} className="text-[12px] font-bold text-state-err hover:underline print:hidden">Quitar</button>
+                    )}
+                  </span>
+                ))}
+              </section>
+            )}
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-clinic-muted" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nombre del paciente en las citas de hoy…" className="w-full rounded-xl border border-clinic-border bg-white py-2.5 pl-9 pr-3 text-sm focus:border-azure-600" />
@@ -576,7 +628,13 @@ export default function AgendaPage() {
                             {p ? <Link href={`/app/pacientes/${p.id}`} className="font-bold text-azure-700 hover:underline">{fullName(p)}</Link> : <span className="text-clinic-muted">—</span>}
                             {a.source === "online" && <span className="ml-2 rounded bg-state-infobg px-1.5 text-[11px] font-bold text-state-info">Online</span>}
                             {multi && <span className="ml-2 rounded bg-state-warnbg px-1.5 text-[11px] font-bold text-state-warn">Múltiples citas hoy</span>}
+                            {a.sobrecupo && <span className="ml-2 rounded bg-amber-100 px-1.5 text-[11px] font-bold text-amber-800" title="Se dio sobreagendando: comparte el horario con otra cita">Sobrecupo</span>}
                             <ComentarioCita texto={a.notes} className="ml-1 align-middle print:hidden" />
+                            {a.prestaciones && a.prestaciones.length > 0 && (
+                              <ul aria-label="Procedimiento a realizar" className="mt-1 flex flex-wrap gap-1">
+                                {a.prestaciones.map((x, i) => <li key={i} className="rounded bg-clinic-bg px-1.5 py-0.5 text-[11px] text-clinic-text">{textoPrestacion(x)}</li>)}
+                              </ul>
+                            )}
                             {verPersonales && p?.phone && <div className="mt-0.5 flex items-center gap-1 text-xs text-clinic-muted"><Phone className="h-3 w-3" /> {p.phone}</div>}
                           </td>
                           <td className="px-2 py-2 text-clinic-muted">{dent?.name ?? "—"}</td>
@@ -594,7 +652,8 @@ export default function AgendaPage() {
                           <td className="px-2 py-2 text-right print:hidden">
                             <AccionesCita
                               onVer={() => setViewing(a)}
-                              onEditar={puedeEditar ? () => { setPreseleccion(undefined); setEditing(a); } : undefined}
+                              onSobreagendar={puedeAgendar ? () => sobreagendarDesde(a) : undefined}
+                              onEditar={puedeEditar ? () => { setPreseleccion(undefined); setAbrirCon({}); setEditing(a); } : undefined}
                               onEliminar={puedeEditar ? () => { if (window.confirm("¿Eliminar esta cita?")) deleteAppointment(a.id); } : undefined}
                             />
                           </td>
@@ -619,11 +678,19 @@ export default function AgendaPage() {
             const live = db.appointments.find((x) => x.id === viewing.id) ?? viewing;
             return (
               <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between"><span className="text-clinic-muted">Estado</span><StatusBadge status={live.status} estadoId={live.estadoId} /></div>
+                <div className="flex items-center justify-between"><span className="text-clinic-muted">Estado</span><span className="flex items-center gap-1.5">{live.sobrecupo && <Badge tone="warn" tip="Se dio sobreagendando: comparte el horario con otra cita">Sobrecupo</Badge>}<StatusBadge status={live.status} estadoId={live.estadoId} /></span></div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Paciente</span>{p ? <Link className="font-bold text-azure-600 hover:underline" href={`/app/pacientes/${p.id}`}>{fullName(p)}</Link> : "—"}</div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Dentista</span><span className="font-semibold">{d?.name ?? "—"}</span></div>
                 <div className="flex items-center justify-between"><span className="text-clinic-muted">Horario</span><span className="tabular-nums text-xs">{new Date(live.start).toLocaleDateString("es-PY", { day: "2-digit", month: "short" })}, {fmtTime(live.start)} → {fmtTime(live.end)}</span></div>
                 {verMontos && <div className="flex items-center justify-between"><span className="text-clinic-muted">Total a cobrar</span><span className="tabular-nums font-bold">{fmtGs(live.amount - live.discount)}</span></div>}
+                {live.prestaciones && live.prestaciones.length > 0 && (
+                  <div>
+                    <span className="text-clinic-muted">Procedimiento a realizar</span>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-5 text-clinic-text">
+                      {live.prestaciones.map((x, i) => <li key={i}>{textoPrestacion(x)}</li>)}
+                    </ul>
+                  </div>
+                )}
                 {live.notes && <p className="rounded-xl bg-clinic-bg p-3 text-clinic-text">{live.notes}</p>}
 
                 {live.telemed && (
@@ -673,8 +740,9 @@ export default function AgendaPage() {
                   </div>
                 )}
 
-                <div className="flex flex-wrap justify-end gap-2 pt-2">
-                  {puedeEditar && <Btn variant="outline" onClick={() => { setPreseleccion(undefined); setEditing(live); setViewing(null); }}><Pencil className="h-3.5 w-3.5" /> Editar</Btn>}
+                <div className="flex flex-wrap justify-end gap-2 pt-2 print:hidden">
+                  {puedeAgendar && <Btn variant="outline" onClick={() => sobreagendarDesde(live)}><CalendarCheck className="h-3.5 w-3.5" /> Sobreagendar en este horario</Btn>}
+                  {puedeEditar && <Btn variant="outline" onClick={() => { setPreseleccion(undefined); setAbrirCon({}); setEditing(live); setViewing(null); }}><Pencil className="h-3.5 w-3.5" /> Editar</Btn>}
                 </div>
               </div>
             );
@@ -690,6 +758,7 @@ export default function AgendaPage() {
           onSchedule={(entry) => {
             setFromWaitlist(entry.id);
             setPreseleccion(undefined);
+            setAbrirCon({});
             setEditing(citaBase({ patientId: entry.patientId, title: entry.reason }));
             setWaitOpen(false);
           }}
@@ -703,7 +772,9 @@ export default function AgendaPage() {
           esNueva={!db.appointments.some((x) => x.id === editing.id)}
           preseleccion={preseleccion?.hora ? preseleccion : undefined}
           desdeFecha={preseleccion && !preseleccion.hora ? preseleccion.fecha : undefined}
-          onClose={() => { setEditing(null); setFromWaitlist(null); setPreseleccion(undefined); }}
+          sobreagendar={abrirCon.sobreagendar}
+          multiconsulta={abrirCon.multiconsulta}
+          onClose={cerrarDarCita}
           onGuardar={(nuevas, espera) => {
             for (const a of nuevas) {
               const old = db.appointments.find((x) => x.id === a.id);
@@ -717,10 +788,28 @@ export default function AgendaPage() {
               addWaitlist({ id: `w_${Date.now()}`, clinicId: session!.clinicId, patientId: espera.patientId, reason: espera.motivo, preference: espera.preferencia || "Sin preferencia", createdAt: new Date().toISOString() });
             }
             if (fromWaitlist && nuevas.length > 0) removeWaitlist(fromWaitlist);
-            setEditing(null); setFromWaitlist(null); setPreseleccion(undefined);
+            setEditing(null); setFromWaitlist(null); setPreseleccion(undefined); setAbrirCon({});
           }}
         />
       )}
+
+      {/* Modal BLOQUEAR ESPACIO (desde el menú de un espacio de la semanal) */}
+      {bloqueando && (
+        <BloquearEspacio
+          fecha={bloqueando.fecha}
+          hora={bloqueando.hora}
+          dentistId={proFilter !== "all" ? proFilter : undefined}
+          boxId={variosBoxes && boxFilter !== "all" ? boxFilter : undefined}
+          onClose={cerrarBloquear}
+          onGuardar={(bs) => {
+            addAgendaBlocks(bs);
+            setBloqueando(null);
+            setAviso({ ok: true, texto: bs.length === 1 ? "Espacio bloqueado." : `Se bloquearon ${bs.length} espacios.` });
+          }}
+        />
+      )}
+      {/* Menú de un bloqueo en la Diaria y la Diaria global (la semanal tiene el suyo) */}
+      <MenuBloqueo bloqueo={bloqueoAbierto} ancla={anclaBloqueo} onCerrar={cerrarMenuBloqueo} onQuitar={quitarBloqueos} />
     </div>
   );
 }
@@ -770,32 +859,8 @@ function EstadoCell({ appt, onSet, editable, onNotificar, sinEmail }: {
   );
 }
 
-/* ===== Comentario de la cita: vista rápida en un globo. Sin comentario no se muestra. ===== */
-function ComentarioCita({ texto, className = "" }: { texto?: string; className?: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLButtonElement>(null);
-  if (!texto?.trim()) return null;
-  return (
-    <>
-      <button
-        ref={ref}
-        type="button"
-        aria-label="Ver el comentario de la cita"
-        aria-expanded={open}
-        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
-        className={`inline-grid h-6 w-6 place-items-center rounded-md text-azure-700 hover:bg-azure-50 ${className}`}
-      >
-        <MessageSquareText className="h-3.5 w-3.5" />
-      </button>
-      <Desplegable ancla={ref} abierto={open} onCerrar={() => setOpen(false)} ancho={260} etiqueta="Comentario de la cita">
-        <p className="whitespace-pre-wrap px-3 py-2 text-sm text-clinic-text">{texto}</p>
-      </Desplegable>
-    </>
-  );
-}
-
-/* ===== Menú ⋮ de la cita (Ver / Editar / Eliminar), también en un portal ===== */
-function AccionesCita({ onVer, onEditar, onEliminar }: { onVer: () => void; onEditar?: () => void; onEliminar?: () => void }) {
+/* ===== Menú ⋮ de la cita (Ver / Sobreagendar / Editar / Eliminar), también en un portal ===== */
+function AccionesCita({ onVer, onSobreagendar, onEditar, onEliminar }: { onVer: () => void; onSobreagendar?: () => void; onEditar?: () => void; onEliminar?: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
   return (
@@ -803,8 +868,9 @@ function AccionesCita({ onVer, onEditar, onEliminar }: { onVer: () => void; onEd
       <button ref={ref} type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-clinic-bg" aria-label="Acciones de la cita">
         <MoreHorizontal className="h-4 w-4 text-clinic-muted" />
       </button>
-      <Desplegable ancla={ref} abierto={open} onCerrar={() => setOpen(false)} ancho={160} alinear="derecha" etiqueta="Acciones de la cita">
+      <Desplegable ancla={ref} abierto={open} onCerrar={() => setOpen(false)} ancho={onSobreagendar ? 250 : 160} alinear="derecha" etiqueta="Acciones de la cita">
         <ItemMenu onClick={() => { setOpen(false); onVer(); }}><Eye className="h-3.5 w-3.5" /> Ver</ItemMenu>
+        {onSobreagendar && <ItemMenu onClick={() => { setOpen(false); onSobreagendar(); }}><CalendarCheck className="h-3.5 w-3.5 text-amber-600" /> Sobreagendar en este horario</ItemMenu>}
         {onEditar && <ItemMenu onClick={() => { setOpen(false); onEditar(); }}><Pencil className="h-3.5 w-3.5" /> Editar</ItemMenu>}
         {onEliminar && <ItemMenu peligro onClick={() => { setOpen(false); onEliminar(); }}><Trash2 className="h-3.5 w-3.5" /> Eliminar</ItemMenu>}
       </Desplegable>
