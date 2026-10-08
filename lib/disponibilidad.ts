@@ -1,6 +1,7 @@
 /* Disponibilidad para «Dar cita»: en qué horarios entra una consulta de cierta duración
  * en la agenda de un profesional (y del box, si se eligió uno). Todo en hora local, como
  * el resto de la agenda. Funciones puras: se testean en lib/disponibilidad.test.ts. */
+import { bloqueoAplica } from "./bloqueos";
 
 /** Días (0 = domingo … 6 = sábado) y franja en que atiende un profesional. */
 export interface Horario {
@@ -20,34 +21,61 @@ export const PASO_MIN = 30;
 const LIBERAN = new Set(["cancelada", "ausente"]);
 
 type Ocupacion = { id?: string; start: string; end: string; dentistId: string; boxId?: string; status: string };
+type Bloqueo = { start: string; end: string; dentistId: string; boxId?: string };
 
 const aMin = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
 const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 
-/** Horarios de inicio ("HH:MM") en que entra una consulta de `duracionMin` el día `fecha`
- *  sin pisar otra cita del profesional (ni del box, si se eligió) ni quedar en el pasado. */
+/** Las citas activas del profesional (o del box, si se eligió uno) que ocupan horario, como intervalos [inicio, fin). */
+function ocupacionesDe(opts: { dentistId: string; citas: Ocupacion[]; boxId?: string; ignorarId?: string }) {
+  return opts.citas
+    .filter((c) => c.id !== opts.ignorarId && !LIBERAN.has(c.status))
+    .filter((c) => c.dentistId === opts.dentistId || (!!opts.boxId && c.boxId === opts.boxId))
+    .map((c) => [Date.parse(c.start), Date.parse(c.end)] as const);
+}
+
+/** Horarios de inicio ("HH:MM") en que entra una consulta de `duracionMin` el día `fecha` sin pisar otra cita del profesional (ni del
+ *  box, si se eligió), ni un espacio bloqueado (lib/bloqueos.ts), ni quedar en el pasado. Con `permitirSuperponer` («Sobreagendar»)
+ *  las citas no ocupan; los bloqueos, el pasado y el horario de atención se respetan siempre. */
 export function huecosDelDia(
   fecha: Date,
   duracionMin: number,
-  opts: { dentistId: string; citas: Ocupacion[]; ahora: number; boxId?: string; horario?: Horario; paso?: number; ignorarId?: string },
+  opts: {
+    dentistId: string; citas: Ocupacion[]; ahora: number; boxId?: string; horario?: Horario; paso?: number; ignorarId?: string;
+    bloqueos?: readonly Bloqueo[]; permitirSuperponer?: boolean;
+  },
 ): string[] {
   const horario = opts.horario ?? HORARIO_POR_DEFECTO;
   if (duracionMin <= 0 || !horario.dias.includes(fecha.getDay())) return [];
   const paso = opts.paso ?? PASO_MIN;
   const base = new Date(fecha); base.setHours(0, 0, 0, 0);
-  const ocupadas = opts.citas
-    .filter((c) => c.id !== opts.ignorarId && !LIBERAN.has(c.status))
-    .filter((c) => c.dentistId === opts.dentistId || (!!opts.boxId && c.boxId === opts.boxId))
-    .map((c) => [Date.parse(c.start), Date.parse(c.end)] as const);
+  const ocupadas = opts.permitirSuperponer ? [] : ocupacionesDe(opts);
+  const bloqueadas = (opts.bloqueos ?? [])
+    .filter((b) => bloqueoAplica(b, { dentistId: opts.dentistId, boxId: opts.boxId }))
+    .map((b) => [Date.parse(b.start), Date.parse(b.end)] as const);
   const out: string[] = [];
   for (let t = aMin(horario.desde); t + duracionMin <= aMin(horario.hasta); t += paso) {
     const ini = base.getTime() + t * 60_000;
     const fin = ini + duracionMin * 60_000;
     if (ini < opts.ahora) continue;
     if (ocupadas.some(([s, e]) => ini < e && fin > s)) continue;
+    if (bloqueadas.some(([s, e]) => ini < e && fin > s)) continue;
     out.push(hhmm(t));
   }
   return out;
+}
+
+/** Cuántas citas activas del profesional (o del box, si se eligió) pisa una consulta de `duracionMin` que empieza el día `fecha` a la
+ *  `hora`. Al sobreagendar, el horario se marca «Ya hay 1 cita»; al guardar, si es más de 0 la cita queda como sobrecupo. */
+export function citasEnElHueco(
+  fecha: Date,
+  hora: string,
+  duracionMin: number,
+  opts: { dentistId: string; citas: Ocupacion[]; boxId?: string; ignorarId?: string },
+): number {
+  const ini = Date.parse(inicioDe(fecha, hora));
+  const fin = ini + Math.max(1, duracionMin) * 60_000;
+  return ocupacionesDe(opts).filter(([s, e]) => ini < e && fin > s).length;
 }
 
 /** `n` días seguidos a partir de `inicio` (a medianoche). */
