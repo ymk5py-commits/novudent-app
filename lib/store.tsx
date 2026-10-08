@@ -53,6 +53,7 @@ import type {
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
 import { can, aplicarRolesDeLaClinica, mismaConfiguracionDeRoles } from "./rbac";
+import { fusionarFichas } from "./fusionFichas";
 import { historiaClinicaPendiente, plantillasDeClinica } from "./documentosClinicos";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { worstSeverity } from "./recovery";
@@ -1162,11 +1163,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const keep = db.patients.find((p) => p.id === keepId);
         const remove = db.patients.find((p) => p.id === removeId);
         if (!keep || !remove) return;
-        // Reasigna patientId en todas las colecciones y re-guarda los docs cambiados.
-        const reassign = <T extends { id: string; patientId: string }>(col: string, arr: T[]): T[] =>
+        // Reasigna patientId en TODAS las colecciones que lo llevan y re-guarda los docs cambiados. Si falta una, esos registros quedan
+        // apuntando a una ficha que ya no existe (una fila sin nombre en la lista de espera, mensajes automáticos huérfanos…).
+        const reassign = <T extends { id: string; patientId?: string }>(col: string, arr: T[], extra?: (x: T) => Partial<T>): T[] =>
           arr.map((x) => {
             if (x.patientId !== removeId) return x;
-            const up = { ...x, patientId: keepId };
+            const up = { ...x, patientId: keepId, ...(extra?.(x) ?? {}) };
             fsSave(col, x.id, up);
             return up;
           });
@@ -1182,22 +1184,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const patientNotes = reassign("patientNotes", db.patientNotes);
         const fiscalDocs = reassign("fiscalDocs", db.fiscalDocs);
         const clinicalDocs = reassign("clinicalDocs", db.clinicalDocs);
-        // Fusiona los datos embebidos en la ficha que se mantiene.
-        const merged: Patient = {
-          ...keep,
-          forms: [...keep.forms, ...remove.forms],
-          emr: [...keep.emr, ...remove.emr],
-          files: [...(keep.files ?? []), ...(remove.files ?? [])],
-          perio: [...(keep.perio ?? []), ...(remove.perio ?? [])],
-          odontogram: (keep.odontogram || remove.odontogram) ? {
-            ...DEFAULT_ODONTOGRAM_STATUS,
-            ...(remove.odontogram ?? {}),
-            ...(keep.odontogram ?? {}),
-            teeth: { ...(remove.odontogram?.teeth ?? {}), ...(keep.odontogram?.teeth ?? {}) },
-          } : undefined,
-        };
+        const waitlist = reassign("waitlist", db.waitlist);
+        const outbox = reassign("outbox", db.outbox);
+        const nombre = `${keep.firstName} ${keep.lastName}`.trim();
+        const mgmtTasks = reassign("mgmtTasks", db.mgmtTasks, () => ({ patientName: nombre }));
+        // Fusiona los datos de la ficha (personales, alertas médicas, recetas, ortodoncia…): lib/fusionFichas.ts.
+        const merged = fusionarFichas(keep, remove);
         const patients = db.patients.filter((p) => p.id !== removeId).map((p) => (p.id === keepId ? merged : p));
-        persist((prev) => ({ ...prev, patients, appointments, billing, budgets, payments, signatures, radiographs, recoveryMonitors, crmCards, labOrders, patientNotes, fiscalDocs, clinicalDocs }));
+        persist((prev) => ({ ...prev, patients, appointments, billing, budgets, payments, signatures, radiographs, recoveryMonitors, crmCards, labOrders, patientNotes, fiscalDocs, clinicalDocs, waitlist, outbox, mgmtTasks }));
         fsSave("patients", keepId, merged);
         fsDelete("patients", removeId);
       },
