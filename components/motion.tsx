@@ -5,7 +5,7 @@
  *  TODO respeta `prefers-reduced-motion` (accesibilidad y mareo). */
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { useCallback, useRef, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
 
 /** Curva ease-out-expo: arranca rápido y asienta suave. Sin rebote (el rebote
  *  es el tic de "animación genérica"). La misma curva del count-up del dashboard. */
@@ -58,6 +58,12 @@ export function Reveal({
   );
 }
 
+/** El `Stagger` le avisa a sus <StaggerItem> si ya mostró su contenido. Un item que se monta DESPUÉS (la tarjeta de un presupuesto
+ *  recién creado, una fila nueva) no figura entre los hijos del `Stagger` cuando este anima: nace en «hidden» y nadie lo dispara,
+ *  o sea que quedaba invisible hasta recargar la página. Esa marca le dice que se anime por su cuenta. Es una ref y no un estado
+ *  a propósito: solo se lee al montar el item, y cambiarla no tiene que volver a dibujar a los que ya están. */
+const StaggerCtx = createContext<{ current: boolean } | null>(null);
+
 /** Contenedor que escalona la entrada de sus hijos <StaggerItem>.
  *  Útil para grillas (stats, tarjetas) donde el cascadeo lee como "hecho a mano". */
 export function Stagger({
@@ -73,6 +79,7 @@ export function Stagger({
 }) {
   const reduce = useReducedMotion();
   const wc = useDropWillChange();
+  const yaMostro = useRef(false);
   // Con movimiento reducido se renderiza estático, igual que Reveal y
   // PageTransition. Antes solo se ponía el escalonado en 0, pero los
   // <StaggerItem> seguían entrando con un desplazamiento de 16 px: para alguien
@@ -88,8 +95,9 @@ export function Stagger({
       whileInView="show"
       viewport={{ once, margin: "-60px" }}
       variants={{ show: { transition: { staggerChildren: gap } } }}
+      onAnimationStart={(def) => { if (def === "show") yaMostro.current = true; }}
     >
-      {children}
+      <StaggerCtx.Provider value={yaMostro}>{children}</StaggerCtx.Provider>
     </motion.div>
   );
 }
@@ -102,13 +110,23 @@ const itemVariants: Variants = {
 /** Hijo de <Stagger>. Hereda el delay escalonado del contenedor.
  *  Chequea el movimiento reducido por su cuenta: puede usarse suelto, y con
  *  `Stagger` en modo estático quedaría con `variants` y sin padre que los
- *  dispare — o sea, invisible. */
+ *  dispare — o sea, invisible.
+ *  Si el `Stagger` ya había mostrado su contenido cuando este item se montó, el padre no
+ *  lo va a disparar (ver `StaggerCtx`): entra solo, con la misma animación. */
 export function StaggerItem({ children, className }: { children: ReactNode; className?: string }) {
   const reduce = useReducedMotion();
   const wc = useDropWillChange();
+  const stagger = useContext(StaggerCtx);
+  const [llegoTarde] = useState(() => stagger?.current === true);
   if (reduce) return <div className={className}>{children}</div>;
   return (
-    <motion.div ref={wc.ref} onAnimationComplete={wc.onAnimationComplete} className={className} variants={itemVariants}>
+    <motion.div
+      ref={wc.ref}
+      onAnimationComplete={wc.onAnimationComplete}
+      className={className}
+      variants={itemVariants}
+      {...(llegoTarde ? { initial: "hidden", animate: "show" } : {})}
+    >
       {children}
     </motion.div>
   );
