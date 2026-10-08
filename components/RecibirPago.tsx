@@ -11,7 +11,7 @@ import { useStore, fmtGs, fmtDate } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, financialStatus } from "@/lib/budgets";
 import { cuotasDe, type InstallmentStatus } from "@/lib/financiamiento";
-import { comprobanteDe, repartirPago, siguienteNumero, type MedioPago } from "@/lib/pago";
+import { comprobanteDe, fechaDelPago, repartirPago, siguienteNumero, type MedioPago } from "@/lib/pago";
 import type { Patient, Budget, PaymentMethod } from "@/lib/types";
 import { fechaLocal } from "@/lib/tareas";
 import { Card, Btn, Field, inputCls } from "@/components/ui";
@@ -104,7 +104,7 @@ export function RecibirPagoTab({ patient, preseleccion }: { patient: Patient; pr
     if (reparto.error) { setError(reparto.error); return; }
     const receiptNumber = siguienteNumero(db.payments.map((p) => p.receiptNumber));
     let nPago = Number(siguienteNumero(db.payments.map((p) => p.paymentNumber)));
-    const fecha = new Date(date + "T12:00:00").toISOString();
+    const fecha = fechaDelPago(date);
     const sello = Date.now();
     reparto.lineas.forEach((l, i) => {
       addPayment({
