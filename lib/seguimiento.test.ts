@@ -456,6 +456,11 @@ describe("armarQuita — el motivo al quitar de la lista", () => {
     expect(armarQuita({ ...base, motivo: "Otro", otro: "  Se mudó a Encarnación  " })).toMatchObject({ ok: true, quita: { motivo: "Se mudó a Encarnación" } });
   });
 
+  it("el texto de «Otro» se guarda en una sola línea: los saltos y los espacios de más no pasan (el motivo va también a una celda del CSV)", () => {
+    const r = armarQuita({ ...base, motivo: "Otro", otro: "  Se mudó\n\na   Encarnación \t y no  vuelve\r\n" });
+    expect(r).toMatchObject({ ok: true, quita: { motivo: "Se mudó a Encarnación y no vuelve" } });
+  });
+
   it("el texto de «Otro» tiene un tope para que el documento del paciente no crezca sin control", () => {
     expect(MAX_MOTIVO).toBe(200);
     expect(armarQuita({ ...base, motivo: "Otro", otro: "x".repeat(MAX_MOTIVO) }).ok).toBe(true);

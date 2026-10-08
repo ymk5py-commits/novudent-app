@@ -174,7 +174,7 @@ export function armarQuita(e: { motivo: string | null; otro?: string; por: strin
   if (!conocido && e.motivo !== OTRO_MOTIVO) return { ok: false, error: "Elegí un motivo." };
   let motivo = e.motivo as string;
   if (e.motivo === OTRO_MOTIVO) {
-    motivo = (e.otro ?? "").trim();
+    motivo = (e.otro ?? "").replace(/\s+/g, " ").trim(); // en una sola línea: el motivo también va a una celda del CSV
     if (!motivo) return { ok: false, error: "Escribí el motivo." };
     if (motivo.length > MAX_MOTIVO) return { ok: false, error: `El motivo puede tener hasta ${MAX_MOTIVO} letras.` };
   }
