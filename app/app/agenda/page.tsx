@@ -52,6 +52,8 @@ const RAYADO = "[background-image:repeating-linear-gradient(135deg,#eceff3_0,#ec
 /* Estados de cita (nombres, orden y colores en lib/estadosCita.ts) */
 
 type Tab = "diaria" | "global" | "semanal" | "mensual" | "reprog";
+/** Lo que va en la columna de un profesional en la Diaria global: una cita o un espacio bloqueado, en orden de hora. */
+type ItemGlobal = { start: string; cita: Appointment; bloqueo?: undefined } | { start: string; bloqueo: AgendaBlock; cita?: undefined };
 
 /* ===== Vista MENSUAL (calendario del mes) ===== */
 function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (d: Date) => void; setTab: (t: Tab) => void; appointments: Appointment[] }) {
@@ -245,7 +247,7 @@ export default function AgendaPage() {
   }, [citas, day, proFilter, branchFilter, boxFilter, mainBranchId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* Reservas que entraron por la web y nadie validó, de hoy en adelante y de TODOS los días (no solo del día abierto), dentro de los
-     filtros de profesional y sucursal. Solo las ve quien puede validarlas (agenda.edit). */
+     filtros de profesional, sucursal y box. Solo las ve quien puede validarlas (agenda.edit). */
   const reservas = reservasPorValidar(citas.filter(pasaFiltros), new Date(new Date().setHours(0, 0, 0, 0)));
   const porValidar = reservas.length;
   const headerCount = tab === "semanal" ? weekAppointments.length : tab === "mensual" ? monthAppts.length : tab === "reprog" ? reprog.length : dayAppts.length;
@@ -256,6 +258,7 @@ export default function AgendaPage() {
     return {
       id: `a_${Date.now()}`, clinicId: session!.clinicId, patientId: "", dentistId: proFilter !== "all" ? proFilter : dentists[0]?.id ?? "",
       title: "", start: ahora, end: ahora, status: "pendiente", amount: 0, discount: 0,
+      ...(branchFilter !== "all" ? { branchId: branchFilter } : {}),
       ...(variosBoxes && boxFilter !== "all" ? { boxId: boxFilter } : {}), ...extra,
     };
   };
@@ -431,7 +434,7 @@ export default function AgendaPage() {
       </div>
 
       {tab === "semanal" ? (
-        /* ===== SEMANAL (grilla 24h) ===== */
+        /* ===== SEMANAL (grilla de 30 minutos, components/agenda/GrillaSemanal) ===== */
         <Reveal>
           <div className="mb-2 flex items-center gap-2 print:hidden">
             <button onClick={() => setWeekStart(addDays(weekStart, -7))} className="grid h-9 w-9 place-items-center rounded-xl border border-clinic-border bg-white hover:bg-clinic-bg" aria-label="Semana anterior"><ChevronLeft className="h-4 w-4" /></button>
@@ -538,7 +541,7 @@ export default function AgendaPage() {
                   {dentists.filter((d) => proFilter === "all" || d.id === proFilter).map((d) => {
                     const list = dayAll.filter((a) => a.dentistId === d.id && statusFilter.has(estadoDe(a).id) && (!soloOnline || a.source === "online") && pasaFiltros(a)).sort((a, b) => a.start.localeCompare(b.start));
                     const bloqueos = bloqueosDelDia.filter((b) => b.dentistId === TODOS_LOS_PROFESIONALES || b.dentistId === d.id);
-                    const items = [...list.map((a) => ({ start: a.start, cita: a })), ...bloqueos.map((b) => ({ start: b.start, bloqueo: b }))].sort((x, y) => x.start.localeCompare(y.start));
+                    const items: ItemGlobal[] = [...list.map((a) => ({ start: a.start, cita: a })), ...bloqueos.map((b) => ({ start: b.start, bloqueo: b }))].sort((x, y) => x.start.localeCompare(y.start));
                     return (
                       <div key={d.id} className="min-w-[200px] flex-1">
                         <div className="mb-2 flex items-center gap-2 rounded-xl bg-clinic-bg px-3 py-2">
@@ -548,7 +551,7 @@ export default function AgendaPage() {
                         </div>
                         <div className="space-y-2">
                           {items.length === 0 ? <p className="py-4 text-center text-xs text-clinic-muted">Sin citas</p> : items.map((item) => {
-                            if ("bloqueo" in item && item.bloqueo) {
+                            if (item.bloqueo) {
                               const b = item.bloqueo;
                               const contenido = (
                                 <>
@@ -564,7 +567,7 @@ export default function AgendaPage() {
                                 <div key={`b_${b.id}`} title={etiquetaBloqueo(b)} className={cls}>{contenido}</div>
                               );
                             }
-                            const a = (item as { cita: Appointment }).cita;
+                            const a = item.cita;
                             const p = db.patients.find((x) => x.id === a.patientId);
                             return (
                               <div key={a.id} className="relative">
