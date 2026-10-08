@@ -97,21 +97,20 @@ export const procedimientos: Procedimiento[] = [
     capitulo: "admin",
     titulo: "Cargar los datos de la clínica y el logotipo",
     roles: ["admin"],
-    paraQue: "Al poner en marcha la clínica, y cada vez que cambia el logotipo o se abre una sede: dejás lista la moneda, el logotipo que sale en los impresos y las sucursales.",
+    paraQue: "Al poner en marcha la clínica, y cada vez que cambia algún dato, el logotipo o se abre una sede: dejás al día el nombre, la dirección y el teléfono, la moneda, el logotipo que sale en los impresos y las sucursales.",
     antes: ["El logotipo en un archivo de imagen (JPG o PNG)."],
     pasos: [
       { texto: "Entrá a **Administración** (menú de arriba) y elegí «Configuración general».", captura: "menu" },
-      { texto: "Mirá la tarjeta **Clínica**: muestra el nombre, la dirección y el teléfono. Si hace falta, elegí la **Moneda** en la que se muestran los montos.", captura: "clinica" },
+      { texto: "En la tarjeta **Datos de la clínica** corregí el **Nombre** (obligatorio), el **Teléfono** y la **Dirección** y tocá «Guardar datos»: se guardan juntos. Abajo, la **Moneda** en la que se muestran los montos.", captura: "clinica" },
       { texto: "Más abajo, en **Logotipo**, tocá «Subir logo» y elegí el archivo. El logotipo aparece en la tarjeta, en la cabecera de la app (junto al nombre de la clínica) y en los presupuestos impresos.", captura: "logo" },
       { texto: "En **Sucursales**, tocá «Agregar sucursal». Escribí el **Nombre**, la **Dirección** y el **Teléfono**, y tocá «Guardar».", captura: "sucursal" },
       { texto: "Revisá la lista: la sucursal nueva ya está. El lápiz la edita y el tachito la elimina (la sede principal no se puede eliminar).", captura: "sucursales" },
       { texto: "Para dejar a cada persona en su sede, elegila en su fila de **Usuarios del equipo**: ver [[crear-un-usuario]]." },
     ],
     avisos: [
-      { tipo: "ojo", texto: "El nombre, la dirección y el teléfono de la clínica se ven en la tarjeta **Clínica** pero no se pueden cambiar desde acá: los carga Novum al dar de alta la clínica. Si cambian, pedile el cambio a Novum." },
+      { tipo: "ojo", texto: "El nombre, la dirección y el teléfono salen en la cabecera de la app, en los documentos impresos (presupuestos, recetas, comprobantes) y en los mensajes a los pacientes: revisalos después de cambiarlos. El botón «Guardar datos» se enciende recién cuando cambiás algo." },
       { tipo: "ojo", texto: "Si el logotipo tiene fondo transparente, se guarda con fondo blanco (la imagen se guarda sin transparencia). El sistema la achica solo a un máximo de 400 píxeles." },
       { tipo: "ojo", texto: "Cambiar la moneda cambia cómo se muestran todos los montos (presupuestos, pagos, caja, reportes), pero no convierte los importes que ya están cargados." },
-      { tipo: "revisar", texto: "Confirmar con Novum si la clínica debería poder editar sola su nombre, su dirección y su teléfono: hoy no hay un botón para hacerlo." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -119,13 +118,15 @@ export const procedimientos: Procedimiento[] = [
       await c.entrar("admin", "/app");
       await irPorElMenu(c, "Configuración general", "menu");
 
-      const clinica = tarjeta(page, "Clínica");
+      const clinica = tarjeta(page, "Datos de la clínica");
       await colocar(page, clinica);
-      await c.foto("clinica", { recorte: clinica, margen: 4, resaltar: clinica.getByRole("combobox") });
+      // «Guardar datos» está apagado hasta que se cambia algo.
+      await c.expect(clinica.getByRole("button", { name: "Guardar datos" })).toBeDisabled();
+      await c.foto("clinica", { recorte: clinica, margen: 4, resaltar: [clinica.getByLabel("Nombre"), clinica.getByLabel("Teléfono"), clinica.getByLabel("Dirección"), clinica.getByRole("combobox")] });
 
       // El logotipo es un archivo de ejemplo dibujado al momento (ver logoDeEjemplo).
       const logoCard = tarjeta(page, "Logotipo");
-      // A 140 px la tarjeta de arriba (la de importar pacientes, que nombra a otro sistema) queda tapada por el menú fijo.
+      // A 140 px la tarjeta de arriba (la de importar pacientes) queda tapada por el menú fijo.
       await colocar(page, logoCard, 140);
       await logoCard.locator("input[type=file]").setInputFiles({ name: "logo-demo-dental.png", mimeType: "image/png", buffer: await logoDeEjemplo(page) });
       const vistaPrevia = logoCard.getByRole("img", { name: "Logo de la clínica" });
@@ -171,13 +172,14 @@ export const procedimientos: Procedimiento[] = [
       { texto: "En **Usuarios del equipo**, tocá «Agregar usuario».", captura: "boton" },
       { texto: "Escribí el **Nombre completo**, el **Email** y una **Contraseña provisional** de al menos 6 caracteres. El **Teléfono (WhatsApp)** es opcional.", captura: "formulario" },
       { texto: "Elegí el **Rol**: Administrador, Recepción y caja, Recepcionista, Comercial, Dentista o Asistente de doctores, o uno de los que creó tu clínica ([[crear-un-rol-propio]]). Debajo del desplegable se lee qué puede hacer la persona con ese rol.", captura: "rol" },
+      { texto: "Elegí el **Color en la agenda**: viene con el del rol, y es el color con el que se ve a la persona en la agenda. Si otra persona activa ya lo usa, aparece el aviso «Ojo: ya lo usa…» (no impide nada: elegí otro para poder distinguirlas)." },
       { texto: "Tocá «Crear usuario». Pasale a la persona su correo y su contraseña provisional: la primera vez que entre, el sistema le pide elegir una propia ([[cambiar-tu-contrasena]])." },
       { texto: "Si es un dentista, completá en su fila la **Especialidad** y el **%** de comisión (alimenta el cálculo del pago en Reportes). Si es una asistente, asignale sus doctores: [[asignar-doctores-a-una-asistente]].", captura: "dentista" },
     ],
     avisos: [
       { tipo: "ojo", texto: "El plan limita los usuarios. El **Plan Solo** admite hasta 3 usuarios activos y 1 profesional; el **Plan Clínica**, hasta 12 y 4; el **Plan Multi**, sin tope de usuarios y hasta 10 profesionales. Si te pasás, el sistema avisa y no crea la cuenta. Un usuario dado de baja no cuenta." },
       { tipo: "ojo", texto: "El correo no se puede repetir en la clínica, ni siquiera con un usuario dado de baja: en ese caso reactivá al que ya existe ([[dar-de-baja-a-un-usuario]])." },
-      { tipo: "ojo", texto: "No hay un selector de color: el sistema le da a cada persona el color de su rol, así que dos dentistas nuevos quedan con el mismo color en la agenda." },
+      { tipo: "tip", texto: "El color de agenda se puede cambiar después: en la fila de cada persona, tocá el círculo con sus iniciales y elegí otro de la paleta; se guarda al instante." },
       { tipo: "tip", texto: "Pasá el mouse por el número que está junto al título **Usuarios del equipo**: dice cuántos usuarios y cuántos profesionales incluye tu plan. Qué puede hacer cada rol está en el apéndice **Qué puede hacer cada rol**, al final del manual; si querés cambiarlo para tu clínica: [[elegir-que-puede-hacer-cada-rol]]." },
       { tipo: "revisar", texto: "En la demo el botón «Crear usuario» está apagado y un cuadro azul avisa que el alta de cuentas solo funciona en una clínica con conexión: por eso las capturas llegan hasta el formulario completo. Que la cuenta se cree, que el sistema pida cambiar la contraseña y los topes del plan salen de leer el código; hay que probarlos en una clínica real." },
     ],
@@ -197,6 +199,12 @@ export const procedimientos: Procedimiento[] = [
       await modal.getByLabel("Email").fill("rosa.benegas@tuclinica.com");
       await modal.getByLabel("Contraseña provisional").fill("Clinica2026");
       await modal.locator("select").selectOption({ label: "Dentista" });
+      // El color de agenda arranca con el del rol (Dentista: verde) y se puede cambiar; si otra persona activa lo usa, avisa.
+      const colores = modal.getByRole("radiogroup", { name: "Color en la agenda" });
+      await c.expect(colores.getByRole("radio", { name: "Verde" })).toBeChecked();
+      await c.expect(modal.getByText(/Ojo: ya lo usa/)).toBeVisible();
+      await colores.getByRole("radio", { name: "Rojo" }).check();
+      await c.expect(modal.getByText(/Ojo: ya lo usa/)).toHaveCount(0);
       await c.foto("formulario", {
         recorte: modal,
         margen: 4,
@@ -689,10 +697,11 @@ export const procedimientos: Procedimiento[] = [
       await c.ir("/app/pacientes/nuevo");
       const barrio = page.getByLabel("Barrio *");
       await c.expect(barrio).toBeVisible();
-      // El campo es obligatorio: el navegador no deja crear al paciente hasta completarlo (no se ve en la captura: es un globito del navegador).
+      // El campo es obligatorio: el formulario no deja crear al paciente hasta completarlo y avisa qué falta («Completá: …»).
       await c.expect(barrio).toHaveAttribute("required", "");
       await page.getByRole("button", { name: "Crear paciente" }).click();
       await c.expect(page).toHaveURL(/\/app\/pacientes\/nuevo/);
+      await c.expect(page.getByRole("alert").filter({ hasText: /Completá:.*Barrio/ })).toBeVisible();
       await c.foto("nuevo", { recorte: [page.getByText("Contacto y domicilio", { exact: true }), page.getByLabel("Teléfono móvil *").locator("xpath=ancestor::label[1]"), barrio.locator("xpath=ancestor::label[1]")], margen: 4, resaltar: barrio });
     },
   },
@@ -779,27 +788,26 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Subí el archivo con «Subir .csv», o pegá en el cuadro los datos copiados de Excel (Ctrl+A, Ctrl+C y Ctrl+V).", captura: "datos" },
       { texto: "Dejá tildado «La primera fila son los encabezados» y tocá «Continuar»." },
       { texto: "Revisá las columnas: Novudent reconoce cada dato por el nombre del encabezado. Si alguna quedó mal, corregila en su desplegable. **Nombre** y **Apellido** son obligatorios.", captura: "columnas" },
-      { texto: "Tocá «Vista previa». Arriba ves cuántos pacientes son nuevos, cuántos están duplicados (misma CI) y cuántos tienen deuda.", captura: "vista-previa" },
-      { texto: "Tocá «Importar»: el botón dice cuántos pacientes nuevos entran, por ejemplo «Importar 2 pacientes». Los duplicados se omiten, los nuevos quedan en **Pacientes** y las deudas, en **Cuentas por cobrar**.", captura: "listo" },
+      { texto: "Tocá «Vista previa». Arriba ves cuántos pacientes son nuevos, cuántos ya están cargados (misma CI), cuántos se repiten dentro del archivo y cuántos tienen deuda.", captura: "vista-previa" },
+      { texto: "Tocá «Importar»: el botón dice cuántos pacientes nuevos entran, por ejemplo «Importar 2 pacientes». Los duplicados se omiten (el resumen final dice cuántos), los nuevos quedan en **Pacientes** y las deudas, en **Cuentas por cobrar**.", captura: "listo" },
     ],
     avisos: [
       { tipo: "ojo", texto: "No hay botón para deshacer. Probá primero con un archivo chico (tres o cuatro filas) y recién después cargá todo." },
-      { tipo: "ojo", texto: "Los duplicados se detectan por la cédula (CI) contra los pacientes que ya están cargados. Si un mismo paciente aparece dos veces dentro del archivo, se importan las dos filas: limpiá el archivo antes." },
+      { tipo: "ojo", texto: "Los duplicados se detectan por la cédula (CI, escrita con o sin puntos) contra los pacientes que ya están cargados y también dentro del archivo: la primera fila se carga y las repetidas se omiten. Las filas sin CI (o con «s/d» o solo ceros) se cargan todas." },
       { tipo: "ojo", texto: "Si el archivo trae una columna de deuda, por cada paciente con saldo se arma un presupuesto de saldo migrado ya aceptado, que aparece en **Cuentas por cobrar** ([[cobrar-a-quien-debe]])." },
-      { tipo: "ojo", texto: "Los pacientes importados no traen la Historia Clínica pendiente (los que se cargan a mano sí): pedila desde su ficha, en Documentos clínicos ([[completar-la-historia-clinica]])." },
+      { tipo: "ojo", texto: "Cada paciente importado queda con la Historia Clínica pendiente, igual que los que se cargan a mano: aparecen en la campana y en Documentos clínicos ([[completar-la-historia-clinica]]). Si la clínica importa miles de pacientes, la campana va a tener miles de pendientes." },
       { tipo: "tip", texto: "El archivo tiene datos personales de tus pacientes: borralo de la computadora cuando termines." },
       { tipo: "revisar", texto: "Se probó con un archivo armado a mano, no con exportaciones reales de otros sistemas. Si ninguna columna se reconoce por el encabezado, la pantalla toma las primeras cinco en este orden: nombre, apellido, CI, teléfono y correo." },
-      { tipo: "revisar", texto: "La pantalla y sus textos nombran al sistema de origen (el título del cuadro, la ayuda del primer paso y el nombre del presupuesto de saldo). Conviene un nombre neutro, como «Importar pacientes»; en las capturas de este manual esos textos están recortados." },
     ],
     capturar: async (c) => {
       const { page } = c;
       await c.entrar("admin", "/app");
       await irPorElMenu(c, "Configuración general");
 
-      // Solo se muestra el botón: el título y el texto de la tarjeta nombran al sistema de origen.
+      // Solo se muestra el botón.
       const iniciar = page.getByRole("button", { name: "Iniciar migración" });
       await colocar(page, iniciar);
-      await c.foto("boton", { recorte: iniciar, margen: 6, resaltar: iniciar, ocultar: page.getByText(/Dentalink/) });
+      await c.foto("boton", { recorte: iniciar, margen: 6, resaltar: iniciar });
       await iniciar.click();
 
       // Archivo de ejemplo armado a mano, con datos inventados: dos pacientes nuevos (uno con deuda) y uno que ya está en la clínica (misma CI).
@@ -827,11 +835,13 @@ export const procedimientos: Procedimiento[] = [
 
       const importar = modal.getByRole("button", { name: /^Importar/ });
       await c.expect(importar).toBeVisible();
+      await c.expect(modal.getByText("1 ya cargado")).toBeVisible(); // María González ya está en la clínica (misma CI)
       await c.foto("vista-previa", { recorte: [pasos, importar], margen: 0, resaltar: modal.locator("div.flex-wrap.gap-2").first() });
       await importar.click();
 
       const listo = modal.getByRole("heading", { name: "¡Migración completada!" });
       await c.expect(listo).toBeVisible();
+      await c.expect(modal.getByText(/1 duplicado omitido \(1 ya estaba cargado\)/)).toBeVisible();
       await c.foto("listo", { recorte: [modal.locator("svg.h-12"), modal.getByRole("button", { name: "Ver cuentas por cobrar" })], margen: 14, resaltar: listo });
     },
   },
@@ -844,7 +854,7 @@ export const procedimientos: Procedimiento[] = [
     roles: ["admin"],
     paraQue: "Para decidir cuánto tiempo después de un hecho —una cita que se perdió, un presupuesto presentado, un tratamiento terminado, un saldo pendiente— aparece la tarea automática en la bandeja.",
     pasos: [
-      { texto: "Entrá a **Tareas** (menú de arriba) y tocá el engranaje que está arriba a la izquierda, junto al título: se abre **Configuración de plazos**.", captura: "pestana" },
+      { texto: "Entrá a **Tareas** (menú de arriba) y tocá «Plazos de las tareas» (el engranaje de arriba a la izquierda, junto al título; en el celular se ve solo el engranaje): se abre **Configuración de plazos**.", captura: "pestana" },
       { texto: "Hay una tarjeta por cada tipo de tarea: **cita**, **captura**, **control** y **cobranza**. Cada una explica cuándo se genera." },
       { texto: "En la tarjeta que quieras cambiar, elegí el plazo: «Inmediato», «1 día», «1 semana», «1 mes», «1 año» u «otro» (y escribí cuántos días). Es el tiempo que pasa desde el hecho hasta que aparece la tarea.", captura: "plazo" },
       { texto: "Tocá «Guardar». Mientras no lo hagas, arriba dice que hay cambios no guardados.", captura: "guardado" },
@@ -859,11 +869,11 @@ export const procedimientos: Procedimiento[] = [
     capturar: async (c) => {
       const { page } = c;
       await c.entrar("admin", "/app/tareas");
-      await page.getByRole("tab", { name: "Configuración de plazos" }).click();
+      await page.getByRole("tab", { name: "Plazos de las tareas" }).click();
       const plazos = page.getByRole("heading", { name: "Configuración de plazos", level: 2 });
       await c.expect(plazos).toBeVisible();
       await page.waitForTimeout(900);
-      await c.foto("pestana", { pantalla: true, alto: 640, resaltar: page.getByRole("tab", { name: "Configuración de plazos" }) });
+      await c.foto("pestana", { pantalla: true, alto: 640, resaltar: page.getByRole("tab", { name: "Plazos de las tareas" }) });
 
       const tarjetaPlazos = plazos.locator(`xpath=ancestor::div[${conClase("p-4")}][1]`);
       const cobranza = page.getByRole("radiogroup", { name: "Plazo de la tarea de cobranza" });

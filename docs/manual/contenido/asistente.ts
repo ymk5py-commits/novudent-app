@@ -99,9 +99,9 @@ export const procedimientos: Procedimiento[] = [
     paraQue: "Para saber qué prestaciones tiene indicadas un paciente, cuáles ya se hicieron y cuáles faltan, por ejemplo antes de preparar el consultorio.",
     pasos: [
       { texto: "Abrí la ficha del paciente (tocando su nombre en la agenda o desde **Pacientes**) y tocá **Planes de tratamiento**.", captura: "lista" },
-      { texto: "La lista separa los planes **En ejecución** (los que el paciente aceptó) de **Otros**. Cada plan muestra el profesional, la última cita y el **Progreso**; el selector de arriba pasa de «Tratamientos activos» a «Todos los tratamientos»." },
+      { texto: "La lista separa los planes **En ejecución** (los que el paciente aceptó) de **Otros**. Cada plan muestra el profesional, la especialidad, su **Estado del plan** (Borrador, Presentado, Aceptado…), la última cita y el **Progreso**; el selector de arriba pasa de «Tratamientos activos» a «Todos los tratamientos»." },
       { texto: "Tocá un plan para abrirlo. A la izquierda ves el **Avance del plan** (por ejemplo, «1 / 3 prestaciones realizadas»), el vencimiento, el profesional a cargo y las citas del paciente.", captura: "detalle" },
-      { texto: "A la derecha, la tabla trae cada prestación con su **Pieza**. En la columna **Pago**, el tilde verde quiere decir «Realizado» y el carrito rojo, «Pendiente».", captura: "prestaciones" },
+      { texto: "A la derecha, la tabla trae cada prestación con su **Pieza**. En la columna **Estado**, el tilde verde dice «Realizada» (la prestación ya se hizo) y el carrito rojo, «Pendiente».", captura: "prestaciones" },
       { texto: "Con las pestañas de arriba de la tabla podés mirar el **Odontograma** (el estado de las piezas) y **Estética facial**. El ícono de la impresora, a la derecha, imprime el plan." },
       { texto: "Tocá «Planes», arriba a la izquierda, para volver a la lista." },
     ],
@@ -111,14 +111,13 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "tip", texto: "Cuando el dentista marca una prestación como realizada, el avance del plan sube solo: [[marcar-una-prestacion-realizada]]." },
       { tipo: "tip", texto: "Para el resto de la ficha (evoluciones, antecedentes, odontograma) mirá [[leer-la-ficha-clinica]]; para saber cuándo viene el paciente, [[ver-tu-agenda]]." },
       { tipo: "tip", texto: "Con el plan Clínica, la ficha trae «Preparar consulta», que arma con IA un resumen del paciente para la consulta. Es opcional y no cambia nada del plan." },
-      { tipo: "revisar", texto: "En la tabla, la columna se llama **Pago**, pero el carrito y el tilde dicen si la prestación se hizo, no si se pagó. Para quien no ve montos puede confundir: sugerir otro nombre (por ejemplo, «Estado»)." },
     ],
     capturar: async (c) => {
       const { page } = c;
       const main = page.locator("main");
       await c.entrar("assistant", "/app/pacientes/p1");
       await page.setViewportSize({ width: 1280, height: 1000 });
-      // Para que se vean las dos marcas de la columna «Pago» hace falta una prestación ya hecha, y la demo no trae ninguna en este plan. La asistente no puede
+      // Para que se vean las dos marcas de la columna «Estado» hace falta una prestación ya hecha, y la demo no trae ninguna en este plan. La asistente no puede
       // marcarla (lo hace el dentista, con otro usuario, y cada ingreso a la demo vuelve a sembrar los datos): se marca la primera en el estado local de la demo,
       // como haría el dentista, y se recarga la ficha.
       await page.evaluate(() => {
@@ -142,7 +141,7 @@ export const procedimientos: Procedimiento[] = [
       await sinMouse(page);
       await c.foto("detalle", { margen: 4, resaltar: avance, recorte: [main.getByRole("button", { name: "Planes", exact: true }), panel, main.getByRole("table")] });
 
-      await c.foto("prestaciones", { margen: 4, resaltar: [main.getByTitle("Realizado").locator("svg"), main.getByTitle("Pendiente").first().locator("svg")], recorte: main.getByRole("table") });
+      await c.foto("prestaciones", { margen: 4, resaltar: [main.getByRole("table").getByText("Realizada", { exact: true }), main.getByRole("table").getByText("Pendiente", { exact: true }).first()], recorte: main.getByRole("table") });
     },
   },
 ];

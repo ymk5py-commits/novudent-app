@@ -559,7 +559,7 @@ export const procedimientos: Procedimiento[] = [
       await c.expect(aviso).toBeVisible();
       await c.foto("pestana", { resaltar: boton(page, "Radiografías"), recorte: [filaDeSecciones(page), aviso] });
 
-      const herramienta = page.getByRole("heading", { name: "Análisis IA de radiografías" }).locator("xpath=ancestor::div[contains(@class,'p-5')][1]");
+      const herramienta = page.getByRole("heading", { name: "Subir una radiografía" }).locator("xpath=ancestor::div[contains(@class,'p-5')][1]");
       // El tipo de estudio y el botón, en un solo recuadro.
       await c.foto("subir", { resaltar: herramienta.locator("select").locator("xpath=ancestor::div[contains(@class,'flex-wrap')][1]"), recorte: herramienta, margen: 4 });
       await c.expect(herramienta.locator("select option")).toHaveText(["Panorámica", "Bitewing", "Periapical", "Otra"]);
@@ -682,11 +682,11 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Repetí «Agregar» por cada prestación que necesite el paciente. Con el tachito de la derecha sacás una." },
       { texto: "Si querés, escribí una nota en **Notas** y tocá «Guardar» (se activa cuando hay al menos una prestación). El plan se crea y se abre.", captura: "guardar" },
       { texto: "A la izquierda ves el **Avance del plan** (hoy, «0 / 2 prestaciones realizadas») y, a la derecha, la lista de prestaciones. Tocá el lápiz de al lado del nombre del plan y poné uno que lo identifique: se guarda con Enter.", captura: "plan" },
-      { texto: "El plan queda en la lista, bajo **Otros**: todavía no está aceptado. Quien maneja los montos (la administración o la caja) lo presenta al paciente con sus precios y lo marca como aceptado; recién ahí pasa a **En ejecución**." },
+      { texto: "El plan queda en la lista, bajo **Otros** y con el estado «Borrador»: todavía no está aceptado. Quien maneja los montos (la administración o la caja) lo presenta al paciente con sus precios y lo marca como aceptado; recién ahí pasa a **En ejecución**." },
     ],
     avisos: [
       { tipo: "ojo", texto: "Con el rol Dentista no ves precios, descuentos ni totales: los precios salen del arancel y los maneja la caja. La administración y la caja arman los planes desde **Presupuestos**, con precios: [[presentar-y-aceptar-un-presupuesto]]." },
-      { tipo: "ojo", texto: "En la lista de prestaciones, la columna «Pago» muestra un carrito rojo mientras la prestación está pendiente y un tilde verde cuando ya se hizo. Marcarlas como realizadas lo hace la administración: [[marcar-una-prestacion-realizada]]." },
+      { tipo: "ojo", texto: "En la lista de prestaciones, la columna «Estado» muestra un carrito rojo («Pendiente») mientras la prestación falta y un tilde verde («Realizada») cuando ya se hizo; no dice si se pagó. Marcarlas como realizadas lo hace la administración: [[marcar-una-prestacion-realizada]]." },
       { tipo: "tip", texto: "«Opciones › Duplicar plan de tratamiento» arma una copia del plan, con todo pendiente, para volver a presentarlo. En un plan ya aceptado, «Finalizar plan» lo cierra." },
       { tipo: "tip", texto: "Con el plan Clínica, «Copilot IA» arma un borrador del plan a partir de una radiografía; lo revisás antes de crearlo." },
       { tipo: "tip", texto: "Cada prestación tiene un campo **Sección** (por ejemplo «Restauraciones» o «Prevención e higiene»): sirve para agrupar el plan. Si lo dejás vacío, la prestación sale bajo «Sección sin nombre». Con **Nombre del plan (opcional)** le ponés nombre desde el principio." },

@@ -280,7 +280,7 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Para ver cómo se reparte el trabajo, tocá «Filtrar por» y, en **Responsable**, elegí «Asignadas a mí» o «Sin asignar».", captura: "filtro" },
       { texto: "Para ver cuánto resolvió cada uno, tocá el segundo ícono de arriba a la izquierda, **Estadísticas**. Elegí «Resultados históricos» o un mes con las flechas.", captura: "estadisticas" },
       { texto: "Los cuatro contadores (deudas cobradas, presupuestos capturados, controles agendados y citas re-agendadas) dicen «N de M casos»: M son los casos que alguien trabajó con «Finalizar» y N los que hoy terminaron bien (la deuda se cobró, el presupuesto se aceptó, el paciente volvió a agendar). Abajo, la tabla cuenta los casos que trabajó cada persona, incluidas las tareas personalizadas, los cheques y las citas sin confirmar.", captura: "casos" },
-      { texto: "Los plazos con los que el sistema arma las tareas automáticas se cambian en el ícono de engranaje, **Configuración de plazos**: mirá [[ajustar-los-plazos-de-las-tareas]]." },
+      { texto: "Los plazos con los que el sistema arma las tareas automáticas se cambian en «Plazos de las tareas» (el engranaje de la pantalla de Tareas), **Configuración de plazos**: mirá [[ajustar-los-plazos-de-las-tareas]]." },
     ],
     avisos: [
       { tipo: "ojo", texto: "Una tarea que le asignás a otra persona deja de ser tuya: sale de tu **Mi agenda** y aparece en la de ella. Las tareas automáticas (cobranza, cita…) solo aparecen en **Mi agenda** de quien las tiene asignadas." },

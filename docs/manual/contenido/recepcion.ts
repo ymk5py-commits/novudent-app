@@ -382,11 +382,11 @@ export const procedimientos: Procedimiento[] = [
       { texto: "En **Datos principales**, completá los campos con asterisco (*): **Nombre legal**, **Apellidos**, **Cédula / DNI**, **Fecha de nacimiento**, **Sexo** y **Género**.", captura: "principales" },
       { texto: "En **Contacto y domicilio**, cargá el **Teléfono móvil** y el **Email** (los dos son obligatorios: los avisos al paciente salen por correo) y, si lo tenés, la ciudad, el barrio y la dirección. «Subir foto», a la izquierda, es opcional.", captura: "contacto" },
       { texto: "Si el paciente es menor de 18 años, al cargar su fecha de nacimiento aparecen los datos del **Responsable** y pasan a ser obligatorios.", captura: "menor" },
-      { texto: "Tocá «Crear paciente». El **Código interno** (arriba a la derecha del formulario) se asigna solo y se abre la ficha del paciente." },
+      { texto: "Tocá «Crear paciente». Si falta algún dato obligatorio, el formulario marca los campos y lista todo junto («Completá: …») y lleva el cursor al primero. Cuando está completo, el **Código interno** (arriba a la derecha del formulario) se asigna solo y se abre la ficha del paciente." },
       { texto: "La **Historia Clínica** del paciente queda pendiente: la campana suma uno y el paciente aparece en «Documentos clínicos pendientes». Completala en su primera visita: [[completar-la-historia-clinica]].", captura: "campana" },
     ],
     avisos: [
-      { tipo: "ojo", texto: "El sistema no avisa si ya existe un paciente con la misma CI: buscalo antes para no duplicar la ficha." },
+      { tipo: "ojo", texto: "Si la CI (con o sin puntos) ya la tiene otro paciente, el formulario avisa «Ya hay un paciente con esa CI: …», con un enlace a su ficha, y no crea la nueva hasta que marques «Es otra persona» (por ejemplo, un menor que usa la CI de su responsable). Igual conviene buscarlo antes." },
       { tipo: "tip", texto: "Los datos que se piden, y cuáles son obligatorios, los define la administración: [[configurar-los-campos-del-paciente]]. En «Dar cita» también podés cargar un paciente nuevo, con «Crear nuevo paciente»." },
       { tipo: "revisar", texto: "Hoy la CI, el teléfono móvil y el email son obligatorios y no hay manera de cargar a un paciente sin CI (por ejemplo, un niño) ni sin correo. Confirmar si alcanza o si hace falta un caso «sin documento» o «sin email»." },
     ],
@@ -433,6 +433,13 @@ export const procedimientos: Procedimiento[] = [
       await c.foto("menor", { resaltar: responsable, recorte: responsable });
       await nacimiento.fill("1990-05-20");
 
+      // Con la CI de otro paciente (María González, 3.456.789) avisa y no crea la ficha hasta marcar «Es otra persona».
+      await main.getByLabel("Cédula / DNI *").fill("3.456.789");
+      await main.getByRole("button", { name: "Crear paciente" }).click();
+      await c.expect(main.getByText(/Ya hay un paciente con esa CI/).first()).toBeVisible();
+      await c.expect(page).toHaveURL(/\/app\/pacientes\/nuevo/);
+      await main.getByLabel("Cédula / DNI *").fill("7.777.777");
+
       await main.getByRole("button", { name: "Crear paciente" }).click();
       await page.waitForURL(/\/app\/pacientes\/p_/);
       const campana = page.getByRole("button", { name: /^Ver pendientes/ });
@@ -460,6 +467,7 @@ export const procedimientos: Procedimiento[] = [
     avisos: [
       { tipo: "ojo", texto: "Deshabilitar no borra nada: la ficha, las citas y los documentos quedan como estaban. Lo que cambia es que el paciente no sale en la lista de siempre ni se ofrece al dar una cita nueva." },
       { tipo: "ojo", texto: "Si cambiás algo en **Datos** y salís sin tocar «Guardar datos», el cambio se pierde." },
+      { tipo: "ojo", texto: "«Datos requeridos» lista lo que la clínica pide de todos sus pacientes (lo define la administración). Si vaciás un dato obligatorio que el paciente ya tenía, «Guardar datos» te dice cuál es y no guarda; si nunca se cargó (por ejemplo, el correo de un paciente de antes), la ficha lo avisa pero igual podés guardar otros cambios." },
       { tipo: "tip", texto: "El teléfono y el correo de la ficha son los que se usan para avisarle al paciente de sus citas: mantenelos al día." },
       { tipo: "tip", texto: "Con «Todos» en el selector ves a la vez los pacientes habilitados y los deshabilitados." },
     ],
