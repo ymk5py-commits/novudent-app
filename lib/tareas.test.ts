@@ -1205,3 +1205,20 @@ describe("tareas propias que se tachan solas (autoCierre)", () => {
     expect(nuevaPersonalizada({ ...base, autoCierre })).not.toHaveProperty("autoCierre");
   });
 });
+
+import { diaLocal } from "./tareas";
+
+describe("diaLocal — el día de calendario de una fecha guardada", () => {
+  it("un instante ISO se pasa a hora local: un pago de las 22:30 es de ese día, no del siguiente", () => {
+    expect(diaLocal(new Date(2026, 9, 8, 22, 30).toISOString())).toBe("2026-10-08");
+    expect(diaLocal(new Date(2026, 9, 8, 0, 20).toISOString())).toBe("2026-10-08");
+  });
+
+  it("una fecha sola (AAAA-MM-DD) se lee tal cual, sin correrla un día", () => {
+    expect(diaLocal("2026-10-08")).toBe("2026-10-08");
+  });
+
+  it("una hora local sin zona (reserva online) es del día que dice", () => {
+    expect(diaLocal("2026-10-08T23:00:00")).toBe("2026-10-08");
+  });
+});

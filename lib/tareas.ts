@@ -539,6 +539,13 @@ export function parseFecha(iso: string): Date {
   return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
 }
 
+/** El día local (AAAA-MM-DD) de una fecha guardada: un instante ISO se pasa a hora local, una
+ *  fecha sola se lee tal cual. Cortar el texto en 10 caracteres daba el día UTC: un pago de las
+ *  22:30 en Paraguay salía del día siguiente. */
+export function diaLocal(iso: string): string {
+  return fechaLocal(parseFecha(iso));
+}
+
 /** Suma días a una fecha YYYY-MM-DD (aritmética de calendario, sin husos). */
 export function sumarDias(fecha: string, n: number): string {
   const d = new Date(`${fecha}T00:00:00Z`);

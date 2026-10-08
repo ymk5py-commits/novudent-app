@@ -4,6 +4,7 @@
 import { useMemo, useState } from "react";
 import { can } from "@/lib/rbac";
 import { useStore, fmtDate } from "@/lib/store";
+import { fechaLocal } from "@/lib/tareas";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 import { Leaf, Plus, Pencil, Trash2, ShieldAlert } from "lucide-react";
@@ -19,7 +20,7 @@ const WASTE_TONE: Record<EnvironmentalLog["wasteType"], "err" | "warn" | "info" 
 
 function Ambiental() {
   const { db, addEnvironmentalLog, updateEnvironmentalLog, deleteEnvironmentalLog } = useStore();
-  const ym = new Date().toISOString().slice(0, 7);
+  const ym = fechaLocal().slice(0, 7);
   const [mes, setMes] = useState(ym);
   const [editing, setEditing] = useState<EnvironmentalLog | null>(null);
   const [showForm, setShowForm] = useState(false);

@@ -5,6 +5,7 @@
 import { useMemo, useState } from "react";
 import { can } from "@/lib/rbac";
 import { useStore, fmtDate } from "@/lib/store";
+import { fechaLocal } from "@/lib/tareas";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 import { ShieldCheck, Plus, Pencil, Trash2, AlertTriangle, ShieldAlert } from "lucide-react";
@@ -23,7 +24,7 @@ function indTone(v?: string): "ok" | "err" | "warn" | "muted" {
 
 function Esterilizacion() {
   const { db, addSterilizationCycle, updateSterilizationCycle, deleteSterilizationCycle } = useStore();
-  const ym = new Date().toISOString().slice(0, 7);
+  const ym = fechaLocal().slice(0, 7);
   const [mes, setMes] = useState(ym);
   const [editing, setEditing] = useState<SterilizationCycle | null>(null);
   const [showForm, setShowForm] = useState(false);
