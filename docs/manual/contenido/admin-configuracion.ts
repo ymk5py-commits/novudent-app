@@ -178,7 +178,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "El plan limita los usuarios. El **Plan Solo** admite hasta 3 usuarios activos y 1 profesional; el **Plan Clínica**, hasta 12 y 4; el **Plan Multi**, sin tope de usuarios y hasta 10 profesionales. Si te pasás, el sistema avisa y no crea la cuenta. Un usuario dado de baja no cuenta." },
       { tipo: "ojo", texto: "El correo no se puede repetir en la clínica, ni siquiera con un usuario dado de baja: en ese caso reactivá al que ya existe ([[dar-de-baja-a-un-usuario]])." },
       { tipo: "ojo", texto: "No hay un selector de color: el sistema le da a cada persona el color de su rol, así que dos dentistas nuevos quedan con el mismo color en la agenda." },
-      { tipo: "tip", texto: "Pasá el mouse por el número que está junto al título **Usuarios del equipo**: dice cuántos usuarios y cuántos profesionales incluye tu plan. Qué puede hacer cada rol está en el apéndice **Qué puede hacer cada rol**, al final del manual." },
+      { tipo: "tip", texto: "Pasá el mouse por el número que está junto al título **Usuarios del equipo**: dice cuántos usuarios y cuántos profesionales incluye tu plan. Qué puede hacer cada rol está en el apéndice **Qué puede hacer cada rol**, al final del manual; si querés cambiarlo para tu clínica: [[elegir-que-puede-hacer-cada-rol]]." },
       { tipo: "revisar", texto: "En la demo el botón «Crear usuario» está apagado y un cuadro azul avisa que el alta de cuentas solo funciona en una clínica con conexión: por eso las capturas llegan hasta el formulario completo. Que la cuenta se cree, que el sistema pida cambiar la contraseña y los topes del plan salen de leer el código; hay que probarlos en una clínica real." },
     ],
     capturar: async (c) => {
@@ -264,6 +264,72 @@ export const procedimientos: Procedimiento[] = [
       const aviso = page.getByText("Todavía no tenés doctores asignados");
       await c.expect(aviso).toBeVisible();
       await c.foto("ve", { pantalla: true, alto: 560, resaltar: aviso, ocultar: pieDeSoporte(page) });
+    },
+  },
+
+  /* ─────────────────────────────── 3 bis. Permisos del equipo ─────────────────────────────── */
+  {
+    id: "elegir-que-puede-hacer-cada-rol",
+    capitulo: "admin",
+    titulo: "Elegir qué puede hacer cada rol",
+    roles: ["admin"],
+    verComo: ["receptionist"], // el último paso muestra la pantalla de la recepcionista («así la ve ella»)
+    paraQue: "Cuando la clínica necesita que un rol vea o haga algo distinto de lo que trae de fábrica: por ejemplo, que la recepcionista cobre, o que la caja deje de hacer el arqueo. Cada rol viene con sus permisos; vos das o sacás los que quieras.",
+    antes: ["Saber qué rol querés cambiar. Lo que trae cada uno de fábrica está en el apéndice **Qué puede hacer cada rol**."],
+    pasos: [
+      { texto: "Entrá a **Administración** y elegí «Permisos del equipo».", captura: "menu" },
+      { texto: "Arriba elegí el **rol** que querés cambiar: Recepción y caja, Recepcionista, Dentista o Asistente de doctores. El Administrador no aparece porque siempre puede todo.", captura: "roles" },
+      { texto: "Debajo están los permisos, ordenados por tema. Marcá lo que ese rol **puede** y desmarcá lo que **no**. Cada fila dice si es de **Ver** (qué información aparece) o de **Hacer** (qué acciones ejecuta), y lo que cambiás respecto de fábrica queda marcado «Agregado» o «Quitado».", captura: "marcar" },
+      { texto: "Si el permiso que marcás necesita otro, el sistema lo marca solo (**1**) y lo explica en un cuadro azul (**2**): para cobrar hace falta ver los montos. Al revés pasa igual: si sacás «Ver montos», se saca también «Cobrar».", captura: "arrastre" },
+      { texto: "Tocá «Guardar permisos». El cambio rige **en el acto** para todo el equipo, también para quien ya tiene la sesión abierta.", captura: "guardado" },
+      { texto: "Así lo ve la recepcionista: ahora abre **Cajas** y puede cobrar.", captura: "ve" },
+    ],
+    avisos: [
+      { tipo: "ojo", texto: "Los permisos con **candado** (cobros, firmas y documentos, ficha clínica, gastos y liquidaciones) los bloquea además el sistema por dentro: aunque alguien lo intente por otro camino, no puede. Los demás, como ver montos o los datos personales del paciente, **esconden las pantallas y los botones**, pero los datos siguen guardados para toda la clínica: no sirven de protección contra alguien que sepa consultarlos directamente." },
+      { tipo: "ojo", texto: "«Crear usuarios» y «Configurar la clínica» no se dan a nadie: son solo del administrador. Por eso Esterilización, Registro ambiental, Box, el arancel y el resto de Administración siguen siendo solo suyos." },
+      { tipo: "ojo", texto: "En la demo los cambios los ve todo el que la esté usando, hasta que alguien toque «Reiniciar demo»." },
+      { tipo: "tip", texto: "«Volver Recepcionista a como viene de fábrica» deshace de una vez todo lo que se le repartió a ese rol; tocá «Guardar permisos» para que rija." },
+      { tipo: "revisar", texto: "¿Hace falta repartir por separado Esterilización, Registro ambiental o marcar las prestaciones como realizadas (hoy solo lo hace la administración)? Hoy van atadas a «Configurar la clínica» y a Presupuestos, y no se pueden delegar una por una." },
+      { tipo: "revisar", texto: "Un cambio de permisos no deja registro de quién lo hizo ni cuándo. ¿Hace falta?" },
+    ],
+    capturar: async (c) => {
+      const { page } = c;
+      await c.entrar("admin", "/app");
+      await irPorElMenu(c, "Permisos del equipo", "menu");
+
+      const permisos = page.getByRole("region", { name: "Permisos del equipo" });
+      const roles = permisos.getByRole("group", { name: "Rol" });
+      const recepcionista = roles.getByRole("button", { name: /^Recepcionista/ });
+      await colocar(page, permisos, 150);
+      await c.foto("roles", { recorte: [roles, permisos.getByText(/De fábrica:/)], margen: 8, resaltar: recepcionista });
+      await recepcionista.click();
+
+      const dinero = permisos.getByRole("group", { name: "Dinero" });
+      const cobrar = permisos.getByRole("checkbox", { name: "Cobrar y hacer el arqueo de caja", exact: true });
+      const filaCobrar = cobrar.locator("xpath=ancestor::li[1]");
+      const filaMontos = permisos.getByRole("checkbox", { name: "Ver montos: precios, presupuestos, deudas y saldos", exact: true }).locator("xpath=ancestor::li[1]");
+      await colocar(page, dinero);
+      await cobrar.check();
+      await sacarMouse(page);
+      await c.foto("marcar", { recorte: dinero, margen: 4, resaltar: filaCobrar });
+
+      const aviso = permisos.getByRole("status").filter({ hasText: "Se dio también" });
+      await c.expect(aviso).toBeVisible();
+      await c.foto("arrastre", { recorte: [filaMontos, aviso], margen: 6, resaltar: [filaMontos, aviso] });
+
+      await permisos.getByRole("button", { name: "Guardar permisos" }).click();
+      const guardado = permisos.getByText(/Guardado: ya rige/);
+      await c.expect(guardado).toBeVisible();
+      await sacarMouse(page);
+      const pie = guardado.locator("xpath=..");
+      await colocar(page, pie, 400);
+      await c.foto("guardado", { recorte: pie, margen: 8, resaltar: guardado });
+
+      // Se pasa a la recepcionista SIN cerrar sesión (cerrar sesión borra el estado local de la demo y se perdería el cambio).
+      await c.entrar("receptionist", "/app/caja");
+      const titulo = page.getByRole("heading", { name: "Cajas", level: 1 });
+      await c.expect(titulo).toBeVisible();
+      await c.foto("ve", { pantalla: true, alto: 560, resaltar: titulo, ocultar: pieDeSoporte(page) });
     },
   },
 
@@ -625,7 +691,9 @@ export const procedimientos: Procedimiento[] = [
       // El menú de estados mide más que la ventana: se agranda la ventana para mostrarlo entero (en pantalla chica se corta, ver el aviso).
       await page.setViewportSize({ width: 1280, height: 1150 });
       await c.ir("/app/agenda");
-      const estadoDeCita = page.getByRole("button", { name: /^No confirmado/ }).first();
+      // La primera cita de la agenda, sea cual sea su estado: la demo reparte las citas desde el lunes de la semana y, según el día en
+      // que se saquen las capturas, puede no haber ninguna «No confirmado» (los jueves, por ejemplo).
+      const estadoDeCita = page.getByRole("row").locator('button[aria-haspopup="menu"]').first();
       await estadoDeCita.click();
       const menu = page.getByRole("menu", { name: "Estado de la cita" });
       const nuevo = menu.getByRole("menuitem", { name: "Confirmado por familiar" });

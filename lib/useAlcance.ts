@@ -23,5 +23,6 @@ export function useAlcance() {
       /** Asistente de doctores sin doctores asignados: no ve agendas ni pacientes. */
       sinDoctores: session?.role === "assistant" && (doctores?.length ?? 0) === 0,
     };
-  }, [db.users, db.appointments, db.budgets, session]);
+    // `db.clinics`: si la clínica cambia lo que puede cada rol (config.permisos), cambia también a quién ve (agenda.all).
+  }, [db.users, db.appointments, db.budgets, db.clinics, session]);
 }

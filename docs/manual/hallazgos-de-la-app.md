@@ -17,7 +17,7 @@ Estado: ✅ corregido y en producción · 🔴 abierto.
 | ✅ | **Cumpleaños del CRM** con un día de diferencia («¡Hoy!» el día anterior): `new Date("YYYY-MM-DD")` es medianoche UTC | `lib/cumpleanos.ts` (puro, con tests) |
 | ✅ | Contador «1 citas», mes «Octubre De 2026» y detalle de la cita con «02:00 p. m. → 14:30» | `app/app/agenda/page.tsx` |
 | ✅ | Un E2E dependía del día de la semana (tomaba la primera fila del día) | `e2e/agenda.spec.ts` |
-| ✅ | **Esterilización y Registro ambiental no controlaban el rol**: el menú las escondía, pero quien escribía `/app/esterilizacion` o `/app/ambiental` (recepción, caja, dentista, asistente) registraba, editaba y borraba. Ahora dicen «Acceso denegado» como el resto de Gestión (`practice.config`, solo el administrador). *Decisión pendiente para Angel y Camila: si la asistente tiene que cargar los ciclos de esterilización, hay que darle el permiso; hoy los ciclos de la demo están a nombre de ella.* | `app/app/esterilizacion/page.tsx`, `app/app/ambiental/page.tsx`, `e2e/roles.spec.ts` |
+| ✅ | **Esterilización y Registro ambiental no controlaban el rol**: el menú las escondía, pero quien escribía `/app/esterilizacion` o `/app/ambiental` (recepción, caja, dentista, asistente) registraba, editaba y borraba. Ahora dicen «Acceso denegado» como el resto de Gestión (`practice.config`, solo el administrador). *Decisión pendiente para Angel y Camila: si la asistente tiene que cargar los ciclos de esterilización, hay que darle el permiso; hoy los ciclos de la demo están a nombre de ella. Ojo: «Permisos del equipo» (8-oct-2026) todavía no lo resuelve, porque estas pantallas van atadas a «Configurar la clínica», que no se reparte; haría falta un permiso propio para Esterilización y otro para Registro ambiental.* | `app/app/esterilizacion/page.tsx`, `app/app/ambiental/page.tsx`, `e2e/roles.spec.ts` |
 
 ## Abiertos — pueden perder datos o plata
 
@@ -64,7 +64,7 @@ Estado: ✅ corregido y en producción · 🔴 abierto.
 
 | | Problema |
 |---|---|
-| 🔴 | **El dentista no puede marcar sus prestaciones como realizadas.** El botón «pendiente / ✓ realizado» está pensado para «administración y dentista», pero vive en Cobranza › Presupuestos, que el dentista no puede abrir («Acceso denegado»). Hoy solo lo hace la administración. |
+| 🔴 | **El dentista no puede marcar sus prestaciones como realizadas.** El botón «pendiente / ✓ realizado» está pensado para «administración y dentista», pero vive en Cobranza › Presupuestos, que el dentista no puede abrir («Acceso denegado»). Hoy solo lo hace la administración. Con «Permisos del equipo» se le puede dar «Presentar y aceptar presupuestos» (y con él «Ver montos»), pero eso le abre toda la pantalla de Presupuestos, no solo el botón: haría falta un permiso propio para marcar prestaciones. |
 | 🔴 | Recepción y caja puede editar los tres recuadros médicos de la cabecera (Alertas, Enfermedades, Medicamentos) sin ver la pestaña «Antecedentes médicos». Dentista y asistente no ven «Consentimientos», solo los documentos clínicos: confirmar si deberían leerlos. |
 | 🔴 | Textos del odontograma en tuteo («Haz clic…», «usa CMD/CTRL»; `odontogram-engine/i18n/translations.ts` L1601, L2015, L2027) y sin leyenda de colores; la pestaña de radiografías dice «Análisis IA de radiografías» aunque el flujo manual no usa IA (`components/Radiografias.tsx` L323). |
 | 🔴 | No hay cómo **crear un plan de ortodoncia** desde la app: «Nuevo plan de tratamiento» arma planes «General»; el de ortodoncia existe solo en la demo. |

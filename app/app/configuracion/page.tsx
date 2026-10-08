@@ -22,6 +22,7 @@ import { PagoOnline } from "@/components/PagoOnline";
 import { AgendaOnline } from "@/components/AgendaOnline";
 import { ArancelPrecios } from "@/components/ArancelPrecios";
 import { BancosEntidades } from "@/components/BancosEntidades";
+import { PermisosDelEquipo } from "@/components/PermisosDelEquipo";
 import { Logotipo } from "@/components/Marca";
 
 const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> = {
@@ -253,6 +254,12 @@ export default function ConfigPage() {
         </div>
         <p className="mt-2 text-[11px] text-clinic-muted">El % de comisión de cada dentista alimenta el cálculo de pago en <Link href="/app/reportes" className="font-bold text-azure-700">Reportes</Link>.</p>
       </Card>
+      </Reveal>
+
+      <span id="permisos" className="block scroll-mt-24" aria-hidden="true" />
+      {/* Permisos del equipo: qué puede ver y hacer cada rol en esta clínica */}
+      <Reveal>
+        <PermisosDelEquipo />
       </Reveal>
 
       <span id="convenios" className="block scroll-mt-24" aria-hidden="true" />

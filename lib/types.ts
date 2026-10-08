@@ -1,6 +1,7 @@
 /* ===== Modelo de datos Novudent (sec. 4 del Documento Maestro) ===== */
 import type { CurrencyCode } from "./currency";
 import type { EntidadFinanciera } from "./bancos";
+import type { PermisosDeLaClinica } from "./rbac";
 
 /** Roles v3 (27/9/2026): la recepción se separa de la caja, y dentista y asistente
  *  quedan con lo clínico, sin montos ni datos personales (ver lib/rbac.ts). */
@@ -65,6 +66,9 @@ export interface Clinic {
     paymentRetention?: PaymentRetention;
     /** Bancos y entidades financieras de la clínica (Administración › Bancos y entidades financieras): se ofrecen al anotar un cheque. */
     entidadesFinancieras?: EntidadFinanciera[];
+    /** Permisos que la clínica reparte o saca a cada rol, como diferencia contra la matriz de fábrica
+     *  (Administración › Permisos del equipo). Solo los escribe el administrador: la regla de `clinics/{cid}` lo exige. */
+    permisos?: PermisosDeLaClinica;
   };
 }
 

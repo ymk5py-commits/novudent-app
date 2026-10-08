@@ -52,7 +52,7 @@ import type {
 } from "./types";
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
-import { can } from "./rbac";
+import { can, aplicarPermisosDeLaClinica, mismosPermisos } from "./rbac";
 import { historiaClinicaPendiente, plantillasDeClinica } from "./documentosClinicos";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { worstSeverity } from "./recovery";
@@ -581,6 +581,9 @@ const StoreCtx = createContext<Ctx | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<DB>(buildSeed);
+  /* Los permisos que la clínica repartió o sacó (Permisos del equipo) se aplican en CADA render, antes de que se pinte
+   * ninguna pantalla: las ~100 llamadas a `can(role, p)` los leen del módulo y no hay que pasárselos a ninguna. */
+  aplicarPermisosDeLaClinica(db.clinics[0]?.config?.permisos);
   // El estado más nuevo, para los reintentos de escrituras que reescriben un documento entero (ver `fsMeta`).
   const dbRef = useRef(db);
   useEffect(() => { dbRef.current = db; }, [db]);
@@ -715,6 +718,34 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         });
       },
       (e) => console.warn("listener subscription:", e)
+    );
+    return unsub;
+  }, [backend, activeClinicId]);
+
+  /* ===== Tiempo real: permisos del equipo =====
+   * El administrador reparte o saca permisos desde Configuración. Las reglas de Firestore ya aplican el cambio en el
+   * momento, así que la pantalla de quien tiene la sesión abierta tiene que enterarse también: si no, seguiría mostrando
+   * un botón que el servidor rechaza (o escondiendo uno que ya puede usar) hasta que recargue.
+   * Se toma SOLO `config.permisos` del documento de la clínica, nunca el resto de la configuración: un snapshot de otro
+   * momento no puede pisar lo que este navegador todavía está guardando (ver `fsMeta`). Si el eco de una escritura
+   * propia trae lo mismo que ya hay, no se toca el estado. */
+  useEffect(() => {
+    if (backend !== "firebase") return;
+    const cid = activeClinicId;
+    const unsub = onSnapshot(
+      doc(fsdb, "clinics", cid),
+      (snap) => {
+        const permisos = (snap.data() as { config?: { permisos?: unknown } } | undefined)?.config?.permisos;
+        setDb((prev) => {
+          if ((prev.clinics[0]?.id ?? cid) !== cid) return prev; // snapshot tardío de otra clínica
+          const clinica = prev.clinics[0];
+          if (!clinica || mismosPermisos(clinica.config?.permisos, permisos)) return prev;
+          const next: DB = { ...prev, clinics: [{ ...clinica, config: { ...clinica.config, permisos: permisos as typeof clinica.config.permisos } }] };
+          try { localStorage.setItem(DB_KEY, JSON.stringify(next)); } catch {}
+          return next;
+        });
+      },
+      (e) => console.warn("listener permisos:", e)
     );
     return unsub;
   }, [backend, activeClinicId]);

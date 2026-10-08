@@ -7,7 +7,7 @@ import { isValidId, isValidToken } from "@/lib/server/ids";
 import { linkConfirmacion as linkConfirmacionDe, puedeResponder } from "@/lib/confirmacionCita";
 import { newSignToken } from "@/lib/firma";
 import { SITE_URL } from "@/lib/site";
-import { can } from "@/lib/rbac";
+import { can, normalizarPermisos } from "@/lib/rbac";
 import { correoCita, type TipoCorreoCita } from "@/lib/correoCita";
 import type { AppointmentStatus, Role } from "@/lib/types";
 
@@ -58,15 +58,19 @@ export async function POST(req: NextRequest) {
     // Miembro activo de la clínica, y de un rol que maneje los datos del paciente (el
     // correo sale a su dirección): recepción, caja o admin.
     const yo = await requireMiembro(uid);
-    if (!can(yo.role as Role, "patients.personal")) {
+    const base = `clinics/${yo.clinicId}`;
+    // La clínica puede darle o sacarle a cada rol el manejo de los datos del paciente (Permisos del equipo), así que se lee
+    // ANTES de decidir. Sin `.catch`: si no se pudo leer, el error corta la ruta; no se cae a la matriz de fábrica, que
+    // podría dejar pasar a un rol al que la clínica se lo sacó.
+    const clinica = await getDocument(base);
+    const permisos = normalizarPermisos((clinica?.config as { permisos?: unknown } | undefined)?.permisos);
+    if (!can(yo.role as Role, "patients.personal", permisos)) {
       return NextResponse.json({ ok: false, error: "Tu rol no puede escribirle al paciente." }, { status: 403 });
     }
-    const base = `clinics/${yo.clinicId}`;
     const cita = await getDocument(`${base}/appointments/${appointmentId}`);
     if (!cita) return NextResponse.json({ ok: false, error: "No se encontró la cita." }, { status: 404 });
-    const [paciente, clinica, profesional] = await Promise.all([
+    const [paciente, profesional] = await Promise.all([
       getDocument(`${base}/patients/${String(cita.patientId || "")}`),
-      getDocument(base),
       cita.dentistId ? getDocument(`${base}/users/${String(cita.dentistId)}`) : Promise.resolve(null),
     ]);
     const email = String(paciente?.email || "").trim();

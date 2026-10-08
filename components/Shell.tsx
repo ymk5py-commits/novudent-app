@@ -9,7 +9,7 @@ import Link from "next/link";
 import {
   CalendarDays, Users, Receipt, Settings, LogOut, Search, FileText, ClipboardList, CreditCard,
   FileSpreadsheet, Wallet, Package, BarChart3, Bot, Menu, X, ChevronDown, Banknote, Handshake, Image as ImageIcon,
-  Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star, ListChecks, Leaf, Video, MapPin, Headset, CalendarClock, Landmark } from "lucide-react";
+  Megaphone, FlaskConical, Coins, Armchair, ShieldCheck, MessageCircle, Star, ListChecks, Leaf, Video, MapPin, Headset, CalendarClock, Landmark, KeyRound } from "lucide-react";
 import { useAlcance } from "@/lib/useAlcance";
 import { useStore, fullName } from "@/lib/store";
 import { pendientesPorPaciente } from "@/lib/documentosClinicos";
@@ -58,6 +58,7 @@ const NAV: NavTop[] = [
       { href: "/app/ambiental", label: "Registro ambiental", icon: Leaf, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#convenios", label: "Convenios", icon: Handshake, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#usuarios", label: "Usuarios y profesionales", icon: Users, perm: "practice.config", section: "Gestión" },
+      { href: "/app/configuracion#permisos", label: "Permisos del equipo", icon: KeyRound, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#sucursales", label: "Sucursales", icon: MapPin, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#fusion", label: "Fusión de fichas", icon: Users, perm: "practice.config", section: "Gestión" },
       { href: "/app/configuracion#arancel", label: "Arancel de precios", icon: FileSpreadsheet, perm: "practice.config", section: "Configuración" },

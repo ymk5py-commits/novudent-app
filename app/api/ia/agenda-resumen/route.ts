@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
 import { requireFeature } from "@/lib/server/require-feature";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
-import { can } from "@/lib/rbac";
+import { getDocument } from "@/lib/server/firestore-rest";
+import { can, normalizarPermisos, type PermisosDeLaClinica } from "@/lib/rbac";
 import type { Role } from "@/lib/types";
 
 /**
@@ -36,8 +37,14 @@ export async function POST(req: NextRequest) {
 
   /* MEMBRESÍA + SUSCRIPCIÓN + PLAN, ANTES de gastar Gemini (ver lib/server/require-feature.ts). */
   let rol: string;
+  let permisos: PermisosDeLaClinica | undefined;
   try {
-    rol = (await requireFeature(_user.uid, "ia")).role;
+    const autorizado = await requireFeature(_user.uid, "ia");
+    rol = autorizado.role;
+    // La clínica puede darle o sacarle a cada rol los reportes financieros (Permisos del equipo). Si no se pudo leer queda la
+    // matriz de fábrica, que para este permiso es la más estricta (solo el administrador): los montos no salen de más.
+    const clinica = await getDocument(`clinics/${autorizado.clinicId}`).catch(() => null);
+    permisos = normalizarPermisos((clinica?.config as { permisos?: unknown } | undefined)?.permisos);
   } catch (e) {
     const status = e instanceof AuthError ? e.status : 403;
     return NextResponse.json({ ok: false, error: e instanceof AuthError ? e.message : "No autorizado" }, { status });
@@ -59,7 +66,7 @@ export async function POST(req: NextRequest) {
   }
   const limpios: Record<string, unknown> = { ...(datos as Record<string, unknown>) };
   // Los montos son de quien ve reportes financieros (billing.reports).
-  if (!can(rol as Role, "billing.reports")) delete limpios.produccionSemanaGs;
+  if (!can(rol as Role, "billing.reports", permisos)) delete limpios.produccionSemanaGs;
   const json = JSON.stringify(limpios);
   if (json.length > 20_000) {
     return NextResponse.json({ ok: false, error: "Payload demasiado grande" }, { status: 413 });
