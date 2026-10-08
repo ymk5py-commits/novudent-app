@@ -955,7 +955,9 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "No se puede deshacer. Revisá dos veces las dos fichas antes de aceptar." },
       { tipo: "ojo", texto: "El primer desplegable viene con la primera ficha de la lista ya elegida: cambiala siempre por la que querés mantener." },
       { tipo: "ojo", texto: "Los datos personales de la ficha que mantenés no se pisan: si le falta alguno (teléfono, correo, convenio, foto…), se completa con el de la duplicada; si los dos tienen uno distinto, queda el de la ficha que mantenés. Las alertas médicas, enfermedades y medicamentos de la cabecera de las dos se juntan, sin repetir." },
-      { tipo: "ojo", texto: "Si las dos fichas tenían la Historia Clínica pendiente, la que queda va a tener dos: anulá la que sobre desde Documentos clínicos ([[completar-la-historia-clinica]])." },
+      { tipo: "ojo", texto: "Si las dos fichas tenían la Historia Clínica pendiente, la que sobra se anula sola (no se borra: queda en Documentos clínicos como anulada) y queda una sola por completar ([[completar-la-historia-clinica]])." },
+      { tipo: "ojo", texto: "El odontograma se junta pieza por pieza: las piezas con hallazgos de la ficha duplicada pasan a la que mantenés. Si las dos tenían hallazgos distintos en la misma pieza, quedan los de la ficha que mantenés y un aviso te dice qué piezas son." },
+      { tipo: "ojo", texto: "Si las dos fichas juntas pesan demasiado (muchas radiografías o archivos), la fusión se frena sin tocar nada y un cartel rojo lo explica: borrá algunos archivos de una de las dos y probá de nuevo." },
     ],
     capturar: async (c) => {
       const { page } = c;
