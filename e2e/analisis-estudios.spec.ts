@@ -257,16 +257,17 @@ test.describe("todos los datos de cada paciente", () => {
     await expect(renglon(page, "Lucía Ferreira").getByRole("link", { name: /WhatsApp/ })).toHaveCount(1);
   });
 
-  test("lo que pasó hoy mismo cuenta: quien se atendió esta mañana y no tiene otra cita aparece «hoy»", async ({ page }) => {
-    await page.evaluate(() => {
+  test("lo que pasó hace un rato cuenta: quien se atendió recién y no tiene otra cita aparece «hoy»", async ({ page }) => {
+    const palabra = await page.evaluate(() => {
       const db = JSON.parse(localStorage.getItem("novudent.db.v4")!);
-      const d = new Date(); d.setHours(0, 5, 0, 0); // pasada la medianoche: la cita ya empezó sin importar a qué hora se corra la prueba
+      const d = new Date(Date.now() - 60_000); // hace un minuto: la cita ya empezó sin importar a qué hora se corra la prueba
       db.appointments.push({ id: "c_hoy", clinicId: "cl_demo", patientId: "p4", dentistId: "u2", title: "Consulta", start: d.toISOString(), end: d.toISOString(), status: "completada", amount: 0, discount: 0 });
       localStorage.setItem("novudent.db.v4", JSON.stringify(db));
+      return d.getDate() === new Date().getDate() ? "hoy" : "ayer"; // en el primer minuto después de la medianoche, hace un minuto fue ayer
     });
     await abrirAnalisis(page);
     await cifra(page, "sin").click();
-    await expect(await celda(page, renglon(page, "Andrés Mejía"), "Sin cita desde")).toContainText("hoy");
+    await expect(await celda(page, renglon(page, "Andrés Mejía"), "Sin cita desde")).toContainText(palabra);
   });
 });
 
@@ -339,6 +340,8 @@ test.describe("quitar de la lista", () => {
     expect((await fichaGuardada(page, "p1")).seguimiento).toBeUndefined();
 
     await quitarDe(page, "María González").click();
+    // El diálogo escucha Escape cuando termina de montarse y se queda con el foco: se espera a eso (una persona no aprieta la tecla en 5 ms).
+    await expect(modal(page).getByRole("button", { name: "Cerrar" })).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(modal(page)).toHaveCount(0);
     await expect(renglon(page, "María González")).toBeVisible();

@@ -129,7 +129,7 @@ function TablaEstudio({ vista }: { vista: Exclude<Vista, "ortodoncia"> }) {
     setQuitando(null);
     if (!actual) return;
     upsertPatient({ ...actual, seguimiento: quita });
-    setAviso(`Quitaste a ${fullName(actual)} de la lista. Lo encontrás en «Ver quitados» para volver a incluirlo.`);
+    setAviso(`Quitaste a ${fullName(actual)} de la lista. Podés volver a incluir al paciente desde «Ver quitados».`);
     tituloRef.current?.focus();
   };
   const volverAIncluir = (f: Fila) => {
@@ -232,7 +232,7 @@ function TablaEstudio({ vista }: { vista: Exclude<Vista, "ortodoncia"> }) {
           return (
             <div className="space-y-1">
               <Badge tone="warn">A recontactar</Badge>
-              {r.desde && <div className="text-[11px] text-clinic-muted"><span className="font-semibold text-state-warn">{haceCuanto(r.dias)}</span> · {r.desdeDe === "plan" ? "plan del" : "desde el"} {fmtDate(r.desde)}</div>}
+              {r.desde && <div className="text-[11px] leading-snug"><div className="font-semibold text-state-warn">{haceCuanto(r.dias)}</div><div className="text-clinic-muted">{r.desdeDe === "plan" ? "plan del" : "desde el"} {fmtDate(r.desde)}</div></div>}
             </div>
           );
         }
