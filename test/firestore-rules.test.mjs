@@ -26,7 +26,7 @@ import { doc, getDoc, getDocs, collection, collectionGroup, setDoc, updateDoc, d
 const PROJECT_ID = "novudent-rules-test";
 let testEnv;
 
-/** Las 35 colecciones por clínica que escribe el store (loadFirestore en
+/** Las 36 colecciones por clínica que escribe el store (loadFirestore en
  *  lib/store.tsx) + `slotLocks`, que escribe la ruta de reservas online. Se usan
  *  para barrer el aislamiento colección por colección: alcanza con que UNA se
  *  escape para que se filtre historia clínica entre clínicas. */
@@ -37,7 +37,7 @@ const COLECCIONES_DE_CLINICA = [
   "campaigns", "labOrders", "settlements", "boxes", "patientNotes",
   "fiscalDocs", "cashSessions", "sterilizationCycles", "teamMessages",
   "surveys", "surveyResponses", "mgmtTasks", "environmentalLogs", "eduVideos",
-  "branches", "directMessages", "clinicalDocs", "routineChecks",
+  "branches", "directMessages", "clinicalDocs", "routineChecks", "agendaBlocks",
 ];
 
 /** Un mensaje directo bien formado, igual al que arma lib/chat.ts. `extra` pisa
@@ -46,6 +46,14 @@ function directo({ id, cid = "clA", de, a, texto = "Hola, ¿tenés un minuto?", 
   return {
     id, clinicId: cid, fromId: de, fromName: `Usuario ${de}`, toId: a,
     participants: [de, a], text: texto, createdAt: "2026-09-27T12:00:00.000Z", ...extra,
+  };
+}
+
+/** Un espacio bloqueado de la agenda como lo arma lib/bloqueos.ts (`armarBloqueos`). */
+function bloqueoDeAgenda(id, cid = "clA", extra = {}) {
+  return {
+    id, clinicId: cid, dentistId: "*", start: "2026-10-12T15:00:00.000Z", end: "2026-10-12T16:00:00.000Z",
+    reason: "Almuerzo", createdAt: "2026-10-08T12:00:00.000Z", createdBy: "Recepción", ...extra,
   };
 }
 
@@ -83,6 +91,7 @@ before(async () => {
     await setDoc(doc(db, "clinics/clA/radiographs/rx1"), { id: "rx1", patientId: "pEmr", image: "data:image/jpeg;base64,AAA", findings: ["caries 26"] });
     await setDoc(doc(db, "clinics/clA/clinicalDocs/cdSeed"), { id: "cdSeed", patientId: "pEmr", estado: "completado", nombre: "Historia Clínica" });
     await setDoc(doc(db, "clinics/clA/routineChecks/caja__2026-10-01"), { id: "caja__2026-10-01", paso: "caja", periodo: "2026-10-01", hechoPor: "adminA", hechoPorNombre: "Admin A", hechoEn: "2026-10-01T12:00:00.000Z" });
+    await setDoc(doc(db, "clinics/clA/agendaBlocks/blSeed"), bloqueoDeAgenda("blSeed", "clA"));
     await setDoc(doc(db, "clinics/clA/signatures/sig1"), { id: "sig1", patientId: "pEmr", status: "firmado", signature: "data:image/png;base64,AAA" });
     await setDoc(doc(db, "clinics/clA/billing/bil1"), { id: "bil1", patientId: "pEmr", status: "hold", amount: 500000 });
     await setDoc(doc(db, "clinics/clA/procedures/D0120"), { cpt: "D0120", description: "Consulta", price: 150000 });
@@ -113,6 +122,7 @@ before(async () => {
     await setDoc(doc(db, "clinics/clV/users/dentV"), { id: "dentV", role: "dentist", active: true, clinicId: "clV", email: "dent@v.com" });
     await setDoc(doc(db, "clinics/clV/clinicalDocs/cdV"), { id: "cdV", patientId: "pv", estado: "pendiente" });
     await setDoc(doc(db, "clinics/clV/routineChecks/caja__2026-10-01"), { id: "caja__2026-10-01", paso: "caja", periodo: "2026-10-01" });
+    await setDoc(doc(db, "clinics/clV/agendaBlocks/blV"), bloqueoDeAgenda("blV", "clV"));
     await setDoc(doc(db, "clinics/clV/directMessages/dmV"), directo({ id: "dmV", cid: "clV", de: "adminV", a: "dentV" }));
 
     // Clínica S: plan SOLO al día — para probar el gating de módulos premium
@@ -1197,6 +1207,55 @@ test("rutina del administrador: la demo es abierta para quien tiene sesión, no 
   await assertSucceeds(setDoc(doc(authed("cualquiera"), RC("cl_demo", "caja__2026-10-07")), casillero("caja__2026-10-07")));
   await assertSucceeds(deleteDoc(doc(authed("cualquiera"), RC("cl_demo", "caja__2026-10-07"))));
   await assertFails(setDoc(doc(anon(), RC("cl_demo", "caja__2026-10-08")), casillero("caja__2026-10-08")));
+});
+
+/* ══ ESPACIOS BLOQUEADOS DE LA AGENDA (agendaBlocks) ═════════════════════════════════
+ * «Bloquear espacio» (almuerzo, reunión, feriado). La regla es la de las citas: lee todo miembro, el usuario de servicio (la reserva
+ * online no deja reservar un espacio bloqueado) y la demo; escribe cualquier miembro con la suscripción al día. Quién bloquea
+ * (agenda.edit) lo esconde la interfaz, igual que con las citas. El aislamiento entre clínicas lo barre COLECCIONES_DE_CLINICA. */
+const BL = (cid, id) => `clinics/${cid}/agendaBlocks/${id}`;
+
+test("bloqueos de agenda: todos los miembros leen (también la lista del día); un desconocido o alguien de otra clínica no", async () => {
+  for (const uid of ["adminA", "cajaA", "recepA", "dentA", "asisA"]) {
+    await assertSucceeds(getDoc(doc(authed(uid), BL("clA", "blSeed"))));
+  }
+  await assertSucceeds(getDocs(query(collection(authed("recepA"), "clinics/clA/agendaBlocks"), where("start", ">=", "2026-10-11"), where("start", "<", "2026-10-14"))));
+  await assertFails(getDoc(doc(anon(), BL("clA", "blSeed"))));
+  await assertFails(getDoc(doc(authed("adminB"), BL("clA", "blSeed"))));
+  await assertFails(getDocs(collection(authed("adminB"), "clinics/clA/agendaBlocks")));
+});
+
+test("bloqueos de agenda: los crea, cambia y quita cualquier miembro con la suscripción al día, como las citas", async () => {
+  for (const uid of ["adminA", "cajaA", "recepA", "dentA", "asisA"]) {
+    await assertSucceeds(setDoc(doc(authed(uid), BL("clA", `bl_${uid}`)), bloqueoDeAgenda(`bl_${uid}`)));
+    await assertSucceeds(setDoc(doc(authed(uid), BL("clA", `bl_${uid}`)), { reason: "Reunión" }, { merge: true }));
+    await assertSucceeds(deleteDoc(doc(authed(uid), BL("clA", `bl_${uid}`))));
+  }
+});
+
+test("bloqueos de agenda: un miembro dado de baja o alguien de otra clínica no escribe ni borra", async () => {
+  await assertFails(setDoc(doc(authed("exA"), BL("clA", "bl_ex")), bloqueoDeAgenda("bl_ex")));
+  await assertFails(deleteDoc(doc(authed("exA"), BL("clA", "blSeed"))));
+  await assertFails(setDoc(doc(authed("adminB"), BL("clA", "bl_b")), bloqueoDeAgenda("bl_b")));
+  await assertFails(deleteDoc(doc(authed("adminB"), BL("clA", "blSeed"))));
+});
+
+test("bloqueos de agenda: el usuario de servicio (la reserva online) los lee", async () => {
+  await assertSucceeds(getDoc(doc(authed("svc1"), BL("clA", "blSeed"))));
+  await assertSucceeds(getDocs(query(collection(authed("svc1"), "clinics/clA/agendaBlocks"), where("start", ">=", "2026-10-11"), where("start", "<", "2026-10-14"))));
+});
+
+test("bloqueos de agenda: con la suscripción vencida se leen y no se crean ni se quitan", async () => {
+  await assertSucceeds(getDoc(doc(authed("adminV"), BL("clV", "blV"))));
+  await assertFails(setDoc(doc(authed("adminV"), BL("clV", "blV2")), bloqueoDeAgenda("blV2", "clV")));
+  await assertFails(deleteDoc(doc(authed("adminV"), BL("clV", "blV"))));
+});
+
+test("bloqueos de agenda: la demo se lee sin sesión y se escribe solo con sesión", async () => {
+  await assertSucceeds(setDoc(doc(authed("cualquiera"), BL("cl_demo", "bl_demo")), bloqueoDeAgenda("bl_demo", "cl_demo")));
+  await assertSucceeds(getDoc(doc(anon(), BL("cl_demo", "bl_demo"))));
+  await assertFails(setDoc(doc(anon(), BL("cl_demo", "bl_anon")), bloqueoDeAgenda("bl_anon", "cl_demo")));
+  await assertSucceeds(deleteDoc(doc(authed("cualquiera"), BL("cl_demo", "bl_demo"))));
 });
 
 /* ===== PERMISOS DEL EQUIPO (config.permisos) =====

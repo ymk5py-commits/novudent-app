@@ -24,6 +24,17 @@ const sinMouse = (page: Page) => page.mouse.move(0, 0);
 /** Quita el foco del campo en el que se escribió último (si no, la captura lo muestra con el borde azul o con un pedazo de la fecha marcado). */
 const sinFoco = (page: Page) => page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
+/** El nombre de un espacio de la grilla semanal, como lo dice la agenda: «Mié 14 oct · 12:00» (día `dias` de la semana `semanas`). */
+const espacioDeLaGrilla = (page: Page, semanas: number, dias: number, hora: string) =>
+  page.evaluate(([s, d, h]) => {
+    const x = new Date();
+    x.setHours(0, 0, 0, 0);
+    x.setDate(x.getDate() - ((x.getDay() + 6) % 7) + 7 * s + d);
+    const nombres = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+    const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+    return `${nombres[x.getDay()]} ${x.getDate()} ${meses[x.getMonth()]} · ${h}`;
+  }, [semanas, dias, hora] as const);
+
 /** Alto de ventana para los menús largos (la lista de estados mide unos 650 px y es de posición fija: con la ventana de siempre no se alcanza a tocar). */
 const VENTANA_ALTA = { width: 1280, height: 1200 } as const;
 
@@ -39,15 +50,18 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Entrá a **Agenda** y tocá «Dar cita», arriba a la derecha.", captura: "agenda" },
       { texto: "En **Paciente**, escribí la CI (con o sin puntos) o el nombre y elegí al paciente de la lista, que sale como «CI | NOMBRE». Si no tiene ficha, tocá «Crear nuevo paciente», al final de la lista.", captura: "paciente" },
       { texto: "Elegí el **Tipo de consulta** (filtra a los profesionales por especialidad), el **Profesional** y la **Duración**; por defecto son 30 minutos. Si hay varias sucursales o boxes, elegí también cuál." },
-      { texto: "A la derecha, en **Agenda disponible**, tocá el horario que le sirve al paciente. Solo salen los horarios libres donde entra la consulta; con las flechas y «Hoy» cambiás de semana.", captura: "horario" },
+      { texto: "En **Procedimiento a realizar** marcá qué se le va a hacer: tildá las prestaciones pendientes de sus planes de tratamiento, o agregá una del arancel («Agregar otra prestación») u otro motivo escrito a mano. La primera es el título de la cita en la agenda.", captura: "procedimiento" },
+      { texto: "A la derecha, en **Agenda disponible**, tocá el horario que le sirve al paciente. Solo salen los horarios libres donde entra la consulta; con las flechas, «Hoy» o el calendario («Ir a la fecha») cambiás de semana.", captura: "horario" },
       { texto: "Tocá «Crear cita». La ventana se cierra y la cita aparece en la agenda, en el día elegido, como «No confirmado».", captura: "cita-creada" },
-      { texto: "Si el paciente necesita varias citas con los mismos datos (por ejemplo, un control por semana), tildá «Multiconsulta» y tocá un horario por cada cita: el botón pasa a decir «Crear 2 citas», «Crear 3 citas»…", captura: "multiconsulta" },
+      { texto: "Si el paciente necesita varias citas con los mismos datos (por ejemplo, un control por semana), tildá «Multiconsulta (varias citas)» y tocá un horario por cada cita (también en otras semanas): el botón pasa a decir «Crear 2 citas», «Crear 3 citas»…", captura: "multiconsulta" },
       { texto: "Si ningún horario le sirve, tildá «Agregar a la lista de espera», escribí su **Preferencia horaria** y tocá «Agregar a la lista de espera». Mirá [[usar-la-lista-de-espera]]." },
     ],
     avisos: [
       { tipo: "ojo", texto: "Dar la cita no le manda ningún correo al paciente, y queda «No confirmado» hasta que alguien cambie su estado. Para avisarle, usá «Notificar por mail»: mirá [[cambiar-el-estado-de-una-cita]]." },
       { tipo: "ojo", texto: "Los pacientes deshabilitados no aparecen en la búsqueda. Si no encontrás a alguien, probá con la CI sin puntos o con el apellido." },
-      { tipo: "tip", texto: "En la vista **Semanal**, tocar un hueco libre abre «Dar cita» con ese día y esa hora ya elegidos." },
+      { tipo: "tip", texto: "En la vista **Semanal**, tocar un espacio abre su menú: «Dar cita presencial», «Dar cita por videoconsulta», «Dar múltiples citas», «Sobreagendar en este horario» y «Bloquear espacio». Las cuatro primeras abren «Dar cita» con ese día y esa hora ya elegidos. Mirá [[sobreagendar-una-cita]] y [[bloquear-un-espacio-de-la-agenda]]." },
+      { tipo: "ojo", texto: "Los espacios bloqueados (almuerzo, reunión, feriado) no aparecen en **Agenda disponible**: en ese horario no se puede dar cita." },
+      { tipo: "revisar", texto: "Las prestaciones que se eligen en «Procedimiento a realizar» no se marcan solas como realizadas en el plan cuando se atiende la cita: eso se sigue haciendo en el plan de tratamiento. Confirmar con Camila si hace falta." },
       { tipo: "tip", texto: "El **Comentario** (opcional) se lee en la agenda tocando el globito de la cita: sirve para dejarle un aviso al doctor." },
       { tipo: "revisar", texto: "La agenda ofrece turnos de lunes a sábado, de 08:00 a 18:00, cada 30 minutos, para todos los profesionales, y la pantalla no deja cambiar ese horario por profesional. Confirmar si alcanza para las clínicas." },
       { tipo: "revisar", texto: "Con la integración de WhatsApp (plan Clínica), al crear la cita el sistema deja preparado el mensaje de confirmación para el paciente. La demo no manda mensajes: no pude verificar que salga ni cómo se lee." },
@@ -74,6 +88,12 @@ export const procedimientos: Procedimiento[] = [
       await c.foto("paciente", { alto: 1000, margen: 4, resaltar: [paciente, opcion], recorte: modal });
       await opcion.click();
 
+      // María tiene un plan con prestaciones pendientes: se tilda la resina de la pieza 16.
+      const procedimiento = modal.getByRole("group", { name: "Procedimiento a realizar" });
+      const resina = procedimiento.getByRole("checkbox", { name: "Resina compuesta — 1 superficie · pieza 16" });
+      await resina.check();
+      await c.foto("procedimiento", { alto: 1000, margen: 4, resaltar: resina.locator("xpath=ancestor::label[1]"), recorte: procedimiento });
+
       // El lunes de la semana que viene arranca la grilla: las 09:00 están libres.
       const nueve = modal.getByRole("button", { name: /^lunes, .*09:00$/ }).first();
       await nueve.click();
@@ -96,7 +116,7 @@ export const procedimientos: Procedimiento[] = [
       const otra = page.getByRole("dialog", { name: "Dar cita" });
       await otra.getByRole("combobox", { name: "Paciente" }).fill("Ortega");
       await otra.getByRole("option", { name: /CAMILA ORTEGA/ }).click();
-      const multi = otra.getByText("Multiconsulta", { exact: true });
+      const multi = otra.getByText("Multiconsulta (varias citas)", { exact: true });
       await multi.click();
       const lunes = otra.getByRole("button", { name: /^lunes, .*10:00$/ }).first();
       const miercoles = otra.getByRole("button", { name: /^miércoles, .*10:00$/ }).first();
@@ -111,6 +131,134 @@ export const procedimientos: Procedimiento[] = [
         resaltar: [multi.locator("xpath=ancestor::label[1]"), lunes, miercoles, crear2],
         recorte: otra,
       });
+    },
+  },
+  {
+    id: "sobreagendar-una-cita",
+    capitulo: "receptionist",
+    titulo: "Sobreagendar una cita (sobrecupo)",
+    roles: ["receptionist", "cashier", "commercial", "admin"],
+    paraQue: "Cuando hay que darle un turno a un paciente en un horario que ya tiene otra cita del mismo profesional o del mismo box: una urgencia, un control corto entre dos pacientes.",
+    pasos: [
+      { texto: "En **Agenda**, vista **Semanal**, pasá el mouse por la cita que ya está en ese horario y tocá el «+» de arriba a la derecha (en el celular el «+» se ve siempre).", captura: "mas" },
+      { texto: "Se abre «Dar cita» con **Sobreagendar** tildado y el día, la hora, el profesional y el box de esa cita ya elegidos. Los horarios que ya tienen una cita salen con el borde ámbar; al pasar el mouse dicen «Ya hay 1 cita».", captura: "dar-cita" },
+      { texto: "Elegí al paciente, si hace falta el procedimiento, y tocá «Crear cita». La cita queda en la agenda con la marca «Sobrecupo», al lado de la otra.", captura: "sobrecupo" },
+    ],
+    avisos: [
+      { tipo: "tip", texto: "También se sobreagenda desde el menú de un espacio de la Semanal («Sobreagendar en este horario»), desde ⋮ en la fila de la cita en la **Diaria** o desde «Ver». O en cualquier «Dar cita», tildando **Sobreagendar**." },
+      { tipo: "ojo", texto: "Un espacio bloqueado no se puede sobreagendar: con «Sobreagendar» tampoco aparece. Mirá [[bloquear-un-espacio-de-la-agenda]]." },
+      { tipo: "ojo", texto: "La marca «Sobrecupo» queda solo si de verdad comparte el horario con otra cita. Si con «Sobreagendar» elegís un horario libre, es una cita común." },
+    ],
+    capturar: async (c) => {
+      const { page } = c;
+      const main = page.locator("main");
+      await c.entrar("receptionist", "/app/agenda");
+      // Más ancha que de costumbre: con dos citas en el mismo horario cada tarjeta es la mitad de la columna y la marca «Sobrecupo» se cortaba.
+      await page.setViewportSize({ width: 1600, height: 1000 });
+
+      // La semana que viene está libre: primero se le da a Andrés Mejía el martes a las 10:00; después se sobreagenda encima.
+      await irAlDia(page, await fechaDeSemana(page, 1, 1));
+      await main.getByRole("button", { name: "Dar cita" }).click();
+      const dar = page.getByRole("dialog", { name: "Dar cita" });
+      await dar.getByRole("combobox", { name: "Paciente" }).fill("Mejía");
+      await dar.getByRole("option", { name: /ANDRÉS MEJÍA/ }).click();
+      await dar.getByRole("button", { name: /^martes, .*10:00$/ }).first().click();
+      await dar.getByRole("button", { name: "Crear cita" }).click();
+      await c.expect(dar).toBeHidden();
+
+      await main.getByRole("button", { name: "Semanal" }).click();
+      await main.getByRole("button", { name: "Semana siguiente" }).click();
+      const tarjeta = main.getByRole("button", { name: /Andrés Mejía/ });
+      await tarjeta.hover();
+      const mas = tarjeta.locator("..").getByRole("button", { name: "Sobreagendar en este horario" });
+      await c.expect(mas).toBeVisible();
+      await c.foto("mas", { conFoco: true, margen: 60, resaltar: mas, recorte: tarjeta });
+      await mas.click();
+
+      const sobre = page.getByRole("dialog", { name: "Dar cita" });
+      const diez = sobre.getByRole("button", { name: /^martes, .*10:00$/ });
+      await c.expect(diez).toHaveAttribute("title", "Ya hay 1 cita");
+      await sobre.getByRole("combobox", { name: "Paciente" }).fill("Ferreira");
+      await sobre.getByRole("option", { name: /LUCÍA FERREIRA/ }).click();
+      await sinMouse(page);
+      await c.foto("dar-cita", {
+        alto: 1000,
+        margen: 4,
+        resaltar: [sobre.getByText("Sobreagendar", { exact: true }).locator("xpath=ancestor::div[1]"), diez],
+        recorte: sobre,
+      });
+      await sobre.getByRole("button", { name: "Crear cita" }).click();
+      await c.expect(sobre).toBeHidden();
+
+      const nueva = main.getByRole("button", { name: /Sobrecupo/ });
+      await c.expect(nueva).toBeVisible();
+      await sinMouse(page);
+      await c.foto("sobrecupo", { margen: 40, resaltar: nueva, recorte: [tarjeta, nueva] });
+    },
+  },
+  {
+    id: "bloquear-un-espacio-de-la-agenda",
+    capitulo: "receptionist",
+    titulo: "Bloquear un espacio de la agenda",
+    roles: ["receptionist", "cashier", "commercial", "admin"],
+    paraQue: "Para que nadie dé citas en un horario: el almuerzo de un profesional, una reunión, una capacitación, vacaciones o un feriado. En ese horario tampoco se puede reservar desde la agenda online.",
+    pasos: [
+      { texto: "En **Agenda**, vista **Semanal**, tocá el espacio donde empieza el bloqueo y elegí «Bloquear espacio».", captura: "menu" },
+      { texto: "Elegí el **Profesional** (o «Todos los profesionales»), el **Box** si hay que bloquear uno solo, y revisá la **Fecha**, **Desde** y **Hasta** (van de a 15 minutos; «Hasta 24:00» es hasta el final del día). Escribí el **Motivo** o tocá una de las sugerencias: Almuerzo, Reunión, Capacitación, Vacaciones o Feriado." },
+      { texto: "Si se repite, en **Repetir** elegí «Todos los días hábiles (lunes a sábado)» o «Todas las semanas», y en **Repetir hasta**, hasta qué día (como mucho, un año). Abajo dice cuántos bloqueos se van a crear.", captura: "formulario" },
+      { texto: "Tocá «Bloquear». El espacio queda rayado en gris con el motivo; en la **Diaria** sale arriba de la tabla, en «Espacios bloqueados», y en la **Diaria global**, como una tarjeta gris.", captura: "bloqueado" },
+      { texto: "Para quitarlo, tocalo en la **Semanal** (o «Quitar» en la Diaria) y elegí «Quitar este bloqueo». Si se repetía, «Quitar toda la serie» saca todos los días juntos (pide confirmación).", captura: "quitar" },
+    ],
+    avisos: [
+      { tipo: "ojo", texto: "Bloquear no borra ni mueve las citas que ya había en ese horario: el formulario avisa «Ya hay 1 cita en ese horario; siguen en la agenda». Si hay que moverlas, mirá [[reprogramar-una-cita]]." },
+      { tipo: "tip", texto: "Un bloqueo de «Todos los profesionales» sirve para un feriado o para cerrar la clínica unas horas." },
+      { tipo: "ojo", texto: "Un bloqueo de un solo box no saca turnos de la agenda online: el paciente no elige box. Para cortar la agenda online de un profesional, bloquealo a él." },
+      { tipo: "ojo", texto: "El dentista y la asistente ven los espacios bloqueados, pero no pueden bloquear ni quitar bloqueos." },
+    ],
+    capturar: async (c) => {
+      const { page } = c;
+      const main = page.locator("main");
+      await c.entrar("receptionist", "/app/agenda");
+      await page.setViewportSize({ width: 1280, height: 1000 });
+      await main.getByRole("button", { name: "Semanal" }).click();
+      await main.getByRole("button", { name: "Semana siguiente" }).click();
+
+      // El miércoles de la semana que viene a las 12:00: el almuerzo de la Dra. Sofía, de lunes a sábado.
+      const etiqueta = await espacioDeLaGrilla(page, 1, 2, "12:00");
+      const celda = main.getByRole("button", { name: etiqueta, exact: true });
+      await celda.click();
+      const menu = page.getByRole("menu", { name: etiqueta });
+      const bloquear = menu.getByRole("menuitem", { name: "Bloquear espacio" });
+      await c.expect(bloquear).toBeVisible();
+      await c.foto("menu", { margen: 4, resaltar: bloquear, recorte: [celda, menu] });
+      await bloquear.click();
+
+      const modal = page.getByRole("dialog", { name: "Bloquear espacio" });
+      const profesional = modal.getByLabel("Profesional");
+      const hasta = modal.getByLabel("Hasta", { exact: true });
+      const almuerzo = modal.getByRole("button", { name: "Almuerzo", exact: true });
+      const repetir = modal.getByLabel("Repetir", { exact: true });
+      await profesional.selectOption({ label: "Dra. Sofía Benítez" });
+      await hasta.selectOption("13:00");
+      await almuerzo.click();
+      await repetir.selectOption({ label: "Todos los días hábiles (lunes a sábado)" });
+      await c.expect(modal.getByRole("status").filter({ hasText: "bloqueos" })).toBeVisible();
+      await sinMouse(page);
+      await c.foto("formulario", { alto: 1000, margen: 4, resaltar: [profesional, hasta, almuerzo, repetir], recorte: modal });
+      await modal.getByRole("button", { name: "Bloquear", exact: true }).click();
+      await c.expect(modal).toBeHidden();
+
+      const grilla = page.locator('div[class*="max-h-[560px]"]');
+      const bloqueado = main.getByRole("button", { name: /^Bloqueado 12:00–13:00 · Almuerzo/ }).first();
+      await c.expect(bloqueado).toBeVisible();
+      await sinMouse(page);
+      await c.foto("bloqueado", { resaltar: bloqueado, recorte: grilla });
+
+      await bloqueado.click();
+      const opciones = page.getByRole("menu", { name: "Espacio bloqueado" });
+      const serie = opciones.getByRole("menuitem", { name: "Quitar toda la serie" });
+      await c.expect(serie).toBeVisible();
+      await c.foto("quitar", { margen: 4, resaltar: [opciones.getByRole("menuitem", { name: "Quitar este bloqueo" }), serie], recorte: [bloqueado, opciones] });
     },
   },
   {
@@ -321,14 +469,14 @@ export const procedimientos: Procedimiento[] = [
     paraQue: "Para ver las citas de un día, de la semana o del mes, de todos los profesionales o de uno solo, y para imprimir la agenda.",
     pasos: [
       { texto: "Entrá a **Agenda**: se abre la vista **Diaria**, con las citas del día. Cambiá de día con las flechas de la izquierda o con «Fecha»; si estás en otro día, «Ir a hoy» te devuelve al de hoy.", captura: "diaria" },
-      { texto: "Filtrá lo que ves: **profesional** y **sucursal** arriba a la izquierda, los **Estados** (tildá o destildá cada uno; «Marcar todos» los vuelve a prender) y, sobre la tabla, el buscador por nombre de paciente.", captura: "filtros" },
-      { texto: "En **Semanal** ves la semana en una grilla por horas. Tocá una cita para abrirla, o un hueco libre para darla en ese horario.", captura: "semanal" },
+      { texto: "Filtrá lo que ves: **profesional**, **sucursal** y **box** (si la clínica tiene más de uno) arriba a la izquierda, los **Estados** (tildá o destildá cada uno; «Marcar todos» los vuelve a prender) y, sobre la tabla, el buscador por nombre de paciente.", captura: "filtros" },
+      { texto: "En **Semanal** ves la semana en una grilla de media hora. Tocá una cita para abrirla, o un espacio para abrir su menú: dar cita, sobreagendar o bloquear el espacio. Las citas que comparten horario se ven una al lado de la otra, y los espacios bloqueados, rayados en gris.", captura: "semanal" },
       { texto: "En **Mensual** ves el mes entero, con hasta tres citas por día y «+N más». Tocá un día para abrirlo en la vista **Diaria**.", captura: "mensual" },
       { texto: "En **Diaria global** ves el día con una columna por profesional, para comparar las agendas de un vistazo.", captura: "global" },
       { texto: "Tocá «Imprimir» para sacar en papel lo que estás mirando, con el nombre de la clínica, la fecha y los filtros que elegiste.", captura: "imprimir" },
     ],
     avisos: [
-      { tipo: "ojo", texto: "Los **Estados** solo filtran las vistas del día (**Diaria** y **Diaria global**). En **Semanal** y **Mensual** se filtra por profesional y sucursal, que se eligen arriba de la grilla." },
+      { tipo: "ojo", texto: "Los **Estados** solo filtran las vistas del día (**Diaria** y **Diaria global**). En **Semanal** y **Mensual** se filtra por profesional, sucursal y box, que se eligen arriba de la grilla. Lo que elijas viaja a «Dar cita» y a «Bloquear espacio»." },
       { tipo: "ojo", texto: "Si no ves una cita que esperabas, revisá los filtros: el día puede estar bien y la cita estar oculta por un estado destildado. «Marcar todos» los vuelve a prender." },
       { tipo: "tip", texto: "El número que está junto al título **Agenda** (por ejemplo, 5 citas) cuenta las citas de la vista que estás mirando: las del día, la semana o el mes." },
     ],

@@ -48,8 +48,9 @@ async function ensureAuth() {
 }
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, OdontogramStatus, OdontogramToothState, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic, OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, DirectMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo, Branch, CrmCard, Campaign, LabOrder, Settlement, Box, Subscription,
-  DocumentoClinico, RutinaCheck, RolId, QuitaDeLista,
+  DocumentoClinico, RutinaCheck, RolId, QuitaDeLista, AgendaBlock,
 } from "./types";
+import { completarCache } from "./cacheLocal";
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
 import { can, aplicarRolesDeLaClinica, mismaConfiguracionDeRoles } from "./rbac";
@@ -92,9 +93,8 @@ function loadLocal(): DB {
   try {
     const raw = localStorage.getItem(DB_KEY);
     if (raw) {
-      const guardada = JSON.parse(raw) as DB;
-      // Un caché guardado antes del chat directo no trae la colección.
-      return { ...guardada, directMessages: guardada.directMessages ?? [], clinicalDocs: guardada.clinicalDocs ?? [], routineChecks: guardada.routineChecks ?? [] };
+      // Un caché guardado antes de una colección nueva (chat directo, documentos clínicos, rutina, bloqueos de agenda) no la trae.
+      return completarCache(JSON.parse(raw) as DB);
     }
   } catch {}
   const seed = buildSeed();
@@ -132,6 +132,7 @@ async function seedFirestore(seed: DB) {
   for (const br of seed.branches) batch.set(doc(fsdb, "clinics", CLINIC_ID, "branches", br.id), clean(br));
   for (const cd of seed.clinicalDocs) batch.set(doc(fsdb, "clinics", CLINIC_ID, "clinicalDocs", cd.id), clean(cd));
   for (const rc of seed.routineChecks) batch.set(doc(fsdb, "clinics", CLINIC_ID, "routineChecks", rc.id), clean(rc));
+  for (const ab of seed.agendaBlocks) batch.set(doc(fsdb, "clinics", CLINIC_ID, "agendaBlocks", ab.id), clean(ab));
   await batch.commit();
 }
 
@@ -197,13 +198,15 @@ async function loadFirestore(): Promise<DB> {
     if (!uid || !yo || yo.active === false) return null;
     return leer(can(yo.role, "users.manage") ? ref : query(ref, where("participants", "array-contains", uid)));
   })();
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos, branches, directMessages, clinicalDocs, routineChecks] = await Promise.all([
+  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos, branches, directMessages, clinicalDocs, routineChecks, agendaBlocks] = await Promise.all([
     usersP, col("patients"), col("appointments"), col("billing"), col("procedures"),
     col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
     col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"), col("sterilizationCycles"), col("teamMessages"), col("surveys"), col("surveyResponses"), col("mgmtTasks"), col("environmentalLogs"), col("eduVideos"), col("branches"),
     directosP,
     col("clinicalDocs"),
     col("routineChecks"),
+    // Sin la regla publicada, `leer` devuelve null (permission-denied) y la agenda arranca sin bloqueos en vez de romper la carga.
+    col("agendaBlocks"),
   ]);
   const db: DB = {
     clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
@@ -235,6 +238,7 @@ async function loadFirestore(): Promise<DB> {
     directMessages: filas<DirectMessage>(directMessages),
     clinicalDocs: filas<DocumentoClinico>(clinicalDocs),
     routineChecks: filas<RutinaCheck>(routineChecks),
+    agendaBlocks: filas<AgendaBlock>(agendaBlocks),
     surveys: filas<Survey>(surveys),
     surveyResponses: filas<SurveyResponse>(surveyResponses),
     mgmtTasks: filas<MgmtTask>(mgmtTasks),
@@ -437,6 +441,9 @@ interface Ctx {
   seedDemo: () => Promise<void>;
   upsertAppointment: (a: Appointment) => void;
   deleteAppointment: (id: string) => void;
+  /* — Espacios bloqueados de la agenda (lib/bloqueos.ts): se crean de a varios (una repetición) y se quitan de a uno o toda la serie — */
+  addAgendaBlocks: (bs: AgendaBlock[]) => void;
+  deleteAgendaBlocks: (ids: string[]) => void;
   upsertPatient: (p: Patient) => void;
   /** Quita a un paciente de «Sin próxima cita» o, con `null`, lo vuelve a incluir. A diferencia de `upsertPatient`, en Firestore escribe SOLO ese campo
    *  (`updateDoc`): la ficha que tiene la pantalla puede estar vieja y reescribirla entera (`setDoc` sin merge) pisaría lo que otra persona cargó
@@ -1158,6 +1165,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           delExtras("directMessages", db.directMessages.map((x) => x.id), seed.directMessages.map((x) => x.id));
           delExtras("clinicalDocs", db.clinicalDocs.map((x) => x.id), seed.clinicalDocs.map((x) => x.id));
           delExtras("routineChecks", db.routineChecks.map((x) => x.id), seed.routineChecks.map((x) => x.id));
+          // Los espacios que bloquearon los visitantes de la demo.
+          delExtras("agendaBlocks", db.agendaBlocks.map((x) => x.id), seed.agendaBlocks.map((x) => x.id));
           seedFirestore(seed).catch(() => {});
         }
         persist(seed);
@@ -1169,6 +1178,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       deleteAppointment: (id) => {
         persist((prev) => ({ ...prev, appointments: prev.appointments.filter((x) => x.id !== id) }));
         fsDelete("appointments", id);
+      },
+      addAgendaBlocks: (bs) => {
+        if (bs.length === 0) return;
+        const nuevos = new Map(bs.map((b) => [b.id, b]));
+        persist((prev) => ({ ...prev, agendaBlocks: [...prev.agendaBlocks.filter((x) => !nuevos.has(x.id)), ...nuevos.values()] }));
+        for (const b of nuevos.values()) fsSave("agendaBlocks", b.id, b);
+      },
+      deleteAgendaBlocks: (ids) => {
+        if (ids.length === 0) return;
+        const quitar = new Set(ids);
+        persist((prev) => ({ ...prev, agendaBlocks: prev.agendaBlocks.filter((x) => !quitar.has(x.id)) }));
+        for (const id of quitar) fsDelete("agendaBlocks", id);
       },
       upsertPatient: (p) => {
         persist((prev) => ({ ...prev, patients: prev.patients.some((x) => x.id === p.id) ? prev.patients.map((x) => (x.id === p.id ? p : x)) : [...prev.patients, p] }));

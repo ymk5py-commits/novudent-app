@@ -9,6 +9,7 @@
  *  con la hora del servidor hacía que, entre las 21:00 y medianoche hora local,
  *  el backend ya creyera que era el día siguiente — y la clínica perdía una noche
  *  de reservas, todas las noches. */
+import { bloqueoAplica } from "./bloqueos";
 
 /** Anticipación mínima por defecto, en horas.
  *
@@ -152,6 +153,29 @@ export function turnosOcupados(
     const m = minutosDeHora(hora);
     return m !== null && m < fin && m + duracionTurnoMin > inicio;
   });
+}
+
+/** Los turnos de la grilla de ese día que los espacios bloqueados de la agenda (lib/bloqueos.ts) le sacan a un profesional: los de él y los
+ *  de «Todos los profesionales». La reserva online no elige box, así que un bloqueo de un box puntual no saca nada (el profesional atiende en
+ *  otro box). Los bloqueos se guardan como instante ISO y pasan por la misma cuenta que las citas (`turnosOcupados`). Uno mal guardado no
+ *  saca nada y no rompe la página. */
+export function turnosBloqueados(
+  bloqueos: readonly { dentistId?: unknown; boxId?: unknown; start?: unknown; end?: unknown }[],
+  dentistId: string,
+  fecha: string,
+  grilla: readonly string[],
+  timeZone: string,
+  duracionTurnoMin = 30,
+): Set<string> {
+  const out = new Set<string>();
+  for (const b of bloqueos) {
+    const delBloqueo = { dentistId: String(b.dentistId ?? ""), boxId: b.boxId ? String(b.boxId) : undefined };
+    if (!bloqueoAplica(delBloqueo, { dentistId })) continue;
+    if (typeof b.start !== "string") continue;
+    const fin = typeof b.end === "string" ? b.end : undefined;
+    for (const t of turnosOcupados({ start: b.start, end: fin }, fecha, grilla, timeZone, duracionTurnoMin)) out.add(t);
+  }
+  return out;
 }
 
 /** Lee la anticipación configurada por la clínica, saneada. Cualquier valor raro

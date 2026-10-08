@@ -5,6 +5,7 @@ import {
   slotAlcanzaAnticipacion,
   momentoLocal,
   turnosOcupados,
+  turnosBloqueados,
   MIN_LEAD_HORAS_DEFAULT,
   OPCIONES_ANTICIPACION,
 } from "./reserva-online";
@@ -203,5 +204,38 @@ describe("turnosOcupados", () => {
   it("una cita sin inicio válido no ocupa nada (y no rompe)", () => {
     expect(turnosOcupados({ start: "" }, "2026-10-08", GRILLA, ZONA)).toEqual([]);
     expect(turnosOcupados({ start: undefined as never }, "2026-10-08", GRILLA, ZONA)).toEqual([]);
+  });
+});
+
+/* ===== Espacios bloqueados (pedido de Camila, 8-oct-2026) =====
+ * Un espacio bloqueado de la agenda (almuerzo, feriado) no se puede reservar por la web. Los bloqueos se guardan como instante UTC
+ * (`armarBloqueos` de lib/bloqueos.ts), así que pasan por la misma cuenta que las citas del panel. La reserva online no elige box: un
+ * bloqueo de un box puntual no saca al profesional (atiende en otro box). */
+describe("turnosBloqueados", () => {
+  // 12:00–13:00 en la zona de la clínica (UTC-3) = 15:00–16:00 UTC.
+  const almuerzo = (extra: Record<string, unknown> = {}) => ({ dentistId: "u2", start: "2026-10-08T15:00:00.000Z", end: "2026-10-08T16:00:00.000Z", ...extra });
+  const GRILLA_TARDE = ["11:00", "11:30", "12:00", "12:30", "13:00", "13:30"];
+
+  it("un bloqueo del profesional saca los turnos que pisa, en la hora de la clínica", () => {
+    expect([...turnosBloqueados([almuerzo()], "u2", "2026-10-08", GRILLA_TARDE, ZONA)]).toEqual(["12:00", "12:30"]);
+  });
+
+  it("no saca nada a otro profesional; uno de «Todos los profesionales» saca a cualquiera", () => {
+    expect(turnosBloqueados([almuerzo()], "u4", "2026-10-08", GRILLA_TARDE, ZONA).size).toBe(0);
+    expect([...turnosBloqueados([almuerzo({ dentistId: "*" })], "u4", "2026-10-08", GRILLA_TARDE, ZONA)]).toEqual(["12:00", "12:30"]);
+  });
+
+  it("un bloqueo de un box puntual no saca turnos de la reserva online, que no elige box", () => {
+    expect(turnosBloqueados([almuerzo({ dentistId: "*", boxId: "box2" })], "u2", "2026-10-08", GRILLA_TARDE, ZONA).size).toBe(0);
+  });
+
+  it("un bloqueo de otro día no saca nada, y uno mal guardado no rompe", () => {
+    expect(turnosBloqueados([almuerzo({ start: "2026-10-09T15:00:00.000Z", end: "2026-10-09T16:00:00.000Z" })], "u2", "2026-10-08", GRILLA_TARDE, ZONA).size).toBe(0);
+    expect(turnosBloqueados([{ dentistId: "u2", start: "basura", end: "" }, { start: 3 } as never], "u2", "2026-10-08", GRILLA_TARDE, ZONA).size).toBe(0);
+  });
+
+  it("un bloqueo de todo el día saca toda la grilla", () => {
+    const todoElDia = almuerzo({ start: "2026-10-08T03:00:00.000Z", end: "2026-10-09T03:00:00.000Z" }); // 00:00–24:00 en la clínica
+    expect(turnosBloqueados([todoElDia], "u2", "2026-10-08", GRILLA_TARDE, ZONA).size).toBe(GRILLA_TARDE.length);
   });
 });

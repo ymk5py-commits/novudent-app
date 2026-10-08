@@ -199,6 +199,42 @@ export interface Appointment {
   budgetId?: string;
   /** Tipo de consulta elegido en «Dar cita» (reemplaza al título libre). */
   tipoConsulta?: "general" | "estetica" | "ortodoncia" | "rehabilitacion";
+  /** Sobrecupo (Dentalink): se dio con «Sobreagendar», encima de otra cita del mismo profesional o del mismo box. */
+  sobrecupo?: true;
+  /** Lo que se le va a hacer al paciente en esta cita («Procedimiento a realizar» de «Dar cita»): prestaciones de sus planes de
+   *  tratamiento, del arancel o un motivo libre. `title` es la primera (+ « +N»). Ver lib/prestacionesCita.ts. */
+  prestaciones?: PrestacionCita[];
+}
+
+/** Una prestación que se va a hacer en una cita. Con `budgetId` + `itemId` sale de un plan de tratamiento; con solo `cpt`, del arancel;
+ *  sin `cpt`, es un motivo escrito a mano («Otro motivo»). */
+export interface PrestacionCita {
+  cpt?: string;
+  description: string;
+  /** Pieza FDI (11–48). */
+  tooth?: string;
+  budgetId?: string;
+  itemId?: string;
+}
+
+/** Espacio bloqueado de la agenda («Bloquear espacio»: almuerzo, reunión, feriado…). En ese horario no se puede dar cita, ni desde
+ *  «Dar cita» (tampoco sobreagendando) ni desde la reserva online. Es de un solo día: «Repetir» crea uno por ocurrencia, todos con el
+ *  mismo `serieId`. Las citas que ya estaban en ese horario quedan como están. Lógica pura en lib/bloqueos.ts. */
+export interface AgendaBlock {
+  id: string;
+  clinicId: string;
+  /** El profesional bloqueado; `"*"` = todos los profesionales. */
+  dentistId: string;
+  /** Solo ese box; sin box = en todos los boxes. */
+  boxId?: string;
+  /** Instantes ISO (como las citas del panel). */
+  start: string;
+  end: string;
+  reason?: string;
+  createdAt: string;
+  /** Nombre de quien lo creó. */
+  createdBy: string;
+  serieId?: string;
 }
 
 export type FormStatus = "pendiente" | "completado";
@@ -1193,6 +1229,8 @@ export interface DB {
   clinicalDocs: DocumentoClinico[];
   /** Casilleros tildados de la rutina del administrador. */
   routineChecks: RutinaCheck[];
+  /** Espacios bloqueados de la agenda (almuerzo, reunión, feriado…). */
+  agendaBlocks: AgendaBlock[];
   onboarding: { usersCreated: boolean; servicesDefined: boolean; tourDone: boolean };
   /** Suscripción SaaS de la clínica activa (subscriptions/{cid}, solo-lectura
    *  para el cliente). `null` = clínica anterior al cobro → grandfathered. */

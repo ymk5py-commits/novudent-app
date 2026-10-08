@@ -120,7 +120,8 @@ test.describe("agenda del día", () => {
   test("el detalle de la cita muestra las dos horas en 24 h, no «02:00 p. m. → 14:30»", async ({ page }) => {
     await main(page).getByRole("row").filter({ hasText: /González/i }).getByRole("button", { name: "Acciones de la cita" }).first().click();
     await page.getByRole("menuitem", { name: "Ver" }).click();
-    const horario = page.getByRole("dialog").getByText("Horario").locator("..");
+    // exact: «Ver» también tiene el botón «Sobreagendar en este horario».
+    const horario = page.getByRole("dialog").getByText("Horario", { exact: true }).locator("..");
     await expect(horario).toContainText(/\d{2}:\d{2} → \d{2}:\d{2}/);
     await expect(horario).not.toContainText(/[ap]\. ?m\./i);
   });

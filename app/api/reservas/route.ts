@@ -9,7 +9,7 @@ import {
   queryIn,
 } from "@/lib/server/firestore-rest";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
-import { ahoraEnZona, slotAlcanzaAnticipacion, anticipacionDe, turnosOcupados } from "@/lib/reserva-online";
+import { ahoraEnZona, slotAlcanzaAnticipacion, anticipacionDe, turnosOcupados, turnosBloqueados } from "@/lib/reserva-online";
 import { historiaClinicaPendiente, plantillasDeClinica } from "@/lib/documentosClinicos";
 import { camposDe, claveDeCI, datosPaciente, extrasOnline, type ValoresCampos } from "@/lib/camposPaciente";
 import type { FieldConfig } from "@/lib/types";
@@ -72,6 +72,24 @@ async function citasAlrededorDe(clinicId: string, date: string) {
     // pero una reserva nunca se rompe por esto.
     console.error("[reservas] queryRange falló, se lee la colección:", e instanceof Error ? e.message : e);
     return listCollection(`clinics/${clinicId}`, "appointments", 500);
+  }
+}
+
+/** Los espacios bloqueados de la agenda (almuerzo, feriado: lib/bloqueos.ts) que pueden pisar el día `date`, pedidos a Firestore por rango de
+ *  `start` igual que las citas (los bloqueos guardan un instante UTC). Si la consulta falla se leen de la colección, como `citasAlrededorDe`;
+ *  y si tampoco se puede (por ejemplo, la regla de `agendaBlocks` todavía no está publicada) se sigue sin bloqueos: es peor dejar a todas las
+ *  clínicas sin reserva online que aceptar un turno en un almuerzo, que la clínica ve en su agenda y reprograma. */
+async function bloqueosAlrededorDe(clinicId: string, date: string) {
+  try {
+    return await queryRange(`clinics/${clinicId}`, "agendaBlocks", "start", sumarDias(date, -1), sumarDias(date, 2), 500);
+  } catch (e) {
+    console.error("[reservas] queryRange de bloqueos falló, se lee la colección:", e instanceof Error ? e.message : e);
+    try {
+      return await listCollection(`clinics/${clinicId}`, "agendaBlocks", 500);
+    } catch (e2) {
+      console.error("[reservas] no se pudieron leer los bloqueos de agenda; se sigue sin ellos:", e2 instanceof Error ? e2.message : e2);
+      return [];
+    }
   }
 }
 
@@ -156,7 +174,8 @@ export async function GET(req: NextRequest) {
       .filter((u) => u.data.role === "dentist" && u.data.active !== false)
       .map((u) => ({ id: u.id, name: String(u.data.name || "Profesional") }));
 
-    const appts = await citasAlrededorDe(clinicId, date);
+    // Las citas primero: si su consulta filtrada falla, `citasAlrededorDe` vuelve a la lectura de antes.
+    const [appts, bloqueos] = await Promise.all([citasAlrededorDe(clinicId, date), bloqueosAlrededorDe(clinicId, date)]);
     // Ocupado = todo turno que una cita pisa, en la hora de la CLÍNICA: las del panel se guardan como instante UTC y las online como hora local
     // sin zona, y compararlas como texto dejaba libre el turno ocupado (ver lib/reserva-online.ts › turnosOcupados).
     const grilla = gridSlots();
@@ -174,9 +193,12 @@ export async function GET(req: NextRequest) {
     // un turno que después el POST le va a rechazar.
     const ahora = Date.now();
     const grid = gridSlots().filter((t) => slotAlcanzaAnticipacion(date, t, ahora, tz, minLead));
+    // Y fuera los espacios bloqueados (los del profesional y los de «Todos los profesionales»).
+    const datosBloqueos = bloqueos.map((b) => b.data);
     const slots: Record<string, string[]> = {};
     for (const d of dentists) {
-      slots[d.id] = grid.filter((t) => !busy[d.id]?.has(t));
+      const bloqueados = turnosBloqueados(datosBloqueos, d.id, date, grilla, tz, SLOT_MIN);
+      slots[d.id] = grid.filter((t) => !busy[d.id]?.has(t) && !bloqueados.has(t));
     }
 
     return NextResponse.json({
@@ -274,6 +296,13 @@ export async function POST(req: NextRequest) {
     const falta = camposOnline.filter((c) => c.requerido && extras[c.prop] === undefined).map((c) => c.label);
     if (falta.length > 0) {
       return NextResponse.json({ ok: false, error: `Completá o corregí: ${falta.join(", ")}` }, { status: 400 });
+    }
+
+    // Un espacio bloqueado de la agenda no se reserva, aunque el cliente se saltee la página (el GET ya no lo ofrece). Se mira antes de tomar
+    // el lock: un turno bloqueado no deja nada escrito.
+    const bloqueos = await bloqueosAlrededorDe(clinicId, date);
+    if (turnosBloqueados(bloqueos.map((b) => b.data), dentistId, date, [time], tz, SLOT_MIN).size > 0) {
+      return NextResponse.json({ ok: false, error: "Ese horario no está disponible. Elegí otro." }, { status: 409 });
     }
 
     // Lock de slot para serializar reservas concurrentes del mismo horario.
