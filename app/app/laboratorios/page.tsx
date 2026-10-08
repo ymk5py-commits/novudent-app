@@ -15,6 +15,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
+import { diaDeLaOrden, ordenVencida } from "@/lib/laboratorios";
+import { fechaLocal } from "@/lib/tareas";
 import { can } from "@/lib/rbac";
 import type { LabOrder, LabStatus } from "@/lib/types";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
@@ -97,10 +99,7 @@ export default function LaboratoriosPage() {
   /* Resumen de stats */
   const total = db.labOrders.length;
   const pendingCount = db.labOrders.filter((o) => o.status !== "entregado").length;
-  const now = new Date();
-  const overdueCount = db.labOrders.filter(
-    (o) => o.dueAt && o.status !== "entregado" && new Date(o.dueAt) < now,
-  ).length;
+  const overdueCount = db.labOrders.filter((o) => ordenVencida(o)).length;
 
   return (
     <div className="space-y-5">
@@ -220,10 +219,7 @@ export default function LaboratoriosPage() {
                   const professional = order.professionalId
                     ? db.users.find((u) => u.id === order.professionalId)
                     : null;
-                  const isOverdue =
-                    order.dueAt &&
-                    order.status !== "entregado" &&
-                    new Date(order.dueAt) < now;
+                  const isOverdue = ordenVencida(order);
                   const next = nextStatus(order.status);
 
                   return (
@@ -237,7 +233,7 @@ export default function LaboratoriosPage() {
                         </span>
                         {professional && (
                           <span className="text-[11px] text-clinic-muted">
-                            Dr. {professional.name}
+                            {professional.name}
                           </span>
                         )}
                       </td>
@@ -251,7 +247,7 @@ export default function LaboratoriosPage() {
                         )}
                       </td>
                       <td className="px-5 py-2 tabular-nums text-xs text-clinic-muted">
-                        {fmtDate(order.sentAt)}
+                        {fmtDate(diaDeLaOrden(order.sentAt))}
                       </td>
                       <td className="px-5 py-2">
                         {order.dueAt ? (
@@ -260,7 +256,7 @@ export default function LaboratoriosPage() {
                               isOverdue ? "font-bold text-state-err" : "text-clinic-muted"
                             }`}
                           >
-                            {fmtDate(order.dueAt)}
+                            {fmtDate(diaDeLaOrden(order.dueAt))}
                             {isOverdue && (
                               <AlertTriangle className="ml-1 inline h-3 w-3 text-state-err" />
                             )}
@@ -362,7 +358,7 @@ function NewOrderModal({
   onSave: (o: LabOrder) => void;
 }) {
   const { db, session } = useStore();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = fechaLocal();
 
   const [patientId, setPatientId] = useState("");
   const [professionalId, setProfessionalId] = useState("");
@@ -384,8 +380,8 @@ function NewOrderModal({
       professionalId: professionalId || undefined,
       lab: lab.trim(),
       workType: workType.trim(),
-      sentAt: new Date(sentAt).toISOString(),
-      dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
+      sentAt,
+      dueAt: dueAt || undefined,
       cost: cost !== "" ? Number(cost) : undefined,
       status: "enviado",
       notes: notes.trim() || undefined,
@@ -514,7 +510,7 @@ function EditNotesModal({
   const [notes, setNotes] = useState(order.notes ?? "");
   const [status, setStatus] = useState<LabStatus>(order.status);
   const [cost, setCost] = useState(order.cost != null ? String(order.cost) : "");
-  const [dueAt, setDueAt] = useState(order.dueAt ? order.dueAt.slice(0, 10) : "");
+  const [dueAt, setDueAt] = useState(order.dueAt ? diaDeLaOrden(order.dueAt) : "");
 
   const patient = db.patients.find((p) => p.id === order.patientId);
 
@@ -582,7 +578,7 @@ function EditNotesModal({
                 status,
                 notes: notes.trim() || undefined,
                 cost: cost !== "" ? Number(cost) : undefined,
-                dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
+                dueAt: dueAt || undefined,
               })
             }
           >
