@@ -128,6 +128,42 @@ describe("fusionarFichas — la ficha que se mantiene absorbe a la duplicada sin
   });
 });
 
+/** TODO campo de `Patient` tiene que figurar acá. Si alguien suma un campo a `Patient`, este objeto deja de compilar y esa
+ *  persona tiene que decidir qué pasa con el dato cuando se fusionan dos fichas (completarlo, unirlo o descartarlo a propósito). */
+const fichaConTodo: Required<Patient> = {
+  id: "dup", clinicId: "cl", firstName: "María", lastName: "González", document: "3.456.789", phone: "0981", email: "m@example.com",
+  birthDate: "1988-04-12", insurer: "Asismed", gender: "F", city: "Asunción", sex: "F", tipo: "Particular", socialName: "Mary", foreigner: false,
+  internalNumber: "17", municipio: "Asunción", address: "Mcal. López 123", activity: "Docente", employer: "Colegio", landline: "021 555 555",
+  guardian: "Ana", referencia: "Instagram", observaciones: "Prefiere la mañana", legalRepDoc: "1.111.111", parentesco: "madre",
+  codigoReferido: "PROMO1", barrio: "Recoleta", ruc: "3456789-0", razonSocial: "María González", code: 42, disabled: false,
+  emergencyContact: "Juan (esposo)", emergencyPhone: "0982", photo: "data:image/jpeg;base64,AAA", medicalAlerts: "Alergia a la penicilina",
+  conditions: "Hipertensión", medications: "Enalapril", forms: [formulario("f1")], historyUpdatePending: true, historyUpdateDate: "2026-10-01",
+  emr: [nota("n1")], odontogram: odonto({ "46": { caries: ["caries-occlusal"] } }), odontogramUpdatedBy: "Dra. Sofía", odontogramUpdatedAt: "2026-10-02T10:00:00.000Z",
+  prescriptions: [receta("r1")], files: [archivo("a1")], ortho: orto(), perio: [perio("pe1")],
+  nps: { score: 9, at: "2026-09-30T10:00:00.000Z" }, npsHistory: [{ score: 9, at: "2026-09-30T10:00:00.000Z" }],
+};
+
+describe("fusionarFichas — ningún dato de la duplicada se pierde", () => {
+  /** Estos no son datos de la persona sino del registro: la ficha que se mantiene conserva el suyo. */
+  const DEL_REGISTRO = new Set(["id", "clinicId", "firstName", "lastName", "code", "disabled"]);
+
+  it("una ficha casi vacía que absorbe una completa termina con todo lo de la completa", () => {
+    const vacia = ficha({ id: "k", document: "", phone: "" });
+    const m = fusionarFichas(vacia, fichaConTodo) as unknown as Record<string, unknown>;
+    const vaciosOUndefined = (v: unknown) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
+    const perdidos = Object.keys(fichaConTodo).filter((k) => !DEL_REGISTRO.has(k) && !vaciosOUndefined((fichaConTodo as unknown as Record<string, unknown>)[k]) && vaciosOUndefined(m[k]));
+    expect(perdidos, "campos de la duplicada que no llegaron a la ficha que se mantiene").toEqual([]);
+  });
+
+  it("y lo hace al revés: si la que se mantiene es la completa, no pierde nada al absorber una vacía", () => {
+    const m = fusionarFichas({ ...fichaConTodo, id: "k" }, ficha({ id: "r", document: "", phone: "" }));
+    expect(m).toMatchObject({ phone: "0981", email: "m@example.com", medicalAlerts: "Alergia a la penicilina" });
+    expect(m.prescriptions).toHaveLength(1);
+    expect(m.ortho?.active).toBe(true);
+    expect(m.odontogram?.teeth["46"]).toBeDefined();
+  });
+});
+
 describe("unirTextosMedicos", () => {
   it("uno vacío → el otro; iguales o uno dentro del otro → el más completo; distintos → los dos", () => {
     expect(unirTextosMedicos(undefined, "Diabetes")).toBe("Diabetes");
