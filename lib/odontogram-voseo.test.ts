@@ -36,8 +36,12 @@ describe("odontograma: textos en español rioplatense", () => {
     expect(es["intro.step12.text"]).toBe("Eso es lo básico — explorá el resto de las funciones.");
   });
 
-  it("no se perdió ni se agregó ningún texto: el locale es tiene las mismas claves que el original en húngaro", () => {
-    expect(Object.keys(es).sort()).toEqual(Object.keys(translations.hu).sort());
+  it("no se perdió ni se agregó ningún texto: el locale es tiene las mismas claves que el original en húngaro (salvo las que Novudent agregó a propósito)", () => {
+    // Textos que no existen en el origen y que Novudent sumó al motor (cada uno está en components/odontogram-engine/NOTICE.md).
+    const AGREGADAS_POR_NOVUDENT = ["status.resetAllConfirm"];
+    const delOrigen = Object.keys(es).filter((k) => !AGREGADAS_POR_NOVUDENT.includes(k));
+    expect(delOrigen.sort()).toEqual(Object.keys(translations.hu).sort());
+    for (const k of AGREGADAS_POR_NOVUDENT) expect(es[k], `falta el texto agregado ${k}`).toBeTruthy();
   });
 
   it("los otros idiomas no se tocaron (Novudent solo usa es)", () => {
