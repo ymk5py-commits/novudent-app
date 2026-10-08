@@ -48,3 +48,33 @@ test("presupuestos: la tarjeta del presupuesto recién creado se ve sin recargar
   await expect(tarjetas.first()).toContainText("Borrador");
   await expect(tarjetas.first().getByRole("button", { name: "Presentar" })).toBeVisible();
 });
+
+/* ═══ Configuración ═══ */
+
+test("Configuración › Documentos clínicos: «Guardar plantillas» guarda y saca la barra de cambios", async ({ page }) => {
+  await entrarDemo(page);
+  await page.goto("/app/configuracion#documentos-clinicos");
+  const tarjeta = page.getByRole("heading", { name: "Documentos clínicos", level: 2 }).locator("xpath=ancestor::div[contains(@class,'p-5')][1]");
+  const guardar = tarjeta.getByRole("button", { name: "Guardar plantillas" });
+  const descartar = tarjeta.getByRole("button", { name: "Descartar", exact: true });
+  await expect(guardar).toHaveCount(0); // recién abierta no hay nada que guardar
+
+  await tarjeta.getByRole("row", { name: /Cuidados postoperatorios de exodoncia/ }).getByRole("button", { name: "Desactivar", exact: true }).click();
+  await expect(guardar).toBeVisible();
+  await expect(descartar).toBeVisible();
+
+  await guardar.click();
+  // Los cambios se guardan: la barra se va y aparece la confirmación.
+  await expect(tarjeta.getByRole("status").filter({ hasText: "Plantillas guardadas" })).toBeVisible();
+  await expect(guardar).toHaveCount(0);
+  await expect(descartar).toHaveCount(0);
+  await expect.poll(async () => {
+    const plantillas = (await leerDB(page)).clinics[0].config.plantillasDocumento as { id: string; inactiva?: boolean }[];
+    return plantillas?.find((p) => p.id === "cuidados_exodoncia")?.inactiva;
+  }).toBe(true);
+
+  // Y sigue guardado al recargar, sin la barra.
+  await page.reload();
+  await expect(tarjeta.getByRole("row", { name: /Cuidados postoperatorios de exodoncia/ }).getByText("Inactiva")).toBeVisible();
+  await expect(guardar).toHaveCount(0);
+});
