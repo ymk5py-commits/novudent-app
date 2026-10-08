@@ -142,6 +142,7 @@ const fichaConTodo: Required<Patient> = {
   emr: [nota("n1")], odontogram: odonto({ "46": { caries: ["caries-occlusal"] } }), odontogramUpdatedBy: "Dra. Sofía", odontogramUpdatedAt: "2026-10-02T10:00:00.000Z",
   prescriptions: [receta("r1")], files: [archivo("a1")], ortho: orto(), perio: [perio("pe1")],
   nps: { score: 9, at: "2026-09-30T10:00:00.000Z" }, npsHistory: [{ score: 9, at: "2026-09-30T10:00:00.000Z" }],
+  seguimiento: { cerradoAt: "2026-10-05T14:00:00.000Z", motivo: "No quiere continuar", por: "Laura Recepción" },
 };
 
 describe("fusionarFichas — ningún dato de la duplicada se pierde", () => {
@@ -162,6 +163,35 @@ describe("fusionarFichas — ningún dato de la duplicada se pierde", () => {
     expect(m.prescriptions).toHaveLength(1);
     expect(m.ortho?.active).toBe(true);
     expect(m.odontogram?.teeth["46"]).toBeDefined();
+  });
+});
+
+describe("fusionarFichas — la quita de «Sin próxima cita» (Patient.seguimiento)", () => {
+  const quitaA = { cerradoAt: "2026-10-05T14:00:00.000Z", motivo: "No quiere continuar", por: "Laura Recepción" };
+  const quitaB = { cerradoAt: "2026-10-07T09:30:00.000Z", motivo: "Se atiende en otra clínica", por: "Marta Caja" };
+
+  it("manda la de la ficha que se mantiene", () => {
+    const m = fusionarFichas(ficha({ seguimiento: quitaA }), ficha({ id: "r", seguimiento: quitaB }));
+    expect(m.seguimiento).toEqual(quitaA);
+  });
+
+  it("si la que se mantiene no tiene, pasa la de la duplicada: a esa persona ya se la había quitado de la lista", () => {
+    expect(fusionarFichas(ficha(), ficha({ id: "r", seguimiento: quitaB })).seguimiento).toEqual(quitaB);
+  });
+
+  it("si ninguna tiene, no se inventa el campo", () => {
+    const m = fusionarFichas(ficha(), ficha({ id: "r" }));
+    expect("seguimiento" in m).toBe(false);
+  });
+
+  it("un registro roto en la que se mantiene no tapa el bueno de la duplicada", () => {
+    const rota = { cerradoAt: "no es una fecha", motivo: "", por: "" };
+    expect(fusionarFichas(ficha({ seguimiento: rota }), ficha({ id: "r", seguimiento: quitaB })).seguimiento).toEqual(quitaB);
+  });
+
+  it("y uno roto que no tiene reemplazo se descarta en vez de copiarse tal cual", () => {
+    const rota = { cerradoAt: "no es una fecha", motivo: "", por: "" };
+    expect("seguimiento" in fusionarFichas(ficha({ seguimiento: rota }), ficha({ id: "r" }))).toBe(false);
   });
 });
 

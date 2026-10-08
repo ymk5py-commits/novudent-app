@@ -4,11 +4,13 @@
  *   · los textos médicos (alertas, enfermedades, medicamentos) se UNEN: perder una alergia es lo peor que puede pasar;
  *   · las listas (historial, evoluciones, archivos, recetas, periodontogramas, encuestas) se juntan sin repetir;
  *   · la ortodoncia de la duplicada pasa entera si la otra no tiene, y si las dos tienen se unen los controles;
+ *   · la quita de «Sin próxima cita» (`seguimiento`): manda la de la ficha que se mantiene; si no tiene, la de la duplicada;
  *   · el odontograma se junta PIEZA POR PIEZA: el editor guarda siempre las 32 piezas (las sanas con el estado por defecto del motor),
  *     así que una pieza sana de la ficha que se mantiene no tapa los hallazgos de la duplicada; si las dos tienen hallazgos
  *     distintos en la misma pieza, manda la ficha que se mantiene (`piezasEnConflicto` dice cuáles para avisarlo). */
 import { DEFAULT_ODONTOGRAM_STATUS, type OdontogramStatus, type OrthoRecord, type Patient } from "./types";
 import { PIEZA_SIN_HALLAZGOS } from "./odontogramaSinHallazgos";
+import { normalizarQuita } from "./seguimiento";
 
 const vacio = (x: unknown): boolean => x === undefined || x === null || (typeof x === "string" && x.trim() === "");
 
@@ -157,6 +159,12 @@ export function fusionarFichas(keep: Patient, remove: Patient): Patient {
   if (npsHistory) m.npsHistory = npsHistory;
   const ultimo = [keep.nps, remove.nps, ...(npsHistory ?? [])].filter((n): n is NonNullable<Patient["nps"]> => !!n).sort((x, y) => y.at.localeCompare(x.at))[0];
   if (ultimo) m.nps = ultimo;
+
+  // La quita de «Sin próxima cita» es de la persona, no de la ficha: manda la de la que se mantiene y, si esa no tiene una que valga,
+  // pasa la de la duplicada (a esa persona ya se la había sacado de la lista). Un registro roto no se copia.
+  const quita = normalizarQuita(keep.seguimiento) ?? normalizarQuita(remove.seguimiento);
+  if (quita) m.seguimiento = quita;
+  else delete m.seguimiento;
 
   if (keep.odontogram || remove.odontogram) {
     const odontogram: OdontogramStatus = {
