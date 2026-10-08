@@ -1,7 +1,8 @@
 "use client";
-import Link from "next/link";
 /** Vista "Plan de tratamiento" estilo Dentalink: LISTA de planes (En ejecución / Otros)
- *  → DETALLE de 2 columnas (panel financiero + seguimiento) + prestaciones + comentarios. */
+ *  → DETALLE de 2 columnas (panel financiero + seguimiento) + prestaciones + comentarios.
+ *  «Nuevo plan de tratamiento» arma el plan acá mismo, con el paciente fijo, como en Dentalink (antes, quien maneja presupuestos
+ *  iba a la lista de Presupuestos de todos los pacientes). */
 import { ReactNode, useState } from "react";
 import { Copy, UserRound, Braces, Smile, ChevronLeft, ChevronRight, FileSpreadsheet, Save, Pencil, Plus, Calendar, Clock, Printer, Camera, AlertTriangle, Trash2, Upload } from "lucide-react";
 import { useStore, fmtGs, fmtDate, fmtTime } from "@/lib/store";
@@ -38,9 +39,10 @@ export function PlanTratamiento({ patient, onRecaudar }: { patient: Patient; onR
   const budgets = db.budgets.filter((b) => b.patientId === patient.id && alcance.veDoctor(b.dentistId)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const [selId, setSelId] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
-  // Caja y administración arman presupuestos en Presupuestos; el dentista arma el plan acá, sin montos.
-  const armaDesdeFicha = !alcance.puede("budgets.manage") && alcance.puede("plans.create");
-  const nuevo = armaDesdeFicha && creando && session ? (
+  // Arma el plan acá, con este paciente, quien maneja presupuestos (administración, caja, comercial) o crea planes (dentista).
+  // Sin «ver montos» el formulario va sin precios ni totales; el dentista queda como profesional del plan.
+  const puedeArmar = alcance.puede("budgets.manage") || alcance.puede("plans.create");
+  const nuevo = puedeArmar && creando && session ? (
     <BudgetForm
       budget={null}
       sinMontos={!alcance.puede("money.view")}
@@ -50,16 +52,16 @@ export function PlanTratamiento({ patient, onRecaudar }: { patient: Patient; onR
       onSave={(b) => { upsertBudget(b); setCreando(false); setSelId(b.id); }}
     />
   ) : null;
-  const onNuevo = alcance.puede("budgets.manage") ? "presupuestos" as const : armaDesdeFicha ? () => setCreando(true) : null;
+  const onNuevo = puedeArmar ? () => setCreando(true) : null;
 
   if (!budgets.length) {
     return (
       <>
         <Empty
           title="Sin planes de tratamiento"
-          desc={armaDesdeFicha ? "Armá el primero con las prestaciones que necesita el paciente." : alcance.puede("budgets.manage") ? "Creá un presupuesto en la sección Presupuestos para iniciar un plan." : "Todavía no hay planes con tus doctores."}
+          desc={puedeArmar ? "Armá el primero con las prestaciones que necesita el paciente." : "Todavía no hay planes con tus doctores."}
         />
-        {armaDesdeFicha && <div className="flex justify-center"><Btn onClick={() => setCreando(true)}><Plus className="h-4 w-4" /> Nuevo plan de tratamiento</Btn></div>}
+        {puedeArmar && <div className="mt-3 flex justify-center"><Btn onClick={() => setCreando(true)}><Plus className="h-4 w-4" /> Nuevo plan de tratamiento</Btn></div>}
         {nuevo}
       </>
     );
@@ -86,7 +88,7 @@ function MiniRing({ pct }: { pct: number }) {
   );
 }
 
-function PlanLista({ patient, budgets, onOpen, onNuevo }: { patient: Patient; budgets: Budget[]; onOpen: (id: string) => void; onNuevo: "presupuestos" | (() => void) | null }) {
+function PlanLista({ patient, budgets, onOpen, onNuevo }: { patient: Patient; budgets: Budget[]; onOpen: (id: string) => void; onNuevo: (() => void) | null }) {
   const { db } = useStore();
   const verMontos = useAlcance().puede("money.view");
   const [filtro, setFiltro] = useState<"activos" | "todos">("activos");
@@ -142,8 +144,7 @@ function PlanLista({ patient, budgets, onOpen, onNuevo }: { patient: Patient; bu
             <option value="activos">Tratamientos activos</option>
             <option value="todos">Todos los tratamientos</option>
           </select>
-          {onNuevo === "presupuestos" && <Link href="/app/presupuestos"><Btn><Plus className="h-4 w-4" /> Nuevo plan de tratamiento</Btn></Link>}
-          {typeof onNuevo === "function" && <Btn onClick={onNuevo}><Plus className="h-4 w-4" /> Nuevo plan de tratamiento</Btn>}
+          {onNuevo && <Btn onClick={onNuevo}><Plus className="h-4 w-4" /> Nuevo plan de tratamiento</Btn>}
         </div>
       </div>
       {enEjecucion.length > 0 && (
