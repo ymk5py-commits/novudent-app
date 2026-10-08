@@ -3,7 +3,7 @@
  *  muestra. Cada una lleva la marca «Ejemplo»; la tabla de roles sale de la matriz real
  *  de permisos (lib/rbac.ts). */
 import { Check } from "lucide-react";
-import { can, ROLES, ROLE_LABEL, type Permission } from "@/lib/rbac";
+import { permisoDeFabrica, ROLES, ROLE_LABEL, type Permission } from "@/lib/rbac";
 import type { Role } from "@/lib/types";
 import { gs } from "@/lib/landing/precios";
 import { ToothGlyph, type ShowcaseToothRecord } from "../OdontogramShowcase";
@@ -121,7 +121,7 @@ export function TarjetaVolver() {
   );
 }
 
-/* La tabla sale de la matriz real de permisos: si cambia lib/rbac.ts, cambia acá. */
+/* La tabla sale de la matriz real de permisos DE FÁBRICA: si cambia lib/rbac.ts, cambia acá (la landing es pública: no muestra los ajustes de ninguna clínica). */
 const FILAS_ROLES: [string, Permission][] = [
   ["Ver la agenda de todos los profesionales", "agenda.all"],
   ["Cargar y editar los datos del paciente", "patients.personal"],
@@ -166,7 +166,7 @@ export function TablaRoles() {
               <th scope="row" className="py-2.5 pr-2 text-[13px] font-normal leading-snug text-lp-ink sm:text-[14px]">{t}</th>
               {ROLES.map((r) => (
                 <td key={r} className="px-0.5 py-2.5 text-center sm:px-1">
-                  {can(r, p) ? (
+                  {permisoDeFabrica(r, p) ? (
                     <Check className="mx-auto h-4 w-4 text-lp-accentink" strokeWidth={2.25} aria-label="Sí" />
                   ) : (
                     <span className="text-lp-neutral" aria-label="No">—</span>

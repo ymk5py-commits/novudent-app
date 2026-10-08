@@ -79,27 +79,61 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Caja: cobra, factura y hace el arqueo (matriz RBAC roles v3: payments.manage =
-    // [admin, cashier]). Ni la recepcionista, ni el dentista, ni el asistente de
-    // doctores manejan dinero.
+    // ---- Permisos del equipo (Administración › Permisos del equipo) ----
+    // La clínica guarda en clinics/{cid}.config.permisos[rol] = { dar: [...], quitar: [...] }: la DIFERENCIA contra la matriz de
+    // fábrica de lib/rbac.ts. `tienePermiso` hace la misma cuenta que `permisoEfectivo()` del cliente, y las dos tienen que dar
+    // siempre lo mismo (lib/rbac.test.ts ata cada lista `rolesDeFabrica` de abajo a la matriz):
+    //   • el admin siempre puede: no se le puede sacar nada;
+    //   • lo que figura en `dar` lo puede el rol aunque la fábrica no se lo dé;
+    //   • lo demás lo puede si el rol está en `rolesDeFabrica` y el permiso no figura en `quitar`.
+    // Un permiso en `dar` y en `quitar` a la vez gana `dar`. Lo mal formado (un rol que no es un mapa, una lista que no es una
+    // lista) se ignora y rige la fábrica: mejor eso que dejar a un rol sin poder trabajar por un dato roto.
+    // Nadie se da permisos a sí mismo: clinics/{cid} solo lo actualiza el admin (ver más abajo). Cuesta una lectura más (el doc
+    // de la clínica), que se cachea dentro de la misma solicitud.
+    function rolDe(cid) {
+      return get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role;
+    }
+    function ajustesDeRol(cid) {
+      let config = get(/databases/$(database)/documents/clinics/$(cid)).data.get('config', {});
+      let permisos = config is map ? config.get('permisos', {}) : {};
+      let ajustes = permisos is map ? permisos.get(rolDe(cid), {}) : {};
+      return ajustes is map ? ajustes : {};
+    }
+    function listaDe(ajustes, clave) {
+      return ajustes.get(clave, []) is list ? ajustes.get(clave, []) : [];
+    }
+    function tienePermiso(cid, perm, rolesDeFabrica) {
+      return isMember(cid)
+        && (rolDe(cid) == 'admin'
+            || perm in listaDe(ajustesDeRol(cid), 'dar')
+            || (rolDe(cid) in rolesDeFabrica && !(perm in listaDe(ajustesDeRol(cid), 'quitar'))));
+    }
+
+    // Caja: cobra, factura y hace el arqueo (payments.manage; de fábrica admin y caja). De fábrica ni la recepcionista, ni el
+    // dentista, ni el asistente de doctores manejan dinero.
     function isCaja(cid) {
-      return isMember(cid)
-        && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role in ['admin', 'cashier'];
+      return tienePermiso(cid, 'payments.manage', ['admin', 'cashier']);
     }
 
-    // Recepción: consentimientos y formularios del paciente (matriz RBAC roles v3:
-    // engagement.forms = [admin, cashier, receptionist]).
+    // Recepción: consentimientos, firmas y formularios del paciente (engagement.forms; de fábrica admin, caja y recepción).
     function isRecepcion(cid) {
-      return isMember(cid)
-        && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role in ['admin', 'cashier', 'receptionist'];
+      return tienePermiso(cid, 'engagement.forms', ['admin', 'cashier', 'receptionist']);
     }
 
-    // Rol clínico (admin o dentista). El ASISTENTE no escribe el EMR
-    // (matriz RBAC: emr.write = [admin, dentist]). Se usa para blindar los campos
-    // clínicos del doc de paciente a nivel de reglas, no solo en la UI.
+    // Rol clínico (emr.write; de fábrica admin y dentista). El ASISTENTE de fábrica no escribe el EMR. Se usa para blindar
+    // los campos clínicos del doc de paciente a nivel de reglas, no solo en la UI.
     function isClinical(cid) {
-      return isMember(cid)
-        && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role in ['admin', 'dentist'];
+      return tienePermiso(cid, 'emr.write', ['admin', 'dentist']);
+    }
+
+    // Gastos del negocio (expenses.manage; de fábrica solo el admin).
+    function puedeGastos(cid) {
+      return tienePermiso(cid, 'expenses.manage', ['admin']);
+    }
+
+    // Liquidaciones = lo que gana cada profesional (billing.reports; de fábrica solo el admin).
+    function puedeLiquidaciones(cid) {
+      return tienePermiso(cid, 'billing.reports', ['admin']);
     }
 
     // ---- Monetización: suscripción vigente y plan contratado ----
@@ -338,11 +372,11 @@ service cloud.firestore {
       // financiero vía SDK directo saltándose el RBAC de la UI.
       match /payments/{docId}    { allow read: if isMember(cid) || isService() || isDemo(cid);
                                    allow write: if (isCaja(cid) && subActive(cid)) || isService() || isDemoRW(cid); }
-      // Gastos = costos del negocio (alquiler, proveedores, sueldos). Solo el
-      // dueño, y también en LECTURA: el gating de la UI no alcanza porque el
-      // cliente lee Firestore directo y podría sacarlos por SDK.
-      match /expenses/{docId}    { allow read: if isAdmin(cid) || isService() || isDemoRW(cid);
-                                   allow write: if (isAdmin(cid) && subActive(cid)) || isService() || isDemoRW(cid); }
+      // Gastos = costos del negocio (alquiler, proveedores, sueldos). De fábrica solo el
+      // dueño (expenses.manage), y también en LECTURA: el gating de la UI no alcanza porque el
+      // cliente lee Firestore directo y podría sacarlos por SDK. La clínica puede dárselo a otro rol.
+      match /expenses/{docId}    { allow read: if puedeGastos(cid) || isService() || isDemoRW(cid);
+                                   allow write: if (puedeGastos(cid) && subActive(cid)) || isService() || isDemoRW(cid); }
       match /stock/{docId}       {
         allow read:  if isMember(cid) || isService() || isDemoRW(cid);
         allow write: if canWritePremium(cid, ['clinica','cadena']);
@@ -393,16 +427,15 @@ service cloud.firestore {
         allow delete: if isService() || isDemoRW(cid);
       }
       // Documentos clínicos (Historia Clínica y demás documentos del paciente). Los edita quien
-      // gestiona formularios (admin, caja, recepción) o escribe la ficha (dentista); el asistente
-      // solo lee. Es el espejo de `puedeEditarDocumentos` (lib/documentosClinicos.ts): si cambia
-      // la matriz de roles hay que cambiar las dos. Con la suscripción vencida se lee y no se
+      // gestiona formularios (engagement.forms: de fábrica admin, caja, recepción) o escribe la ficha
+      // (emr.write: de fábrica el dentista); el asistente de fábrica solo lee. Es el espejo de
+      // `puedeEditarDocumentos` (lib/documentosClinicos.ts): si cambia la matriz de roles o lo que
+      // reparte la clínica, cambian las dos a la vez. Con la suscripción vencida se lee y no se
       // escribe. No se borran desde la app (se anulan); el borrado es solo para "Reiniciar demo".
       match /clinicalDocs/{docId} {
         allow read: if isMember(cid) || isService() || isDemo(cid);
         allow create, update: if isService() || isDemoRW(cid)
-          || (isMember(cid) && subActive(cid)
-              && get(/databases/$(database)/documents/clinics/$(cid)/users/$(request.auth.uid)).data.role
-                 in ['admin', 'cashier', 'receptionist', 'dentist']);
+          || (subActive(cid) && (isRecepcion(cid) || isClinical(cid)));
         allow delete: if isService() || isDemoRW(cid);
       }
       // Rutina del administrador (Inicio): un documento por casillero tildado, con id `${paso}__${periodo}`
@@ -427,10 +460,10 @@ service cloud.firestore {
       }
       // Liquidaciones = cuánto gana cada profesional. Es dato salarial: no lo ve
       // el resto del equipo (ni siquiera el dentista sus propias comisiones por
-      // esta vía) ni la recepción. Solo el dueño.
+      // esta vía) ni la recepción. De fábrica solo el dueño (billing.reports); la clínica puede dárselo a otro rol.
       match /settlements/{docId} {
-        allow read:  if isAdmin(cid) || isService() || isDemo(cid);
-        allow write: if (isAdmin(cid) && canWritePremium(cid, ['clinica','cadena'])) || isService() || isDemoRW(cid);
+        allow read:  if puedeLiquidaciones(cid) || isService() || isDemo(cid);
+        allow write: if (puedeLiquidaciones(cid) && canWritePremium(cid, ['clinica','cadena'])) || isService() || isDemoRW(cid);
       }
       match /boxes/{docId}       {
         allow read:  if isMember(cid) || isService() || isDemo(cid);

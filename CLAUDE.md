@@ -40,7 +40,7 @@ desde `main`.
   modelo de visión: `gemini-2.5-pro`.
 - **Validadores clínicos = puros + TDD** (`lib/radiografia.ts`, `lib/firma.ts`,
   `lib/perio-voice.ts`): nunca corrompen la ficha ante basura del modelo.
-- **RBAC:** `can(session.role, "<perm>")` (`lib/rbac.ts`). EMR (clínico) = dentista/
+- **RBAC:** `can(session.role, "<perm>")` (`lib/rbac.ts`; es la matriz de fábrica más lo que cada clínica reparte en «Permisos del equipo», ver abajo). EMR (clínico) = dentista/
   admin; formularios/consentimientos/administrativo = `engagement.forms` (admin/
   asistente); financiero = `billing.reports`; config = `practice.config`.
 - **Planes:** `PlanFeature` en `lib/plan.ts` + `useClinicPlan()` + `<PlanLocked
@@ -210,6 +210,31 @@ lista «más usadas en Paraguay» es orientativa y la clínica la revisa. **⚠�
 `overflow-x-auto` sin `relative` sobresale de la tabla y, en el celular, Chrome ensancha toda la ventana** (`innerWidth` 412 → 522):
 los modales quedan corridos y sus botones fuera de pantalla. `scrollWidth <= innerWidth` no lo detecta (crecen juntos): se compara
 con el ancho inicial (`e2e/arancel-bancos.spec.ts`). Ponele `relative` al contenedor.
+
+**Permisos del equipo (oct-2026, pedido de Camila: «dar y sacar permisos de acceso a información o ejecución»):** Administración ›
+Permisos del equipo (`components/PermisosDelEquipo`; lógica pura y con tests en `lib/permisosEquipo.ts` y `lib/rbac.ts`). La matriz de
+`lib/rbac.ts` es la **de fábrica**; cada clínica guarda en `clinics/{cid}.config.permisos[rol] = { dar: [...], quitar: [...] }` solo la
+**diferencia** (los cuatro roles que no son administrador, SIEMPRE con las dos listas, vacías si no hay cambios: `setDoc(…, {merge:true})`
+no borra lo ausente, así que «volver a fábrica» se guarda escribiendo las listas vacías). `can(role, p, permisos?)` aplica los ajustes: sin
+tercer argumento usa los que el store pone en cada render (`aplicarPermisosDeLaClinica`, estado de módulo, solo del navegador); **las
+rutas del servidor leen `config.permisos` de la clínica, lo pasan por `normalizarPermisos` y se lo pasan a `can()`** (hoy
+`notificaciones/cita` y `ia/agenda-resumen`; si agregás otra ruta que llame a `can`, hacelo igual). Todo lo que viene de Firestore pasa por
+`normalizarPermisos` antes de usarse (roles y permisos que no existen, listas que no son listas, repetidos). **No se tocan** el
+administrador ni `users.manage` / `practice.config` (`PERMISOS_SOLO_ADMIN`): por eso Esterilización, Registro ambiental, Box, Arancel…
+siguen siendo solo del administrador; si Camila pide repartirlos por separado hay que crear un permiso nuevo para cada uno (sumarlo a
+`MATRIX`, a `GRUPOS_DE_PERMISOS`, a `PERMISOS_EN_PALABRAS` y a `TIPO_DE_PERMISO`: `npm test` rompe si falta alguno). `REQUIERE` (en
+`lib/permisosEquipo.ts`): dar «cobrar» da «ver montos» y sacar «ver montos» saca todo lo que maneja plata; la pantalla avisa lo que
+arrastró. **Qué hace cumplir el servidor** (`firestore.rules`: `tienePermiso(cid, perm, rolesDeFábrica)` detrás de `isCaja`, `isRecepcion`,
+`isClinical`, `puedeGastos` y `puedeLiquidaciones`): `payments.manage`, `engagement.forms`, `emr.write`, `expenses.manage` y
+`billing.reports`. **El resto (ver montos, datos personales, la agenda de todos…) solo esconde pantallas y botones: Firestore sigue
+dejando leer a todo miembro de la clínica**, y la pantalla lo dice. Un test (`lib/permisosEquipo.test.ts`) ata la lista de roles de fábrica
+de cada `tienePermiso(...)` de las reglas a la matriz y a `PERMISOS_QUE_EXIGE_EL_SERVIDOR`: si cambiás la matriz hay que cambiar las
+reglas, y al revés. Solo el administrador escribe `clinics/{cid}` (nadie se da permisos a sí mismo). El store escucha el documento de la
+clínica **solo para `config.permisos`** (el cambio llega en vivo, sin recargar; no toma el resto de la configuración para no pisar lo que
+este navegador todavía está guardando). Con `dar` y `quitar` a la vez gana `dar`, igual en cliente y en reglas. **Hay que publicar las
+reglas antes del código** (el código viejo ignora `permisos`; las reglas nuevas, sin ajustes, se comportan como siempre). Los tests del
+emulador («permisos del equipo») están al final de `test/firestore-rules.test.mjs`. La landing y el manual muestran la matriz de fábrica
+(`permisoDeFabrica`), nunca los ajustes de una clínica.
 
 **Manual de procedimientos (oct-2026):** `docs/manual/` arma un PDF por rol con capturas reales de la demo
 (`npm run manual:capturas` + `npm run manual:pdf`; necesita WeasyPrint y poppler). El texto de cada procedimiento vive en

@@ -149,6 +149,38 @@ before(async () => {
     await setDoc(doc(db, "serviceAccounts/svc1"), { note: "worker" });
     // Directory
     await setDoc(doc(db, "directory/adminA"), { clinicId: "clA", email: "admin@a.com" });
+
+    /* ---- PERMISOS DEL EQUIPO (config.permisos): la clínica reparte y saca permisos por rol ----
+     * Plan clínica y suscripción al día para que ningún deny se pueda atribuir al cobro o al plan. */
+    const seedEquipo = async (cid, permisos, extra = {}) => {
+      await setDoc(doc(db, `clinics/${cid}`), { id: cid, name: cid, plan: "clinica", config: permisos === undefined ? { timezone: "America/Asuncion" } : { timezone: "America/Asuncion", permisos } });
+      await setDoc(doc(db, `subscriptions/${cid}`), { clinicId: cid, plan: "clinica", status: "active", ...extra });
+      const L = cid.slice(2); // clP → P
+      for (const [rol, id] of [["admin", "admin"], ["cashier", "caja"], ["receptionist", "recep"], ["dentist", "dent"], ["assistant", "asis"]]) {
+        await setDoc(doc(db, `clinics/${cid}/users/${id}${L}`), { id: `${id}${L}`, role: rol, active: true, clinicId: cid, email: `${id}@${cid}.com` });
+      }
+      await setDoc(doc(db, `clinics/${cid}/patients/pEq`), { id: "pEq", firstName: "Paciente", lastName: "Del equipo", phone: "0981", odontogram: { teeth: { 11: "sano" } } });
+      await setDoc(doc(db, `clinics/${cid}/expenses/expEq`), { id: "expEq", amount: 500 });
+      await setDoc(doc(db, `clinics/${cid}/settlements/liqEq`), { id: "liqEq", dentistId: `dent${L}`, total: 3000000 });
+    };
+    // P: reparte y saca en los cinco puntos que hacen cumplir las reglas, más datos que NO valen (el admin, los permisos solo del admin).
+    await seedEquipo("clP", {
+      cashier: { dar: ["expenses.manage"], quitar: ["payments.manage"] },
+      receptionist: { dar: ["payments.manage"], quitar: ["engagement.forms"] },
+      dentist: { dar: ["engagement.forms"], quitar: ["emr.write"] },
+      assistant: { dar: ["emr.write", "billing.reports", "practice.config", "users.manage"], quitar: [] },
+      admin: { quitar: ["payments.manage", "emr.write", "engagement.forms", "expenses.manage", "billing.reports"] },
+    });
+    // Q: ajustes mal formados o contradictorios (nadie los escribe a mano en la app, pero Firestore se puede editar).
+    await seedEquipo("clQ", {
+      receptionist: { dar: ["payments.manage"], quitar: ["payments.manage", "engagement.forms"] }, // dar y quitar a la vez: gana dar
+      cashier: "basura", // no es un mapa: se ignora y rige la fábrica
+      dentist: { dar: "emr.write", quitar: 3 }, // listas que no son listas: se ignoran
+    });
+    // M: arranca sin ajustes; el administrador los cambia durante las pruebas.
+    await seedEquipo("clM", undefined);
+    // V2: suscripción vencida con permisos repartidos: el cobro sigue mandando.
+    await seedEquipo("clW", { receptionist: { dar: ["payments.manage"] } }, { status: "past_due" });
   });
 });
 
@@ -1128,4 +1160,161 @@ test("rutina del administrador: la demo es abierta para quien tiene sesión, no 
   await assertSucceeds(setDoc(doc(authed("cualquiera"), RC("cl_demo", "caja__2026-10-07")), casillero("caja__2026-10-07")));
   await assertSucceeds(deleteDoc(doc(authed("cualquiera"), RC("cl_demo", "caja__2026-10-07"))));
   await assertFails(setDoc(doc(anon(), RC("cl_demo", "caja__2026-10-08")), casillero("caja__2026-10-08")));
+});
+
+/* ===== PERMISOS DEL EQUIPO (config.permisos) =====
+ * La clínica guarda en clinics/{cid}.config.permisos[rol] = { dar: [...], quitar: [...] }: la diferencia contra la matriz de
+ * fábrica (lib/rbac.ts). Las reglas la aplican en los cinco puntos que hacen cumplir la matriz: cobrar (payments.manage),
+ * documentos y firmas (engagement.forms), la ficha clínica (emr.write), los gastos (expenses.manage) y las liquidaciones
+ * (billing.reports). `tienePermiso()` tiene que dar lo mismo que `permisoEfectivo()` del cliente.
+ *
+ * Clínica P: caja pierde cobrar y gana gastos · recepción gana cobrar y pierde documentos · dentista gana documentos y pierde la
+ * ficha · asistente gana la ficha y las liquidaciones (y trae escritos, sin efecto, practice.config y users.manage) · el admin trae
+ * escrito que se le saca todo (sin efecto). */
+const EQ = (cid, ruta) => `clinics/${cid}/${ruta}`;
+const pagoEq = (id) => ({ id, amount: 1000, patientId: "pEq" });
+const fiscalEq = (id) => ({ id, kind: "boleta", number: "001-001-0000009", amount: 1000 });
+const cajaEq = (id) => ({ id, userId: "x", userName: "x", status: "abierta", openingBalance: 0 });
+const firmaEq = (id) => ({ id, patientId: "pEq", status: "pendiente" });
+const docEq = (id) => ({ id, patientId: "pEq", estado: "pendiente", nombre: "Historia Clínica" });
+const radioEq = (id) => ({ id, patientId: "pEq", image: "data:image/jpeg;base64,AAA", findings: [] });
+
+test("permisos del equipo — cobrar: lo gana la recepción y lo pierde la caja", async () => {
+  // recepP gana payments.manage
+  await assertSucceeds(setDoc(doc(authed("recepP"), EQ("clP", "payments/payR")), pagoEq("payR")));
+  await assertSucceeds(setDoc(doc(authed("recepP"), EQ("clP", "fiscalDocs/fdR")), fiscalEq("fdR")));
+  await assertSucceeds(setDoc(doc(authed("recepP"), EQ("clP", "cashSessions/csR")), cajaEq("csR")));
+  // cajaP pierde payments.manage
+  await assertFails(setDoc(doc(authed("cajaP"), EQ("clP", "payments/payC")), pagoEq("payC")));
+  await assertFails(setDoc(doc(authed("cajaP"), EQ("clP", "fiscalDocs/fdC")), fiscalEq("fdC")));
+  await assertFails(setDoc(doc(authed("cajaP"), EQ("clP", "cashSessions/csC")), cajaEq("csC")));
+  // lo que no tocó la clínica sigue como de fábrica: el dentista y la asistente no cobran
+  await assertFails(setDoc(doc(authed("dentP"), EQ("clP", "payments/payD")), pagoEq("payD")));
+  await assertFails(setDoc(doc(authed("asisP"), EQ("clP", "payments/payS")), pagoEq("payS")));
+});
+
+test("permisos del equipo — documentos y firmas: lo gana el dentista y lo pierde la recepción", async () => {
+  await assertSucceeds(setDoc(doc(authed("dentP"), EQ("clP", "signatures/sigD")), firmaEq("sigD")));
+  await assertFails(setDoc(doc(authed("recepP"), EQ("clP", "signatures/sigR")), firmaEq("sigR")));
+  // la recepción sin documentos tampoco escribe los documentos clínicos (no tiene ni documentos ni ficha)
+  await assertFails(setDoc(doc(authed("recepP"), EQ("clP", "clinicalDocs/cdR")), docEq("cdR")));
+  // el dentista sigue pudiendo con los documentos clínicos, ahora por documentos y no por la ficha
+  await assertSucceeds(setDoc(doc(authed("dentP"), EQ("clP", "clinicalDocs/cdD")), docEq("cdD")));
+  // la caja no se tocó: conserva documentos y firmas
+  await assertSucceeds(setDoc(doc(authed("cajaP"), EQ("clP", "signatures/sigC")), firmaEq("sigC")));
+});
+
+test("permisos del equipo — ficha clínica: la gana la asistente y la pierde el dentista", async () => {
+  await assertSucceeds(updateDoc(doc(authed("asisP"), EQ("clP", "patients/pEq")), { odontogram: { "11": { state: "caries" } } }));
+  await assertSucceeds(setDoc(doc(authed("asisP"), EQ("clP", "radiographs/rxS")), radioEq("rxS")));
+  await assertSucceeds(setDoc(doc(authed("asisP"), EQ("clP", "clinicalDocs/cdS")), docEq("cdS")));
+  await assertFails(updateDoc(doc(authed("dentP"), EQ("clP", "patients/pEq")), { odontogram: { "12": { state: "caries" } } }));
+  await assertFails(setDoc(doc(authed("dentP"), EQ("clP", "radiographs/rxD")), radioEq("rxD")));
+  // pero la demografía la sigue editando cualquier miembro, y ganar la ficha no da las firmas
+  await assertSucceeds(updateDoc(doc(authed("dentP"), EQ("clP", "patients/pEq")), { phone: "0991" }));
+  await assertFails(setDoc(doc(authed("asisP"), EQ("clP", "signatures/sigS")), firmaEq("sigS")));
+});
+
+test("permisos del equipo — gastos: los gana la caja, y nadie más los lee", async () => {
+  await assertSucceeds(getDoc(doc(authed("cajaP"), EQ("clP", "expenses/expEq"))));
+  await assertSucceeds(getDocs(collection(authed("cajaP"), EQ("clP", "expenses"))));
+  await assertSucceeds(setDoc(doc(authed("cajaP"), EQ("clP", "expenses/expC")), { id: "expC", amount: 10 }));
+  for (const uid of ["recepP", "dentP", "asisP"]) {
+    await assertFails(getDoc(doc(authed(uid), EQ("clP", "expenses/expEq"))));
+    await assertFails(getDocs(collection(authed(uid), EQ("clP", "expenses"))));
+    await assertFails(setDoc(doc(authed(uid), EQ("clP", `expenses/exp${uid}`)), { id: `exp${uid}`, amount: 10 }));
+  }
+});
+
+test("permisos del equipo — liquidaciones: las gana la asistente, y nadie más las lee", async () => {
+  await assertSucceeds(getDoc(doc(authed("asisP"), EQ("clP", "settlements/liqEq"))));
+  await assertSucceeds(getDocs(collection(authed("asisP"), EQ("clP", "settlements"))));
+  await assertSucceeds(setDoc(doc(authed("asisP"), EQ("clP", "settlements/liqS")), { id: "liqS", dentistId: "dentP", total: 1 }));
+  for (const uid of ["cajaP", "recepP", "dentP"]) {
+    await assertFails(getDoc(doc(authed(uid), EQ("clP", "settlements/liqEq"))));
+    await assertFails(getDocs(collection(authed(uid), EQ("clP", "settlements"))));
+    await assertFails(setDoc(doc(authed(uid), EQ("clP", `settlements/liq${uid}`)), { id: `liq${uid}`, total: 1 }));
+  }
+});
+
+test("permisos del equipo — al administrador no se le saca nada, ni escribiéndolo a mano en la configuración", async () => {
+  await assertSucceeds(setDoc(doc(authed("adminP"), EQ("clP", "payments/payA")), pagoEq("payA")));
+  await assertSucceeds(updateDoc(doc(authed("adminP"), EQ("clP", "patients/pEq")), { emr: [{ note: "control" }] }));
+  await assertSucceeds(setDoc(doc(authed("adminP"), EQ("clP", "signatures/sigA")), firmaEq("sigA")));
+  await assertSucceeds(getDoc(doc(authed("adminP"), EQ("clP", "expenses/expEq"))));
+  await assertSucceeds(getDoc(doc(authed("adminP"), EQ("clP", "settlements/liqEq"))));
+});
+
+test("permisos del equipo — crear usuarios y configurar la clínica no se reparten, aunque estén escritos", async () => {
+  // asisP trae practice.config y users.manage en dar: las reglas de esas cosas siguen siendo solo del administrador
+  await assertFails(setDoc(doc(authed("asisP"), EQ("clP", "procedures/D9999")), { cpt: "D9999", description: "x", price: 1 }));
+  await assertFails(setDoc(doc(authed("asisP"), EQ("clP", "users/nuevoP")), { id: "nuevoP", role: "admin", active: true, clinicId: "clP" }));
+  await assertFails(setDoc(doc(authed("asisP"), EQ("clP", "routineChecks/caja__2026-10-08")), { id: "caja__2026-10-08", paso: "caja", periodo: "2026-10-08" }));
+  await assertFails(updateDoc(doc(authed("asisP"), "clinics/clP"), { name: "Renombrada por la asistente" }));
+});
+
+test("permisos del equipo — nadie se da permisos a sí mismo: solo el administrador escribe config.permisos", async () => {
+  for (const uid of ["cajaP", "recepP", "dentP", "asisP"]) {
+    await assertFails(updateDoc(doc(authed(uid), "clinics/clP"), { "config.permisos": { [uid]: { dar: ["payments.manage"] } } }));
+    await assertFails(setDoc(doc(authed(uid), "clinics/clP"), { config: { permisos: {} } }, { merge: true }));
+  }
+});
+
+test("permisos del equipo — los ajustes de una clínica no valen en otra", async () => {
+  // recepP cobra en la clínica P, pero la recepción de la clínica A no (A no repartió nada)
+  await assertSucceeds(setDoc(doc(authed("recepP"), EQ("clP", "payments/payR2")), pagoEq("payR2")));
+  await assertFails(setDoc(doc(authed("recepA"), EQ("clA", "payments/payR3")), pagoEq("payR3")));
+  await assertFails(setDoc(doc(authed("recepP"), EQ("clA", "payments/payR4")), pagoEq("payR4")));
+});
+
+test("permisos del equipo — sin ajustes (clínica sin config.permisos) rige la matriz de fábrica", async () => {
+  await assertSucceeds(setDoc(doc(authed("cajaM"), EQ("clM", "payments/payC")), pagoEq("payC")));
+  await assertSucceeds(setDoc(doc(authed("recepM"), EQ("clM", "signatures/sigR")), firmaEq("sigR")));
+  await assertSucceeds(updateDoc(doc(authed("dentM"), EQ("clM", "patients/pEq")), { odontogram: { "11": { state: "caries" } } }));
+  await assertFails(setDoc(doc(authed("recepM"), EQ("clM", "payments/payR")), pagoEq("payR")));
+  await assertFails(setDoc(doc(authed("dentM"), EQ("clM", "signatures/sigD")), firmaEq("sigD")));
+  await assertFails(updateDoc(doc(authed("asisM"), EQ("clM", "patients/pEq")), { odontogram: { "12": { state: "caries" } } }));
+  await assertFails(getDoc(doc(authed("cajaM"), EQ("clM", "expenses/expEq"))));
+  await assertFails(getDoc(doc(authed("cajaM"), EQ("clM", "settlements/liqEq"))));
+});
+
+test("permisos del equipo — dar y quitar a la vez: gana dar; listas mal formadas se ignoran y rige la fábrica", async () => {
+  // clínica Q
+  await assertSucceeds(setDoc(doc(authed("recepQ"), EQ("clQ", "payments/payR")), pagoEq("payR"))); // dar gana a quitar
+  await assertFails(setDoc(doc(authed("recepQ"), EQ("clQ", "signatures/sigR")), firmaEq("sigR"))); // quitar documentos sí rige
+  await assertSucceeds(setDoc(doc(authed("cajaQ"), EQ("clQ", "payments/payC")), pagoEq("payC"))); // «basura» en vez de un mapa: fábrica
+  await assertSucceeds(updateDoc(doc(authed("dentQ"), EQ("clQ", "patients/pEq")), { odontogram: { "11": { state: "caries" } } })); // listas que no son listas: fábrica
+  await assertFails(updateDoc(doc(authed("asisQ"), EQ("clQ", "patients/pEq")), { odontogram: { "12": { state: "caries" } } }));
+});
+
+test("permisos del equipo — el cambio rige en el acto, al darlo y al sacarlo", async () => {
+  // clínica M arranca de fábrica: la recepción no cobra y la caja sí
+  await assertFails(setDoc(doc(authed("recepM"), EQ("clM", "payments/payR1")), pagoEq("payR1")));
+  await assertSucceeds(setDoc(doc(authed("cajaM"), EQ("clM", "payments/payC1")), pagoEq("payC1")));
+  // el administrador reparte y saca
+  await assertSucceeds(updateDoc(doc(authed("adminM"), "clinics/clM"), {
+    "config.permisos": {
+      cashier: { dar: [], quitar: ["payments.manage"] },
+      receptionist: { dar: ["payments.manage"], quitar: [] },
+      dentist: { dar: [], quitar: [] },
+      assistant: { dar: [], quitar: [] },
+    },
+  }));
+  await assertSucceeds(setDoc(doc(authed("recepM"), EQ("clM", "payments/payR2")), pagoEq("payR2")));
+  await assertFails(setDoc(doc(authed("cajaM"), EQ("clM", "payments/payC2")), pagoEq("payC2")));
+  // y vuelve a la fábrica escribiendo las listas vacías (así lo guarda la pantalla)
+  await assertSucceeds(updateDoc(doc(authed("adminM"), "clinics/clM"), {
+    "config.permisos": {
+      cashier: { dar: [], quitar: [] }, receptionist: { dar: [], quitar: [] },
+      dentist: { dar: [], quitar: [] }, assistant: { dar: [], quitar: [] },
+    },
+  }));
+  await assertFails(setDoc(doc(authed("recepM"), EQ("clM", "payments/payR3")), pagoEq("payR3")));
+  await assertSucceeds(setDoc(doc(authed("cajaM"), EQ("clM", "payments/payC3")), pagoEq("payC3")));
+});
+
+test("permisos del equipo — con la suscripción vencida se lee y no se escribe, aunque se haya repartido el permiso", async () => {
+  // clínica W (past_due): recepW tiene payments.manage repartido, pero el cobro manda
+  await assertFails(setDoc(doc(authed("recepW"), EQ("clW", "payments/payR")), pagoEq("payR")));
+  await assertSucceeds(getDoc(doc(authed("recepW"), EQ("clW", "patients/pEq"))));
 });

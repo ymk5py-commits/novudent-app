@@ -196,6 +196,7 @@ ${pasos}
     return `<section class="hoja-rol">
   <h2>Tu rol: ${esc(ROLE_LABEL[rol])}</h2>
   <p class="desc-rol">${esc(ROLE_DESCRIPCION[rol])}</p>
+  ${rol !== "admin" ? `<p class="menu-rol"><strong>De fábrica:</strong> esto es lo que trae el rol; el administrador de tu clínica puede darle o sacarle permisos (<a class="ref" href="#proc-elegir-que-puede-hacer-cada-rol">Elegir qué puede hacer cada rol</a>).</p>` : ""}
   ${menu}
   <div class="dos-col">
     <div><h3>Con este rol podés</h3><ul class="si">${si}</ul></div>
@@ -225,7 +226,7 @@ ${capitulos.map((c) => `<p class="idx-cap"><a href="#cap-${c.id}">${esc(c.titulo
     `<tr><th scope="row">${esc(PERMISOS_EN_PALABRAS[k])}</th>${ROLES_EN_ORDEN.map((r) => `<td class="${can(r, k) ? "si" : "no"}">${can(r, k) ? "✓" : "—"}</td>`).join("")}</tr>`).join("\n");
   const apendicePermisos = `<section class="apendice" id="apendice-permisos">
   <h1 class="capitulo-titulo">Qué puede hacer cada rol</h1>
-  <p class="intro">La tabla sale de la configuración del sistema: si cambia un permiso, el manual lo refleja al volver a generarlo.</p>
+  <p class="intro">La tabla sale de la configuración del sistema y muestra lo que cada rol <strong>trae de fábrica</strong>: si cambia un permiso, el manual lo refleja al volver a generarlo. Cada clínica puede darle o sacarle permisos a un rol en <strong>Administración › Permisos del equipo</strong> (<a class="ref" href="#proc-elegir-que-puede-hacer-cada-rol">Elegir qué puede hacer cada rol</a>).</p>
   <table class="permisos"><thead><tr><th></th>${ROLES_EN_ORDEN.map((r) => `<th scope="col">${esc(ROLE_LABEL[r])}</th>`).join("")}</tr></thead>
   <tbody>
 ${filasPermisos}
