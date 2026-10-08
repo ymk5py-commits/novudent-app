@@ -417,3 +417,18 @@ test.describe("B7 · «Administración › Usuarios y profesionales»", () => {
   });
 });
 
+/* ═══════════════════════ B9 · Plazos de las tareas ═══════════════════════ */
+
+test.describe("B9 · La puerta a los plazos de las tareas", () => {
+  test("se llama «Plazos de las tareas», con texto a la vista donde entra", async ({ page, isMobile }) => {
+    await entrarDemo(page, USUARIOS_DEMO.admin);
+    await page.goto("/app/tareas");
+    const pestana = main(page).getByRole("tab", { name: "Plazos de las tareas" });
+    await expect(pestana).toBeVisible();
+    await expect(pestana).toHaveAttribute("title", "Plazos de las tareas");
+    if (!isMobile) await expect(pestana.getByText("Plazos de las tareas")).toBeVisible();
+    await pestana.click();
+    await expect(main(page).getByRole("heading", { level: 1 })).toHaveText("Plazos de las tareas");
+    await sinScrollHorizontal(page);
+  });
+});

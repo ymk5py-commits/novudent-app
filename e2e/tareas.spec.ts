@@ -158,7 +158,7 @@ test.describe("Bandeja de tareas (administrador)", () => {
     await main(page).getByRole("tab", { name: "Estadísticas" }).click();
     await expect(titulo(page)).toHaveText("Estadísticas");
     for (const c of ["Deudas cobradas", "Presupuestos capturados", "Controles agendados", "Citas re-agendadas"]) await expect(main(page)).toContainText(c);
-    await main(page).getByRole("tab", { name: "Configuración de plazos" }).click();
+    await main(page).getByRole("tab", { name: "Plazos de las tareas" }).click();
     await main(page).getByRole("radiogroup", { name: "Plazo de la tarea de cita" }).getByRole("radio", { name: "1 día" }).click();
     await expect(main(page).getByRole("alert")).toContainText("hay cambios no guardados");
     await main(page).getByRole("button", { name: "Guardar" }).click();
