@@ -421,7 +421,8 @@ function CargaModal({ procs, decimales, onClose, onDescargar, onAplicar }: {
       if (turno === lectura.current) setLeyendo(false);
     }
   };
-  const volverAPegar = () => { lectura.current++; setFuente({ tipo: "texto" }); setErrorArchivo(null); setConfirmando(false); };
+  // Deja de lado el archivo (y una lectura que siga en curso: su resultado ya no se usa).
+  const volverAPegar = () => { lectura.current++; setLeyendo(false); setFuente({ tipo: "texto" }); setErrorArchivo(null); setConfirmando(false); };
   const aplicar = () => onAplicar(procedimientosDeLaCarga(analisis, procs), analisis);
 
   return (
