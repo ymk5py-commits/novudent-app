@@ -168,6 +168,11 @@ describe("leerXlsx — lo que puede traer una hoja", () => {
     const l = await leerXlsx(zip(partes));
     expect(l.hojas.map((h) => [h.nombre, h.filas[0]?.celdas[0]])).toEqual([["A", "1"], ["B", "2"]]);
   });
+  it("un zip armado en Windows con las rutas separadas por «\\» se lee igual", async () => {
+    const partes = partesDeLibro([{ nombre: "Hoja1", filas: `<row r="1"><c r="A1"><v>1</v></c></row>` }]);
+    const conBarras = Object.fromEntries(Object.entries(partes).map(([ruta, xml]) => [ruta.replaceAll("/", "\\"), xml]));
+    expect(filasDe(await leerXlsx(zip(conBarras)), "Hoja1")).toEqual([[1, "1"]]);
+  });
   it("sin _rels/.rels busca el libro donde lo deja Excel (xl/workbook.xml)", async () => {
     const partes = partesDeLibro([{ nombre: "Hoja1", filas: `<row r="1"><c r="A1"><v>1</v></c></row>` }]);
     delete partes["_rels/.rels"];

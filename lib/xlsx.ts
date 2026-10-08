@@ -230,14 +230,15 @@ function abrirZip(bytes: Uint8Array, unzipSync: Unzip) {
   try {
     unzipSync(bytes, {
       filter: (f) => {
-        entradas.set(f.name.toLowerCase(), { nombre: f.name, tamano: f.originalSize, comprimido: f.size, metodo: f.compression });
+        // Las rutas no distinguen mayúsculas (lo dice el formato) y un zip armado en Windows puede separarlas con «\».
+        entradas.set(f.name.replace(/\\/g, "/").toLowerCase(), { nombre: f.name, tamano: f.originalSize, comprimido: f.size, metodo: f.compression });
         return false;
       },
     });
   } catch { throw rechazo.danado(); }
   let leido = 0;
   return {
-    /** El texto de una parte (sin importar mayúsculas en la ruta, como pide el formato), o `null` si no está. */
+    /** El texto de una parte, o `null` si no está. */
     leer(ruta: string): string | null {
       const e = entradas.get(ruta.toLowerCase());
       if (!e) return null;
