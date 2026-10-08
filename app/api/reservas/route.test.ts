@@ -231,9 +231,10 @@ describe("campos extra (Pacientes → Configuración, columna «Agenda online»)
 describe("agenda ocupada: citas del panel (UTC) y reservas online (hora local)", () => {
   const listaOriginal = listCollection.getMockImplementation()!;
   const llamadas = () => setDocument.mock.calls as unknown as [string, Record<string, unknown>][];
-  // Las citas del día salen de queryRange (filtrado en Firestore), no de listCollection.
+  // Las citas del día salen de queryRange (filtrado en Firestore), no de listCollection. Los bloqueos de agenda también se piden con
+  // queryRange: estas citas son solo de la colección de citas.
   const conCitas = (citas: Record<string, unknown>[], pacientes: { id: string; data: Record<string, unknown> }[] = []) => {
-    queryRange.mockImplementation(async () => citas.map((data, i) => ({ id: `a${i}`, data })));
+    queryRange.mockImplementation(async (...a: unknown[]) => (a[1] === "appointments" ? citas.map((data, i) => ({ id: `a${i}`, data })) : []));
     listCollection.mockImplementation((async (_parent: string, col: string) =>
       col === "users" ? [{ id: "u2", data: { role: "dentist", active: true, name: "Dra. Prueba" } }, { id: "u4", data: { role: "dentist", active: true, name: "Dr. Otro" } }]
         : col === "patients" ? pacientes
@@ -403,5 +404,89 @@ describe("la reserva online mira solo lo del día y busca al paciente por CI en 
     expect((await POST(post(turno))).status).toBe(200);
     expect(llamadas().some(([path]) => path.includes("/patients/"))).toBe(true);
     expect(llamadas().some(([path]) => path.includes("/clinicalDocs/"))).toBe(true);
+  });
+});
+
+/* ===== Espacios bloqueados de la agenda (pedido de Camila, 8-oct-2026) =====
+ * Un espacio bloqueado (almuerzo, feriado) no se puede reservar desde la web: ni aparece en la disponibilidad (GET) ni se acepta al
+ * reservar (POST, la frontera real: un cliente puede postear el turno que quiera). Los bloqueos se guardan como instante UTC. */
+describe("espacios bloqueados: la reserva online no los ofrece ni los acepta", () => {
+  const listaOriginal = listCollection.getMockImplementation()!;
+  const llamadas = () => setDocument.mock.calls as unknown as [string, Record<string, unknown>][];
+  const turno = (time: string) => ({ ...datosPaciente, date: MANANA, time, extras: { email: "ana@correo.com" } });
+  /** 12:00–13:00 de mañana en Asunción (UTC-3) = 15:00–16:00 UTC. */
+  const almuerzo = (extra: Record<string, unknown> = {}) =>
+    ({ id: "bl1", clinicId: "cl_demo", dentistId: "u2", start: "2026-08-07T15:00:00.000Z", end: "2026-08-07T16:00:00.000Z", reason: "Almuerzo", ...extra });
+  const conBloqueos = (bloqueos: Record<string, unknown>[]) =>
+    queryRange.mockImplementation(async (...a: unknown[]) => (a[1] === "agendaBlocks" ? bloqueos.map((data, i) => ({ id: `bl${i}`, data })) : []));
+  const slotsDe = async (dentista = "u2") => ((await (await GET(req(`http://x/api/reservas?clinicId=cl_demo&date=${MANANA}`))).json()).slots[dentista] ?? []) as string[];
+
+  beforeEach(() => { setDocument.mockClear(); createIfAbsent.mockClear(); queryRange.mockClear(); listCollection.mockClear(); });
+  afterEach(() => { listCollection.mockImplementation(listaOriginal); queryRange.mockImplementation(async () => []); });
+
+  it("el GET pide los bloqueos de un rango alrededor del día a Firestore, como las citas (no la colección entera)", async () => {
+    await GET(req(`http://x/api/reservas?clinicId=cl_demo&date=${MANANA}`));
+    expect(queryRange.mock.calls).toContainEqual(["clinics/cl_demo", "agendaBlocks", "start", "2026-08-06", "2026-08-09", expect.any(Number)]);
+    expect(listCollection.mock.calls.some((a) => a[1] === "agendaBlocks")).toBe(false);
+  });
+
+  it("el GET no ofrece los turnos de un espacio bloqueado del profesional, y sí los de alrededor", async () => {
+    conBloqueos([almuerzo()]);
+    const slots = await slotsDe();
+    expect(slots).not.toContain("12:00");
+    expect(slots).not.toContain("12:30");
+    expect(slots).toContain("11:30");
+    expect(slots).toContain("13:00");
+  });
+
+  it("un bloqueo de «Todos los profesionales» los saca a todos; uno de otro profesional, no", async () => {
+    listCollection.mockImplementation((async (_parent: string, col: string) =>
+      col === "users" ? [{ id: "u2", data: { role: "dentist", active: true, name: "Dra. Prueba" } }, { id: "u4", data: { role: "dentist", active: true, name: "Dr. Otro" } }]
+        : []) as unknown as typeof listaOriginal);
+    conBloqueos([almuerzo({ dentistId: "*" })]);
+    expect(await slotsDe("u4")).not.toContain("12:00");
+    conBloqueos([almuerzo({ dentistId: "u4" })]);
+    expect(await slotsDe("u2")).toContain("12:00");
+  });
+
+  it("un bloqueo de un box puntual no saca turnos: la reserva online no elige box", async () => {
+    conBloqueos([almuerzo({ dentistId: "*", boxId: "box2" })]);
+    expect(await slotsDe()).toContain("12:00");
+  });
+
+  it("el POST rechaza un turno bloqueado sin tomar el turno: ni lock, ni paciente, ni cita", async () => {
+    conBloqueos([almuerzo()]);
+    const r = await POST(post(turno("12:30")));
+    expect(r.status).toBe(409);
+    expect((await r.json()).error).toMatch(/no está disponible/i);
+    expect(createIfAbsent).not.toHaveBeenCalled();
+    expect(llamadas()).toHaveLength(0);
+  });
+
+  it("el POST deja tomar el turno que viene después del bloqueo", async () => {
+    conBloqueos([almuerzo()]);
+    expect((await POST(post(turno("13:00")))).status).toBe(200);
+    expect(llamadas().some(([path]) => path.includes("/appointments/"))).toBe(true);
+  });
+
+  it("si la consulta de bloqueos falla, se leen de la colección (respaldo) y se respetan igual", async () => {
+    queryRange.mockImplementation(async (...a: unknown[]) => { if (a[1] === "agendaBlocks") throw new Error("query agendaBlocks.start falló (400)"); return []; });
+    listCollection.mockImplementation((async (_parent: string, col: string) =>
+      col === "users" ? [{ id: "u2", data: { role: "dentist", active: true, name: "Dra. Prueba" } }]
+        : col === "agendaBlocks" ? [{ id: "bl1", data: almuerzo() }]
+        : []) as unknown as typeof listaOriginal);
+    expect(await slotsDe()).not.toContain("12:00");
+    expect((await POST(post(turno("12:00")))).status).toBe(409);
+  });
+
+  it("si los bloqueos no se pueden leer de ninguna forma (la regla todavía no está publicada), la reserva online sigue andando", async () => {
+    queryRange.mockImplementation(async (...a: unknown[]) => { if (a[1] === "agendaBlocks") throw new Error("query agendaBlocks.start falló (403)"); return []; });
+    listCollection.mockImplementation((async (_parent: string, col: string) => {
+      if (col === "agendaBlocks") throw new Error("query agendaBlocks falló (403)");
+      return col === "users" ? [{ id: "u2", data: { role: "dentist", active: true, name: "Dra. Prueba" } }] : [];
+    }) as unknown as typeof listaOriginal);
+    const r = await GET(req(`http://x/api/reservas?clinicId=cl_demo&date=${MANANA}`));
+    expect(r.status).toBe(200);
+    expect((await POST(post(turno("12:00")))).status).toBe(200);
   });
 });
