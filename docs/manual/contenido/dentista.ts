@@ -677,15 +677,16 @@ export const procedimientos: Procedimiento[] = [
     paraQue: "Cuando terminaste el diagnóstico y sabés qué necesita el paciente: dejás las prestaciones en un plan para que después se presente, se acepte y se vaya cumpliendo.",
     pasos: [
       { texto: "En la ficha del paciente, tocá **Planes de tratamiento**. Si todavía no tiene ninguno, la pantalla lo dice.", captura: "planes" },
-      { texto: "Tocá «Nuevo plan de tratamiento». Se abre el formulario con el paciente y vos, como profesional, ya puestos." },
-      { texto: "En **Procedimientos**, tocá «Agregar» y elegí la prestación del arancel (por ejemplo «D2330 — Resina compuesta — 1 superficie»). Si es de una pieza, escribí su número (FDI) en el campo **Pieza**.", captura: "prestaciones" },
-      { texto: "Repetí «Agregar» por cada prestación que necesite el paciente. Con el tachito de la derecha sacás una." },
+      { texto: "Tocá «Nuevo plan de tratamiento». Se abre el formulario ahí mismo, con el paciente y vos, como profesional, ya puestos." },
+      { texto: "En **Prestaciones**, escribí en el buscador parte del nombre o el código (por ejemplo «resina» o «D2330») y tocá la prestación en la lista: se agrega abajo. Si es de una pieza, escribí su número (FDI) en el campo **Pieza**.", captura: "prestaciones" },
+      { texto: "Buscá y agregá así cada prestación que necesite el paciente; la misma puede ir más de una vez (por ejemplo, una resina en cada pieza). Con el tachito de la derecha sacás una." },
       { texto: "Si querés, escribí una nota en **Notas** y tocá «Guardar» (se activa cuando hay al menos una prestación). El plan se crea y se abre.", captura: "guardar" },
       { texto: "A la izquierda ves el **Avance del plan** (hoy, «0 / 2 prestaciones realizadas») y, a la derecha, la lista de prestaciones. Tocá el lápiz de al lado del nombre del plan y poné uno que lo identifique: se guarda con Enter.", captura: "plan" },
       { texto: "El plan queda en la lista, bajo **Otros** y con el estado «Borrador»: todavía no está aceptado. Quien maneja los montos (la administración o la caja) lo presenta al paciente con sus precios y lo marca como aceptado; recién ahí pasa a **En ejecución**." },
     ],
     avisos: [
-      { tipo: "ojo", texto: "Con el rol Dentista no ves precios, descuentos ni totales: los precios salen del arancel y los maneja la caja. La administración y la caja arman los planes desde **Presupuestos**, con precios: [[presentar-y-aceptar-un-presupuesto]]." },
+      { tipo: "ojo", texto: "Con el rol Dentista no ves precios, descuentos ni totales (tampoco en el buscador): los precios salen del arancel y los maneja la caja. La administración, la caja y el comercial arman el plan igual, desde la ficha o desde **Presupuestos**, con los precios a la vista: [[presentar-y-aceptar-un-presupuesto]]." },
+      { tipo: "tip", texto: "Si el buscador dice que todavía no hay prestaciones cargadas, el arancel está vacío: lo carga la administración en **Configuración › Arancel de precios** ([[cargar-el-arancel]])." },
       { tipo: "ojo", texto: "En la lista de prestaciones, la columna «Estado» muestra un carrito rojo («Pendiente») mientras la prestación falta y un tilde verde («Realizada») cuando ya se hizo; no dice si se pagó. Marcarlas como realizadas lo hace la administración: [[marcar-una-prestacion-realizada]]." },
       { tipo: "tip", texto: "«Opciones › Duplicar plan de tratamiento» arma una copia del plan, con todo pendiente, para volver a presentarlo. En un plan ya aceptado, «Finalizar plan» lo cierra." },
       { tipo: "tip", texto: "Con el plan Clínica, «Copilot IA» arma un borrador del plan a partir de una radiografía; lo revisás antes de crearlo." },
@@ -704,21 +705,22 @@ export const procedimientos: Procedimiento[] = [
       await nuevo.click();
       const modal = page.getByRole("dialog", { name: "Nuevo plan de tratamiento" });
       await c.expect(modal.getByRole("button", { name: "Guardar" })).toBeDisabled(); // sin prestaciones no se puede guardar
-      await modal.getByRole("button", { name: "Agregar" }).click();
-      await modal.locator("select").first().selectOption({ label: "D2330 — Resina compuesta — 1 superficie" });
+      const buscar = modal.getByRole("combobox", { name: "Buscar prestación" });
+      await buscar.fill("resina");
+      await modal.getByRole("option", { name: /Resina compuesta/ }).click();
       await modal.getByPlaceholder("Pieza").first().fill("21");
-      await modal.getByRole("button", { name: "Agregar" }).click();
-      await modal.locator("select").nth(1).selectOption({ label: "D1110 — Profilaxis (adulto)" });
-      await c.foto("prestaciones", {
-        resaltar: [modal.getByRole("button", { name: "Agregar" }), modal.locator("select").first(), modal.getByPlaceholder("Pieza").first()],
-        recorte: modal,
-        margen: 4,
-      });
+      // La segunda se muestra mientras se elige: el buscador con la lista abierta (sin precios) y la primera ya agregada.
+      await buscar.fill("profilaxis");
+      const opcion = modal.getByRole("option", { name: /Profilaxis \(adulto\)/ });
+      await c.expect(opcion).toBeVisible();
+      await c.foto("prestaciones", { resaltar: [buscar, opcion, modal.getByPlaceholder("Pieza").first()], recorte: modal, margen: 4 });
+      await opcion.click();
       // El tachito saca una prestación (se prueba con una tercera que no queda).
-      await modal.getByRole("button", { name: "Agregar" }).click();
-      await c.expect(modal.getByRole("button", { name: "Quitar" })).toHaveCount(3);
-      await modal.getByRole("button", { name: "Quitar" }).last().click();
-      await c.expect(modal.getByRole("button", { name: "Quitar" })).toHaveCount(2);
+      await buscar.fill("exodoncia");
+      await modal.getByRole("option", { name: /Exodoncia simple/ }).click();
+      await c.expect(modal.getByRole("button", { name: /^Quitar / })).toHaveCount(3);
+      await modal.getByRole("button", { name: "Quitar Exodoncia simple" }).click();
+      await c.expect(modal.getByRole("button", { name: /^Quitar / })).toHaveCount(2);
 
       await modal.getByLabel("Notas").fill("Empezar por la pieza 21 (sensibilidad).");
       await c.foto("guardar", { resaltar: [modal.getByLabel("Notas"), modal.getByRole("button", { name: "Guardar" })], recorte: modal, margen: 4 });
