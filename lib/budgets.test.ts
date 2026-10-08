@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { budgetRealizado, budgetTotal, budgetDescuento, financialStatus, checkStatus, parsearDescuento, descuentoSaneado } from "./budgets";
+import { budgetRealizado, budgetTotal, budgetDescuento, financialStatus, checkStatus, parsearDescuento, descuentoSaneado, presupuestosDePaciente } from "./budgets";
 import type { BudgetItem, Payment } from "./types";
 
 const item = (price: number, status: "pendiente" | "realizado"): BudgetItem => ({
@@ -152,5 +152,33 @@ describe("descuentoSaneado — un % guardado con basura no rompe los totales", (
     expect(budgetTotal(b)).toBe(0);
     expect(budgetDescuento(b)).toBe(1500);
     expect(budgetRealizado({ items: [item(1000, "realizado")], discountPct: 150 })).toBe(0);
+  });
+});
+
+describe("presupuestosDePaciente — el buscador por paciente de Presupuestos", () => {
+  const pacientes = [
+    { id: "p1", firstName: "María", lastName: "González", document: "3.456.789" },
+    { id: "p2", firstName: "Juan", lastName: "Ríos", document: "4.567.890" },
+    { id: "p3", firstName: "Mariano", lastName: "Benítez", document: "" },
+  ];
+  const presupuestos = [{ id: "g1", patientId: "p1" }, { id: "g2", patientId: "p2" }, { id: "g3", patientId: "p1" }, { id: "g4", patientId: "p3" }, { id: "g5", patientId: "borrado" }];
+  const ids = (q: string) => presupuestosDePaciente(presupuestos, pacientes, q).map((b) => b.id);
+
+  it("sin escribir nada están todos, en el mismo orden", () => {
+    expect(ids("")).toEqual(["g1", "g2", "g3", "g4", "g5"]);
+    expect(ids("   ")).toEqual(["g1", "g2", "g3", "g4", "g5"]);
+  });
+  it("por nombre o apellido, sin tildes ni mayúsculas, con todas las palabras en cualquier orden", () => {
+    expect(ids("MARIA")).toEqual(["g1", "g3", "g4"]); // María y Mariano
+    expect(ids("gonzalez maría")).toEqual(["g1", "g3"]);
+    expect(ids("rios")).toEqual(["g2"]);
+  });
+  it("por CI, con o sin puntos y aunque sea una parte", () => {
+    expect(ids("3.456.789")).toEqual(["g1", "g3"]);
+    expect(ids("3456789")).toEqual(["g1", "g3"]);
+    expect(ids("567890")).toEqual(["g2"]);
+  });
+  it("si nadie coincide no queda ninguno (tampoco el de un paciente que ya no existe)", () => {
+    expect(ids("zzz")).toEqual([]);
   });
 });
