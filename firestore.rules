@@ -350,6 +350,13 @@ service cloud.firestore {
         allow read:  if isMember(cid) || isService() || isDemo(cid);
         allow write: if canWrite(cid);
       }
+      // Espacios bloqueados de la agenda (almuerzo, reunión, feriado: lib/bloqueos.ts). Igual que las citas: los lee todo miembro y el
+      // usuario de servicio (la reserva online los respeta, /api/reservas) y los escribe cualquier miembro con la suscripción al día.
+      // Quién bloquea (agenda.edit) lo esconde la interfaz, como con las citas: las reglas no miran los permisos de la agenda.
+      match /agendaBlocks/{docId} {
+        allow read:  if isMember(cid) || isService() || isDemo(cid);
+        allow write: if canWrite(cid);
+      }
       // billing: lo escriben admin y caja según la matriz; las reglas lo dejan en
       // isMember (pendiente de la fase 2: enviar a cobro vs. finalizar).
       match /billing/{docId}     {
