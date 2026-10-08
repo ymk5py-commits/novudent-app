@@ -47,6 +47,7 @@ export const USUARIOS_DEMO = {
   asistente: "Paola Asistente",
   recepcionista: "Laura Recepción",
   caja: "Marta Caja",
+  comercial: "Gustavo Comercial",
 } as const;
 
 /** Entra a la demo como un usuario. `/login?demo=1` es la puerta que dejaron para ventas. */

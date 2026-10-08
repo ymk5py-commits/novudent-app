@@ -78,6 +78,34 @@ describe("alta de usuarios del equipo", () => {
     expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain("accounts:signUp");
   });
 
+  it("acepta el rol Comercial, que es de fábrica", async () => {
+    const response = await POST(req({ ...body, role: "commercial" }));
+    expect(response.status).toBe(200);
+    expect(docs["clinics/cl_a/users/user_new"]).toMatchObject({ role: "commercial" });
+  });
+
+  it("acepta un rol propio que la clínica tiene creado, y lo guarda con su id", async () => {
+    docs["clinics/cl_a"].config = { rolesPropios: [{ id: "rp_ab12cd34", nombre: "Coordinadora de tratamientos" }] };
+    const response = await POST(req({ ...body, role: "rp_ab12cd34" }));
+    expect(response.status).toBe(200);
+    expect(docs["clinics/cl_a/users/user_new"]).toMatchObject({ role: "rp_ab12cd34", active: true });
+  });
+
+  it("rechaza un rol propio que la clínica no tiene creado, sin crear la cuenta", async () => {
+    docs["clinics/cl_a"].config = { rolesPropios: [{ id: "rp_ab12cd34", nombre: "Coordinadora" }] };
+    const response = await POST(req({ ...body, role: "rp_otraclinica" }));
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toMatch(/no existe/);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("rechaza un rol propio de otra clínica aunque el id tenga forma válida, y los ids que no sirven", async () => {
+    for (const role of ["rp_x", "constructor", "__proto__", "con espacio", "", "x".repeat(41)]) {
+      expect((await POST(req({ ...body, role }))).status, role).toBe(400);
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("rechaza a no administradores y cuentas anónimas sin crear Auth", async () => {
     actor.role = "receptionist";
     expect((await POST(req())).status).toBe(403);

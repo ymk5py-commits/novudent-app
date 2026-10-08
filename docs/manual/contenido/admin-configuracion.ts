@@ -170,7 +170,7 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Entrá a **Administración** (menú de arriba) y elegí «Usuarios y profesionales».", captura: "menu" },
       { texto: "En **Usuarios del equipo**, tocá «Agregar usuario».", captura: "boton" },
       { texto: "Escribí el **Nombre completo**, el **Email** y una **Contraseña provisional** de al menos 6 caracteres. El **Teléfono (WhatsApp)** es opcional.", captura: "formulario" },
-      { texto: "Elegí el **Rol**: Administrador, Recepción y caja, Recepcionista, Dentista o Asistente de doctores. Debajo del desplegable se lee qué puede hacer la persona con ese rol.", captura: "rol" },
+      { texto: "Elegí el **Rol**: Administrador, Recepción y caja, Recepcionista, Comercial, Dentista o Asistente de doctores, o uno de los que creó tu clínica ([[crear-un-rol-propio]]). Debajo del desplegable se lee qué puede hacer la persona con ese rol.", captura: "rol" },
       { texto: "Tocá «Crear usuario». Pasale a la persona su correo y su contraseña provisional: la primera vez que entre, el sistema le pide elegir una propia ([[cambiar-tu-contrasena]])." },
       { texto: "Si es un dentista, completá en su fila la **Especialidad** y el **%** de comisión (alimenta el cálculo del pago en Reportes). Si es una asistente, asignale sus doctores: [[asignar-doctores-a-una-asistente]].", captura: "dentista" },
     ],
@@ -278,7 +278,7 @@ export const procedimientos: Procedimiento[] = [
     antes: ["Saber qué rol querés cambiar. Lo que trae cada uno de fábrica está en el apéndice **Qué puede hacer cada rol**."],
     pasos: [
       { texto: "Entrá a **Administración** y elegí «Permisos del equipo».", captura: "menu" },
-      { texto: "Arriba elegí el **rol** que querés cambiar: Recepción y caja, Recepcionista, Dentista o Asistente de doctores. El Administrador no aparece porque siempre puede todo.", captura: "roles" },
+      { texto: "Arriba elegí el **rol** que querés cambiar: Recepción y caja, Recepcionista, Comercial, Dentista o Asistente de doctores (y los roles que hayas creado: [[crear-un-rol-propio]]). Con el Administrador solo se puede cambiar el nombre, porque siempre puede todo.", captura: "roles" },
       { texto: "Debajo están los permisos, ordenados por tema. Marcá lo que ese rol **puede** y desmarcá lo que **no**. Cada fila dice si es de **Ver** (qué información aparece) o de **Hacer** (qué acciones ejecuta), y lo que cambiás respecto de fábrica queda marcado «Agregado» o «Quitado».", captura: "marcar" },
       { texto: "Si el permiso que marcás necesita otro, el sistema lo marca solo (**1**) y lo explica en un cuadro azul (**2**): para cobrar hace falta ver los montos. Al revés pasa igual: si sacás «Ver montos», se saca también «Cobrar».", captura: "arrastre" },
       { texto: "Tocá «Guardar permisos». El cambio rige **en el acto** para todo el equipo, también para quien ya tiene la sesión abierta.", captura: "guardado" },
@@ -330,6 +330,67 @@ export const procedimientos: Procedimiento[] = [
       const titulo = page.getByRole("heading", { name: "Cajas", level: 1 });
       await c.expect(titulo).toBeVisible();
       await c.foto("ve", { pantalla: true, alto: 560, resaltar: titulo, ocultar: pieDeSoporte(page) });
+    },
+  },
+
+  /* ─────────────────────────────── 3 ter. Roles propios y nombres ─────────────────────────────── */
+  {
+    id: "crear-un-rol-propio",
+    capitulo: "admin",
+    titulo: "Crear un rol propio o cambiarle el nombre a uno",
+    roles: ["admin"],
+    paraQue: "Cuando la clínica tiene un puesto que no encaja con los roles que trae Novudent («Coordinación de tratamientos», «Marketing»…), o cuando querés que un rol se llame como lo llaman en tu clínica («Odontólogo» en vez de «Dentista»).",
+    antes: ["Saber qué tiene que poder hacer la persona. Si se parece a un rol que ya existe, podés copiar sus permisos y después ajustarlos."],
+    pasos: [
+      { texto: "Entrá a **Administración › Permisos del equipo**. Al final de la fila de roles está «Nuevo rol».", captura: "nuevo" },
+      { texto: "Tocá «Nuevo rol», escribí el **nombre** que quieras y elegí de qué rol **copiar los permisos** (o «Ninguno» para tildarlos vos). Tocá «Crear rol».", captura: "formulario" },
+      { texto: "El rol queda creado y elegido. Marcá lo que puede ver y hacer, igual que en [[elegir-que-puede-hacer-cada-rol]], y tocá «Guardar permisos». Ahí mismo, en **Nombre del rol**, lo podés renombrar.", captura: "permisos" },
+      { texto: "Asignáselo a una persona: en **Administración › Usuarios y profesionales**, elegilo en el desplegable de rol de su fila (o al crear un usuario nuevo).", captura: "asignar" },
+      { texto: "Para cambiarle el nombre a un rol que ya viene con Novudent, entrá a su pestaña, escribí el nombre nuevo en **Nombre del rol** y tocá «Guardar permisos». «Volver al nombre de fábrica» lo deshace." },
+    ],
+    avisos: [
+      { tipo: "ojo", texto: "Un rol propio **no trae nada de fábrica**: puede exactamente lo que le tildes. Si lo creás copiando otro rol, es una copia de ese momento; si después cambia el rol original, el tuyo no se mueve." },
+      { tipo: "ojo", texto: "Un rol propio **no atiende pacientes**: no aparece como profesional en la agenda, ni en las liquidaciones, ni cuenta para el límite de profesionales del plan, y no tiene doctores asignados como la asistente. Si necesitás algo parecido a un dentista o una asistente, usá ese rol y cambiale el nombre." },
+      { tipo: "ojo", texto: "No se puede eliminar un rol mientras alguien lo tenga, ni siquiera una persona dada de baja: primero pasalas a otro rol. «Crear usuarios» y «Configurar la clínica» tampoco se pueden dar a un rol propio: son solo del administrador." },
+      { tipo: "tip", texto: "Los nombres valen solo para tu clínica: lo que se lee en pantalla (Usuarios, el menú de tu usuario, el chat) cambia, pero este manual sigue usando los nombres de fábrica." },
+      { tipo: "revisar", texto: "¿Hace falta que un rol propio pueda ser profesional (aparecer en la agenda y cobrar comisión como un dentista)? Hoy no: para eso se usa el rol Dentista con otro nombre." },
+    ],
+    capturar: async (c) => {
+      const { page } = c;
+      await c.entrar("admin", "/app");
+      await irPorElMenu(c, "Permisos del equipo");
+
+      const permisos = page.getByRole("region", { name: "Permisos del equipo" });
+      const roles = permisos.getByRole("group", { name: "Rol", exact: true });
+      const nuevo = roles.getByRole("button", { name: "Nuevo rol" });
+      await colocar(page, permisos, 150);
+      await c.foto("nuevo", { recorte: roles, margen: 8, resaltar: nuevo });
+
+      await nuevo.click();
+      const nombre = permisos.getByLabel("Nombre del rol nuevo");
+      const plantilla = permisos.getByLabel("Empezar con los permisos de");
+      await nombre.fill("Coordinación de tratamientos");
+      await plantilla.selectOption({ label: "Comercial" });
+      const crear = permisos.getByRole("button", { name: "Crear rol" });
+      const panel = nombre.locator(`xpath=ancestor::div[${conClase("p-3")}][1]`);
+      await sacarMouse(page);
+      await c.foto("formulario", { recorte: panel, margen: 8, resaltar: [nombre, plantilla, crear] });
+      await crear.click();
+
+      const propio = roles.getByRole("button", { name: "Coordinación de tratamientos" });
+      await c.expect(propio).toHaveAttribute("aria-pressed", "true");
+      const nombreDelRol = permisos.getByLabel("Nombre del rol", { exact: true });
+      await sacarMouse(page);
+      await c.foto("permisos", { recorte: [roles, nombreDelRol, permisos.getByText(/Rol propio:/)], margen: 8, resaltar: [propio, nombreDelRol] });
+
+      await irPorElMenu(c, "Usuarios y profesionales");
+      const usuarios = tarjeta(page, "Usuarios del equipo");
+      await colocar(page, usuarios);
+      const laura = filaDe(page, "Laura Recepción");
+      const selector = laura.getByRole("combobox", { name: "Rol de Laura Recepción" });
+      await selector.selectOption({ label: "Coordinación de tratamientos" });
+      await sacarMouse(page);
+      await c.foto("asignar", { recorte: laura, margen: 2, resaltar: selector });
     },
   },
 

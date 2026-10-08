@@ -14,7 +14,7 @@ import { useAlcance } from "@/lib/useAlcance";
 import { useStore, fullName } from "@/lib/store";
 import { pendientesPorPaciente } from "@/lib/documentosClinicos";
 import { CampanaPendientes } from "@/components/CampanaPendientes";
-import { can, ROLE_LABEL, type Permission } from "@/lib/rbac";
+import { can, rolLabel, type Permission } from "@/lib/rbac";
 import { planOf, type PlanFeature } from "@/lib/plan";
 import { subscriptionPlanId } from "@/lib/subscription";
 import ChangePasswordGate from "@/components/ChangePasswordGate";
@@ -196,7 +196,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-3 border-t border-clinic-border px-4 py-3">
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-bold text-clinic-text">{session.name}</span>
-            <span className="block truncate text-[11px] text-clinic-muted">{ROLE_LABEL[session.role]}</span>
+            <span className="block truncate text-[11px] text-clinic-muted">{rolLabel(session.role)}</span>
           </span>
           <button type="button" onClick={abrirAyuda} aria-haspopup="dialog" className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-clinic-border px-3 py-2 text-sm font-bold text-azure-700 transition-colors hover:bg-azure-50">
             <Headset className="h-4 w-4" aria-hidden /> Ayuda

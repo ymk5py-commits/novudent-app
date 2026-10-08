@@ -1,11 +1,14 @@
 /* ===== Modelo de datos Novudent (sec. 4 del Documento Maestro) ===== */
 import type { CurrencyCode } from "./currency";
 import type { EntidadFinanciera } from "./bancos";
-import type { PermisosDeLaClinica } from "./rbac";
+import type { PermisosDeLaClinica, RolPropio } from "./rbac";
 
-/** Roles v3 (27/9/2026): la recepción se separa de la caja, y dentista y asistente
- *  quedan con lo clínico, sin montos ni datos personales (ver lib/rbac.ts). */
-export type Role = "admin" | "cashier" | "receptionist" | "dentist" | "assistant";
+/** Roles de fábrica. v3 (27/9/2026): la recepción se separa de la caja, y dentista y asistente
+ *  quedan con lo clínico, sin montos ni datos personales. 8/10/2026: se suma «Comercial» (ver lib/rbac.ts). */
+export type Role = "admin" | "cashier" | "receptionist" | "commercial" | "dentist" | "assistant";
+
+/** El rol de una persona: uno de fábrica (`Role`) o el id de un rol propio de la clínica (`config.rolesPropios`). */
+export type RolId = string;
 
 /** Convenio empresarial / aseguradora con descuento pactado */
 export interface Convenio {
@@ -69,6 +72,10 @@ export interface Clinic {
     /** Permisos que la clínica reparte o saca a cada rol, como diferencia contra la matriz de fábrica
      *  (Administración › Permisos del equipo). Solo los escribe el administrador: la regla de `clinics/{cid}` lo exige. */
     permisos?: PermisosDeLaClinica;
+    /** Roles que la clínica creó con el nombre que quiso (Administración › Permisos del equipo). Lo que puede hacer cada uno está en `permisos`. */
+    rolesPropios?: RolPropio[];
+    /** Otro nombre para un rol de fábrica («Odontólogo» en vez de «Dentista»). Solo cambia lo que se lee en pantalla. */
+    nombresDeRoles?: Partial<Record<Role, string>>;
   };
 }
 
@@ -107,7 +114,7 @@ export interface User {
   clinicId: string;
   name: string;
   email: string;
-  role: Role;
+  role: RolId;
   color: string; // color de agenda
   active: boolean;
   /** uid de Firebase Auth (cuenta real creada por el administrador) */
@@ -832,7 +839,7 @@ export interface BotikaConfig {
 export interface Session {
   userId: string;
   clinicId: string;
-  role: Role;
+  role: RolId;
   name: string;
 }
 

@@ -1,8 +1,8 @@
 import { test, expect, entrarDemo, leerDB, USUARIOS_DEMO } from "./soporte";
 
 /* Roles v3 (27/9/2026): Administrador · Recepción y caja · Recepcionista ·
-   Dentista · Asistente de doctores. Lo clínico no ve plata ni datos personales;
-   la recepción no ve plata; solo la caja y el admin cobran. */
+   Dentista · Asistente de doctores; y desde el 8/10/2026 Comercial. Lo clínico no ve plata ni datos
+   personales; la recepción no ve plata; solo la caja y el admin cobran. */
 
 const menu = (page: import("@playwright/test").Page) => page.locator("aside");
 const main = (page: import("@playwright/test").Page) => page.locator("main");
@@ -114,6 +114,39 @@ test.describe("Recepcionista", () => {
   });
 });
 
+test.describe("Comercial", () => {
+  test.beforeEach(async ({ page, isMobile }) => {
+    test.skip(isMobile, "el menú lateral se prueba en escritorio");
+    await entrarDemo(page, USUARIOS_DEMO.comercial);
+  });
+
+  test("vende: agenda de todos, datos del paciente, presupuestos y CRM, sin caja ni números del negocio", async ({ page }) => {
+    await expect(menu(page)).not.toContainText("Cajas");
+    for (const ruta of ["/app/agenda", "/app/presupuestos", "/app/crm", "/app/facturacion"]) {
+      await page.goto(ruta);
+      await expect(main(page), ruta).not.toContainText("Acceso denegado");
+    }
+    await denegadas(page, ["/app/caja", "/app/reportes", "/app/liquidaciones", "/app/laboratorios", "/app/configuracion"]);
+    await page.goto("/app/gastos");
+    await expect(main(page)).toContainText("no tiene acceso a Gastos");
+  });
+
+  test("abre los datos del paciente y sus planes CON montos, pero de la ficha clínica solo los documentos", async ({ page }) => {
+    await page.goto("/app/pacientes/p1");
+    await expect(main(page).getByRole("button", { name: "Datos personales" })).toBeVisible();
+    await main(page).getByRole("button", { name: "Ficha clínica", exact: true }).click();
+    await expect(main(page).getByRole("button", { name: /^Documentos/ })).toBeVisible();
+    for (const oculta of ["Resumen", "Evoluciones", "Antecedentes médicos", "Odontograma", "Periodoncia", "Historial", "Radiografías", "Recetas"]) {
+      await expect(main(page).getByRole("button", { name: oculta, exact: true }), oculta).toHaveCount(0);
+    }
+    await main(page).getByRole("button", { name: "Planes de tratamiento" }).click();
+    await expect(main(page)).toContainText("Estado financiero"); // el comercial presenta presupuestos: ve la parte económica…
+    await main(page).getByRole("button", { name: /#g1: Plan dental integral/ }).click();
+    await expect(main(page)).toContainText(MONTO); // …con sus montos
+    await expect(main(page).getByRole("button", { name: "Recibir pago" })).toHaveCount(0); // pero no cobra
+  });
+});
+
 test.describe("Recepción y caja", () => {
   test.beforeEach(async ({ page, isMobile }) => {
     test.skip(isMobile, "el menú lateral se prueba en escritorio");
@@ -137,7 +170,7 @@ test.describe("Recepción y caja", () => {
 test.describe("Esterilización y Registro ambiental", () => {
   const RUTAS = ["/app/esterilizacion", "/app/ambiental"];
   for (const [quien, usuario] of [
-    ["la recepcionista", USUARIOS_DEMO.recepcionista], ["Recepción y caja", USUARIOS_DEMO.caja],
+    ["la recepcionista", USUARIOS_DEMO.recepcionista], ["Recepción y caja", USUARIOS_DEMO.caja], ["el comercial", USUARIOS_DEMO.comercial],
     ["el dentista", USUARIOS_DEMO.dentista], ["la asistente", USUARIOS_DEMO.asistente],
   ] as const) {
     test(`${quien} no entra escribiendo la URL`, async ({ page, isMobile }) => {

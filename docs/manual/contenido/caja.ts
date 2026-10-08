@@ -449,7 +449,7 @@ export const procedimientos: Procedimiento[] = [
     id: "presentar-y-aceptar-un-presupuesto",
     capitulo: "cashier",
     titulo: "Presentar y aceptar un presupuesto",
-    roles: ["cashier", "admin"],
+    roles: ["cashier", "commercial", "admin"],
     paraQue: "Para armar el presupuesto de un tratamiento, entregárselo al paciente y registrar que lo aceptó. Pasa por tres estados: Borrador, Presentado y Aceptado.",
     antes: ["El paciente tiene ficha.", "Saber qué prestaciones lleva (te las indica el dentista) y si el paciente tiene convenio."],
     pasos: [

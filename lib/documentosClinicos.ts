@@ -2,7 +2,7 @@ import { escapeHtml } from "./html";
 import { PLANTILLAS_DE_FABRICA } from "./plantillasDocumento";
 import { can } from "./rbac";
 import type {
-  Budget, CampoDocumento, DocumentoClinico, EstadoDocumento, Patient, PatientForm, PlantillaDocumento, Role,
+  Budget, CampoDocumento, DocumentoClinico, EstadoDocumento, Patient, PatientForm, PlantillaDocumento, RolId,
   SeccionDocumento, TipoCampoDocumento,
 } from "./types";
 
@@ -295,11 +295,11 @@ export function historiaClinicaPendiente(o: {
 /* ═══ Permisos y etiquetas ═══ */
 
 /** Ver Documentos clínicos: quien gestiona formularios o puede leer la ficha. */
-export const puedeVerDocumentos = (role: Role): boolean => can(role, "engagement.forms") || can(role, "emr.read");
+export const puedeVerDocumentos = (role: RolId): boolean => can(role, "engagement.forms") || can(role, "emr.read");
 
 /** Crear, completar y anular: quien gestiona formularios o escribe la ficha. Tiene que coincidir
  *  con la regla `clinicalDocs` de firestore.rules (hay un test que lo ata a la matriz). */
-export const puedeEditarDocumentos = (role: Role): boolean => can(role, "engagement.forms") || can(role, "emr.write");
+export const puedeEditarDocumentos = (role: RolId): boolean => can(role, "engagement.forms") || can(role, "emr.write");
 
 /** «#4351 — Extra», como el selector de plan de Dentalink. */
 export const etiquetaPlan = (b: Pick<Budget, "id" | "name">): string => `#${b.id} — ${b.name?.trim() || "Plan de tratamiento"}`;

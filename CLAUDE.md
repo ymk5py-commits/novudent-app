@@ -230,11 +230,28 @@ arrastró. **Qué hace cumplir el servidor** (`firestore.rules`: `tienePermiso(c
 dejando leer a todo miembro de la clínica**, y la pantalla lo dice. Un test (`lib/permisosEquipo.test.ts`) ata la lista de roles de fábrica
 de cada `tienePermiso(...)` de las reglas a la matriz y a `PERMISOS_QUE_EXIGE_EL_SERVIDOR`: si cambiás la matriz hay que cambiar las
 reglas, y al revés. Solo el administrador escribe `clinics/{cid}` (nadie se da permisos a sí mismo). El store escucha el documento de la
-clínica **solo para `config.permisos`** (el cambio llega en vivo, sin recargar; no toma el resto de la configuración para no pisar lo que
+clínica **solo para `config.permisos`, `config.rolesPropios` y `config.nombresDeRoles`** (el cambio llega en vivo, sin recargar; no toma el resto de la configuración para no pisar lo que
 este navegador todavía está guardando). Con `dar` y `quitar` a la vez gana `dar`, igual en cliente y en reglas. **Hay que publicar las
 reglas antes del código** (el código viejo ignora `permisos`; las reglas nuevas, sin ajustes, se comportan como siempre). Los tests del
 emulador («permisos del equipo») están al final de `test/firestore-rules.test.mjs`. La landing y el manual muestran la matriz de fábrica
 (`permisoDeFabrica`), nunca los ajustes de una clínica.
+
+**Comercial, roles propios y nombres (8-oct-2026, segundo pedido de Camila: «tiene que haber también comercial… o escribir el nombre que le queramos
+poner»):** `Role` ahora son seis roles de fábrica (se suma **`commercial`**, «Comercial»: agenda de todos, datos del paciente, presupuestos con
+sus montos y CRM; sin caja, ficha clínica ni reportes). `User.role` y `Session.role` son `RolId` (= `string`): un rol de fábrica **o el id de un rol
+propio** (`rp_` + 8 letras/números). Cada clínica guarda `config.rolesPropios: {id, nombre}[]` (los roles que creó) y `config.nombresDeRoles`
+(otro nombre para un rol de fábrica; vacío = el de fábrica). **Un rol propio no hereda nada de fábrica**: lo que puede es su lista `dar` en
+`config.permisos[id]` (al crearlo se puede copiar lo que HOY puede otro rol; después es independiente). Por eso **las reglas de Firestore ya lo
+soportan sin saber que existe** (`tienePermiso` mira `dar`); lo único que cambió en las reglas es sumar `'commercial'` a la lista de
+`isRecepcion` (`engagement.forms`), y el test de sincronía lo exige. **Para mostrar un rol usá `rolLabel(role)` / `rolDescripcion(role)`, nunca
+`ROLE_LABEL[role]`** (esos son los de fábrica y el compilador no deja indexarlos con un `RolId`); para los selectores, `rolesParaElegir()`. Todo
+eso (permisos, roles propios, nombres) lo aplica el store en cada render con `aplicarRolesDeLaClinica(config)` y lo escucha en vivo; las rutas del
+servidor pasan por `normalizarPermisos`/`normalizarRolesPropios` (`/api/team-users` solo acepta un rol propio que la clínica tenga creado). Los ids
+de rol pasan por `esIdDeRolValido` (nunca `admin`, ni nombres de propiedades de `Object`): `permisoEfectivo` mira los ajustes con `hasOwnProperty`.
+**Un rol propio NO es profesional**: los chequeos `role === "dentist"` / `"assistant"` (lista de profesionales, liquidaciones, límite del plan,
+doctores de la asistente) no lo ven; si la clínica necesita algo parecido a un dentista, usa el rol Dentista con otro nombre. Lógica pura y con tests
+en `lib/rolesPropios.ts` (`crearRolPropio`, `errorDeNombreDeRol`, `personasConElRol`: un rol con gente, también dada de baja, no se elimina). La demo
+trae a «Gustavo Comercial» (`u7`); la demo de **producción** no lo tiene hasta «Reiniciar demo».
 
 **Manual de procedimientos (oct-2026):** `docs/manual/` arma un PDF por rol con capturas reales de la demo
 (`npm run manual:capturas` + `npm run manual:pdf`; necesita WeasyPrint y poppler). El texto de cada procedimiento vive en

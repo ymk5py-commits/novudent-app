@@ -13,6 +13,7 @@ const MODULOS: Record<CapituloId, Procedimiento[][]> = {
   todos: [todos],
   receptionist: [recepcion],
   cashier: [caja],
+  commercial: [], // sin procedimientos propios: hace lo de la recepción y presenta presupuestos (la hoja del rol los lista)
   dentist: [dentista],
   assistant: [asistente],
   admin: [adminConfiguracion, adminGestion],

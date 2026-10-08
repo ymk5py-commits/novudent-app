@@ -5,7 +5,7 @@ export const procedimientos: Procedimiento[] = [
     id: "entrar-al-sistema",
     capitulo: "todos",
     titulo: "Entrar al sistema y salir",
-    roles: ["receptionist", "cashier", "dentist", "assistant", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "dentist", "assistant", "admin"],
     paraQue: "Al empezar la jornada, y al terminarla o cuando le prestás la computadora a otra persona.",
     antes: ["Tener tu usuario y tu contraseña: te los da la administración de tu clínica."],
     pasos: [
@@ -39,7 +39,7 @@ export const procedimientos: Procedimiento[] = [
     id: "conocer-inicio",
     capitulo: "todos",
     titulo: "Conocer la pantalla de Inicio",
-    roles: ["receptionist", "cashier", "dentist", "assistant", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "dentist", "assistant", "admin"],
     paraQue: "Es lo primero que ves al entrar. Te dice cómo viene el día y te lleva rápido a lo importante.",
     pasos: [
       { texto: "Al entrar llegás a **Inicio**. Arriba están el saludo y cuántas citas tenés hoy.", captura: "inicio" },
@@ -62,7 +62,7 @@ export const procedimientos: Procedimiento[] = [
     id: "cambiar-tu-contrasena",
     capitulo: "todos",
     titulo: "Cambiar tu contraseña",
-    roles: ["receptionist", "cashier", "dentist", "assistant", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "dentist", "assistant", "admin"],
     paraQue: "Cuando la administración te dio una contraseña provisoria, o cuando querés cambiar la que tenés.",
     pasos: [
       { texto: "Tocá tu nombre (arriba a la derecha) y elegí «Mi perfil».", captura: "menu" },
@@ -89,7 +89,7 @@ export const procedimientos: Procedimiento[] = [
     id: "usar-mi-agenda",
     capitulo: "todos",
     titulo: "Usar Mi agenda",
-    roles: ["receptionist", "cashier", "dentist", "assistant", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "dentist", "assistant", "admin"],
     paraQue: "Para ordenar tu día y tu semana: lo que anotaste vos y lo que el sistema te recuerda, con una barra que muestra cuánto llevás hecho.",
     pasos: [
       { texto: "En **Inicio**, bajá hasta **Mi agenda**. «Hoy» muestra el día y «Semana», de lunes a domingo; la barra de arriba cuenta cuántas tareas llevás hechas.", captura: "tarjeta" },
@@ -138,7 +138,7 @@ export const procedimientos: Procedimiento[] = [
     id: "buscar-un-paciente",
     capitulo: "todos",
     titulo: "Buscar a un paciente",
-    roles: ["receptionist", "cashier", "dentist", "assistant", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "dentist", "assistant", "admin"],
     paraQue: "Para abrir la ficha de un paciente en pocos segundos, estés donde estés.",
     pasos: [
       { texto: "Escribí el nombre (o la CI) en el buscador de arriba, **Buscar paciente…**. Aparecen hasta seis coincidencias.", captura: "buscador" },
@@ -166,7 +166,7 @@ export const procedimientos: Procedimiento[] = [
     id: "ver-los-pendientes",
     capitulo: "todos",
     titulo: "Ver los pendientes de la campana",
-    roles: ["receptionist", "cashier", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "admin"],
     paraQue: "Para saber de un vistazo qué pacientes tienen documentos clínicos sin completar (y, si ves montos, qué cobros están retenidos).",
     pasos: [
       { texto: "Mirá la campana de arriba: el número rojo es la cantidad de pacientes con algo pendiente.", captura: "campana" },
@@ -192,7 +192,7 @@ export const procedimientos: Procedimiento[] = [
     id: "trabajar-las-tareas",
     capitulo: "todos",
     titulo: "Trabajar las tareas del día",
-    roles: ["receptionist", "cashier", "dentist", "assistant", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "dentist", "assistant", "admin"],
     paraQue: "Para no dejar nada colgado: llamar para confirmar una cita, volver a contactar a un paciente, resolver lo que el sistema detecta.",
     pasos: [
       { texto: "Entrá a **Tareas** (menú de arriba). Ves lo que toca hoy: las que arma el sistema solo (por ejemplo, una cita sin confirmar) y las que anotó el equipo.", captura: "bandeja" },
@@ -225,7 +225,7 @@ export const procedimientos: Procedimiento[] = [
     id: "usar-el-chat",
     capitulo: "todos",
     titulo: "Escribirle al equipo por el chat",
-    roles: ["receptionist", "cashier", "dentist", "assistant", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "dentist", "assistant", "admin"],
     paraQue: "Para hablar con tus compañeros sin salir del sistema: avisar que llegó un paciente, pedir algo, coordinar.",
     pasos: [
       { texto: "Entrá a **Chat**. A la izquierda están el canal **Equipo** (lo lee toda la clínica) y los mensajes directos con cada persona.", captura: "lista" },
@@ -248,7 +248,7 @@ export const procedimientos: Procedimiento[] = [
     id: "pedir-ayuda",
     capitulo: "todos",
     titulo: "Pedir ayuda a Novum",
-    roles: ["receptionist", "cashier", "dentist", "assistant", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "dentist", "assistant", "admin"],
     paraQue: "Cuando algo no se entiende, no sale como esperabas o necesitás saber cómo se hace.",
     pasos: [
       { texto: "Tocá **Ayuda**, arriba, o el botón azul redondo de abajo a la derecha. Está en todas las pantallas.", captura: "boton" },

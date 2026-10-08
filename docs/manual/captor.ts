@@ -16,6 +16,7 @@ const USUARIO_DEL_ROL: Record<RolId, string> = {
   admin: USUARIOS_DEMO.admin,
   cashier: USUARIOS_DEMO.caja,
   receptionist: USUARIOS_DEMO.recepcionista,
+  commercial: USUARIOS_DEMO.comercial,
   dentist: USUARIOS_DEMO.dentista,
   assistant: USUARIOS_DEMO.asistente,
 };

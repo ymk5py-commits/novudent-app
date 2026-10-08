@@ -1,10 +1,10 @@
 /** Lógica pura de Configuración › Permisos del equipo: qué puede hacer cada rol en ESTA clínica, qué se guarda y qué
  *  arrastra cada cambio. La matriz de fábrica y `can()` están en `lib/rbac.ts`; esto es lo que usa la pantalla. */
 import {
-  ALL_PERMISSIONS, PERMISOS_SOLO_ADMIN, ROLES_CONFIGURABLES, permisoDeFabrica, permisoEfectivo,
-  type Permission, type PermisosDeLaClinica, type RolConfigurable,
+  ALL_PERMISSIONS, PERMISOS_SOLO_ADMIN, permisoDeFabrica, permisoEfectivo,
+  type Permission, type PermisosDeLaClinica,
 } from "./rbac";
-import type { Role } from "./types";
+import type { RolId } from "./types";
 
 /** Lo que cada permiso necesita para servir de algo. Dar «cobrar» sin «ver montos» dejaría una caja que no muestra
  *  cuánto cobra; sacar «ver la ficha» y dejar «escribir en la ficha» dejaría un botón sobre una pantalla vacía. */
@@ -23,12 +23,12 @@ export const REQUIERE: Partial<Record<Permission, Permission[]>> = {
 };
 
 /** Los permisos de un rol en esta clínica (fábrica + lo que se dio y se sacó), en el orden de la matriz. */
-export function efectivosDe(rol: Role, permisos?: PermisosDeLaClinica): Permission[] {
+export function efectivosDe(rol: RolId, permisos?: PermisosDeLaClinica): Permission[] {
   return ALL_PERMISSIONS.filter((p) => permisoEfectivo(rol, p, permisos));
 }
 
 /** La diferencia contra la fábrica: lo único que hace falta guardar de un rol. */
-export function ajustesDesdeEfectivos(rol: RolConfigurable, efectivos: Iterable<Permission>): { dar: Permission[]; quitar: Permission[] } {
+export function ajustesDesdeEfectivos(rol: RolId, efectivos: Iterable<Permission>): { dar: Permission[]; quitar: Permission[] } {
   const tiene = new Set(efectivos);
   const repartibles = ALL_PERMISSIONS.filter((p) => !PERMISOS_SOLO_ADMIN.includes(p));
   return {
@@ -37,12 +37,12 @@ export function ajustesDesdeEfectivos(rol: RolConfigurable, efectivos: Iterable<
   };
 }
 
-/** Lo que va a `config.permisos`: SIEMPRE los cuatro roles con sus dos listas, aunque estén vacías. `setDoc(…, {merge:
- *  true})` mezcla los mapas y no borra una clave ausente: para que «volver a la fábrica» se guarde de verdad hay que
- *  escribir las listas vacías, no omitir el rol. */
-export function permisosParaGuardar(efectivosPorRol: Record<RolConfigurable, Iterable<Permission>>): Record<RolConfigurable, { dar: Permission[]; quitar: Permission[] }> {
-  const guardado = {} as Record<RolConfigurable, { dar: Permission[]; quitar: Permission[] }>;
-  for (const rol of ROLES_CONFIGURABLES) guardado[rol] = ajustesDesdeEfectivos(rol, efectivosPorRol[rol]);
+/** Lo que va a `config.permisos`: SIEMPRE todos los roles que se guardan (los de fábrica y los propios) con sus dos listas, aunque estén
+ *  vacías. `setDoc(…, {merge: true})` mezcla los mapas y no borra una clave ausente: para que «volver a la fábrica» se guarde de verdad hay
+ *  que escribir las listas vacías, no omitir el rol. Un rol propio no tiene nada de fábrica: todo lo que puede va en «dar». */
+export function permisosParaGuardar(efectivosPorRol: Record<string, Iterable<Permission>>): Record<string, { dar: Permission[]; quitar: Permission[] }> {
+  const guardado: Record<string, { dar: Permission[]; quitar: Permission[] }> = {};
+  for (const rol of Object.keys(efectivosPorRol)) guardado[rol] = ajustesDesdeEfectivos(rol, efectivosPorRol[rol]);
   return guardado;
 }
 

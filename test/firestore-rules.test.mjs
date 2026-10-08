@@ -181,6 +181,17 @@ before(async () => {
     await seedEquipo("clM", undefined);
     // V2: suscripción vencida con permisos repartidos: el cobro sigue mandando.
     await seedEquipo("clW", { receptionist: { dar: ["payments.manage"] } }, { status: "past_due" });
+
+    /* R: ROLES PROPIOS y el rol de fábrica «Comercial». Un rol propio (id «rp_…») no hereda nada de fábrica: lo que puede es su lista `dar`.
+     * `rolesPropios` (los nombres) no lo lee ninguna regla: las reglas solo miran `permisos[role]`. */
+    await seedEquipo("clR", {
+      rp_ab12cd34: { dar: ["payments.manage", "expenses.manage"], quitar: [] },
+      rp_borrado1: { dar: [], quitar: [] }, // un rol que se borró: queda una entrada neutra
+    });
+    await setDoc(doc(db, "clinics/clR"), { config: { rolesPropios: [{ id: "rp_ab12cd34", nombre: "Contador" }] } }, { merge: true });
+    for (const [id, role] of [["comR", "commercial"], ["propR", "rp_ab12cd34"], ["vacioR", "rp_sinentrada"], ["huerfanoR", "rp_borrado1"], ["rarR", "constructor"], ["protoR", "__proto__"]]) {
+      await setDoc(doc(db, `clinics/clR/users/${id}`), { id, role, active: true, clinicId: "clR", email: `${id}@clr.com` });
+    }
   });
 });
 
@@ -1317,4 +1328,63 @@ test("permisos del equipo — con la suscripción vencida se lee y no se escribe
   // clínica W (past_due): recepW tiene payments.manage repartido, pero el cobro manda
   await assertFails(setDoc(doc(authed("recepW"), EQ("clW", "payments/payR")), pagoEq("payR")));
   await assertSucceeds(getDoc(doc(authed("recepW"), EQ("clW", "patients/pEq"))));
+});
+
+/* ===== COMERCIAL y ROLES PROPIOS =====
+ * «Comercial» es un rol de fábrica más: agenda, datos del paciente, presupuestos y CRM; documentos y firmas sí (engagement.forms), cobrar,
+ * ficha clínica, gastos y liquidaciones no. Un rol propio (id «rp_…») no tiene nada de fábrica: lo que puede es su lista `dar`. */
+
+test("Comercial — firma y arma documentos clínicos (engagement.forms) pero no cobra ni toca la ficha, ni ve gastos ni liquidaciones", async () => {
+  await assertSucceeds(setDoc(doc(authed("comR"), EQ("clR", "signatures/sigCom")), firmaEq("sigCom")));
+  await assertSucceeds(setDoc(doc(authed("comR"), EQ("clR", "clinicalDocs/cdCom")), docEq("cdCom")));
+  await assertFails(setDoc(doc(authed("comR"), EQ("clR", "payments/payCom")), pagoEq("payCom")));
+  await assertFails(setDoc(doc(authed("comR"), EQ("clR", "fiscalDocs/fdCom")), fiscalEq("fdCom")));
+  await assertFails(updateDoc(doc(authed("comR"), EQ("clR", "patients/pEq")), { odontogram: { "11": { state: "caries" } } }));
+  await assertFails(getDoc(doc(authed("comR"), EQ("clR", "expenses/expEq"))));
+  await assertFails(getDoc(doc(authed("comR"), EQ("clR", "settlements/liqEq"))));
+  // lo demás de un miembro sí: lee pacientes y edita la demografía
+  await assertSucceeds(getDoc(doc(authed("comR"), EQ("clR", "patients/pEq"))));
+  await assertSucceeds(updateDoc(doc(authed("comR"), EQ("clR", "patients/pEq")), { phone: "0985" }));
+});
+
+test("roles propios — un rol propio puede lo que la clínica le dio en «dar» y nada más", async () => {
+  await assertSucceeds(setDoc(doc(authed("propR"), EQ("clR", "payments/payProp")), pagoEq("payProp")));
+  await assertSucceeds(setDoc(doc(authed("propR"), EQ("clR", "cashSessions/csProp")), cajaEq("csProp")));
+  await assertSucceeds(getDoc(doc(authed("propR"), EQ("clR", "expenses/expEq"))));
+  await assertSucceeds(setDoc(doc(authed("propR"), EQ("clR", "expenses/expProp")), { id: "expProp", amount: 5 }));
+  // lo que no se le dio: nada, ni siquiera lo que tienen todos los roles de fábrica
+  await assertFails(setDoc(doc(authed("propR"), EQ("clR", "signatures/sigProp")), firmaEq("sigProp")));
+  await assertFails(setDoc(doc(authed("propR"), EQ("clR", "clinicalDocs/cdProp")), docEq("cdProp")));
+  await assertFails(updateDoc(doc(authed("propR"), EQ("clR", "patients/pEq")), { odontogram: { "12": { state: "caries" } } }));
+  await assertFails(getDoc(doc(authed("propR"), EQ("clR", "settlements/liqEq"))));
+});
+
+test("roles propios — sin entrada en config.permisos, o con una vacía, o con un id que no existe: no puede nada, pero sigue siendo miembro", async () => {
+  for (const uid of ["vacioR", "huerfanoR", "rarR", "protoR"]) {
+    await assertFails(setDoc(doc(authed(uid), EQ("clR", `payments/pay${uid}`)), pagoEq(`pay${uid}`)));
+    await assertFails(setDoc(doc(authed(uid), EQ("clR", `signatures/sig${uid}`)), firmaEq(`sig${uid}`)));
+    await assertFails(getDoc(doc(authed(uid), EQ("clR", "expenses/expEq"))));
+    await assertFails(updateDoc(doc(authed(uid), EQ("clR", "patients/pEq")), { odontogram: { "13": { state: "caries" } } }));
+    await assertSucceeds(getDoc(doc(authed(uid), EQ("clR", "patients/pEq"))));
+  }
+});
+
+test("roles propios — quien tiene un rol propio no puede darse permisos ni cambiarse el rol (solo el administrador escribe)", async () => {
+  await assertFails(updateDoc(doc(authed("propR"), "clinics/clR"), { "config.permisos.rp_ab12cd34": { dar: ["payments.manage", "emr.write"] } }));
+  await assertFails(updateDoc(doc(authed("propR"), "clinics/clR"), { "config.rolesPropios": [{ id: "rp_ab12cd34", nombre: "Dueño" }] }));
+  await assertFails(updateDoc(doc(authed("propR"), "clinics/clR/users/propR"), { role: "admin" }));
+  await assertFails(setDoc(doc(authed("propR"), "clinics/clR/users/propR"), { role: "admin" }, { merge: true }));
+});
+
+test("roles propios — el administrador sí crea un rol, se lo asigna a alguien y el cambio rige en el acto", async () => {
+  await assertFails(setDoc(doc(authed("vacioR"), EQ("clR", "payments/payAntes")), pagoEq("payAntes")));
+  await assertSucceeds(updateDoc(doc(authed("adminR"), "clinics/clR"), {
+    "config.rolesPropios": [{ id: "rp_ab12cd34", nombre: "Contador" }, { id: "rp_nuevo0001", nombre: "Cobranzas" }],
+    "config.permisos.rp_nuevo0001": { dar: ["payments.manage", "money.view"], quitar: [] },
+  }));
+  await assertSucceeds(updateDoc(doc(authed("adminR"), "clinics/clR/users/vacioR"), { role: "rp_nuevo0001" }));
+  await assertSucceeds(setDoc(doc(authed("vacioR"), EQ("clR", "payments/payDespues")), pagoEq("payDespues")));
+  // y al sacarle el rol, lo pierde
+  await assertSucceeds(updateDoc(doc(authed("adminR"), "clinics/clR/users/vacioR"), { role: "rp_sinentrada" }));
+  await assertFails(setDoc(doc(authed("vacioR"), EQ("clR", "payments/payOtraVez")), pagoEq("payOtraVez")));
 });
