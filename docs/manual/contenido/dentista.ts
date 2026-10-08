@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Dialog, Locator, Page } from "@playwright/test";
 import type { Procedimiento } from "./tipos";
 
 /* Capítulo «Dentista». Las capturas se sacan entrando como la Dra. Sofía Benítez (Dentista) salvo que el procedimiento pida otro rol.
@@ -394,15 +394,13 @@ export const procedimientos: Procedimiento[] = [
       { texto: "No hay botón «Guardar»: cada cambio se guarda solo, un instante después de hacerlo." },
     ],
     avisos: [
-      { tipo: "ojo", texto: "Esperá un segundo antes de cambiar de pestaña o salir de la ficha, para que el último cambio quede guardado." },
+      { tipo: "tip", texto: "El odontograma se guarda solo: también el último cambio si cambiás de pestaña o salís de la ficha enseguida." },
       { tipo: "ojo", texto: "Elegí primero una pieza: mientras no haya ninguna, los controles de la derecha están apagados." },
-      { tipo: "ojo", texto: "«Restablecer boca», en **Estados**, borra todo lo marcado en el odontograma de una vez y sin pedir confirmación: usalo solo para empezar la carta desde cero." },
+      { tipo: "ojo", texto: "«Restablecer boca», en **Estados**, borra todo lo marcado en el odontograma de una vez. Antes pide confirmación; usalo solo para empezar la carta desde cero." },
       { tipo: "ojo", texto: "La asistente de doctores ve el odontograma, pero no lo puede editar: la pantalla lo avisa." },
       { tipo: "tip", texto: "Hacé doble clic en una pieza para anotarle una nota: se lee al pasar el mouse por encima. Los botones de arriba de la carta muestran u ocultan la vista oclusal, las muelas del juicio, el hueso y la pulpa." },
       { tipo: "tip", texto: "Con el plan Clínica, «Copilot IA» (en la misma **Ficha clínica**) propone hallazgos para el odontograma a partir de una radiografía; vos elegís cuáles aplicar." },
       { tipo: "revisar", texto: "La pantalla no trae una leyenda de colores: lo marcado se lee en «Información dental». Confirmar si hace falta una." },
-      { tipo: "error", texto: "El odontograma guarda cada cambio con una pequeña demora: si se cambia de pestaña o se sale de la ficha justo después de marcar algo, ese último cambio se pierde sin avisar. Tendría que guardar también al salir." },
-      { tipo: "error", texto: "Después de «Restablecer boca», el cuadro **Información dental** sigue mostrando lo anterior (caries, obturaciones…) hasta que se vuelve a entrar a la ficha, aunque la carta ya esté limpia. Tendría que actualizarse en el momento." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -449,7 +447,17 @@ export const procedimientos: Procedimiento[] = [
       // Solo se LEE lo que la app guardó (no se escribe nada a mano): la caries de la 4.6 quedó sin tocar ningún botón de guardar.
       const caries46 = await page.evaluate(() => JSON.parse(localStorage.getItem("novudent.db.v4") || "null")?.patients.find((p: { id: string }) => p.id === "p1")?.odontogram?.teeth?.["46"]?.caries);
       c.expect(caries46).toEqual(["caries-occlusal"]);
-      await odo.locator("#btnResetAll").click(); // «Restablecer boca»
+      // «Restablecer boca» pide confirmación: si se rechaza, la carta queda como estaba; si se acepta, «Información dental» se actualiza en el momento.
+      let preguntoAntes = false;
+      const alPreguntar = (d: Dialog) => { preguntoAntes = true; void d.dismiss(); };
+      page.on("dialog", alPreguntar);
+      await odo.locator("#btnResetAll").click();
+      page.off("dialog", alPreguntar);
+      c.expect(preguntoAntes).toBe(true);
+      await c.expect(odo.locator(".tooth-info")).not.toContainText("No hay dientes con caries");
+      page.once("dialog", (d) => void d.accept());
+      await odo.locator("#btnResetAll").click();
+      await c.expect(odo.locator(".tooth-info")).toContainText("No hay dientes con caries");
       await page.waitForTimeout(1200);
       await page.reload();
       await boton(page, "Odontograma").click();
@@ -681,7 +689,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "En la lista de prestaciones, la columna «Pago» muestra un carrito rojo mientras la prestación está pendiente y un tilde verde cuando ya se hizo. Marcarlas como realizadas lo hace la administración: [[marcar-una-prestacion-realizada]]." },
       { tipo: "tip", texto: "«Opciones › Duplicar plan de tratamiento» arma una copia del plan, con todo pendiente, para volver a presentarlo. En un plan ya aceptado, «Finalizar plan» lo cierra." },
       { tipo: "tip", texto: "Con el plan Clínica, «Copilot IA» arma un borrador del plan a partir de una radiografía; lo revisás antes de crearlo." },
-      { tipo: "error", texto: "Las prestaciones de un plan armado desde la ficha salen bajo el título «Sección sin nombre»: el formulario no permite elegir una sección. Tendría que permitir elegirla (los planes de ejemplo vienen agrupados, por ejemplo «Restauraciones») o no mostrar un título vacío." },
+      { tipo: "tip", texto: "Cada prestación tiene un campo **Sección** (por ejemplo «Restauraciones» o «Prevención e higiene»): sirve para agrupar el plan. Si lo dejás vacío, la prestación sale bajo «Sección sin nombre». Con **Nombre del plan (opcional)** le ponés nombre desde el principio." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -756,7 +764,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "tip", texto: "«Duplicar» es lo más rápido para repetir una receta: abre el formulario con los mismos medicamentos para que cambies lo que haga falta. El filtro **Tratamiento**, arriba, muestra solo las recetas de un plan." },
       { tipo: "revisar", texto: "Las plantillas de receta («Antibiótico estándar», «Post-exodoncia», «Analgesia simple») son ejemplos de Novudent: confirmar con un odontólogo que las dosis y las indicaciones sirven tal cual." },
       { tipo: "revisar", texto: "No se pudo probar «Enviar»: en la demo el envío de correos no está disponible. Confirmar con una clínica real." },
-      { tipo: "error", texto: "La receta que se abre al emitirla y al imprimirla muestra la CI del paciente, aunque con el rol Dentista no se ven los datos personales (la impresión del plan sí respeta ese permiso). Tendría que seguir la misma regla: la CI solo para quien ve los datos personales." },
+      { tipo: "ojo", texto: "La receta impresa muestra el nombre del paciente, pero no su CI: con el rol Dentista no se ven los datos personales. Si la necesitás en la receta, la administración te lo puede dar en **Permisos del equipo** («Ver y editar los datos personales del paciente»)." }
     ],
     capturar: async (c) => {
       const { page } = c;

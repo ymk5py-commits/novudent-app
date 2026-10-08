@@ -98,7 +98,7 @@ export const procedimientos: Procedimiento[] = [
     titulo: "Cargar los datos de la clínica y el logotipo",
     roles: ["admin"],
     paraQue: "Al poner en marcha la clínica, y cada vez que cambia el logotipo o se abre una sede: dejás lista la moneda, el logotipo que sale en los impresos y las sucursales.",
-    antes: ["El logotipo en un archivo de imagen (JPG o PNG) con fondo blanco."],
+    antes: ["El logotipo en un archivo de imagen (JPG o PNG)."],
     pasos: [
       { texto: "Entrá a **Administración** (menú de arriba) y elegí «Configuración general».", captura: "menu" },
       { texto: "Mirá la tarjeta **Clínica**: muestra el nombre, la dirección y el teléfono. Si hace falta, elegí la **Moneda** en la que se muestran los montos.", captura: "clinica" },
@@ -109,7 +109,7 @@ export const procedimientos: Procedimiento[] = [
     ],
     avisos: [
       { tipo: "ojo", texto: "El nombre, la dirección y el teléfono de la clínica se ven en la tarjeta **Clínica** pero no se pueden cambiar desde acá: los carga Novum al dar de alta la clínica. Si cambian, pedile el cambio a Novum." },
-      { tipo: "ojo", texto: "Si el logotipo tiene fondo transparente, se guarda con fondo negro. Usá una imagen con fondo blanco; el sistema la achica solo a un máximo de 400 píxeles." },
+      { tipo: "ojo", texto: "Si el logotipo tiene fondo transparente, se guarda con fondo blanco (la imagen se guarda sin transparencia). El sistema la achica solo a un máximo de 400 píxeles." },
       { tipo: "ojo", texto: "Cambiar la moneda cambia cómo se muestran todos los montos (presupuestos, pagos, caja, reportes), pero no convierte los importes que ya están cargados." },
       { tipo: "revisar", texto: "Confirmar con Novum si la clínica debería poder editar sola su nombre, su dirección y su teléfono: hoy no hay un botón para hacerlo." },
     ],
@@ -937,14 +937,13 @@ export const procedimientos: Procedimiento[] = [
       { texto: "En **Mantener esta ficha**, elegí la ficha buena (la más completa). Es la que queda. Fijate en la cédula: dos personas distintas pueden tener el mismo nombre." },
       { texto: "En **Fusionar y eliminar**, elegí la ficha duplicada. Esa es la que desaparece.", captura: "fichas" },
       { texto: "Tocá «Fusionar fichas» y aceptá la pregunta.", captura: "boton" },
-      { texto: "La ficha duplicada deja de existir. Sus citas, presupuestos, pagos, evoluciones, consentimientos, radiografías y documentos pasan a la ficha que mantuviste.", captura: "resultado" },
+      { texto: "La ficha duplicada deja de existir. Sus citas, presupuestos, pagos, evoluciones, consentimientos, radiografías, documentos, recetas, tratamiento de ortodoncia, lista de espera, tareas y mensajes automáticos pasan a la ficha que mantuviste.", captura: "resultado" },
     ],
     avisos: [
       { tipo: "ojo", texto: "No se puede deshacer. Revisá dos veces las dos fichas antes de aceptar." },
       { tipo: "ojo", texto: "El primer desplegable viene con la primera ficha de la lista ya elegida: cambiala siempre por la que querés mantener." },
-      { tipo: "ojo", texto: "No pasan a la ficha que se mantiene: los datos personales de la duplicada (teléfono, correo, convenio, foto), sus alertas médicas de la cabecera, las recetas, el tratamiento de ortodoncia, la lista de espera, las tareas ni los mensajes automáticos de WhatsApp. Antes de fusionar, pasá a mano lo que haga falta." },
+      { tipo: "ojo", texto: "Los datos personales de la ficha que mantenés no se pisan: si le falta alguno (teléfono, correo, convenio, foto…), se completa con el de la duplicada; si los dos tienen uno distinto, queda el de la ficha que mantenés. Las alertas médicas, enfermedades y medicamentos de la cabecera de las dos se juntan, sin repetir." },
       { tipo: "ojo", texto: "Si las dos fichas tenían la Historia Clínica pendiente, la que queda va a tener dos: anulá la que sobre desde Documentos clínicos ([[completar-la-historia-clinica]])." },
-      { tipo: "error", texto: "La fusión pierde las recetas y el tratamiento de ortodoncia de la ficha duplicada y deja sueltas su lista de espera, sus tareas y sus mensajes automáticos (en la lista de espera aparece una fila sin nombre). Tendrían que pasar a la ficha que se mantiene." },
     ],
     capturar: async (c) => {
       const { page } = c;

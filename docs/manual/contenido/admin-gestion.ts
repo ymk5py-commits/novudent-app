@@ -582,12 +582,9 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Con los filtros de arriba (**Enviado**, **En proceso**, **Recibido**, **Entregado**) ves los trabajos de cada etapa." },
     ],
     avisos: [
-      { tipo: "ojo", texto: "Si pasó la fecha de entrega y la orden no está «Entregado», la fila se pinta de rojo y suma en «Vencidas»." },
+      { tipo: "ojo", texto: "Si pasó el día de entrega y la orden no está «Entregado», la fila se pinta de rojo y suma en «Vencidas». Una orden con entrega para hoy todavía no está vencida: lo está desde el día siguiente." },
       { tipo: "ojo", texto: "Laboratorios es solo de la administración, porque la orden muestra el costo. El tachito de la fila pide confirmación y borra la orden sin posibilidad de deshacerlo." },
       { tipo: "tip", texto: "El costo de la orden no se carga solo en los gastos. Para que cuente en los reportes, cargalo aparte con la categoría «Laboratorio»: [[cargar-un-gasto]]." },
-      { tipo: "error", texto: "Las fechas de envío y de entrega se muestran un día antes de lo que se cargó (con el 07 y el 14 de octubre, la fila dice 06-oct. y 13-oct.), y una orden con entrega para hoy ya figura como «Vencida». Tendría que mostrar las fechas tal como se cargaron y marcar la orden como vencida recién cuando pasó el día de entrega." },
-      { tipo: "ojo", texto: "Hasta que eso se corrija, anotá la fecha de entrega que te prometieron también en **Notas**: la tabla la muestra un día antes y puede marcar «Vencida» antes de tiempo." },
-      { tipo: "error", texto: "Si elegís un **Profesional**, la tabla le antepone «Dr.» a un nombre que ya trae «Dra.» (por ejemplo, «Dr. Dra. Sofía Benítez»). Tendría que mostrar el nombre tal como está cargado." },
       { tipo: "revisar", texto: "La orden vive solo en esta pantalla y en el Excel de Laboratorios: no aparece en la ficha del paciente ni genera una tarea cuando vence. Confirmar si hace falta." },
     ],
     capturar: async (c) => {
@@ -605,7 +602,6 @@ export const procedimientos: Procedimiento[] = [
       await modal.getByLabel("Laboratorio *").fill("LaboDent");
       await modal.getByLabel("Tipo de trabajo *").fill("Corona cerámica pieza 26");
       await soltar(page);
-      // (A propósito no se elige «Profesional»: en la tabla la app antepone «Dr.» a un nombre que ya trae «Dra.»; ver el informe.)
       await c.foto("formulario", { resaltar: [modal.getByLabel("Paciente"), modal.getByLabel("Laboratorio *"), modal.getByLabel("Tipo de trabajo *")], recorte: modal, margen: 4, alto: 900 });
 
       await modal.getByLabel("Fecha de envío").fill(hoy);
@@ -620,15 +616,16 @@ export const procedimientos: Procedimiento[] = [
       await c.expect(fila).toBeVisible();
       await soltar(page);
       await c.foto("orden", { resaltar: fila, recorte: [fila, main.getByRole("columnheader", { name: "Paciente" })], margen: 6 });
-      // La tabla muestra el día ANTES del que se cargó (error conocido): si un día esto se corrige, hay que sacar el aviso «error» de este procedimiento.
-      const diaAntes = await page.evaluate((h) => new Date(new Date(`${h}T12:00:00`).getTime() - 86_400_000).toLocaleDateString("es-PY", { day: "2-digit", month: "short" }), hoy);
-      await c.expect(fila.getByRole("cell").nth(3), "Ya no hay un día de diferencia en las fechas de Laboratorios: sacá el aviso «error» de pedir-un-trabajo-al-laboratorio").toHaveText(diaAntes);
+      // La tabla muestra las fechas tal como se cargaron (antes salían un día antes) y la entrega de la semana que viene no figura vencida.
+      const diaCargado = await page.evaluate((h) => new Date(`${h}T12:00:00`).toLocaleDateString("es-PY", { day: "2-digit", month: "short" }), hoy);
+      await c.expect(fila.getByRole("cell").nth(3), "La fecha de envío de Laboratorios tiene que ser la cargada").toHaveText(diaCargado);
+      await c.expect(tarjeta(main.getByText("Vencidas", { exact: true }))).toHaveText(/Vencidas\s*0/);
 
       const avanzar = fila.getByRole("button", { name: /^En proceso/ });
       const pastillas = main.getByRole("button", { name: "Todos", exact: true }).locator("xpath=..");
       await c.foto("avanzar", { resaltar: [avanzar, fila.getByRole("button", { name: "Editar notas" })], recorte: [pastillas, fila], margen: 6 });
 
-      // Sin captura: con un «Profesional» elegido, la tabla antepone «Dr.» a un nombre que ya trae «Dra.» (error conocido, ver los avisos).
+      // Sin captura: con un «Profesional» elegido, la tabla muestra el nombre tal como está cargado (antes salía «Dr. Dra. Sofía Benítez»).
       await nueva.click();
       const conProfesional = page.getByRole("dialog", { name: "Nueva orden de laboratorio" });
       await conProfesional.getByLabel("Paciente").selectOption({ label: "Juan Ríos" });
@@ -636,7 +633,9 @@ export const procedimientos: Procedimiento[] = [
       await conProfesional.getByLabel("Laboratorio *").fill("LaboDent");
       await conProfesional.getByLabel("Tipo de trabajo *").fill("Férula");
       await conProfesional.getByRole("button", { name: "Crear orden" }).click();
-      await c.expect(main.getByRole("row").filter({ hasText: "Férula" }).getByText("Dr. Dra. Sofía Benítez"), "Ya no sale «Dr. Dra.» en Laboratorios: sacá ese aviso «error» de pedir-un-trabajo-al-laboratorio").toBeVisible();
+      const filaFerula = main.getByRole("row").filter({ hasText: "Férula" });
+      await c.expect(filaFerula.getByText("Dra. Sofía Benítez")).toBeVisible();
+      await c.expect(filaFerula.getByText("Dr. Dra.")).toHaveCount(0);
     },
   },
 
@@ -1012,8 +1011,7 @@ export const procedimientos: Procedimiento[] = [
       { texto: "La cita pasa a la columna de ese box.", captura: "asignada" },
     ],
     avisos: [
-      { tipo: "error", texto: "Al borrar un box que tiene citas, esas citas quedan apuntando a un box que ya no existe: la cita sigue existiendo (el total de citas del día no baja), pero no aparece en ninguna columna ni en «Sin box asignado». Tendría que pasarlas a «Sin box asignado» y pedir confirmación antes de borrar el box." },
-      { tipo: "ojo", texto: "El tachito de un box lo borra al instante, sin pedir confirmación: antes de borrarlo, mirá que no tenga citas asignadas (si las tiene, cambiales el box desde la agenda: [[reprogramar-una-cita]])." },
+      { tipo: "ojo", texto: "El tachito de un box pide confirmación y avisa cuántas citas lo tienen. Esas citas no se borran: pasan a **Sin box asignado** y se les elige otro sillón desde ahí." },
       { tipo: "ojo", texto: "Desde esta pantalla una cita se asigna una sola vez: no hay botón para cambiarla de box. Para cambiarlo, en la agenda tocá «Acciones de la cita › Editar» y elegí otro **Box**: mirá [[reprogramar-una-cita]]." },
       { tipo: "tip", texto: "Cuando la recepción da una cita con [[dar-una-cita]], elige el box ahí mismo y el sistema no ofrece un horario en el que ese box ya está ocupado. Las reservas online entran sin box: aparecen acá, en «Sin box asignado»." },
     ],
@@ -1057,7 +1055,7 @@ export const procedimientos: Procedimiento[] = [
       await soltar(page);
       await c.foto("asignada", { resaltar: columna, recorte: [columna, sinBox], margen: 8 });
 
-      // Sin captura: el lápiz del box abre «Editar box»; el tachito lo borra sin preguntar y sus citas dejan de verse en la pantalla;
+      // Sin captura: el lápiz del box abre «Editar box»; el tachito pide confirmación y, al aceptar, las citas del box pasan a «Sin box asignado»;
       // «Hoy» vuelve al día de hoy.
       const citasEnTotal = main.getByText(/ en total$/);
       const total = await citasEnTotal.innerText();
@@ -1067,9 +1065,13 @@ export const procedimientos: Procedimiento[] = [
       await edicion.getByLabel("Nombre del box").fill("Box 4 Cirugía");
       await edicion.getByRole("button", { name: "Guardar cambios" }).click();
       await c.expect(main.getByText("Box 4 Cirugía").first()).toBeVisible();
-      c.expect(await abrioConfirmacion(page, () => main.getByRole("button", { name: "Eliminar Box 4 Cirugía" }).click())).toBe(false);
+      c.expect(await abrioConfirmacion(page, () => main.getByRole("button", { name: "Eliminar Box 4 Cirugía" }).click())).toBe(true);
+      await c.expect(main.getByText("Box 4 Cirugía").first()).toBeVisible();
+      page.once("dialog", (d) => d.accept());
+      await main.getByRole("button", { name: "Eliminar Box 4 Cirugía" }).click();
       await c.expect(main.getByText("Box 4 Cirugía")).toHaveCount(0);
-      await c.expect(main.getByText("Exodoncia 28"), "Las citas de un box borrado ya no desaparecen: sacá el aviso «error» de asignar-box-y-sillones").toHaveCount(0);
+      // La cita que tenía ese box sigue ahí, ahora en «Sin box asignado»; el total del día no baja.
+      await c.expect(sinBox.getByText("Exodoncia 28").first()).toBeVisible();
       await c.expect(citasEnTotal).toHaveText(total);
       await main.getByRole("button", { name: "Hoy", exact: true }).click();
       const hoyEscrito = await page.evaluate(() => new Date().toLocaleDateString("es-PY", { weekday: "long", day: "numeric", month: "long", year: "numeric" }));
