@@ -745,6 +745,29 @@ export function ordenarFilas<T extends { fecha: string; type: MgmtTaskType; id: 
     || a.id.localeCompare(b.id));
 }
 
+/** «Todas las pendientes»: lo que falta hacer, de CUALQUIER fecha —atrasadas, de hoy y futuras—, de la más
+ *  vieja a la más nueva y, a igual fecha, en el orden del resto de la bandeja (tipo y después paciente).
+ *
+ *  Es la lista que no obliga a ir día por día: no mira `fecha` más que para ordenar. Una postergada
+ *  («Volver a contactar en…») ya es una pendiente en su fecha de regreso (así la arma `filasDeTareas`), y
+ *  la trabajada de hoy (✓) no cuenta: es historia, no trabajo por hacer. Para marcar cuáles están postergadas,
+ *  `estaPostergada`. `bandejaDelDia` —«Tareas del día» y «Tareas atrasadas»— no cambia. */
+export function todasLasPendientes<T extends FilaTarea>(filas: readonly T[], nombreDe: (f: T) => string): T[] {
+  return ordenarFilas(filas.filter((f) => f.estado === "pendiente"), nombreDe);
+}
+
+/** ¿Alguien la reprogramó con «Volver a contactar en…» y todavía no llegó esa fecha? Es lo que explica por
+ *  qué una pendiente figura más adelante aunque su regla ya la hubiera abierto. Sale de la gestión (lo que
+ *  hace «Volver a contactar» en una personalizada) o de `snoozedUntil` (lo que escribe en una automática, y
+ *  el «Postergar» viejo). El «OK» de una personalizada, que la vuelve a activar a la semana, no cuenta: no
+ *  es una decisión de dejarla para después. Al llegar el día es una tarea más de hoy; pasado, una atrasada. */
+export function estaPostergada(f: Pick<FilaTarea, "estado" | "fecha" | "snoozedUntil" | "gestiones">, hoy: string): boolean {
+  if (f.estado !== "pendiente" || f.fecha <= hoy) return false;
+  if (f.snoozedUntil === f.fecha) return true;
+  const ultima = f.gestiones?.[f.gestiones.length - 1];
+  return ultima?.accion === "recontactar" && ultima.hasta === f.fecha;
+}
+
 /* ─── Finalizar ▾ ─────────────────────────────────────────────────────────── */
 
 /** Las opciones rápidas de "Volver a contactar en…". */

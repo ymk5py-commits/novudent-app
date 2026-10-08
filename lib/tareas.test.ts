@@ -845,7 +845,7 @@ import {
   PLAZOS_RAPIDOS, diasDePlazo, plazoDeDias, opcionDePlazo, presupuestoIniciado,
   fechaLocal, sumarDias, esFecha, tituloFecha, fechaCorta, fechaLarga,
   filasDeTareas, bandejaDelDia, ordenarFilas, baseRecontacto, gestionarTarea, asignarTarea,
-  nuevaPersonalizada, resumenGestion, type FilaTarea,
+  nuevaPersonalizada, resumenGestion, todasLasPendientes, estaPostergada, type FilaTarea,
 } from "./tareas";
 
 describe("configuración de plazos (los botones de Dentalink)", () => {
@@ -974,6 +974,174 @@ describe("filasDeTareas + bandejaDelDia", () => {
     const nombres: Record<string, string> = { a: "Zoe", b: "Ana", c: "Beto", d: "Ana" };
     const r = ordenarFilas([fila("a", HOY, "cita"), fila("b", HOY, "cita"), fila("c", HOY, "personalizada"), fila("d", "2026-07-29", "control")], (f) => nombres[f.id]);
     expect(r.map((x) => x.id)).toEqual(["d", "c", "b", "a"]);
+  });
+});
+
+/* ─── «Todas las pendientes» (pedido de Camila, 8-oct-2026) ─── */
+
+describe("todasLasPendientes — la lista «Todas las pendientes» de la bandeja", () => {
+  /** Una fila ya armada (sin pasar por el motor) para probar el filtro y el orden. */
+  const fila = (id: string, fecha: string, extra: Partial<FilaTarea> = {}): FilaTarea => ({ ...manual(id), fecha, estado: "pendiente", ...extra });
+  const ids = (r: FilaTarea[]) => r.map((x) => x.id);
+  const nombreDe = (x: FilaTarea) => x.patientName ?? x.title;
+
+  it("deja solo las pendientes: ni las trabajadas (✓) ni las que completó el sistema", () => {
+    const r = todasLasPendientes([
+      fila("a", HOY),
+      fila("b", HOY, { estado: "completada", status: "cerrada" }),
+      fila("c", HOY, { estado: "sistema", status: "cerrada" }),
+    ], nombreDe);
+    expect(ids(r)).toEqual(["a"]);
+  });
+
+  it("trae las de cualquier fecha —atrasadas, de hoy y futuras— de la más vieja a la más nueva", () => {
+    const r = todasLasPendientes([fila("futura", "2026-12-01"), fila("hoy", HOY), fila("vieja", "2026-06-01"), fila("manana", "2026-07-31")], nombreDe);
+    expect(ids(r)).toEqual(["vieja", "hoy", "manana", "futura"]);
+  });
+
+  it("a igual fecha ordena como el resto de la bandeja: primero el tipo (el orden de Dentalink) y después el paciente", () => {
+    const r = todasLasPendientes([
+      fila("a", HOY, { type: "cita", patientName: "Zoe" }),
+      fila("b", HOY, { type: "cita", patientName: "Ana" }),
+      fila("c", HOY, { type: "personalizada", patientName: "Beto" }),
+    ], nombreDe);
+    expect(ids(r)).toEqual(["c", "b", "a"]);
+  });
+
+  it("no toca la lista que recibe", () => {
+    const entrada = [fila("b", "2026-08-01"), fila("a", HOY), fila("c", HOY, { estado: "completada", status: "cerrada" })];
+    const copia = [...entrada];
+    todasLasPendientes(entrada, nombreDe);
+    expect(entrada).toEqual(copia);
+  });
+
+  it("sin pendientes devuelve una lista vacía", () => {
+    expect(todasLasPendientes([], nombreDe)).toEqual([]);
+    expect(todasLasPendientes([fila("a", HOY, { estado: "sistema", status: "cerrada" })], nombreDe)).toEqual([]);
+  });
+
+  it("con las filas que arma el motor: una atrasada, una de hoy, una sin fecha y una futura (control a 180 días)", () => {
+    const input = {
+      ...vacio,
+      patients: [pac("p1"), pac("p2")],
+      budgets: [
+        bud("b1", "p1", "aceptado", 500_000, "2026-07-01T10:00:00.000Z"), // cobranza: venció el 8/7
+        bud("b2", "p2", "completado", 100_000, "2026-07-01T10:00:00.000Z"), // control: vence el 28/12
+      ],
+      payments: [pay("y2", "p2", 100_000)],
+    };
+    const todas = todasLasPendientes(filas(input, [manual("mt1", { dueDate: HOY }), manual("mt2")]), nombreDe);
+    expect(todas.map((x) => [x.type, x.fecha])).toEqual([
+      ["cobranza", "2026-07-08"],
+      ["personalizada", HOY],
+      ["personalizada", HOY], // sin fecha (dato viejo): flota en hoy
+      ["control", "2026-12-28"],
+    ]);
+    // «Tareas atrasadas» sigue siendo solo lo vencido; «Tareas del día», solo ese día.
+    expect(bandejaDelDia(filas(input, [manual("mt1", { dueDate: HOY })]), HOY, HOY).atrasadas.map((x) => x.type)).toEqual(["cobranza"]);
+  });
+
+  describe("las postergadas («Volver a contactar en…») cuentan, con su fecha de regreso", () => {
+    const recontactar = (hasta: string) => ({ accion: "recontactar" as const, hasta, quien, ahora: AHORA, hoy: HOY, clinicId: "c1" });
+
+    it("una automática: vuelve pendiente en la fecha elegida y la trabajada de hoy (✓) no está", () => {
+      const r = gestionarTarea(filas(conCobranza, [])[0], recontactar("2026-08-08"));
+      const todas = todasLasPendientes(filas(conCobranza, [r.doc]), nombreDe);
+      expect(todas.map((x) => [x.type, x.fecha, x.estado])).toEqual([["cobranza", "2026-08-08", "pendiente"]]);
+    });
+
+    it("una personalizada: ídem, con la fecha nueva", () => {
+      const tarea = manual("mt1", { patientId: "p1", dueDate: HOY });
+      const r = gestionarTarea(filas(vacio, [tarea])[0], recontactar("2026-09-01"));
+      const todas = todasLasPendientes(filas(vacio, [r.doc]), nombreDe);
+      expect(todas.map((x) => [x.id, x.fecha])).toEqual([["mt1", "2026-09-01"]]);
+    });
+
+    it("con el mecanismo viejo (snoozedUntil) también", () => {
+      const todas = todasLasPendientes(filas(conCobranza, [override("cobranza:p1", { snoozedUntil: "2026-08-15" })]), nombreDe);
+      expect(todas.map((x) => [x.type, x.fecha])).toEqual([["cobranza", "2026-08-15"]]);
+    });
+
+    it("no cambia las otras listas: no está en «Tareas atrasadas» y en «Tareas del día» de hoy queda solo su ✓", () => {
+      const r = gestionarTarea(filas(conCobranza, [])[0], recontactar("2026-08-08"));
+      const despues = filas(conCobranza, [r.doc]);
+      const hoyDia = bandejaDelDia(despues, HOY, HOY);
+      expect(hoyDia.atrasadas).toEqual([]);
+      expect(hoyDia.delDia.map((x) => x.estado)).toEqual(["completada"]);
+      expect(bandejaDelDia(despues, "2026-08-08", HOY).delDia.map((x) => x.estado)).toEqual(["pendiente"]);
+    });
+  });
+});
+
+describe("estaPostergada — la marca «Postergada» de la lista", () => {
+  const recontactar = (hasta: string) => ({ accion: "recontactar" as const, hasta, quien, ahora: AHORA, hoy: HOY, clinicId: "c1" });
+  /** La fila pendiente que quedó después de trabajar la primera con «Volver a contactar en…». */
+  const trasRecontactar = (hasta: string, hoy = HOY) => {
+    const r = gestionarTarea(filas(conCobranza, [])[0], recontactar(hasta));
+    return filas(conCobranza, [r.doc], hoy).find((x) => x.estado === "pendiente")!;
+  };
+
+  it("una automática reprogramada para más adelante está postergada", () => {
+    expect(estaPostergada(trasRecontactar("2026-08-08"), HOY)).toBe(true);
+  });
+
+  it("una personalizada reprogramada para más adelante está postergada", () => {
+    const tarea = manual("mt1", { patientId: "p1", dueDate: HOY });
+    const r = gestionarTarea(filas(vacio, [tarea])[0], recontactar("2026-09-01"));
+    expect(estaPostergada(filas(vacio, [r.doc])[0], HOY)).toBe(true);
+  });
+
+  it("vale la última vuelta: reprogramada dos veces sigue postergada", () => {
+    const r1 = gestionarTarea(filas(conCobranza, [])[0], recontactar("2026-08-08"));
+    const enLaFecha = filas(conCobranza, [r1.doc], "2026-08-08").find((x) => x.estado === "pendiente")!;
+    const r2 = gestionarTarea(enLaFecha, { ...recontactar("2026-08-20"), hoy: "2026-08-08", ahora: "2026-08-08T13:00:00.000Z", doc: r1.doc });
+    const fila = filas(conCobranza, [r2.doc], "2026-08-08").find((x) => x.estado === "pendiente")!;
+    expect(fila.fecha).toBe("2026-08-20");
+    expect(estaPostergada(fila, "2026-08-08")).toBe(true);
+  });
+
+  it("con el mecanismo viejo (snoozedUntil a futuro) también", () => {
+    const fila = filas(conCobranza, [override("cobranza:p1", { snoozedUntil: "2026-08-15" })])[0];
+    expect(estaPostergada(fila, HOY)).toBe(true);
+  });
+
+  it("asignarla después no le quita la marca", () => {
+    const r = gestionarTarea(filas(conCobranza, [])[0], recontactar("2026-08-08"));
+    const pendiente = filas(conCobranza, [r.doc]).find((x) => x.estado === "pendiente")!;
+    const a = asignarTarea(pendiente, "u6", { ahora: AHORA, clinicId: "c1", doc: r.doc });
+    expect(estaPostergada(filas(conCobranza, [a.doc]).find((x) => x.estado === "pendiente")!, HOY)).toBe(true);
+  });
+
+  it("una tarea que simplemente vence más adelante NO está postergada (control a 180 días, personalizada a futuro)", () => {
+    const control = filas({ ...vacio, patients: [pac("p1")], budgets: [bud("b1", "p1", "completado", 100_000, "2026-07-01T10:00:00.000Z")], payments: [pay("y1", "p1", 100_000)] }, [])[0];
+    expect(control.type).toBe("control");
+    expect(estaPostergada(control, HOY)).toBe(false);
+    expect(estaPostergada(filas(vacio, [manual("mt1", { dueDate: "2026-09-01" })])[0], HOY)).toBe(false);
+  });
+
+  it("el «OK» de una personalizada, que vuelve a la semana, es otra cosa: no la marca", () => {
+    const tarea = manual("mt1", { patientId: "p1", dueDate: HOY });
+    const r = gestionarTarea(filas(vacio, [tarea])[0], { accion: "ok", quien, ahora: AHORA, hoy: HOY, clinicId: "c1" });
+    const pendiente = filas(vacio, [r.doc]).find((x) => x.estado === "pendiente")!;
+    expect(pendiente.fecha).toBe("2026-08-06");
+    expect(estaPostergada(pendiente, HOY)).toBe(false);
+  });
+
+  it("al llegar la fecha deja de estar postergada: ese día es una tarea más de hoy (y después, una atrasada)", () => {
+    expect(estaPostergada(trasRecontactar("2026-08-08", "2026-08-08"), "2026-08-08")).toBe(false);
+    expect(estaPostergada(trasRecontactar("2026-08-08", "2026-08-12"), "2026-08-12")).toBe(false);
+  });
+
+  it("un snooze que ya venció no marca nada", () => {
+    const fila = filas(conCobranza, [override("cobranza:p1", { snoozedUntil: "2026-07-29" })])[0];
+    expect(estaPostergada(fila, HOY)).toBe(false);
+  });
+
+  it("solo las pendientes pueden estar postergadas", () => {
+    const r = gestionarTarea(filas(conCobranza, [])[0], recontactar("2026-08-08"));
+    const trabajada = filas(conCobranza, [r.doc]).find((x) => x.estado === "completada")!;
+    expect(estaPostergada(trabajada, HOY)).toBe(false);
+    expect(estaPostergada({ ...trasRecontactar("2026-08-08"), estado: "sistema" }, HOY)).toBe(false);
   });
 });
 
