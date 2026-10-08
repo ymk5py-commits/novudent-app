@@ -44,6 +44,68 @@ async function abrirCrearPaciente(page: Page) {
   return { cita, ficha: page.getByRole("dialog", { name: "Nuevo paciente" }) };
 }
 
+/* ═══════════════════════ B1 · Datos personales y alta de pacientes ═══════════════════════ */
+
+test.describe("B1 · Datos personales de la ficha", () => {
+  test("«Datos requeridos» es lo que pide el alta: sexo y género sí; el tipo no", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+    await page.goto("/app/pacientes/p2?tab=datos");
+    const requeridos = tarjeta(page, "Datos requeridos");
+    const opcionales = tarjeta(page, "Datos opcionales");
+    for (const campo of ["Nombre legal", "Apellidos", "Cédula identidad / DNI", "Fecha de nacimiento", "Sexo", "Género", "Teléfono móvil", "Email"]) {
+      await expect(requeridos.getByLabel(campo), `${campo} tiene que estar en «Datos requeridos»`).toHaveCount(1);
+    }
+    await expect(requeridos.getByLabel("Tipo", { exact: true })).toHaveCount(0);
+    await expect(opcionales.getByLabel("Tipo", { exact: true })).toHaveCount(1);
+    for (const campo of ["Sexo", "Género", "Email"]) await expect(opcionales.getByLabel(campo), `${campo} no es opcional`).toHaveCount(0);
+  });
+
+  test("si la clínica cambia lo obligatorio, la ficha lo sigue", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+    await cambiarDemo(page, { config: { patientFields: { email: { required: { nuevo: false } }, empleador: { present: { nuevo: true }, required: { nuevo: true } } } } });
+    await page.goto("/app/pacientes/p2?tab=datos");
+    await expect(tarjeta(page, "Datos requeridos").getByLabel("Empleador")).toHaveCount(1);
+    await expect(tarjeta(page, "Datos requeridos").getByLabel("Email")).toHaveCount(0);
+    await expect(tarjeta(page, "Datos opcionales").getByLabel("Email")).toHaveCount(1);
+  });
+
+  test("«Guardar datos» no deja vaciar la CI ni el teléfono", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+    await page.goto("/app/pacientes/p1?tab=datos");
+    const requeridos = tarjeta(page, "Datos requeridos");
+    await requeridos.getByLabel("Cédula identidad / DNI").fill("");
+    await requeridos.getByLabel("Teléfono móvil").fill("");
+    await main(page).getByRole("button", { name: "Guardar datos" }).click();
+    const aviso = main(page).getByRole("alert");
+    await expect(aviso).toContainText("No se guardó");
+    await expect(aviso).toContainText("Cédula / DNI");
+    await expect(aviso).toContainText("Teléfono móvil");
+    expect((await pacientes(page)).find((p) => p.id === "p1")).toMatchObject({ document: "3.456.789", phone: "+595 981 111 111" });
+  });
+
+  test("si se escribe la CI de otro paciente, la ficha avisa (sin impedir guardar)", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+    await page.goto("/app/pacientes/p2?tab=datos");
+    await tarjeta(page, "Datos requeridos").getByLabel("Cédula identidad / DNI").fill("3456789"); // la de María González
+    await expect(main(page).getByText("Otro paciente tiene esta misma CI")).toBeVisible();
+    await expect(main(page).getByRole("link", { name: "María González" })).toHaveAttribute("href", "/app/pacientes/p1");
+    await expect(main(page).getByRole("button", { name: "Guardar datos" })).toBeEnabled();
+    await tarjeta(page, "Datos requeridos").getByLabel("Cédula identidad / DNI").fill("4.567.890"); // la suya: no es una repetida
+    await expect(main(page).getByText("Otro paciente tiene esta misma CI")).toHaveCount(0);
+  });
+
+  test("un dato requerido que el paciente nunca tuvo no impide corregir otro", async ({ page }) => {
+    // Juan Ríos se cargó cuando el email no era obligatorio: cambiarle el teléfono tiene que poder guardarse.
+    await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+    await page.goto("/app/pacientes/p2?tab=datos");
+    await expect(main(page)).toContainText("Faltan datos requeridos: Email");
+    await tarjeta(page, "Datos requeridos").getByLabel("Teléfono móvil").fill("+595 982 999 000");
+    await main(page).getByRole("button", { name: "Guardar datos" }).click();
+    await expect.poll(async () => (await pacientes(page)).find((p) => p.id === "p2")?.phone).toBe("+595 982 999 000");
+    await expect(main(page).getByRole("alert")).toHaveCount(0);
+  });
+});
+
 test.describe("B1 · CI repetida al crear un paciente", () => {
   test("el alta avisa, enlaza la ficha existente y pide confirmar que es otra persona", async ({ page }) => {
     await entrarDemo(page, USUARIOS_DEMO.recepcionista);

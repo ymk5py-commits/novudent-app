@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CAMPOS, CONTEXTOS, camposDe, visibles, faltantes, datosPaciente, extrasOnline, esMenor, siguienteCodigo, codigosFaltantes, nuevoPaciente,
-  claveDeCI, pacientesConCI, requeridos, invalidos, revisar,
+  claveDeCI, pacientesConCI, requeridos, invalidos, revisar, vaciados, valoresDe,
 } from "./camposPaciente";
 import type { FieldConfig } from "./types";
 
@@ -280,5 +280,47 @@ describe("revisar: un solo mensaje con todo lo que hay que corregir", () => {
     const conRuc = camposDe(undefined, "nuevo");
     const r = revisar(conRuc, { ...completo, fechaNacimiento: "2999-01-01" });
     expect(r.mensaje).toBe("Revisá: Fecha de nacimiento.");
+  });
+});
+
+/* ═══ La ficha de un paciente que ya existe (B1b, B1c) ═══ */
+
+describe("valoresDe: del formulario de la ficha a los campos de la configuración", () => {
+  it("pasa cada propiedad de Patient al campo que la configura", () => {
+    expect(valoresDe({ firstName: "Ana", lastName: "Paz", document: "1.234.567", phone: "0981", sex: "F", birthDate: "1990-05-20", email: "", guardian: "Rosa" }))
+      .toEqual({ nombreLegal: "Ana", apellidos: "Paz", documento: "1.234.567", telefonoMovil: "0981", sexo: "F", fechaNacimiento: "1990-05-20", email: "", apoderado: "Rosa" });
+  });
+
+  it("ignora lo que no es texto y lo que la configuración no conoce (tipo, extranjero…)", () => {
+    expect(valoresDe({ foreigner: true, tipo: "VIP", emergencyContact: "X", firstName: undefined })).toEqual({});
+  });
+});
+
+describe("vaciados: lo obligatorio que una edición dejaría sin dato", () => {
+  const campos = camposDe(undefined, "nuevo");
+  const antes = { nombreLegal: "Ana", apellidos: "Paz", documento: "1.234.567", telefonoMovil: "0981 111 222", fechaNacimiento: "1990-05-20", sexo: "F", genero: "F", email: "" };
+
+  it("vaciar un requerido que tenía dato se frena (los espacios cuentan como vacío)", () => {
+    expect(vaciados(campos, antes, { ...antes, documento: "", telefonoMovil: "   " })).toEqual(["Cédula / DNI", "Teléfono móvil"]);
+  });
+
+  it("un requerido que ya estaba vacío (se cargó cuando no era obligatorio) no impide corregir otro dato", () => {
+    expect(antes.email).toBe("");
+    expect(vaciados(campos, antes, { ...antes, telefonoMovil: "0982 000 000" })).toEqual([]);
+  });
+
+  it("los opcionales se pueden vaciar", () => {
+    expect(vaciados(campos, { ...antes, ciudad: "Luque", barrio: "Centro" }, { ...antes, ciudad: "", barrio: "" })).toEqual([]);
+  });
+
+  it("si es menor, el responsable cuenta como requerido: no se puede borrar", () => {
+    const menor = { ...antes, fechaNacimiento: "2018-01-01", apoderado: "Rosa Paz", dniRepLegal: "1.111.111", parentesco: "Madre" };
+    expect(vaciados(campos, menor, { ...menor, apoderado: "", parentesco: "" })).toEqual(["Responsable", "Qué es del paciente"]);
+  });
+
+  it("respeta lo que la clínica configuró como obligatorio", () => {
+    const conEmpleador = camposDe({ empleador: { present: { nuevo: true }, required: { nuevo: true } } }, "nuevo");
+    expect(vaciados(conEmpleador, { ...antes, empleador: "ACME" }, { ...antes, empleador: "" })).toEqual(["Empleador"]);
+    expect(vaciados(campos, { ...antes, empleador: "ACME" }, { ...antes, empleador: "" })).toEqual([]);
   });
 });

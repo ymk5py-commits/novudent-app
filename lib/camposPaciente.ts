@@ -226,6 +226,24 @@ export function revisar(campos: CampoResuelto[], valores: ValoresCampos): Revisi
   };
 }
 
+/** Los datos del formulario de la ficha (que usa las propiedades de `Patient`) pasados a los campos de la
+ *  configuración. Lo que la configuración no conoce (tipo, extranjero, contacto de emergencia…) queda afuera. */
+export function valoresDe(props: Partial<Record<string, unknown>>): ValoresCampos {
+  const out: ValoresCampos = {};
+  for (const c of CAMPOS) {
+    const v = props[c.prop];
+    if (typeof v === "string") out[c.key] = v;
+  }
+  return out;
+}
+
+/** Al EDITAR un paciente que ya existe: los datos obligatorios que esta edición dejaría vacíos. Solo cuenta los que
+ *  tenían dato: un paciente cargado cuando el campo no era obligatorio (importado, de antes de pedir el email…) no
+ *  queda trabado para corregir otra cosa. El formulario le avisa de lo que le falta, pero no lo obliga a inventarlo. */
+export function vaciados(campos: CampoResuelto[], antes: ValoresCampos, despues: ValoresCampos): string[] {
+  return requeridos(campos, despues).filter((c) => !vacio(antes[c.key]) && vacio(despues[c.key])).map((c) => c.label);
+}
+
 /** La CI sin puntos, guiones ni espacios y en minúsculas, para reconocer a la misma persona escrita distinto
  *  («3.456.789» y «3456789»). `null` si no sirve para reconocer a nadie: «s/d», «0», una sola cifra repetida o
  *  menos de 4 caracteres. Sin esto, todos los pacientes cargados sin CI parecerían el mismo. */
