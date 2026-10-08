@@ -369,8 +369,8 @@ describe("historiaClinicaPendiente", () => {
 });
 
 describe("permisos", () => {
-  it("editan los documentos: admin, caja, recepción y dentista (espejo de firestore.rules)", () => {
-    expect(ROLES.filter(puedeEditarDocumentos).sort()).toEqual(["admin", "cashier", "dentist", "receptionist"]);
+  it("editan los documentos: admin, caja, recepción, comercial y dentista (espejo de firestore.rules)", () => {
+    expect(ROLES.filter(puedeEditarDocumentos).sort()).toEqual(["admin", "cashier", "commercial", "dentist", "receptionist"]);
   });
 
   it("los ven todos; el asistente solo lee", () => {

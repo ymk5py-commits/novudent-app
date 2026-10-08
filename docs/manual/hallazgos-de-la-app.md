@@ -74,6 +74,7 @@ Estado: ✅ corregido y en producción · 🔴 abierto.
 | 🔴 | La oferta pública (`lib/landing/precios.ts`) pone «Varios boxes y sucursales» y «Reportes por profesional y sucursal» solo en Multi, pero el sistema los activa desde Clínica (`lib/plan.ts`). Hay que decidir cuál de las dos es la correcta. |
 | 🔴 | Textos propios «Completá: …» (`pacientes/nuevo/page.tsx` L49, `DarCita.tsx` L406) que nunca aparecen porque el `required` del navegador frena antes. |
 | 🔴 | La puerta a los plazos de las tareas es un engranaje sin texto. |
+| 🔴 | Un **rol propio** (Permisos del equipo) no es un profesional: no aparece en la agenda, en las liquidaciones ni en el límite del plan, y no tiene doctores asignados. Para algo parecido a un dentista o una asistente hay que usar ese rol con otro nombre. |
 
 ## Menores (leídos en el código, sin reproducir)
 

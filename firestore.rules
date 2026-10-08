@@ -115,9 +115,9 @@ service cloud.firestore {
       return tienePermiso(cid, 'payments.manage', ['admin', 'cashier']);
     }
 
-    // Recepción: consentimientos, firmas y formularios del paciente (engagement.forms; de fábrica admin, caja y recepción).
+    // Recepción: consentimientos, firmas y formularios del paciente (engagement.forms; de fábrica admin, caja, recepción y comercial).
     function isRecepcion(cid) {
-      return tienePermiso(cid, 'engagement.forms', ['admin', 'cashier', 'receptionist']);
+      return tienePermiso(cid, 'engagement.forms', ['admin', 'cashier', 'receptionist', 'commercial']);
     }
 
     // Rol clínico (emr.write; de fábrica admin y dentista). El ASISTENTE de fábrica no escribe el EMR. Se usa para blindar

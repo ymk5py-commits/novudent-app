@@ -6,18 +6,19 @@ import { PERMISOS_EN_PALABRAS } from "./permisos";
 import type { Aviso, Capitulo, CapituloId, Procedimiento, RolId } from "./contenido/tipos";
 
 /** El orden en que se leen los capítulos: de lo que sabe hacer todo el mundo a lo que solo hace la administración. */
-export const ORDEN_CAPITULOS: CapituloId[] = ["todos", "receptionist", "cashier", "dentist", "assistant", "admin"];
+export const ORDEN_CAPITULOS: CapituloId[] = ["todos", "receptionist", "cashier", "commercial", "dentist", "assistant", "admin"];
 
 export const TITULO_CAPITULO: Record<CapituloId, string> = {
   todos: "Para todos",
   receptionist: "Recepcionista",
   cashier: "Recepción y caja",
+  commercial: "Comercial",
   dentist: "Dentista",
   assistant: "Asistente de doctores",
   admin: "Administrador",
 };
 
-const ROLES_EN_ORDEN: RolId[] = ["receptionist", "cashier", "dentist", "assistant", "admin"];
+const ROLES_EN_ORDEN: RolId[] = ["receptionist", "cashier", "commercial", "dentist", "assistant", "admin"];
 const CLAVES_PERMISO = Object.keys(PERMISOS_EN_PALABRAS) as Permission[];
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");

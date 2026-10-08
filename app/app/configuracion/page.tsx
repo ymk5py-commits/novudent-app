@@ -6,10 +6,10 @@ import { useEffect, useState } from "react";
 import { ShieldAlert, Plus, UserCog, Users, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, FileText, Image as ImageIcon, MapPin, ListChecks, Ban, Power } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
-import { can, ROLE_LABEL, ROLES, ROLE_DESCRIPCION } from "@/lib/rbac";
+import { can, rolLabel, rolDescripcion, rolesParaElegir } from "@/lib/rbac";
 import { planUserLimitError } from "@/lib/plan";
 import { PlazosTareas } from "@/components/tareas/PlazosTareas";
-import type { Role, User, BotikaConfig, ConsentTemplate, Branch, PaymentMethod } from "@/lib/types";
+import type { RolId, User, BotikaConfig, ConsentTemplate, Branch, PaymentMethod } from "@/lib/types";
 import { PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
@@ -218,14 +218,14 @@ export default function ConfigPage() {
                 <AsisteA usuario={u} dentistas={db.users.filter((x) => x.role === "dentist" && x.active !== false)} onChange={(asiste) => upsertUser({ ...u, asiste })} />
               )}
               {esYo || (ultimoAdmin && activo) ? (
-                <Badge tone={u.role === "admin" ? "info" : u.role === "dentist" ? "ok" : "warn"}>{ROLE_LABEL[u.role]}</Badge>
+                <Badge tone={u.role === "admin" ? "info" : u.role === "dentist" ? "ok" : "warn"}>{rolLabel(u.role)}</Badge>
               ) : (
                 <select
                   aria-label={`Rol de ${u.name}`}
-                  title={ROLE_DESCRIPCION[u.role]}
+                  title={rolDescripcion(u.role)}
                   value={u.role}
                   onChange={(e) => {
-                    const role = e.target.value as Role;
+                    const role = e.target.value;
                     if (role === "dentist") {
                       // Pasar a dentista cuenta para el límite de profesionales del plan.
                       const err = planUserLimitError(db.clinics[0], db.users.filter((x) => x.id !== u.id), "dentist");
@@ -235,7 +235,9 @@ export default function ConfigPage() {
                   }}
                   className="rounded-lg border border-clinic-border px-2 py-1 text-xs font-semibold text-clinic-text focus:border-azure-400"
                 >
-                  {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                  {/* Un rol propio que ya no existe (se borró con la persona dada de baja) se sigue mostrando, para no cambiárselo sin querer. */}
+                  {!rolesParaElegir().some((r) => r.id === u.role) && <option value={u.role}>{rolLabel(u.role)}</option>}
+                  {rolesParaElegir().map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
                 </select>
               )}
               {!esYo && (
@@ -594,12 +596,13 @@ function NewUser({
 }: {
   firebase: boolean;
   onClose: () => void;
-  onCreate: (d: { name: string; email: string; role: Role; password: string; color: string; phone?: string }) => Promise<void>;
+  onCreate: (d: { name: string; email: string; role: RolId; password: string; color: string; phone?: string }) => Promise<void>;
 }) {
-  const [f, setF] = useState({ name: "", email: "", role: "receptionist" as Role, password: "", phone: "" });
+  const [f, setF] = useState({ name: "", email: "", role: "receptionist" as RolId, password: "", phone: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const COLORS: Record<Role, string> = { admin: "#1769E0", cashier: "#7C3AED", receptionist: "#DB2777", dentist: "#0E9F6E", assistant: "#B45309" };
+  // El color de agenda sale del rol; un rol propio usa un gris azulado.
+  const COLORS: Record<string, string> = { admin: "#1769E0", cashier: "#7C3AED", receptionist: "#DB2777", commercial: "#0891B2", dentist: "#0E9F6E", assistant: "#B45309" };
 
   return (
     <Modal title="Agregar usuario" onClose={onClose}>
@@ -610,7 +613,7 @@ function NewUser({
           setBusy(true);
           setError(null);
           try {
-            await onCreate({ name: f.name, email: f.email, role: f.role, password: f.password, color: COLORS[f.role], phone: f.phone || undefined });
+            await onCreate({ name: f.name, email: f.email, role: f.role, password: f.password, color: COLORS[f.role] ?? "#475569", phone: f.phone || undefined });
           } catch (err: any) {
             const code = err?.code ?? "";
             setError(
@@ -639,9 +642,9 @@ function NewUser({
         <Field label="Teléfono (WhatsApp)" hint="Opcional — el dentista recibe alertas del monitor de recuperación post-op en este número.">
           <input type="tel" className={inputCls} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="Ej.: +595981234567" />
         </Field>
-        <Field label="Rol" hint={ROLE_DESCRIPCION[f.role]}>
-          <select className={inputCls} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as Role })}>
-            {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+        <Field label="Rol" hint={rolDescripcion(f.role)}>
+          <select className={inputCls} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>
+            {rolesParaElegir().map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
           </select>
         </Field>
         {f.role === "assistant" && (

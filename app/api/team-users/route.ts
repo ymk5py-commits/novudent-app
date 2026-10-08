@@ -6,11 +6,10 @@ import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 import { planUserLimitError } from "@/lib/plan";
 import { isSubscriptionActive, subscriptionPlanId } from "@/lib/subscription";
 import { isValidId } from "@/lib/server/ids";
-import type { Role, Subscription, User } from "@/lib/types";
+import { esIdDeRolValido, esRolDeFabrica, normalizarRolesPropios } from "@/lib/rbac";
+import type { RolId, Subscription, User } from "@/lib/types";
 
 export const runtime = "nodejs";
-
-const ROLES: Role[] = ["admin", "cashier", "receptionist", "dentist", "assistant"];
 
 /** Identity Toolkit crea la cuenta sin iniciar sesión en el navegador del admin. */
 async function createOrRecoverUser(email: string, password: string): Promise<string> {
@@ -69,11 +68,11 @@ export async function POST(req: NextRequest) {
   const name = String(body.name ?? "").trim();
   const email = String(body.email ?? "").trim().toLowerCase();
   const password = String(body.password ?? "");
-  const role = String(body.role ?? "") as Role;
+  const role = String(body.role ?? "") as RolId;
   const color = String(body.color ?? "#1769E0");
   const phone = String(body.phone ?? "").trim();
   if (!name || name.length > 120 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-      password.length < 6 || password.length > 128 || !ROLES.includes(role) || !/^#[0-9a-fA-F]{6}$/.test(color) || phone.length > 40) {
+      password.length < 6 || password.length > 128 || !(esRolDeFabrica(role) || esIdDeRolValido(role)) || !/^#[0-9a-fA-F]{6}$/.test(color) || phone.length > 40) {
     return NextResponse.json({ ok: false, error: "Revisá nombre, email, rol, color y contraseña (mínimo 6 caracteres)." }, { status: 400 });
   }
 
@@ -85,6 +84,9 @@ export async function POST(req: NextRequest) {
       listCollection(`clinics/${cid}`, "users", 1000),
     ]);
     if (!clinic) throw new AuthError("La clínica no está disponible.", 404);
+    // Un rol propio solo vale si la clínica lo tiene creado (config.rolesPropios): el id del body no se acepta a ciegas.
+    const rolesPropios = normalizarRolesPropios((clinic.config as { rolesPropios?: unknown } | undefined)?.rolesPropios);
+    if (!esRolDeFabrica(role) && !rolesPropios.some((r) => r.id === role)) throw new AuthError("Ese rol no existe en tu clínica.", 400);
     if (!isSubscriptionActive(sub as Subscription | null)) throw new AuthError("La suscripción está vencida; regularizala antes de agregar usuarios.", 403);
 
     const effectivePlan = subscriptionPlanId(sub as Subscription | null, clinic as { plan?: string });

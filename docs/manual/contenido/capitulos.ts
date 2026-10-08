@@ -14,6 +14,10 @@ export const CAPITULOS_META: Record<CapituloId, { titulo: string; intro: string 
     titulo: "Recepción y caja",
     intro: "«Recepción y caja» hace todo lo que hace la recepción y además cobra: ingresa los pagos, abre y cierra la caja y arma los presupuestos. No ve los reportes del negocio.",
   },
+  commercial: {
+    titulo: "Comercial",
+    intro: "El comercial vende: ve la agenda de todos los profesionales, carga y atiende a los pacientes, presenta los presupuestos con sus montos y hace el seguimiento de los pacientes en el CRM. No cobra, no entra a la ficha clínica ni ve los reportes del negocio. No todas las clínicas tienen esta figura: el rol está para usarlo cuando hace falta (y se le puede cambiar el nombre).",
+  },
   dentist: {
     titulo: "Dentista",
     intro: "El dentista atiende: mira su agenda, trabaja la ficha clínica de sus pacientes y arma sus planes de tratamiento. Con este rol no ves montos ni datos personales.",

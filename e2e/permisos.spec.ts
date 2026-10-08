@@ -53,8 +53,11 @@ test.describe("Configuración › Permisos del equipo", () => {
     await expect(permisos(page).getByText("Crear usuarios y cambiar sus roles")).toBeVisible();
     await expect(permisos(page).getByRole("checkbox", { name: /Crear usuarios/ })).toHaveCount(0);
     await expect(permisos(page).getByRole("checkbox", { name: /Configurar la clínica/ })).toHaveCount(0);
-    // El administrador no se configura.
-    await expect(permisos(page).getByRole("button", { name: /^Administrador/ })).toHaveCount(0);
+    // El administrador está para cambiarle el nombre, pero no tiene permisos que marcar.
+    await rol(page, "Administrador").click();
+    await expect(permisos(page).getByRole("checkbox")).toHaveCount(0);
+    await expect(permisos(page).getByText("El Administrador siempre puede todo: no se le pueden sacar permisos.")).toBeVisible();
+    await rol(page, "Dentista").click();
     await expect(permisos(page).getByRole("button", { name: "Guardar permisos" })).toBeDisabled();
     await expect(permisos(page).getByText("Hay cambios sin guardar.")).toHaveCount(0);
   });
@@ -87,8 +90,8 @@ test.describe("Configuración › Permisos del equipo", () => {
     // Se guardan los cuatro roles, con las dos listas, y solo la diferencia contra la fábrica.
     const guardado = (await leerDB(page)).clinics[0].config.permisos;
     expect(guardado.dentist).toEqual({ dar: ["money.view"], quitar: [] });
-    for (const r of ["cashier", "receptionist", "assistant"]) expect(guardado[r]).toEqual({ dar: [], quitar: [] });
-    expect(Object.keys(guardado).sort()).toEqual(["assistant", "cashier", "dentist", "receptionist"]);
+    for (const r of ["cashier", "receptionist", "commercial", "assistant"]) expect(guardado[r]).toEqual({ dar: [], quitar: [] });
+    expect(Object.keys(guardado).sort()).toEqual(["assistant", "cashier", "commercial", "dentist", "receptionist"]);
 
     // Después: la dentista entra a Facturación.
     await ver(page, USUARIOS_DEMO.dentista, "/app/facturacion");
@@ -197,6 +200,139 @@ test.describe("Configuración › Permisos del equipo", () => {
     await permisos(page).scrollIntoViewIfNeeded();
     await sinScrollHorizontal(page);
     await rol(page, "Recepción y caja").click();
+    await sinScrollHorizontal(page);
+  });
+});
+
+test.describe("Configuración › Comercial, nombres y roles propios", () => {
+  test.beforeEach(async ({ page }) => { await entrarDemo(page); await irAPermisos(page); });
+
+  const guardar = (page: Page) => permisos(page).getByRole("button", { name: "Guardar permisos" });
+  const nombreDelRol = (page: Page) => permisos(page).getByLabel("Nombre del rol", { exact: true });
+  const rolDeLaPersona = (page: Page, nombre: string) => page.getByRole("combobox", { name: `Rol de ${nombre}` });
+  const roles = async (page: Page) => (await leerDB(page)).clinics[0].config;
+
+  test("Comercial viene como un rol más, con lo suyo de fábrica", async ({ page }) => {
+    await rol(page, "Comercial").click();
+    for (const t of ["Dar citas", "Presentar y aceptar presupuestos", "Documentos clínicos, consentimientos y CRM", MONTOS]) await expect(casilla(page, t), t).toBeChecked();
+    for (const t of [COBRAR, LEER_FICHA, ESCRIBIR_FICHA]) await expect(casilla(page, t), t).not.toBeChecked();
+  });
+
+  test("otro nombre para un rol de fábrica: se ve en Usuarios y vale solo para esta clínica; se puede volver al de fábrica", async ({ page }) => {
+    await rol(page, "Dentista").click();
+    await nombreDelRol(page).fill("Odontólogo");
+    await expect(permisos(page).getByText("Hay cambios sin guardar.")).toBeVisible();
+    await guardar(page).click();
+    await expect(permisos(page).getByText(/Guardado: ya rige/)).toBeVisible();
+    expect((await roles(page)).nombresDeRoles.dentist).toBe("Odontólogo");
+    await expect(rol(page, "Odontólogo")).toBeVisible();
+    await expect(rol(page, "Dentista")).toHaveCount(0);
+    await expect(rolDeLaPersona(page, USUARIOS_DEMO.dentista).locator("option:checked")).toHaveText("Odontólogo");
+    await expect(permisos(page).getByText("De fábrica se llama «Dentista».")).toBeVisible();
+
+    await permisos(page).getByRole("button", { name: "Volver al nombre de fábrica" }).click();
+    await expect(nombreDelRol(page)).toHaveValue("Dentista");
+    await guardar(page).click();
+    await expect(permisos(page).getByText(/Guardado: ya rige/)).toBeVisible();
+    expect((await roles(page)).nombresDeRoles.dentist).toBe("");
+    await expect(rolDeLaPersona(page, USUARIOS_DEMO.dentista).locator("option:checked")).toHaveText("Dentista");
+  });
+
+  test("un nombre repetido o vacío se explica y no se deja guardar", async ({ page }) => {
+    await rol(page, "Dentista").click();
+    await nombreDelRol(page).fill("recepcionista");
+    await expect(permisos(page).getByRole("alert").filter({ hasText: "Ya hay un rol con ese nombre." })).toBeVisible();
+    await expect(guardar(page)).toBeDisabled();
+    await nombreDelRol(page).fill("   ");
+    await expect(permisos(page).getByRole("alert").filter({ hasText: "Escribí el nombre del rol." })).toBeVisible();
+    await expect(guardar(page)).toBeDisabled();
+    await nombreDelRol(page).fill("Dentista");
+    await expect(permisos(page).getByRole("alert")).toHaveCount(0);
+  });
+
+  test("el administrador también se puede llamar de otra forma", async ({ page }) => {
+    await rol(page, "Administrador").click();
+    await nombreDelRol(page).fill("Dueño de la clínica");
+    await guardar(page).click();
+    await expect(permisos(page).getByText(/Guardado: ya rige/)).toBeVisible();
+    expect((await roles(page)).nombresDeRoles.admin).toBe("Dueño de la clínica");
+    await expect(rol(page, "Dueño de la clínica")).toBeVisible();
+  });
+
+  test("crear un rol propio con la copia de otro, ajustarlo, asignarlo a una persona y que la persona pueda lo que se le dio", async ({ page }) => {
+    await permisos(page).getByRole("button", { name: "Nuevo rol" }).click();
+    await permisos(page).getByLabel("Nombre del rol nuevo").fill("Coordinación de tratamientos");
+    await permisos(page).getByLabel("Empezar con los permisos de").selectOption({ label: "Comercial" });
+    await permisos(page).getByRole("button", { name: "Crear rol" }).click();
+
+    await expect(rol(page, "Coordinación de tratamientos")).toHaveAttribute("aria-pressed", "true");
+    await expect(casilla(page, "Presentar y aceptar presupuestos")).toBeChecked();
+    await expect(casilla(page, COBRAR)).not.toBeChecked();
+    // un rol propio no tiene «de fábrica»: no se marca nada como agregado o quitado
+    await expect(permisos(page).getByText("Agregado", { exact: true })).toHaveCount(0);
+    await expect(permisos(page).getByRole("button", { name: /a como viene de fábrica/ })).toHaveCount(0);
+    const config = await roles(page);
+    const nuevo = config.rolesPropios[0];
+    expect(nuevo).toMatchObject({ nombre: "Coordinación de tratamientos" });
+    expect(nuevo.id).toMatch(/^rp_[a-z0-9]{8}$/);
+    expect(config.permisos[nuevo.id].dar).toContain("budgets.manage");
+    expect(config.permisos[nuevo.id].quitar).toEqual([]);
+
+    // se ajusta: ya no da citas
+    await casilla(page, "Dar citas").uncheck();
+    await guardar(page).click();
+    await expect(permisos(page).getByText(/Guardado: ya rige/)).toBeVisible();
+    expect((await roles(page)).permisos[nuevo.id].dar).not.toContain("agenda.create");
+
+    // se le asigna a Laura (recepcionista: de fábrica no ve montos) y ahora los ve, pero no cobra
+    await rolDeLaPersona(page, "Laura Recepción").selectOption({ label: "Coordinación de tratamientos" });
+    await expect.poll(async () => (await leerDB(page)).users.find((u: { name: string }) => u.name === "Laura Recepción")?.role).toBe(nuevo.id);
+    await entrarComo(page, "Laura Recepción");
+    await page.goto("/app/facturacion");
+    await expect(denegado(page)).toHaveCount(0);
+    await page.goto("/app/caja");
+    await expect(denegado(page)).toBeVisible();
+  });
+
+  test("un rol propio con gente no se puede eliminar; cuando nadie lo tiene, sí", async ({ page }) => {
+    await permisos(page).getByRole("button", { name: "Nuevo rol" }).click();
+    await permisos(page).getByLabel("Nombre del rol nuevo").fill("Marketing");
+    await permisos(page).getByRole("button", { name: "Crear rol" }).click();
+    await expect(rol(page, "Marketing")).toHaveAttribute("aria-pressed", "true");
+    // sin plantilla arranca sin permisos
+    await expect(permisos(page).getByRole("checkbox", { checked: true })).toHaveCount(0);
+
+    await rolDeLaPersona(page, "Laura Recepción").selectOption({ label: "Marketing" });
+    await rol(page, "Marketing").click();
+    await expect(permisos(page).getByText(/Lo tiene 1 persona/)).toBeVisible();
+    await expect(permisos(page).getByRole("button", { name: "Eliminar este rol" })).toBeDisabled();
+
+    await rolDeLaPersona(page, "Laura Recepción").selectOption({ label: "Recepcionista" });
+    await rol(page, "Marketing").click();
+    await expect(permisos(page).getByText("Nadie lo tiene: se puede eliminar.")).toBeVisible();
+    page.once("dialog", (d) => void d.accept());
+    await permisos(page).getByRole("button", { name: "Eliminar este rol" }).click();
+    await expect(rol(page, "Marketing")).toHaveCount(0);
+    expect((await roles(page)).rolesPropios).toEqual([]);
+  });
+
+  test("el nombre de un rol propio también se cambia y se ve en Usuarios", async ({ page }) => {
+    await permisos(page).getByRole("button", { name: "Nuevo rol" }).click();
+    await permisos(page).getByLabel("Nombre del rol nuevo").fill("Marketing");
+    await permisos(page).getByRole("button", { name: "Crear rol" }).click();
+    await nombreDelRol(page).fill("Marketing digital");
+    await guardar(page).click();
+    await expect(permisos(page).getByText(/Guardado: ya rige/)).toBeVisible();
+    await expect(rol(page, "Marketing digital")).toBeVisible();
+    expect((await roles(page)).rolesPropios[0].nombre).toBe("Marketing digital");
+    await expect(rolDeLaPersona(page, "Laura Recepción").locator("option", { hasText: "Marketing digital" })).toHaveCount(1);
+  });
+
+  test("la pantalla con roles propios no obliga a scrollear de costado", async ({ page }) => {
+    await permisos(page).getByRole("button", { name: "Nuevo rol" }).click();
+    await permisos(page).getByLabel("Nombre del rol nuevo").fill("Un nombre de rol bastante largo para el celular");
+    await sinScrollHorizontal(page);
+    await permisos(page).getByRole("button", { name: "Crear rol" }).click();
     await sinScrollHorizontal(page);
   });
 });

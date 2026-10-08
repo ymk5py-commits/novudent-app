@@ -137,6 +137,7 @@ const ROL_CORTO: Record<Role, string> = {
   admin: "Admin",
   cashier: "Caja",
   receptionist: "Recepción",
+  commercial: "Comercial",
   dentist: "Dentista",
   assistant: "Asistente",
 };

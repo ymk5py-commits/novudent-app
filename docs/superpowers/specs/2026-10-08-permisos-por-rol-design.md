@@ -70,3 +70,19 @@ quien no puede leer una colección. La pantalla y el manual lo dicen.
 
 Publicar `firestore.rules` **antes** del código: el código viejo ignora `permisos` y las reglas nuevas, sin ajustes, se comportan como
 siempre (`firebase deploy --only firestore:rules --project novudent-664f3`).
+
+## Segundo pedido de Camila (8-oct-2026): Comercial y roles propios
+
+Camila contestó al aviso de «Permisos del equipo»: «tiene que haber también comercial. Las clínicas tienen los comerciales que venden también, no todas, pero tenemos que tener la opción. O de escribir el nombre que le queramos poner».
+
+| Tema | Decisión | Por qué |
+|---|---|---|
+| Comercial | Un rol de fábrica más (`commercial`): agenda de todos, datos del paciente, planes y presupuestos con montos, CRM y tareas. Sin caja, ficha clínica, reportes ni configuración | «No todas las clínicas lo tienen pero tiene que estar la opción»; los permisos se ajustan como los de cualquier rol |
+| Nombre libre | Se puede **cambiar el nombre de cualquier rol** (`config.nombresDeRoles`) y **crear roles propios** (`config.rolesPropios`) | Cubre las dos lecturas del pedido: «comercial» y «el nombre que queramos» |
+| Qué hereda un rol propio | **Nada**: lo que puede es su lista `dar`. Al crearlo se puede copiar lo que hoy puede otro rol | Las reglas de Firestore ya lo soportan sin cambios y no hay herencia que se desincronice |
+| Qué NO es un rol propio | Un profesional: no aparece en la agenda, liquidaciones ni cuenta para el límite del plan, y no tiene doctores asignados | Los chequeos `role === "dentist"`/`"assistant"` están en ~25 lugares; para algo parecido se usa Dentista con otro nombre |
+| Rol de la persona | `User.role` guarda el id de fábrica o `rp_xxxxxxxx` | Las reglas y el store ya leen `users/{uid}.role` |
+| Borrar un rol | Solo si nadie lo tiene (tampoco las personas dadas de baja) | Evita personas con un rol que ya no existe |
+| Ids | `esIdDeRolValido`: letras, números, `_` y `-`, hasta 40; nunca `admin` ni nombres de propiedades de `Object` | La clave termina en un mapa de Firestore y en `permisos[role]` |
+
+Cambio en `firestore.rules`: solo `isRecepcion` suma `'commercial'` (`engagement.forms`). **Se publican las reglas antes del código.** Sin eso, un Comercial nuevo no podría firmar ni armar documentos hasta que se publiquen.

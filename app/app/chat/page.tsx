@@ -12,7 +12,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { fsdb } from "@/lib/firebase";
 import { useStore, fmtTime, fmtDate } from "@/lib/store";
-import { can, ROLE_LABEL } from "@/lib/rbac";
+import { can, rolLabel } from "@/lib/rbac";
 import {
   MAX_TEXTO, textoParaEnviar, nuevoDirecto, armarDifusion, destinatariosDifusion, conversaciones, hilo,
   idsPorMarcarLeidos, difusiones, type Difusion,
@@ -112,7 +112,7 @@ export default function ChatPage() {
                 onClick={() => setVista({ tipo: "directo", userId: c.user.id })}
                 avatar={<Avatar color={c.user.color} nombre={c.user.name} />}
                 titulo={c.user.name}
-                subtitulo={ROLE_LABEL[c.user.role]}
+                subtitulo={rolLabel(c.user.role)}
                 vistaPrevia={c.ultimo ? vistaPrevia(c.ultimo) : "Escribile un mensaje directo"}
                 hora={c.ultimo && cuando(c.ultimo.createdAt)}
                 sinLeer={c.sinLeer}
@@ -323,7 +323,7 @@ function HiloDirecto({ otro, mensajes, pendientes, yo, miNombre, miColor, marcar
 
   return (
     <section aria-label={`Conversación con ${otro.name}`} className="flex min-h-0 flex-1 flex-col">
-      <CabeceraHilo onVolver={onVolver} avatar={<Avatar color={otro.color} nombre={otro.name} />} titulo={otro.name} subtitulo={`${ROLE_LABEL[otro.role]} · mensaje directo`} />
+      <CabeceraHilo onVolver={onVolver} avatar={<Avatar color={otro.color} nombre={otro.name} />} titulo={otro.name} subtitulo={`${rolLabel(otro.role)} · mensaje directo`} />
       <ListaMensajes
         vacio={`Todavía no hay mensajes con ${otro.name}. Lo que escribas acá lo ven solo ustedes dos.`}
         items={mensajes.map((m) => ({

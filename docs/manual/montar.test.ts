@@ -135,7 +135,7 @@ describe("montarHtml", () => {
       capturar: async () => {},
     })]),
     cap("cashier", [proc({ id: "ingresar-un-pago", capitulo: "cashier", titulo: "Ingresar un pago", roles: ["cashier"] })]),
-    cap("dentist"), cap("assistant"), cap("admin"),
+    cap("commercial"), cap("dentist"), cap("assistant"), cap("admin"),
   ];
 
   it("arma portada, índice, capítulos en orden y apéndices", () => {
@@ -209,7 +209,7 @@ describe("montarHtml", () => {
         { tipo: "error", texto: "La tarjeta nueva no aparece hasta recargar." },
         { tipo: "revisar", texto: "Confirmar el horario de atención." },
       ] })]),
-      cap("cashier"), cap("dentist"), cap("assistant"), cap("admin"),
+      cap("cashier"), cap("commercial"), cap("dentist"), cap("assistant"), cap("admin"),
     ]));
     expect(html).toContain('<aside class="aviso aviso-error"><span class="aviso-titulo">Error conocido</span> La tarjeta nueva no aparece hasta recargar.</aside>');
     expect(html).toContain('href="#apendice-errores"'); // en el índice
@@ -228,7 +228,7 @@ describe("montarHtml", () => {
     const html = montarHtml(entrada([
       cap("todos"),
       cap("receptionist", [proc({ id: "a", avisos: [{ tipo: "tip", texto: "En la vista **Semanal**, tocá un hueco." }] })]),
-      cap("cashier"), cap("dentist"), cap("assistant"), cap("admin"),
+      cap("cashier"), cap("commercial"), cap("dentist"), cap("assistant"), cap("admin"),
     ]));
     expect(html).toContain('<aside class="aviso aviso-tip"><span class="aviso-titulo">Tip</span> En la vista <strong>Semanal</strong>, tocá un hueco.</aside>');
   });
@@ -239,7 +239,7 @@ describe("montarHtml", () => {
     const html = montarHtml(entrada(base));
     const tabla = html.slice(html.indexOf('<table class="permisos">'), html.indexOf("</table>"));
     expect((tabla.match(/<tr>/g) ?? []).length).toBe(1 + Object.keys(PERMISOS_EN_PALABRAS).length); // encabezado + filas
-    expect((tabla.match(/<th scope="col">/g) ?? []).length).toBe(5);
+    expect((tabla.match(/<th scope="col">/g) ?? []).length).toBe(6);
   });
 });
 

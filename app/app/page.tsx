@@ -12,7 +12,7 @@ import { useStore, fmtTime, fmtGs, fullName } from "@/lib/store";
 import { patientBalance } from "@/lib/budgets";
 import { pendientesPorPaciente } from "@/lib/documentosClinicos";
 import { HREF_DOCUMENTOS_PENDIENTES, HREF_RETENCIONES } from "@/lib/pendientes";
-import { can, ROLE_DESCRIPCION } from "@/lib/rbac";
+import { can, rolDescripcion } from "@/lib/rbac";
 import { useAlcance } from "@/lib/useAlcance";
 import { Card, Badge, StatusBadge } from "@/components/ui";
 import { Isologo } from "@/components/Marca";
@@ -381,7 +381,7 @@ export default function Dashboard() {
           <div className="mt-4 flex items-start gap-2 rounded-xl bg-azure-50 p-3 text-xs leading-relaxed text-azure-700">
             <Badge tone="info">RBAC</Badge>
             <span>
-              {ROLE_DESCRIPCION[session.role]}
+              {rolDescripcion(session.role)}
               {alcance.sinDoctores && <> Todavía no tenés doctores asignados: pedile al administrador que te asigne en Usuarios.</>}
             </span>
           </div>

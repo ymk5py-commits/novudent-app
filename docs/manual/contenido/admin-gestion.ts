@@ -1082,7 +1082,7 @@ export const procedimientos: Procedimiento[] = [
     id: "seguir-a-los-pacientes-en-el-crm",
     capitulo: "admin",
     titulo: "Seguir a los pacientes en el CRM",
-    roles: ["admin", "cashier", "receptionist"],
+    roles: ["admin", "cashier", "commercial", "receptionist"],
     paraQue: "Para no perder a los pacientes que están por decidirse o que dejaron de venir: un tablero de seguimiento por etapas, listas ya armadas de a quién contactar y campañas de mensajes.",
     antes: ["La clínica tiene el plan Multi (la demo lo tiene): con el plan Clínica, la pantalla CRM aparece bloqueada con el aviso “Este módulo no está incluido en tu Plan Clínica”."],
     pasos: [

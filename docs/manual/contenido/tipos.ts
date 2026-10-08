@@ -4,7 +4,7 @@
  *  así `npm test` puede cargarlos para validarlos. Lo de Playwright llega por el `Captor` que recibe `capturar`. */
 import type { Locator, Page, expect as Expect } from "@playwright/test";
 
-export type RolId = "admin" | "cashier" | "receptionist" | "dentist" | "assistant";
+export type RolId = "admin" | "cashier" | "receptionist" | "commercial" | "dentist" | "assistant";
 /** Un capítulo es «Para todos» o el de un rol. */
 export type CapituloId = "todos" | RolId;
 

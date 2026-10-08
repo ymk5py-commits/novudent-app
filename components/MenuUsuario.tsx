@@ -5,7 +5,7 @@
 import { useRef, useState } from "react";
 import { ChevronDown, UserRound, Headset, Copy, LogOut, KeyRound, Check } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { ROLE_LABEL } from "@/lib/rbac";
+import { rolLabel } from "@/lib/rbac";
 import { SOPORTE, linkCorreoSoporte } from "@/lib/soporte";
 import type { User } from "@/lib/types";
 import { Btn, Field, Modal, inputCls } from "@/components/ui";
@@ -33,7 +33,7 @@ export function MenuUsuario({ me, clinica, onAyuda, onSalir }: { me?: User; clin
       >
         <span className="hidden text-right xl:block xl:whitespace-nowrap">
           <span className="block text-xs font-bold leading-tight">{session.name}</span>
-          <span className="block text-[11px] leading-tight text-white/75">{ROLE_LABEL[session.role]}</span>
+          <span className="block text-[11px] leading-tight text-white/75">{rolLabel(session.role)}</span>
         </span>
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold ring-2 ring-white/40" style={{ background: me?.color ?? "#0369C9" }} aria-hidden>{iniciales}</span>
         <ChevronDown className={`h-3.5 w-3.5 text-white/70 transition-transform ${abierto ? "rotate-180" : ""}`} aria-hidden />
@@ -41,7 +41,7 @@ export function MenuUsuario({ me, clinica, onAyuda, onSalir }: { me?: User; clin
       <Desplegable ancla={ref} abierto={abierto} onCerrar={() => setAbierto(false)} ancho={270} alinear="derecha" etiqueta="Menú del usuario">
         <div className="border-b border-clinic-border px-3 pb-2 pt-1">
           <div className="text-[13px] font-bold text-clinic-text">{session.name}</div>
-          <div className="text-[12px] text-clinic-muted">{ROLE_LABEL[session.role]} · {clinica}</div>
+          <div className="text-[12px] text-clinic-muted">{rolLabel(session.role)} · {clinica}</div>
         </div>
         <ItemMenu onClick={() => { setAbierto(false); setPerfil(true); }}><UserRound className="h-4 w-4 text-azure-600" /> Mi perfil</ItemMenu>
         <ItemMenu onClick={() => { setAbierto(false); onAyuda(); }}><Headset className="h-4 w-4 text-azure-600" /> Ayuda de Novum</ItemMenu>
@@ -87,7 +87,7 @@ function MiPerfilModal({ me, clinica, onClose }: { me?: User; clinica: string; o
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5">
           <dt className="text-clinic-muted">Nombre</dt><dd className="font-semibold">{session.name}</dd>
           {me?.email && <><dt className="text-clinic-muted">Correo</dt><dd>{me.email}</dd></>}
-          <dt className="text-clinic-muted">Rol</dt><dd>{ROLE_LABEL[session.role]}</dd>
+          <dt className="text-clinic-muted">Rol</dt><dd>{rolLabel(session.role)}</dd>
           <dt className="text-clinic-muted">Clínica</dt><dd>{clinica}</dd>
           <dt className="text-clinic-muted">ID de soporte</dt>
           <dd className="flex items-center gap-2"><span className="tabular-nums">{session.clinicId}</span><button type="button" onClick={() => copiar(session.clinicId)} className="text-azure-700 hover:underline">Copiar</button></dd>

@@ -32,7 +32,7 @@ export const procedimientos: Procedimiento[] = [
     id: "dar-una-cita",
     capitulo: "receptionist",
     titulo: "Dar una cita",
-    roles: ["receptionist", "cashier", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "admin"],
     paraQue: "Cuando un paciente pide un horario, por teléfono, por WhatsApp o en el mostrador. La cita queda en la agenda del profesional como «No confirmado».",
     antes: ["El nombre o la CI del paciente a mano. Si todavía no tiene ficha, la cargás en el mismo momento (paso 2)."],
     pasos: [
@@ -117,7 +117,7 @@ export const procedimientos: Procedimiento[] = [
     id: "cambiar-el-estado-de-una-cita",
     capitulo: "receptionist",
     titulo: "Confirmar, anular o cambiar el estado de una cita",
-    roles: ["receptionist", "cashier", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "admin"],
     paraQue: "A medida que el paciente avanza: confirma, llega, pasa al consultorio, se atiende, avisa que no viene o no aparece. Con el estado al día, toda la clínica sabe en qué está cada cita.",
     pasos: [
       { texto: "En **Agenda**, vista **Diaria**, buscá la cita (cambiá de día con las flechas o con «Fecha») y tocá su estado, en la columna **Estado de la cita**: se abre la lista de estados.", captura: "menu" },
@@ -185,7 +185,7 @@ export const procedimientos: Procedimiento[] = [
     id: "reprogramar-una-cita",
     capitulo: "receptionist",
     titulo: "Mover una cita a otro día u horario",
-    roles: ["receptionist", "cashier", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "admin"],
     paraQue: "Cuando el paciente pide cambiar su cita a otro día o a otra hora, o cuando una cita anulada hay que volver a dar.",
     pasos: [
       { texto: "En **Agenda**, buscá la cita, tocá ⋮ en su fila (**Acciones de la cita**) y elegí «Editar».", captura: "acciones" },
@@ -250,7 +250,7 @@ export const procedimientos: Procedimiento[] = [
     id: "usar-la-lista-de-espera",
     capitulo: "receptionist",
     titulo: "Usar la lista de espera",
-    roles: ["receptionist", "cashier", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "admin"],
     paraQue: "Cuando un paciente quiere un turno antes o no hay horario que le sirva: lo anotás y, apenas se libera un lugar, le das la cita.",
     pasos: [
       { texto: "En **Agenda**, tocá «Lista de espera», arriba a la derecha. El número del botón es cuántos pacientes esperan.", captura: "boton" },
@@ -317,7 +317,7 @@ export const procedimientos: Procedimiento[] = [
     id: "recorrer-la-agenda",
     capitulo: "receptionist",
     titulo: "Recorrer la agenda: día, semana, mes y filtros",
-    roles: ["receptionist", "cashier", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "admin"],
     paraQue: "Para ver las citas de un día, de la semana o del mes, de todos los profesionales o de uno solo, y para imprimir la agenda.",
     pasos: [
       { texto: "Entrá a **Agenda**: se abre la vista **Diaria**, con las citas del día. Cambiá de día con las flechas de la izquierda o con «Fecha»; si estás en otro día, «Ir a hoy» te devuelve al de hoy.", captura: "diaria" },
@@ -374,7 +374,7 @@ export const procedimientos: Procedimiento[] = [
     id: "cargar-un-paciente-nuevo",
     capitulo: "receptionist",
     titulo: "Cargar un paciente nuevo",
-    roles: ["receptionist", "cashier", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "admin"],
     paraQue: "La primera vez que viene un paciente, o antes, cuando pide su primera cita. La ficha queda lista para sus citas, sus documentos y sus tratamientos.",
     antes: ["Buscar al paciente por nombre o CI para confirmar que no tenga ya una ficha: [[buscar-un-paciente]]."],
     pasos: [
@@ -448,7 +448,7 @@ export const procedimientos: Procedimiento[] = [
     id: "editar-o-deshabilitar-un-paciente",
     capitulo: "receptionist",
     titulo: "Editar los datos de un paciente o deshabilitarlo",
-    roles: ["receptionist", "cashier", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "admin"],
     paraQue: "Cuando cambia el teléfono, el correo o la dirección de un paciente, o cuando ya no se atiende en la clínica y querés sacarlo de la lista.",
     pasos: [
       { texto: "En **Pacientes**, buscá al paciente (por nombre, CI o teléfono), tocá ⋮ en su fila y elegí «Ir a datos personales».", captura: "menu" },
@@ -509,7 +509,7 @@ export const procedimientos: Procedimiento[] = [
     id: "completar-la-historia-clinica",
     capitulo: "receptionist",
     titulo: "Completar la Historia Clínica de un paciente",
-    roles: ["receptionist", "cashier", "admin", "dentist"],
+    roles: ["receptionist", "cashier", "commercial", "admin", "dentist"],
     paraQue: "La primera vez que viene un paciente, o cuando la campana la marca pendiente: se le hacen las preguntas de salud y se anotan sus respuestas en la ficha.",
     antes: ["El paciente ya tiene ficha: la Historia Clínica queda pendiente sola al cargarlo ([[cargar-un-paciente-nuevo]])."],
     pasos: [
@@ -581,7 +581,7 @@ export const procedimientos: Procedimiento[] = [
     id: "pedir-un-consentimiento",
     capitulo: "receptionist",
     titulo: "Pedir y guardar un consentimiento",
-    roles: ["receptionist", "cashier", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "admin"],
     paraQue: "Antes de un tratamiento que lo requiere: el paciente lee y firma un consentimiento informado y la clínica lo guarda firmado en su ficha.",
     antes: ["La clínica tiene plantillas de consentimiento cargadas (las carga la administración).", "El plan Clínica o superior: la firma electrónica no está en el plan Solo."],
     pasos: [
@@ -674,7 +674,7 @@ export const procedimientos: Procedimiento[] = [
     id: "atender-una-reserva-online",
     capitulo: "receptionist",
     titulo: "Atender una reserva que entra por la web",
-    roles: ["receptionist", "cashier", "admin"],
+    roles: ["receptionist", "cashier", "commercial", "admin"],
     paraQue: "Cuando un paciente reserva solo, con el link de la clínica (web, Instagram, WhatsApp): la cita entra a la agenda sin confirmar y la recepción la tiene que validar.",
     antes: ["La clínica comparte su link de reserva: lo copia la administración desde **Administración › Agenda online** (ahí también está su código QR, para imprimirlo en la recepción)."],
     pasos: [

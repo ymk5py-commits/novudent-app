@@ -98,16 +98,16 @@ test("la difusión del admin le llega a cada uno, marcada, sin que vea a quién 
   const texto = `Difusión de prueba ${Date.now()}`;
   await panel.getByRole("textbox", { name: "Mensaje de la difusión" }).fill(texto);
   await panel.getByRole("button", { name: "Enviar a todos" }).click();
-  await expect(panel.getByRole("status")).toContainText("le llegó a 5 personas");
+  await expect(panel.getByRole("status")).toContainText("le llegó a 6 personas");
 
   // El admin sí ve a quién le llegó.
-  const destinatarios = [USUARIOS_DEMO.dentista, USUARIOS_DEMO.asistente, USUARIOS_DEMO.recepcionista, USUARIOS_DEMO.caja, "Dr. Diego Martínez"];
+  const destinatarios = [USUARIOS_DEMO.dentista, USUARIOS_DEMO.asistente, USUARIOS_DEMO.recepcionista, USUARIOS_DEMO.caja, USUARIOS_DEMO.comercial, "Dr. Diego Martínez"];
   const enviada = panel.getByRole("listitem").filter({ hasText: texto });
   for (const nombre of destinatarios) await expect(enviada.getByRole("list", { name: "Destinatarios" })).toContainText(nombre);
 
   // En los datos es un fan-out: una copia por persona, cada una solo con el admin y esa persona.
   const copias = (await directos(page)).filter((m) => m.text === texto);
-  expect(copias.map((c) => c.toId).sort()).toEqual(["u2", "u3", "u4", "u5", "u6"]);
+  expect(copias.map((c) => c.toId).sort()).toEqual(["u2", "u3", "u4", "u5", "u6", "u7"]);
   expect(new Set(copias.map((c) => c.difusionId)).size).toBe(1);
   for (const c of copias) expect(c.participants).toEqual(["u1", c.toId]);
 

@@ -2,6 +2,8 @@ import { describe, it, expect, afterEach } from "vitest";
 import {
   can, ROLES, ROLE_LABEL, ROLE_DESCRIPCION, ROLES_CONFIGURABLES, PERMISOS_SOLO_ADMIN, ALL_PERMISSIONS,
   permisoDeFabrica, permisoEfectivo, normalizarPermisos, mismosPermisos, aplicarPermisosDeLaClinica,
+  aplicarRolesDeLaClinica, normalizarRolesPropios, normalizarNombresDeRoles, rolLabel, rolDescripcion,
+  esRolDeFabrica, esRolPropio, rolesParaElegir, mismaConfiguracionDeRoles,
   type Permission, type PermisosDeLaClinica,
 } from "./rbac";
 
@@ -18,11 +20,12 @@ describe("can — matriz RBAC (roles v3)", () => {
     for (const p of ALL) expect(can("admin", p)).toBe(true);
   });
 
-  it("los cinco roles tienen nombre y descripción", () => {
-    expect(ROLES).toEqual(["admin", "cashier", "receptionist", "dentist", "assistant"]);
+  it("los seis roles tienen nombre y descripción", () => {
+    expect(ROLES).toEqual(["admin", "cashier", "receptionist", "commercial", "dentist", "assistant"]);
     expect(ROLE_LABEL.admin).toBe("Administrador");
     expect(ROLE_LABEL.cashier).toBe("Recepción y caja");
     expect(ROLE_LABEL.receptionist).toBe("Recepcionista");
+    expect(ROLE_LABEL.commercial).toBe("Comercial");
     expect(ROLE_LABEL.dentist).toBe("Dentista");
     expect(ROLE_LABEL.assistant).toBe("Asistente de doctores");
     for (const r of ROLES) expect(ROLE_DESCRIPCION[r].length).toBeGreaterThan(20);
@@ -35,9 +38,9 @@ describe("can — matriz RBAC (roles v3)", () => {
     }
   });
 
-  it("solo la recepción, la caja y el admin dan o cambian citas: lo clínico ve la agenda en lectura", () => {
+  it("solo la recepción, la caja, el comercial y el admin dan o cambian citas: lo clínico ve la agenda en lectura", () => {
     for (const r of ROLES) {
-      const recepcion = r === "admin" || r === "cashier" || r === "receptionist";
+      const recepcion = r === "admin" || r === "cashier" || r === "receptionist" || r === "commercial";
       expect(can(r, "agenda.create")).toBe(recepcion);
       expect(can(r, "agenda.edit")).toBe(recepcion);
     }
@@ -111,8 +114,8 @@ describe("catálogo de permisos y roles que se pueden configurar", () => {
     expect([...ALL_PERMISSIONS].sort()).toEqual([...ALL].sort());
   });
 
-  it("se configuran los cuatro roles que no son el administrador, en el orden de ROLES", () => {
-    expect(ROLES_CONFIGURABLES).toEqual(["cashier", "receptionist", "dentist", "assistant"]);
+  it("se configuran los roles de fábrica que no son el administrador, en el orden de ROLES", () => {
+    expect(ROLES_CONFIGURABLES).toEqual(ROLES.filter((r) => r !== "admin"));
   });
 
   it("crear usuarios y configurar la clínica no se reparten: son solo del administrador", () => {
@@ -223,9 +226,10 @@ describe("normalizarPermisos — lo que viene de Firestore se limpia antes de us
     expect(normalizarPermisos({ cashier: { quitar: ["payments.manage"] } })).toEqual({ cashier: { dar: [], quitar: ["payments.manage"] } });
   });
 
-  it("descarta al administrador y a los roles que no existen", () => {
+  it("descarta al administrador y las claves que no pueden ser el id de un rol", () => {
     const limpio = normalizarPermisos({
-      admin: { quitar: ["money.view"] }, jefe: { dar: ["money.view"] }, dentist: { dar: ["money.view"] },
+      admin: { quitar: ["money.view"] }, "con espacios": { dar: ["money.view"] }, "": { dar: ["money.view"] },
+      dentist: { dar: ["money.view"] },
     });
     expect(Object.keys(limpio ?? {})).toEqual(["dentist"]);
   });
@@ -269,5 +273,208 @@ describe("mismosPermisos — ¿dicen lo mismo dos configuraciones?", () => {
     expect(mismosPermisos({ dentist: { dar: ["money.view"] } }, { assistant: { dar: ["money.view"] } })).toBe(false);
     expect(mismosPermisos({ dentist: { dar: ["money.view"] } }, undefined)).toBe(false);
     expect(mismosPermisos({ cashier: { quitar: ["agenda.all"] } }, { cashier: { dar: ["agenda.all"] } })).toBe(false);
+  });
+});
+
+/* ===== Comercial: un rol de fábrica más (pedido de Camila, 8-oct-2026) ===== */
+
+describe("Comercial: vende y hace el seguimiento, sin cobrar ni entrar a la ficha clínica", () => {
+  it("ve la agenda de todos, carga y edita los datos del paciente, presenta presupuestos con sus montos y trabaja el CRM", () => {
+    for (const p of ["agenda.view", "agenda.create", "agenda.edit", "agenda.all", "patients.personal", "plans.view", "money.view", "budgets.manage", "engagement.forms", "tasks.use"] as const) {
+      expect(can("commercial", p), p).toBe(true);
+    }
+  });
+
+  it("no cobra, no maneja la facturación, no lee ni escribe la ficha, no ve los números del negocio y no configura nada", () => {
+    for (const p of ["payments.manage", "billing.submit", "billing.finalize", "billing.reports", "emr.read", "emr.write", "plans.create", "expenses.manage", "inventory.manage", "labs.manage", "users.manage", "practice.config"] as const) {
+      expect(can("commercial", p), p).toBe(false);
+    }
+  });
+
+  it("es un rol más de los que se configuran", () => {
+    expect(ROLES_CONFIGURABLES).toEqual(["cashier", "receptionist", "commercial", "dentist", "assistant"]);
+  });
+});
+
+/* ===== Roles propios y nombres de la clínica =====
+ * Una clínica puede crear roles con el nombre que quiera (`config.rolesPropios`) y ponerle otro nombre a los de fábrica
+ * (`config.nombresDeRoles`). Un rol propio no hereda nada: lo que puede hacer es exactamente su lista `dar`. */
+
+describe("un rol propio puede lo que la clínica le dio, y nada más", () => {
+  const permisos: PermisosDeLaClinica = { rp_ab12cd34: { dar: ["agenda.view", "money.view", "budgets.manage"], quitar: [] } };
+
+  it("tiene lo de su lista", () => {
+    for (const p of ["agenda.view", "money.view", "budgets.manage"] as const) expect(permisoEfectivo("rp_ab12cd34", p, permisos)).toBe(true);
+  });
+
+  it("no hereda lo que tienen todos los roles de fábrica (ni siquiera las tareas)", () => {
+    expect(permisoEfectivo("rp_ab12cd34", "tasks.use", permisos)).toBe(false);
+    expect(permisoEfectivo("rp_ab12cd34", "patients.personal", permisos)).toBe(false);
+  });
+
+  it("sin ajustes, un rol que no existe no puede nada", () => {
+    for (const p of ALL) expect(permisoEfectivo("rp_ab12cd34", p, undefined)).toBe(false);
+  });
+
+  it("crear usuarios y configurar la clínica no se dan a un rol propio, aunque estén escritos", () => {
+    const forzado: PermisosDeLaClinica = { rp_ab12cd34: { dar: ["users.manage", "practice.config", "money.view"] } };
+    expect(permisoEfectivo("rp_ab12cd34", "users.manage", forzado)).toBe(false);
+    expect(permisoEfectivo("rp_ab12cd34", "practice.config", forzado)).toBe(false);
+    expect(permisoEfectivo("rp_ab12cd34", "money.view", forzado)).toBe(true);
+  });
+
+  it("el id de un rol no se confunde con una propiedad de los objetos de JavaScript", () => {
+    const sucio = { dentist: { dar: ["money.view"] } } as PermisosDeLaClinica;
+    for (const id of ["constructor", "toString", "__proto__", "hasOwnProperty", "valueOf"]) {
+      for (const p of ALL) expect(permisoEfectivo(id, p, sucio), `${id} ${p}`).toBe(false);
+    }
+  });
+});
+
+describe("normalizarPermisos con roles propios", () => {
+  it("deja pasar el id de un rol propio y lo ordena detrás de los de fábrica", () => {
+    const limpio = normalizarPermisos({ rp_zzz: { dar: ["money.view"] }, rp_aaa: { dar: ["agenda.view"] }, dentist: { quitar: ["emr.write"] } });
+    expect(Object.keys(limpio ?? {})).toEqual(["dentist", "rp_aaa", "rp_zzz"]);
+    expect(limpio?.rp_aaa).toEqual({ dar: ["agenda.view"], quitar: [] });
+  });
+
+  it("descarta los ids que no sirven: prototipo, con símbolos, vacío o larguísimo", () => {
+    const entrada = JSON.parse(`{
+      "__proto__": { "dar": ["money.view"] }, "constructor": { "dar": ["money.view"] }, "prototype": { "dar": ["money.view"] },
+      "con espacio": { "dar": ["money.view"] }, "ñandú": { "dar": ["money.view"] }, "${"x".repeat(41)}": { "dar": ["money.view"] },
+      "rp_ok": { "dar": ["money.view"] }
+    }`);
+    expect(Object.keys(normalizarPermisos(entrada) ?? {})).toEqual(["rp_ok"]);
+  });
+
+  it("sigue sin dejar pasar al administrador", () => {
+    expect(normalizarPermisos({ admin: { quitar: ["money.view"] } })).toBeUndefined();
+  });
+});
+
+describe("normalizarRolesPropios — lo que viene de Firestore", () => {
+  it("lo que no es una lista es «sin roles propios»", () => {
+    for (const basura of [undefined, null, "x", 3, {}, true]) expect(normalizarRolesPropios(basura)).toEqual([]);
+  });
+
+  it("se queda con los que tienen id y nombre válidos, y quita espacios de más", () => {
+    expect(normalizarRolesPropios([{ id: "rp_1", nombre: "  Coordinadora de tratamientos  " }, { id: "rp_2", nombre: "Marketing" }]))
+      .toEqual([{ id: "rp_1", nombre: "Coordinadora de tratamientos" }, { id: "rp_2", nombre: "Marketing" }]);
+  });
+
+  it("descarta ids repetidos, ids que chocan con los de fábrica o con el prototipo, y nombres vacíos o muy largos", () => {
+    const limpio = normalizarRolesPropios([
+      { id: "rp_1", nombre: "Uno" }, { id: "rp_1", nombre: "Otra vez" },
+      { id: "admin", nombre: "Falso admin" }, { id: "dentist", nombre: "Falso dentista" }, { id: "__proto__", nombre: "Raro" },
+      { id: "rp_3", nombre: "   " }, { id: "rp_4", nombre: "x".repeat(41) }, { id: "con espacio", nombre: "Mal id" },
+      { id: 5, nombre: "Id numérico" }, { id: "rp_5" }, "texto", null,
+    ]);
+    expect(limpio).toEqual([{ id: "rp_1", nombre: "Uno" }]);
+  });
+});
+
+describe("normalizarNombresDeRoles — los nombres que la clínica le puso a los de fábrica", () => {
+  it("lo que no es un mapa es «sin cambios»", () => {
+    for (const basura of [undefined, null, "x", 3, [], true]) expect(normalizarNombresDeRoles(basura)).toEqual({});
+  });
+
+  it("acepta los roles de fábrica, incluido el administrador, y recorta los espacios", () => {
+    expect(normalizarNombresDeRoles({ dentist: "  Odontólogo ", admin: "Dueño" })).toEqual({ dentist: "Odontólogo", admin: "Dueño" });
+  });
+
+  it("descarta roles que no son de fábrica, nombres vacíos, muy largos o que no son texto", () => {
+    expect(normalizarNombresDeRoles({ rp_1: "Propio", dentist: "  ", assistant: "x".repeat(41), cashier: 3, receptionist: null, commercial: "Asesor" })).toEqual({ commercial: "Asesor" });
+  });
+});
+
+describe("rolLabel y rolDescripcion — cómo se llama cada rol en ESTA clínica", () => {
+  afterEach(() => aplicarRolesDeLaClinica(undefined));
+
+  it("sin nada guardado, el nombre y la descripción de fábrica", () => {
+    expect(rolLabel("dentist")).toBe("Dentista");
+    expect(rolLabel("commercial")).toBe("Comercial");
+    expect(rolDescripcion("dentist")).toBe(ROLE_DESCRIPCION.dentist);
+  });
+
+  it("un rol de fábrica con otro nombre se muestra con el nombre nuevo (y su descripción no cambia)", () => {
+    aplicarRolesDeLaClinica({ nombresDeRoles: { dentist: "Odontólogo", commercial: "Asesor comercial" } });
+    expect(rolLabel("dentist")).toBe("Odontólogo");
+    expect(rolLabel("commercial")).toBe("Asesor comercial");
+    expect(rolLabel("assistant")).toBe("Asistente de doctores");
+    expect(rolDescripcion("dentist")).toBe(ROLE_DESCRIPCION.dentist);
+  });
+
+  it("un rol propio se muestra con su nombre y una descripción que dice dónde se elige lo que puede hacer", () => {
+    aplicarRolesDeLaClinica({ rolesPropios: [{ id: "rp_ab12", nombre: "Coordinadora de tratamientos" }] });
+    expect(rolLabel("rp_ab12")).toBe("Coordinadora de tratamientos");
+    expect(rolDescripcion("rp_ab12")).toMatch(/Permisos del equipo/);
+  });
+
+  it("un rol que ya no existe no rompe nada", () => {
+    expect(rolLabel("rp_borrado")).toBe("Rol sin nombre");
+    expect(rolDescripcion("rp_borrado")).toBe("");
+  });
+
+  it("aplicar basura vuelve a lo de fábrica y no tira", () => {
+    aplicarRolesDeLaClinica({ nombresDeRoles: { dentist: "Odontólogo" }, rolesPropios: [{ id: "rp_1", nombre: "Uno" }] });
+    for (const basura of ["x", 3, null, [], { rolesPropios: "x", nombresDeRoles: 5, permisos: 7 }]) {
+      aplicarRolesDeLaClinica(basura as never);
+      expect(rolLabel("dentist")).toBe("Dentista");
+      expect(rolLabel("rp_1")).toBe("Rol sin nombre");
+    }
+  });
+
+  it("aplicar los roles de la clínica aplica también sus permisos (can() los ve)", () => {
+    aplicarRolesDeLaClinica({ permisos: { rp_ab12: { dar: ["money.view"] } }, rolesPropios: [{ id: "rp_ab12", nombre: "Contador" }] });
+    expect(can("rp_ab12", "money.view")).toBe(true);
+    expect(can("rp_ab12", "payments.manage")).toBe(false);
+    aplicarRolesDeLaClinica(undefined);
+    expect(can("rp_ab12", "money.view")).toBe(false);
+  });
+});
+
+describe("esRolDeFabrica, esRolPropio y rolesParaElegir", () => {
+  afterEach(() => aplicarRolesDeLaClinica(undefined));
+
+  it("distingue los roles de fábrica de los que creó la clínica", () => {
+    aplicarRolesDeLaClinica({ rolesPropios: [{ id: "rp_ab12", nombre: "Contador" }] });
+    expect(esRolDeFabrica("dentist")).toBe(true);
+    expect(esRolDeFabrica("rp_ab12")).toBe(false);
+    expect(esRolDeFabrica("constructor")).toBe(false);
+    expect(esRolPropio("rp_ab12")).toBe(true);
+    expect(esRolPropio("dentist")).toBe(false);
+    expect(esRolPropio("rp_otro")).toBe(false);
+  });
+
+  it("para los selectores: los de fábrica en su orden y detrás los propios, con el nombre que tienen en esta clínica", () => {
+    aplicarRolesDeLaClinica({ nombresDeRoles: { dentist: "Odontólogo" }, rolesPropios: [{ id: "rp_ab12", nombre: "Contador" }] });
+    expect(rolesParaElegir()).toEqual([
+      { id: "admin", nombre: "Administrador", deFabrica: true },
+      { id: "cashier", nombre: "Recepción y caja", deFabrica: true },
+      { id: "receptionist", nombre: "Recepcionista", deFabrica: true },
+      { id: "commercial", nombre: "Comercial", deFabrica: true },
+      { id: "dentist", nombre: "Odontólogo", deFabrica: true },
+      { id: "assistant", nombre: "Asistente de doctores", deFabrica: true },
+      { id: "rp_ab12", nombre: "Contador", deFabrica: false },
+    ]);
+  });
+});
+
+describe("mismaConfiguracionDeRoles — ¿cambió algo de los roles entre dos versiones de la configuración?", () => {
+  it("lo mismo escrito distinto es lo mismo, y lo que no es de roles no cuenta", () => {
+    expect(mismaConfiguracionDeRoles(
+      { permisos: { dentist: { dar: ["money.view"] } }, rolesPropios: [{ id: "rp_1", nombre: " Uno " }], nombresDeRoles: { dentist: "Odontólogo" }, currency: "PYG" },
+      { permisos: { dentist: { quitar: [], dar: ["money.view", "money.view"] } }, rolesPropios: [{ id: "rp_1", nombre: "Uno" }], nombresDeRoles: { dentist: " Odontólogo", cashier: "" }, currency: "USD" },
+    )).toBe(true);
+    expect(mismaConfiguracionDeRoles(undefined, {})).toBe(true);
+    expect(mismaConfiguracionDeRoles(undefined, { permisos: { cashier: { dar: [] } } })).toBe(true);
+  });
+
+  it("detecta un permiso, un rol propio o un nombre distinto", () => {
+    const base = { permisos: { dentist: { dar: ["money.view"] } }, rolesPropios: [{ id: "rp_1", nombre: "Uno" }], nombresDeRoles: { dentist: "Odontólogo" } };
+    expect(mismaConfiguracionDeRoles(base, { ...base, permisos: { dentist: { dar: ["labs.manage"] } } })).toBe(false);
+    expect(mismaConfiguracionDeRoles(base, { ...base, rolesPropios: [{ id: "rp_1", nombre: "Dos" }] })).toBe(false);
+    expect(mismaConfiguracionDeRoles(base, { ...base, rolesPropios: [] })).toBe(false);
+    expect(mismaConfiguracionDeRoles(base, { ...base, nombresDeRoles: {} })).toBe(false);
   });
 });

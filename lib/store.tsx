@@ -48,11 +48,11 @@ async function ensureAuth() {
 }
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, OdontogramStatus, OdontogramToothState, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic, OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, DirectMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo, Branch, CrmCard, Campaign, LabOrder, Settlement, Box, Subscription,
-  DocumentoClinico, RutinaCheck,
+  DocumentoClinico, RutinaCheck, RolId,
 } from "./types";
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
-import { can, aplicarPermisosDeLaClinica, mismosPermisos } from "./rbac";
+import { can, aplicarRolesDeLaClinica, mismaConfiguracionDeRoles } from "./rbac";
 import { historiaClinicaPendiente, plantillasDeClinica } from "./documentosClinicos";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { worstSeverity } from "./recovery";
@@ -421,7 +421,7 @@ interface Ctx {
   backend: Backend;
   login: (userId: string) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
-  createTeamUser: (data: { name: string; email: string; role: import("./types").Role; password: string; color: string; phone?: string }) => Promise<void>;
+  createTeamUser: (data: { name: string; email: string; role: RolId; password: string; color: string; phone?: string }) => Promise<void>;
   /** Cambia la contraseña del usuario actual y limpia mustChangePassword (cambio inicial obligatorio) */
   changeMyPassword: (newPassword: string) => Promise<void>;
   logout: () => void;
@@ -581,9 +581,10 @@ const StoreCtx = createContext<Ctx | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<DB>(buildSeed);
-  /* Los permisos que la clínica repartió o sacó (Permisos del equipo) se aplican en CADA render, antes de que se pinte
-   * ninguna pantalla: las ~100 llamadas a `can(role, p)` los leen del módulo y no hay que pasárselos a ninguna. */
-  aplicarPermisosDeLaClinica(db.clinics[0]?.config?.permisos);
+  /* Lo que la clínica configuró de sus roles (Permisos del equipo: permisos, roles propios y los otros nombres) se aplica en CADA
+   * render, antes de que se pinte ninguna pantalla: las ~100 llamadas a `can(role, p)` y las etiquetas de rol (`rolLabel`) lo leen del
+   * módulo y no hay que pasárselo a ninguna. */
+  aplicarRolesDeLaClinica(db.clinics[0]?.config);
   // El estado más nuevo, para los reintentos de escrituras que reescriben un documento entero (ver `fsMeta`).
   const dbRef = useRef(db);
   useEffect(() => { dbRef.current = db; }, [db]);
@@ -722,30 +723,36 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return unsub;
   }, [backend, activeClinicId]);
 
-  /* ===== Tiempo real: permisos del equipo =====
-   * El administrador reparte o saca permisos desde Configuración. Las reglas de Firestore ya aplican el cambio en el
-   * momento, así que la pantalla de quien tiene la sesión abierta tiene que enterarse también: si no, seguiría mostrando
-   * un botón que el servidor rechaza (o escondiendo uno que ya puede usar) hasta que recargue.
-   * Se toma SOLO `config.permisos` del documento de la clínica, nunca el resto de la configuración: un snapshot de otro
-   * momento no puede pisar lo que este navegador todavía está guardando (ver `fsMeta`). Si el eco de una escritura
-   * propia trae lo mismo que ya hay, no se toca el estado. */
+  /* ===== Tiempo real: permisos y roles del equipo =====
+   * El administrador reparte o saca permisos, crea roles y les cambia el nombre desde Configuración. Las reglas de Firestore ya aplican el
+   * cambio en el momento, así que la pantalla de quien tiene la sesión abierta tiene que enterarse también: si no, seguiría mostrando un botón
+   * que el servidor rechaza (o escondiendo uno que ya puede usar) hasta que recargue.
+   * Se toman SOLO `config.permisos`, `config.rolesPropios` y `config.nombresDeRoles` del documento de la clínica, nunca el resto de la
+   * configuración: un snapshot de otro momento no puede pisar lo que este navegador todavía está guardando (ver `fsMeta`). Si el eco de una
+   * escritura propia trae lo mismo que ya hay, no se toca el estado. */
   useEffect(() => {
     if (backend !== "firebase") return;
     const cid = activeClinicId;
     const unsub = onSnapshot(
       doc(fsdb, "clinics", cid),
       (snap) => {
-        const permisos = (snap.data() as { config?: { permisos?: unknown } } | undefined)?.config?.permisos;
+        const remota = (snap.data() as { config?: { permisos?: unknown; rolesPropios?: unknown; nombresDeRoles?: unknown } } | undefined)?.config;
         setDb((prev) => {
           if ((prev.clinics[0]?.id ?? cid) !== cid) return prev; // snapshot tardío de otra clínica
           const clinica = prev.clinics[0];
-          if (!clinica || mismosPermisos(clinica.config?.permisos, permisos)) return prev;
-          const next: DB = { ...prev, clinics: [{ ...clinica, config: { ...clinica.config, permisos: permisos as typeof clinica.config.permisos } }] };
+          if (!clinica || mismaConfiguracionDeRoles(clinica.config, remota)) return prev;
+          const config = {
+            ...clinica.config,
+            permisos: remota?.permisos as typeof clinica.config.permisos,
+            rolesPropios: remota?.rolesPropios as typeof clinica.config.rolesPropios,
+            nombresDeRoles: remota?.nombresDeRoles as typeof clinica.config.nombresDeRoles,
+          };
+          const next: DB = { ...prev, clinics: [{ ...clinica, config }] };
           try { localStorage.setItem(DB_KEY, JSON.stringify(next)); } catch {}
           return next;
         });
       },
-      (e) => console.warn("listener permisos:", e)
+      (e) => console.warn("listener roles:", e)
     );
     return unsub;
   }, [backend, activeClinicId]);

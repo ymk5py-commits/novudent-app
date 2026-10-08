@@ -28,7 +28,7 @@ for (const p of capitulos.flatMap((c) => c.procedimientos)) {
 /** El menú de arriba que ve cada rol, para la hoja «Tu rol» de cada capítulo (sale de la app, no se tipea a mano). */
 test("capturas: menú de cada rol", async ({ page }) => {
   test.skip(parcial, "solo en la corrida completa");
-  const roles: RolId[] = ["receptionist", "cashier", "dentist", "assistant", "admin"];
+  const roles: RolId[] = ["receptionist", "cashier", "commercial", "dentist", "assistant", "admin"];
   const menus: Partial<Record<RolId, string[]>> = {};
   for (const rol of roles) {
     const c = new CaptorPW(page, "_menus");

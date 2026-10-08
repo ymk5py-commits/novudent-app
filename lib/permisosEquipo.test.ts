@@ -26,6 +26,11 @@ describe("efectivosDe — lo que puede hacer un rol en esta clínica", () => {
   it("el administrador siempre tiene todo", () => {
     expect(efectivosDe("admin")).toEqual(ALL_PERMISSIONS);
   });
+
+  it("un rol propio tiene lo que se le dio y nada más; sin ajustes, nada", () => {
+    expect(efectivosDe("rp_ab12")).toEqual([]);
+    expect(efectivosDe("rp_ab12", { rp_ab12: { dar: ["money.view", "agenda.view"] } })).toEqual(["agenda.view", "money.view"]);
+  });
 });
 
 describe("ajustesDesdeEfectivos — la diferencia contra la fábrica, lo único que se guarda", () => {
@@ -52,7 +57,7 @@ describe("ajustesDesdeEfectivos — la diferencia contra la fábrica, lo único 
       assistant: { dar: ["emr.write"], quitar: ["tasks.use"] },
     };
     for (const r of ROLES_CONFIGURABLES) {
-      expect(ajustesDesdeEfectivos(r, efectivosDe(r, permisos))).toEqual(normalizarPermisos(permisos)?.[r]);
+      expect(ajustesDesdeEfectivos(r, efectivosDe(r, permisos))).toEqual(normalizarPermisos(permisos)?.[r] ?? { dar: [], quitar: [] });
     }
   });
 
@@ -63,22 +68,23 @@ describe("ajustesDesdeEfectivos — la diferencia contra la fábrica, lo único 
 });
 
 describe("permisosParaGuardar — lo que va a config.permisos", () => {
-  it("escribe siempre los cuatro roles con las dos listas, aunque estén vacías (setDoc merge no borra lo ausente)", () => {
-    const guardado = permisosParaGuardar({
-      cashier: deFabrica("cashier"), receptionist: deFabrica("receptionist"),
-      dentist: deFabrica("dentist"), assistant: deFabrica("assistant"),
-    });
-    expect(Object.keys(guardado)).toEqual(["cashier", "receptionist", "dentist", "assistant"]);
+  const deFabricaTodos = () => Object.fromEntries(ROLES_CONFIGURABLES.map((r) => [r, deFabrica(r)]));
+
+  it("escribe siempre todos los roles que recibe con las dos listas, aunque estén vacías (setDoc merge no borra lo ausente)", () => {
+    const guardado = permisosParaGuardar(deFabricaTodos());
+    expect(Object.keys(guardado)).toEqual([...ROLES_CONFIGURABLES]);
     for (const r of ROLES_CONFIGURABLES) expect(guardado[r]).toEqual({ dar: [], quitar: [] });
   });
 
   it("lleva las diferencias de cada rol y deja vacíos los que no cambiaron", () => {
-    const guardado = permisosParaGuardar({
-      cashier: deFabrica("cashier"), receptionist: [...deFabrica("receptionist"), "money.view"],
-      dentist: deFabrica("dentist"), assistant: deFabrica("assistant"),
-    });
+    const guardado = permisosParaGuardar({ ...deFabricaTodos(), receptionist: [...deFabrica("receptionist"), "money.view"] });
     expect(guardado.receptionist).toEqual({ dar: ["money.view"], quitar: [] });
     expect(guardado.cashier).toEqual({ dar: [], quitar: [] });
+  });
+
+  it("un rol propio guarda todo lo que puede como «dar»: no tiene nada de fábrica", () => {
+    const guardado = permisosParaGuardar({ ...deFabricaTodos(), rp_ab12: new Set<Permission>(["agenda.view", "money.view", "budgets.manage"]) });
+    expect(guardado.rp_ab12).toEqual({ dar: ["agenda.view", "money.view", "budgets.manage"], quitar: [] });
   });
 });
 

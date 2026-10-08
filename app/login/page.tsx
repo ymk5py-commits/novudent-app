@@ -1,14 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Stethoscope, Headset, Wallet, ClipboardList, Mail, Lock, Eye, EyeOff, LoaderCircle, ArrowLeft, RotateCcw, KeyRound, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Stethoscope, Headset, Wallet, ClipboardList, Handshake, UserRound, Mail, Lock, Eye, EyeOff, LoaderCircle, ArrowLeft, RotateCcw, KeyRound, CheckCircle2 } from "lucide-react";
 import { useStore, CLINICA_DEMO_ID } from "@/lib/store";
-import { ROLE_LABEL } from "@/lib/rbac";
+import { rolLabel } from "@/lib/rbac";
 import { Field, inputCls } from "@/components/ui";
 import { sendPasswordReset } from "@/lib/firebase";
 import { Isologo, Logotipo } from "@/components/Marca";
 
-const ICON = { admin: ShieldCheck, cashier: Wallet, receptionist: ClipboardList, dentist: Stethoscope, assistant: Headset } as const;
+const ICON: Record<string, typeof ShieldCheck> = { admin: ShieldCheck, cashier: Wallet, receptionist: ClipboardList, commercial: Handshake, dentist: Stethoscope, assistant: Headset };
 
 function friendlyAuthError(e: any): string {
   const code = e?.code ?? "";
@@ -320,7 +320,7 @@ export default function Login() {
                 )}
                 {ready && !enOtraClinica &&
                   demoUsers.map((u) => {
-                    const Icon = ICON[u.role];
+                    const Icon = ICON[u.role] ?? UserRound;
                     return (
                       <button
                         key={u.id}
@@ -332,7 +332,7 @@ export default function Login() {
                         </span>
                         <span className="flex-1">
                           <span className="block text-sm font-bold text-clinic-text">{u.name}</span>
-                          <span className="block text-xs text-clinic-muted">{ROLE_LABEL[u.role]}</span>
+                          <span className="block text-xs text-clinic-muted">{rolLabel(u.role)}</span>
                         </span>
                       </button>
                     );

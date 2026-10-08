@@ -1,11 +1,11 @@
 import { can } from "./rbac";
-import type { MgmtTask, MgmtTaskType, Role, User } from "./types";
+import type { MgmtTask, MgmtTaskType, RolId, User } from "./types";
 
 /* Alcance por profesional (roles v3): la matriz de lib/rbac.ts dice QUÉ puede hacer
  * cada rol; esto dice SOBRE QUIÉN. Dentista y asistente de doctores trabajan sobre
  * sus propios doctores y sus pacientes; el resto de los roles ve toda la clínica. */
 
-type Quien = { role: Role; userId: string };
+type Quien = { role: RolId; userId: string };
 
 /** Los profesionales cuya agenda y planes ve este usuario. `null` = todos. */
 export function doctoresVisibles(quien: Quien, users: Pick<User, "id" | "asiste">[]): string[] | null {
@@ -46,7 +46,7 @@ const TIPOS_TAREA: MgmtTaskType[] = ["captura", "control", "cobranza", "cheque",
 
 /** Tipos de tarea de gestión que ve cada rol: cobranza y cheques son plata, y la
  *  captura (presupuesto presentado sin aceptar) es de quien gestiona presupuestos. */
-export function tiposDeTareaVisibles(role: Role): MgmtTaskType[] {
+export function tiposDeTareaVisibles(role: RolId): MgmtTaskType[] {
   return TIPOS_TAREA.filter((t) => {
     if (t === "cobranza" || t === "cheque") return can(role, "money.view");
     if (t === "captura") return can(role, "budgets.manage");
