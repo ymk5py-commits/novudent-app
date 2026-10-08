@@ -79,6 +79,24 @@ export function filtrarServicios(procs: Procedure[], busqueda: string, categoria
   });
 }
 
+/** El buscador de prestaciones del plan y de la cita: lo que coincide con lo escrito, en orden de relevancia y cortado en `max`,
+ *  más cuántos coinciden en total (para avisar «mostrando 30 de 120»). Orden: código exacto › el código empieza con lo escrito ›
+ *  el nombre empieza con lo escrito › el resto, en el orden del arancel. `excluir`: códigos que no se ofrecen (los que ya se eligieron). */
+export function buscarPrestaciones(procs: Procedure[], busqueda: string, max: number, excluir?: ReadonlySet<string>): { visibles: Procedure[]; total: number } {
+  const base = excluir && excluir.size > 0 ? procs.filter((p) => !excluir.has(p.cpt)) : procs;
+  const coinciden = filtrarServicios(base, busqueda, "todas");
+  const q = sinTildes(busqueda);
+  const puntaje = (p: Procedure): number => {
+    if (q === "") return 3;
+    const codigo = p.cpt.toLowerCase();
+    if (codigo === q) return 0;
+    if (codigo.startsWith(q)) return 1;
+    return sinTildes(p.description).startsWith(q) ? 2 : 3;
+  };
+  const ordenadas = coinciden.map((p, i) => ({ p, i, n: puntaje(p) })).sort((a, b) => a.n - b.n || a.i - b.i).map((x) => x.p);
+  return { visibles: ordenadas.slice(0, max), total: coinciden.length };
+}
+
 /* ───────────── Ajuste en bloque ───────────── */
 
 /** Sube o baja un precio un porcentaje. `redondeo` es el múltiplo al que se lleva (0 = sin redondeo: la unidad de la moneda). */
