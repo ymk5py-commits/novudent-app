@@ -238,3 +238,70 @@ test.describe("B2 · Importar pacientes", () => {
   });
 });
 
+/* ═══════════════════════ B3 · Plan de tratamiento ═══════════════════════ */
+
+test.describe("B3 · Plan de tratamiento", () => {
+  test("la columna dice «Estado» (se hizo o no), no «Pago»", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.dentista);
+    await page.goto("/app/pacientes/p1#planes");
+    await main(page).getByRole("button", { name: /Plan dental integral/ }).click();
+    const tabla = main(page).getByRole("table");
+    await expect(tabla.getByRole("columnheader", { name: "Estado" })).toBeVisible();
+    await expect(tabla.getByRole("columnheader", { name: "Pago" })).toHaveCount(0);
+    await expect(tabla.getByText("Pendiente", { exact: true })).toHaveCount(3);
+
+    // Un plan con prestaciones hechas (el plan completado de Andrés Mejía).
+    await page.goto("/app/pacientes/p4#planes");
+    await main(page).locator("select").selectOption("todos");
+    await main(page).getByRole("button", { name: /Exodoncia y control/ }).click();
+    await expect(main(page).getByRole("table").getByText("Realizada", { exact: true })).toHaveCount(2);
+  });
+
+  test("la lista de planes dice si cada uno es Borrador, Presentado o Aceptado", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.dentista);
+    await page.goto("/app/pacientes/p1#planes");
+    await expect(main(page).getByRole("button", { name: /Plan dental integral/ })).toContainText("Presentado");
+    await page.goto("/app/pacientes/p3#planes");
+    await expect(main(page).getByRole("button", { name: /Blanqueamiento dental/ })).toContainText("Borrador");
+  });
+
+  test("la asistente (solo lectura) no recibe la orden de subir fotos en «Estética facial»", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.asistente);
+    await page.goto("/app/pacientes/p1#planes");
+    await main(page).getByRole("button", { name: /Plan dental integral/ }).click();
+    await main(page).getByRole("button", { name: "Estética facial" }).click();
+    await expect(main(page).getByRole("heading", { name: "Estética facial" })).toBeVisible();
+    await expect(main(page)).not.toContainText("Subí registros");
+    await expect(main(page)).toContainText("Todavía no hay fotos");
+  });
+
+  test("quien sí puede subirlas sigue viendo la instrucción", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.dentista);
+    await page.goto("/app/pacientes/p1#planes");
+    await main(page).getByRole("button", { name: /Plan dental integral/ }).click();
+    await main(page).getByRole("button", { name: "Estética facial" }).click();
+    await expect(main(page)).toContainText("Subí registros frontal/perfil");
+  });
+
+  // «Preparar consulta» resume la ficha clínica (evoluciones incluidas): es para quien la lee (`emr.read`), como en la cabecera de la ficha.
+  for (const quien of [USUARIOS_DEMO.recepcionista, USUARIOS_DEMO.caja, USUARIOS_DEMO.comercial]) {
+    test(`«Preparar consulta» no está en el plan de ${quien}, que no lee la ficha clínica`, async ({ page }) => {
+      await entrarDemo(page, quien);
+      await page.goto("/app/pacientes/p1#planes");
+      await main(page).getByRole("button", { name: /Plan dental integral/ }).click();
+      await expect(main(page).getByRole("heading", { name: "Plan dental integral" })).toBeVisible();
+      await expect(main(page).getByRole("button", { name: "Preparar consulta" })).toHaveCount(0);
+    });
+  }
+
+  for (const quien of [USUARIOS_DEMO.dentista, USUARIOS_DEMO.asistente]) {
+    test(`${quien}, que lee la ficha clínica, la sigue viendo`, async ({ page }) => {
+      await entrarDemo(page, quien);
+      await page.goto("/app/pacientes/p1#planes");
+      await main(page).getByRole("button", { name: /Plan dental integral/ }).click();
+      await expect(main(page).getByRole("heading", { name: "Plan dental integral" })).toBeVisible();
+      await expect(main(page).getByRole("button", { name: "Preparar consulta" }).first()).toBeVisible();
+    });
+  }
+});
+
