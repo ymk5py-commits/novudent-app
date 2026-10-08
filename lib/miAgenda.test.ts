@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  rangoDe, esMia, itemsDeTareas, rutinaDeHoy, armarAgenda, linkTarea,
-  type DatosRutina, type ItemAgenda,
+  rangoDe, esMia, itemsDeTareas, rutinaDeHoy, armarAgenda, linkTarea, recortarAgenda, pestanaPorTecla,
+  AMBITOS, MAX_PENDIENTES_TODAS, type Ambito, type DatosRutina, type ItemAgenda,
 } from "./miAgenda";
 import { sumarDias, type FilaTarea } from "./tareas";
 import type { Permission } from "./rbac";
@@ -37,6 +37,12 @@ describe("rangoDe", () => {
     expect(rangoDe("semana", "2026-09-30")).toEqual({ desde: "2026-09-28", hasta: "2026-10-04" });
     expect(rangoDe("semana", "2027-01-01")).toEqual({ desde: "2026-12-28", hasta: "2027-01-03" });
   });
+  it("«todas» abarca cualquier fecha, la de hoy no importa", () => {
+    for (const hoy of [HOY, "2027-03-01"]) {
+      const { desde, hasta } = rangoDe("todas", hoy);
+      for (const d of ["1900-01-01", "2020-02-29", "2026-10-06", "2026-12-31", "2099-12-31"]) expect(d >= desde && d <= hasta, d).toBe(true);
+    }
+  });
 });
 
 describe("esMia — qué tarea me toca", () => {
@@ -61,7 +67,7 @@ describe("esMia — qué tarea me toca", () => {
 });
 
 describe("itemsDeTareas", () => {
-  const ver = (filas: FilaTarea[], ambito: "hoy" | "semana" = "hoy") =>
+  const ver = (filas: FilaTarea[], ambito: Ambito = "hoy") =>
     itemsDeTareas(filas, { yo: YO, hoy: HOY, rango: rangoDe(ambito, HOY), nombrePaciente: (f) => (f.patientId ? "Ana Pérez" : undefined) });
 
   it("una pendiente de hoy se puede tildar", () => {
@@ -141,6 +147,19 @@ describe("itemsDeTareas", () => {
 
   it("las tareas de otras personas no aparecen", () => {
     expect(ver([fila({ id: "t1", createdBy: OTRO })])).toHaveLength(0);
+  });
+
+  it("con «todas» trae mis pendientes de cualquier fecha —vencidas, de hoy, de la semana que viene y de dentro de un año—, pero no las de otros", () => {
+    const r = ver([
+      fila({ id: "vieja", fecha: "2025-03-01" }),
+      fila({ id: "hoy" }),
+      fila({ id: "proxima", fecha: "2026-10-20" }),
+      fila({ id: "lejana", fecha: "2027-10-06" }),
+      fila({ id: "ajena", fecha: "2026-10-20", createdBy: OTRO }),
+    ], "todas");
+    expect(r.map((i) => i.id).sort()).toEqual(["propia:hoy", "propia:lejana", "propia:proxima", "propia:vieja"]);
+    expect(r.find((i) => i.id === "propia:vieja")).toMatchObject({ atrasada: true, hecha: false });
+    expect(r.find((i) => i.id === "propia:lejana")).toMatchObject({ atrasada: false, hecha: false, fecha: "2027-10-06" });
   });
 
   it("lo hecho solo cuenta en su día: lo de ayer no está en «hoy», pero sí en la semana", () => {
@@ -327,5 +346,137 @@ describe("armarAgenda", () => {
       item({ id: "w", origen: "rutina", titulo: "Rutina" }),
     ], "semana", HOY);
     expect(a.dias[0].items.map((i) => i.id)).toEqual(["w", "x", "y", "z"]);
+  });
+});
+
+describe("armarAgenda — la pestaña «Todas»", () => {
+  const item = (o: Partial<ItemAgenda> & { id: string }): ItemAgenda => ({
+    origen: "propia", titulo: o.id, fecha: HOY, hecha: false, atrasada: false, ...o,
+  });
+  const todas = (...items: ItemAgenda[]) => armarAgenda(items, "todas", HOY);
+
+  it("es solo lo que falta: lo hecho no se muestra y el avance cuenta únicamente pendientes", () => {
+    const a = todas(
+      item({ id: "p1" }), item({ id: "p2", fecha: "2026-10-20" }), item({ id: "vieja", atrasada: true, fecha: "2026-10-02" }),
+      item({ id: "h1", hecha: true }), item({ id: "h2", hecha: true, hechaPor: "sola" }),
+    );
+    expect(a).toMatchObject({ ambito: "todas", total: 3, hechasN: 0, avance: 0, hechas: [] });
+    expect(a.pendientes.map((i) => i.id)).toEqual(["vieja", "p1", "p2"]);
+    expect([...a.atrasadas, ...a.dias.flatMap((d) => d.items)].some((i) => i.hecha)).toBe(false);
+  });
+
+  it("las atrasadas van primero, de la más vieja a la más nueva; después, cada día en orden de calendario", () => {
+    const a = todas(
+      item({ id: "lejana", fecha: "2027-01-05" }), item({ id: "reciente", atrasada: true, fecha: "2026-10-04" }),
+      item({ id: "hoy" }), item({ id: "antigua", atrasada: true, fecha: "2026-09-20" }), item({ id: "proxima", fecha: "2026-10-20" }),
+    );
+    expect(a.atrasadas.map((i) => i.id)).toEqual(["antigua", "reciente"]);
+    expect(a.dias.map((d) => d.fecha)).toEqual([HOY, "2026-10-20", "2027-01-05"]);
+    expect(a.pendientes.map((i) => i.id)).toEqual(["antigua", "reciente", "hoy", "proxima", "lejana"]);
+  });
+
+  it("la rutina de hoy que falta entra; la que se tachó sola no", () => {
+    const a = todas(
+      item({ id: "rutina:caja", origen: "rutina", titulo: "Cerrar la caja" }),
+      item({ id: "rutina:stock", origen: "rutina", titulo: "Reponer el stock bajo", hecha: true, hechaPor: "sola" }),
+    );
+    expect(a.pendientes.map((i) => i.id)).toEqual(["rutina:caja"]);
+    expect(a).toMatchObject({ total: 1, hechasN: 0 });
+  });
+
+  it("sin pendientes no hay nada y no divide por cero", () => {
+    expect(todas(item({ id: "h", hecha: true }))).toMatchObject({ total: 0, hechasN: 0, avance: 0, pendientes: [], atrasadas: [], dias: [] });
+    expect(todas()).toMatchObject({ total: 0, avance: 0 });
+  });
+
+  it("«hoy» y «semana» siguen contando lo hecho", () => {
+    const items = [item({ id: "a", hecha: true }), item({ id: "b" })];
+    for (const ambito of ["hoy", "semana"] as const) {
+      expect(armarAgenda(items, ambito, HOY)).toMatchObject({ total: 2, hechasN: 1, avance: 0.5 });
+    }
+  });
+});
+
+describe("recortarAgenda — las primeras pendientes de «Todas»", () => {
+  const item = (id: string, fecha = HOY, atrasada = false): ItemAgenda => ({ id, origen: "propia", titulo: id, fecha, hecha: false, atrasada });
+  const ids = (r: ReturnType<typeof recortarAgenda>) => [...r.atrasadas, ...r.dias.flatMap((d) => d.items)].map((i) => i.id);
+  const de = (n: number, atrasadas = 0) => armarAgenda([
+    ...Array.from({ length: atrasadas }, (_, i) => item(`a${String(i).padStart(2, "0")}`, sumarDias(HOY, -(atrasadas - i)), true)),
+    ...Array.from({ length: n - atrasadas }, (_, i) => item(`p${String(i).padStart(2, "0")}`, sumarDias(HOY, Math.floor(i / 2)))),
+  ], "todas", HOY);
+
+  it("el tope de Mi agenda son 10 pendientes", () => {
+    expect(MAX_PENDIENTES_TODAS).toBe(10);
+  });
+
+  it("con 10 o menos muestra todo y no oculta nada", () => {
+    for (const n of [0, 1, 7, 10]) {
+      const r = recortarAgenda(de(n));
+      expect(r.ocultas, `con ${n}`).toBe(0);
+      expect(ids(r)).toHaveLength(n);
+    }
+  });
+
+  it("con más del tope muestra las primeras en el orden en que se ven y cuenta las que quedan afuera", () => {
+    const agenda = de(14, 3); // 3 atrasadas + 11 a partir de hoy, de a dos por día
+    const r = recortarAgenda(agenda);
+    expect(ids(r)).toEqual(["a00", "a01", "a02", "p00", "p01", "p02", "p03", "p04", "p05", "p06"]);
+    expect(r.ocultas).toBe(4);
+    expect(r.atrasadas.map((i) => i.id)).toEqual(["a00", "a01", "a02"]);
+  });
+
+  it("puede cortar a la mitad de un día: ese día muestra solo lo que entra", () => {
+    const r = recortarAgenda(de(12), 9); // dos por día: el quinto día queda con una sola
+    expect(r.dias.map((d) => d.items.length)).toEqual([2, 2, 2, 2, 1]);
+    expect(r.ocultas).toBe(3);
+  });
+
+  it("si las atrasadas ya llenan el tope no se muestra ningún día", () => {
+    const r = recortarAgenda(de(13, 12));
+    expect(r.atrasadas).toHaveLength(10);
+    expect(r.dias).toEqual([]);
+    expect(r.ocultas).toBe(3);
+  });
+
+  it("no toca la agenda que recibe", () => {
+    const agenda = de(14, 3);
+    const antes = JSON.stringify(agenda);
+    recortarAgenda(agenda);
+    expect(JSON.stringify(agenda)).toBe(antes);
+  });
+});
+
+describe("pestanaPorTecla — el teclado de las pestañas Hoy · Semana · Todas", () => {
+  const ir = (actual: Ambito, tecla: string) => pestanaPorTecla(AMBITOS, actual, tecla);
+
+  it("son tres, en este orden", () => {
+    expect(AMBITOS).toEqual(["hoy", "semana", "todas"]);
+  });
+
+  it("la flecha derecha pasa a la siguiente y, desde la última, da la vuelta", () => {
+    expect(ir("hoy", "ArrowRight")).toBe("semana");
+    expect(ir("semana", "ArrowRight")).toBe("todas");
+    expect(ir("todas", "ArrowRight")).toBe("hoy");
+  });
+
+  it("la flecha izquierda pasa a la anterior y, desde la primera, da la vuelta", () => {
+    expect(ir("todas", "ArrowLeft")).toBe("semana");
+    expect(ir("semana", "ArrowLeft")).toBe("hoy");
+    expect(ir("hoy", "ArrowLeft")).toBe("todas");
+  });
+
+  it("Inicio va a la primera y Fin a la última, estés donde estés", () => {
+    for (const a of AMBITOS) {
+      expect(ir(a, "Home")).toBe("hoy");
+      expect(ir(a, "End")).toBe("todas");
+    }
+  });
+
+  it("las demás teclas no mueven nada", () => {
+    for (const t of ["Enter", " ", "Tab", "ArrowDown", "ArrowUp", "a", "Escape"]) expect(ir("semana", t), t).toBeNull();
+  });
+
+  it("una pestaña que no está en la lista no mueve nada", () => {
+    expect(pestanaPorTecla(AMBITOS, "mes" as Ambito, "ArrowRight")).toBeNull();
   });
 });

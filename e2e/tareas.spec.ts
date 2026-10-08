@@ -5,6 +5,9 @@ import { sumarDias, tituloFecha } from "../lib/tareas";
 /* Tareas de gestión con paridad Dentalink: bandeja por día, "Finalizar ▾ →
    Volver a contactar en…", personalizadas desde la ficha y roles v3.
 
+   La bandeja abre en «Todas las pendientes» (sin días: ver e2e/tareas-todas.spec.ts); lo de acá que es por día
+   —navegar de fecha, Volver a contactar— empieza eligiendo «Tareas del día».
+
    El seed arma las citas alrededor del lunes de la semana en curso, así que lo
    que "vence hoy" cambia según el día en que corre la prueba. Cada prueba arma
    su propio caso en el estado local de la demo y no depende del día. */
@@ -40,6 +43,7 @@ test.describe("Bandeja de tareas (administrador)", () => {
       });
     });
     await page.goto("/app/tareas");
+    await main(page).getByRole("tab", { name: /Tareas del día/ }).click();
     const hoy = await fechaBandeja(page).inputValue();
     await expect(titulo(page)).toHaveText(`Tareas - ${tituloFecha(hoy, hoy)}`);
     const atrasadas = (await main(page).getByRole("tab", { name: /Tareas atrasadas/ }).textContent()) ?? "";
@@ -84,6 +88,7 @@ test.describe("Bandeja de tareas (administrador)", () => {
       });
     });
     await page.goto("/app/tareas");
+    await main(page).getByRole("tab", { name: /Tareas del día/ }).click();
     const hoy = await fechaBandeja(page).inputValue();
     const nueva = sumarDias(hoy, 10);
 
@@ -112,8 +117,12 @@ test.describe("Bandeja de tareas (administrador)", () => {
     expect(ov).toMatchObject({ patientId: "p2", snoozedUntil: nueva, status: "pendiente" });
     expect(ov.gestiones.at(-1)).toMatchObject({ fecha: hoy, accion: "recontactar", hasta: nueva, by: "u1", instancia: "ausente:a_e2e_ausente" });
 
-    // Y sobrevive a la recarga.
+    // Y sobrevive a la recarga. La bandeja abre en «Todas las pendientes»: ahí está la de la fecha nueva, pendiente; la ✓ de hoy,
+    // que es historia, se ve en «Tareas del día».
     await page.reload();
+    await expect(fila(page, "Cita", "Juan Ríos", "pendiente")).toBeVisible();
+    await expect(fila(page, "Cita", "Juan Ríos", "completada")).toHaveCount(0);
+    await main(page).getByRole("tab", { name: /Tareas del día/ }).click();
     await expect(fila(page, "Cita", "Juan Ríos", "completada")).toBeVisible();
     await expect(fila(page, "Cita", "Juan Ríos", "pendiente")).toHaveCount(0);
     await sinScrollHorizontal(page);
@@ -185,7 +194,7 @@ test.describe("Roles v3 en la bandeja", () => {
     await page.goto("/app/tareas");
     // Ni estadísticas ni configuración.
     await expect(main(page).getByRole("tablist", { name: "Secciones de tareas" })).toHaveCount(0);
-    for (const lista of [/Tareas del día/, /Tareas atrasadas/]) {
+    for (const lista of [/Todas las pendientes/, /Tareas del día/, /Tareas atrasadas/]) {
       await main(page).getByRole("tab", { name: lista }).click();
       await expect(main(page).getByRole("button", { name: /^(Cobranza|Cheque) —/ })).toHaveCount(0);
       await expect(main(page)).not.toContainText(/Gs\.?\s?\d/);

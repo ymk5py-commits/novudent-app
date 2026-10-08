@@ -98,10 +98,12 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Las filas con una flecha → (como «Completar los documentos clínicos pendientes») son la **rutina del día**: se calculan solas y se tachan solas cuando lo resolvés. Tocalas para ir directo a donde se arregla.", captura: "rutina" },
       { texto: "«Con paciente…» anota una tarea de un paciente y te deja elegir que **se tache sola** cuando el paciente agende una cita, acepte el presupuesto o pague.", captura: "con-paciente" },
       { texto: "En «Semana» todo queda ordenado por día, y lo que no hiciste a tiempo aparece como **Atrasada**.", captura: "semana" },
+      { texto: "«Todas» junta lo que te falta de **cualquier fecha**: primero lo atrasado y después cada día, sin lo que ya hiciste (en lugar de la barra dice cuántas pendientes tenés). Muestra las primeras 10; si hay más, «Ver todas en Tareas» te lleva a la lista completa.", captura: "todas" },
     ],
     avisos: [
       { tipo: "ojo", texto: "Una tarea que le asignás a otra persona deja de ser tuya: ya no la ves en tu agenda, sino en la de ella." },
       { tipo: "tip", texto: "Para borrar una tarea tuya, pasá el mouse sobre la fila y tocá el tachito. Pide confirmación." },
+      { tipo: "tip", texto: "Si tildás una tarea en «Todas», sale de la lista (ya no está pendiente): la ves entre las «Hechas» de «Hoy»." },
       { tipo: "tip", texto: "El administrador tiene además, justo arriba, la **Rutina del administrador** (lo que revisa cada día, cada semana y a fin de mes): mirá [[usar-la-rutina-del-administrador]]." },
       { tipo: "tip", texto: "En las clínicas con el plan Clínica hay además «Dictar la semana» (por voz o escribiendo) y «Resumen semanal»: la IA arma las tareas y vos las revisás antes de guardarlas." },
       { tipo: "revisar", texto: "Confirmar si la rutina del día alcanza o falta algún punto (hoy: citas de mañana, reservas online, documentos pendientes, caja y stock)." },
@@ -132,6 +134,9 @@ export const procedimientos: Procedimiento[] = [
 
       await page.getByRole("tab", { name: "Semana" }).click();
       await c.foto("semana", { recorte: tarjeta, resaltar: page.getByRole("tab", { name: "Semana" }) });
+
+      await page.getByRole("tab", { name: "Todas", exact: true }).click();
+      await c.foto("todas", { recorte: tarjeta, resaltar: page.getByRole("tab", { name: "Todas", exact: true }) });
     },
   },
   {
@@ -191,28 +196,35 @@ export const procedimientos: Procedimiento[] = [
   {
     id: "trabajar-las-tareas",
     capitulo: "todos",
-    titulo: "Trabajar las tareas del día",
+    titulo: "Trabajar las tareas pendientes",
     roles: ["receptionist", "cashier", "commercial", "dentist", "assistant", "admin"],
     paraQue: "Para no dejar nada colgado: llamar para confirmar una cita, volver a contactar a un paciente, resolver lo que el sistema detecta.",
     pasos: [
-      { texto: "Entrá a **Tareas** (menú de arriba). Ves lo que toca hoy: las que arma el sistema solo (por ejemplo, una cita sin confirmar) y las que anotó el equipo.", captura: "bandeja" },
-      { texto: "Cambiá de día con «Anterior», «Siguiente» o el calendario. En «Tareas atrasadas» queda lo que no se hizo a tiempo.", captura: "fechas" },
+      { texto: "Entrá a **Tareas** (menú de arriba). Se abre en «Todas las pendientes»: todo lo que falta, de cualquier fecha, de la más vieja a la más nueva. Son las que arma el sistema solo (por ejemplo, una cita sin confirmar) y las que anotó el equipo. Cada fila dice su fecha: en rojo las que ya vencieron, y con la marca «Postergada» las que dejaste para más adelante con «Volver a contactar en…».", captura: "bandeja" },
+      { texto: "Para trabajar un día puntual, tocá «Tareas del día»: ahí cambiás de día con «Anterior», «Siguiente» o el calendario. En «Tareas atrasadas» queda lo que no se hizo a tiempo.", captura: "fechas" },
       { texto: "Tocá una tarea para ver el detalle y los datos del paciente.", captura: "detalle" },
       { texto: "Cuando la resuelvas, tocá «Finalizar» y elegí: «El paciente dice OK», «Volver a contactar en…» (la tarea vuelve en la fecha que elijas) o «Cerrar el caso».", captura: "finalizar" },
       { texto: "Para pasársela a otra persona, usá el botón **Responsable** de la fila. «Nueva tarea personalizada» crea una propia, con paciente o sin él." },
     ],
     avisos: [
       { tipo: "ojo", texto: "Cada rol ve solo las tareas que le corresponden: las de cobranza y cheques, únicamente quienes ven montos; las de presupuestos, quienes los gestionan." },
-      { tipo: "tip", texto: "Las tareas que te asignan aparecen también en [[usar-mi-agenda]], en Inicio." },
+      { tipo: "tip", texto: "Las tareas que te asignan aparecen también en [[usar-mi-agenda]], en Inicio. Desde ahí, el enlace de una tarea te abre «Tareas del día» en la fecha de esa tarea, con la tarea elegida." },
+      { tipo: "tip", texto: "«Filtrar por» (tipo de tarea y responsable) vale para las tres listas, y el número de cada pestaña cuenta lo que se ve con el filtro puesto." },
+      { tipo: "tip", texto: "En el celular las tres listas se ven con nombre corto: «Todas», «Del día» y «Atrasadas»." },
     ],
     capturar: async (c) => {
       const { page } = c;
       await c.entrar("receptionist", "/app/tareas");
+      const todas = page.getByRole("tab", { name: /^Todas las pendientes/ });
       const tareasDelDia = page.getByRole("tab", { name: "Tareas del día" });
       const nuevaTarea = page.getByRole("button", { name: /Nueva tarea personalizada/ });
-      // El título entra entero en la foto (si no, queda cortado por la mitad arriba).
-      await c.foto("bandeja", { resaltar: [tareasDelDia, nuevaTarea], recorte: [page.getByRole("heading", { name: /^Tareas - / }), tareasDelDia, nuevaTarea], margen: 10 });
-      await c.foto("fechas", { resaltar: [page.getByRole("button", { name: "Anterior" }), page.getByLabel("Fecha", { exact: true }), page.getByRole("button", { name: "Siguiente" }), page.getByRole("tab", { name: /Tareas atrasadas/ })], recorte: page.getByRole("heading", { name: /^Tareas - / }).locator("xpath=ancestor::div[3]"), alto: 640 });
+      // El título entra entero en la foto (si no, queda cortado por la mitad arriba) y las primeras filas, con su fecha.
+      const filas = page.getByRole("list", { name: "Todas las pendientes" }).getByRole("listitem");
+      await c.expect(filas.first()).toBeVisible();
+      const ultima = filas.nth(Math.min(await filas.count(), 4) - 1);
+      await c.foto("bandeja", { resaltar: [todas, nuevaTarea], recorte: [page.getByRole("heading", { name: "Tareas pendientes", level: 1 }), ultima], margen: 10 });
+      await tareasDelDia.click();
+      await c.foto("fechas", { resaltar: [tareasDelDia, page.getByRole("button", { name: "Anterior" }), page.getByLabel("Fecha", { exact: true }), page.getByRole("button", { name: "Siguiente" }), page.getByRole("tab", { name: /Tareas atrasadas/ })], recorte: page.getByRole("heading", { name: /^Tareas - / }).locator("xpath=ancestor::div[3]"), alto: 640 });
       const fila = page.getByRole("button", { name: /Cita — Camila Ortega/ });
       await fila.click();
       await c.foto("detalle", { alto: 900, resaltar: fila });

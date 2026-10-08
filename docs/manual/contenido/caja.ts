@@ -230,7 +230,7 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Completá **N° de cheque**, **Banco** y **Fecha de cobro**: la fecha desde la que el banco lo acepta (en un cheque a fecha, la que tiene escrita).", captura: "datos-cheque" },
       { texto: "Tocá «Ingresar pago». En el comprobante, el medio figura como «Cheque N° …», con el banco y la fecha de cobro." },
       { texto: "Mientras no se cobra, el cheque espera en **Cajas**, pestaña «Cheques», sub-pestaña «Por cobrar». El número entre paréntesis, junto a «Cheques», dice cuántos hay pendientes.", captura: "por-cobrar" },
-      { texto: "El día de la fecha de cobro, el sistema arma solo la tarea «Cheque por cobrar» en **Tareas**, para que no se te pase.", captura: "tarea" },
+      { texto: "El sistema arma solo la tarea «Cheque por cobrar», para que no se te pase: en **Tareas** figura con la fecha de cobro (en «Todas las pendientes» desde ya, y en «Tareas del día» ese día).", captura: "tarea" },
       { texto: "Cuando el banco lo acredita, tocá «Marcar cobrado» en la fila del cheque: pasa a **Cobrados**.", captura: "marcar-cobrado" },
       { texto: "Si rebotó o el paciente lo retiró, tocá «Anular», escribí el motivo (si querés) y confirmá con «Anular cheque»: pasa a **Anulados**.", captura: "anular" },
     ],
@@ -266,9 +266,9 @@ export const procedimientos: Procedimiento[] = [
       await c.expect(fila).toBeVisible();
       await c.foto("por-cobrar", { resaltar: [cheques, page.getByRole("button", { name: /^Por cobrar/ })], recorte: [cheques, fila], margen: 4 });
 
-      // El día de la fecha de cobro, la bandeja de Tareas tiene el cheque.
-      await c.ir("/app/tareas");
-      await page.getByLabel("Fecha", { exact: true }).fill(cobro);
+      // El día de la fecha de cobro, la bandeja de Tareas tiene el cheque: el enlace con ?fecha= abre «Tareas del día» de ese día
+      // (la bandeja, a secas, abre en «Todas las pendientes», que no tiene selector de fecha).
+      await c.ir(`/app/tareas?fecha=${cobro}`);
       const tarea = page.getByRole("button", { name: /Cheque — Marco Giménez/ });
       await c.expect(tarea).toBeVisible();
       await c.foto("tarea", { resaltar: tarea, recorte: [page.getByRole("heading", { name: /^Tareas - / }), tarea.locator("xpath=..")] });

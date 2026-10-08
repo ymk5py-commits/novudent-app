@@ -5,22 +5,28 @@
  *  (indicador) y los plazos de las tareas (engranaje). Cada una lleva su nombre escrito
  *  al lado del ícono (en pantalla ancha) y como nombre accesible y tooltip siempre.
  *
- *  La bandeja es POR DÍA: "Tareas - Martes 19 Octubre" con ‹ Anterior · Fecha ·
- *  Siguiente ›. Las automáticas —cobranza, captura, control, cita, cheque— NO se
- *  guardan: las deriva `lib/tareas.ts` del estado de la clínica en cada render,
- *  y por eso se cierran solas. Lo guardado en `mgmtTasks` son las personalizadas
- *  y los OVERRIDES: la decisión humana sobre una derivada (asignarla, trabajarla
- *  desde "Finalizar ▾", reprogramarla). */
-import { useEffect, useMemo, useRef, useState } from "react";
+ *  La bandeja tiene tres listas. "Todas las pendientes" (la que abre, pedido de
+ *  Camila del 8-oct-2026: "debe salir todas las tareas, no solo las del día") junta
+ *  lo que falta de CUALQUIER fecha, de la más vieja a la más nueva. "Tareas del día"
+ *  es POR DÍA, como Dentalink: "Tareas - Martes 19 Octubre" con ‹ Anterior · Fecha ·
+ *  Siguiente ›; es la que abren los enlaces con ?fecha= (Mi agenda, la ficha). "Tareas
+ *  atrasadas" es lo vencido. Las automáticas —cobranza, captura, control, cita,
+ *  cheque— NO se guardan: las deriva `lib/tareas.ts` del estado de la clínica en cada
+ *  render, y por eso se cierran solas. Lo guardado en `mgmtTasks` son las
+ *  personalizadas y los OVERRIDES: la decisión humana sobre una derivada (asignarla,
+ *  trabajarla desde "Finalizar ▾", reprogramarla). */
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Gauge, ListChecks, ListFilter, Plus, Settings, ShieldAlert } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { useAlcance } from "@/lib/useAlcance";
 import { useTareas } from "@/lib/useTareas";
 import { tiposDeTareaVisibles } from "@/lib/alcance";
-import { bandejaDelDia, esFecha, fechaCorta, ordenarFilas, sumarDias, tituloFecha, TIPO_TAREA_LABEL, type FilaTarea } from "@/lib/tareas";
+import {
+  bandejaDelDia, esFecha, estaPostergada, fechaCorta, ordenarFilas, sumarDias, tituloFecha, todasLasPendientes, TIPO_TAREA_LABEL, type FilaTarea,
+} from "@/lib/tareas";
 import type { MgmtTaskType } from "@/lib/types";
-import { Btn, Card } from "@/components/ui";
+import { Badge, Btn, Card } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 import { Desplegable, ESTADO_LABEL, EstadoCheck, Opcion, TipoBadge, useNombres } from "@/components/tareas/comun";
 import { PanelTarea } from "@/components/tareas/PanelTarea";
@@ -29,7 +35,7 @@ import { PlazosTareas } from "@/components/tareas/PlazosTareas";
 import { EstadisticasTareas } from "@/components/tareas/EstadisticasTareas";
 
 type Vista = "bandeja" | "estadisticas" | "configuracion";
-type Lista = "dia" | "atrasadas";
+type Lista = "todas" | "dia" | "atrasadas";
 type FiltroResp = "todos" | "mias" | "sin";
 
 export default function TareasPage() {
@@ -41,7 +47,8 @@ export default function TareasPage() {
 
   const [vista, setVista] = useState<Vista>("bandeja");
   const [fecha, setFecha] = useState(hoy);
-  const [lista, setLista] = useState<Lista>("dia");
+  // «Todas las pendientes» es la que abre; con ?fecha=… (ver el efecto de abajo) se abre «Tareas del día» de ese día.
+  const [lista, setLista] = useState<Lista>("todas");
   const [filtroTipo, setFiltroTipo] = useState<"todas" | MgmtTaskType>("todas");
   const [filtroResp, setFiltroResp] = useState<FiltroResp>("todos");
   const [esconderSistema, setEsconderSistema] = useState(true);
@@ -51,12 +58,16 @@ export default function TareasPage() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Enlaces directos: ?fecha=AAAA-MM-DD&tarea=<id> (desde la ficha del
-  // paciente) y #estadisticas / #configuracion. Se lee en un efecto y no con
-  // useSearchParams para no obligar a la página entera a renderizar en el servidor.
-  useEffect(() => {
+  // paciente y desde Mi agenda) y #estadisticas / #configuracion. Se lee en un efecto
+  // y no con useSearchParams para no obligar a la página entera a renderizar en el
+  // servidor. Con una fecha se abre «Tareas del día» de ese día, como siempre: así los
+  // enlaces que ya existen no cambian aunque la bandeja ahora abra en «Todas las pendientes».
+  // Es un efecto de layout para que la lista que no es no llegue a pintarse (se veía un
+  // instante «Todas las pendientes» antes de pasar al día del enlace).
+  useLayoutEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const f = q.get("fecha");
-    if (esFecha(f)) setFecha(f);
+    if (esFecha(f)) { setFecha(f); setLista("dia"); }
     const id = q.get("tarea");
     if (id) setSelId(id);
     const h = window.location.hash.slice(1);
@@ -67,14 +78,19 @@ export default function TareasPage() {
   const verConfig = alcance.puede("practice.config");
   const vistaEfectiva: Vista = (vista === "estadisticas" && !verStats) || (vista === "configuracion" && !verConfig) ? "bandeja" : vista;
 
-  const { delDia, atrasadas } = useMemo(() => {
-    const pasaFiltros = (f: FilaTarea) =>
+  // Los filtros valen para las tres listas, y los contadores de las pestañas cuentan lo que se ve con ellos.
+  const filtradas = useMemo(
+    () => tareas.filas.filter((f) =>
       (filtroTipo === "todas" || f.type === filtroTipo)
-      && (filtroResp === "todos" || (filtroResp === "mias" ? f.assigneeId === session?.userId : !f.assigneeId));
-    const b = bandejaDelDia(tareas.filas.filter(pasaFiltros), fecha, hoy, esconderSistema);
+      && (filtroResp === "todos" || (filtroResp === "mias" ? f.assigneeId === session?.userId : !f.assigneeId))),
+    [tareas.filas, filtroTipo, filtroResp, session?.userId],
+  );
+  const todas = useMemo(() => todasLasPendientes(filtradas, (f) => nombres.paciente(f) || f.title), [filtradas, nombres]);
+  const { delDia, atrasadas } = useMemo(() => {
+    const b = bandejaDelDia(filtradas, fecha, hoy, esconderSistema);
     const nombre = (f: FilaTarea) => nombres.paciente(f) || f.title;
     return { delDia: ordenarFilas(b.delDia, nombre), atrasadas: ordenarFilas(b.atrasadas, nombre) };
-  }, [tareas.filas, filtroTipo, filtroResp, session?.userId, fecha, hoy, esconderSistema, nombres]);
+  }, [filtradas, fecha, hoy, esconderSistema, nombres]);
 
   // Guard de RUTA, no solo del menú: la bandeja muestra pacientes con deuda y
   // sus montos. (Va después de los hooks: no se puede return antes de llamarlos todos.)
@@ -89,7 +105,7 @@ export default function TareasPage() {
     );
   }
 
-  const filasLista = lista === "dia" ? delDia : atrasadas;
+  const filasLista = lista === "todas" ? todas : lista === "dia" ? delDia : atrasadas;
   // La seleccionada se busca en TODAS las filas: después de "Volver a contactar"
   // la selección pasa a la fila ✓ de hoy, que puede no estar en la lista abierta.
   const sel = tareas.filas.find((f) => f.id === selId) ?? null;
@@ -106,11 +122,11 @@ export default function TareasPage() {
     }
   };
 
-  const titulo = vistaEfectiva === "bandeja" ? `Tareas - ${tituloFecha(fecha, hoy)}` : vistaEfectiva === "estadisticas" ? "Estadísticas" : "Plazos de las tareas";
+  const titulo = vistaEfectiva === "bandeja" ? (lista === "todas" ? "Tareas pendientes" : `Tareas - ${tituloFecha(fecha, hoy)}`) : vistaEfectiva === "estadisticas" ? "Estadísticas" : "Plazos de las tareas";
 
   return (
     <Reveal className="space-y-4">
-      {/* Encabezado: secciones (íconos, como Dentalink) + título + navegación por día */}
+      {/* Encabezado: secciones (íconos, como Dentalink) + título + navegación por día (no en «Todas las pendientes»: no hay día que elegir) */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {(verStats || verConfig) && (
           <div role="tablist" aria-label="Secciones de tareas" className="flex rounded-xl border border-clinic-border bg-white p-1">
@@ -138,7 +154,7 @@ export default function TareasPage() {
         )}
         <h1 className="min-w-0 text-lg font-bold text-clinic-text sm:text-xl">{titulo}</h1>
 
-        {vistaEfectiva === "bandeja" && (
+        {vistaEfectiva === "bandeja" && lista !== "todas" && (
           <div className="flex w-full flex-wrap items-center gap-1.5 sm:ml-auto sm:w-auto">
             <Btn variant="outline" onClick={() => irA(sumarDias(fecha, -1))} tip="Día anterior">
               <ChevronLeft aria-hidden className="h-4 w-4" /><span className="sr-only sm:not-sr-only">Anterior</span>
@@ -169,19 +185,22 @@ export default function TareasPage() {
         <>
           {/* Barra de la bandeja: pestañas + nueva personalizada + filtros */}
           <div className="flex flex-wrap items-center gap-2">
-            <div role="tablist" aria-label="Listas de tareas" className="flex rounded-xl border border-clinic-border bg-white p-1">
-              {([["dia", "Tareas del día", null], ["atrasadas", "Tareas atrasadas", atrasadas.length]] as const).map(([k, label, n]) => (
+            {/* Con tres listas no entran los nombres enteros en el celular (la última se salía de la pantalla y quedaba recortada): ahí se ve el corto
+                y el lector de pantalla oye siempre el completo. `overflow-x-auto` por si, con muchos dígitos, aun así no entrara: que scrollee sola. */}
+            <div role="tablist" aria-label="Listas de tareas" className="flex max-w-full overflow-x-auto rounded-xl border border-clinic-border bg-white p-1">
+              {([["todas", "Todas las pendientes", "Todas", todas.length], ["dia", "Tareas del día", "Del día", null], ["atrasadas", "Tareas atrasadas", "Atrasadas", atrasadas.length]] as const).map(([k, label, corto, n]) => (
                 <button
                   key={k}
                   type="button"
                   role="tab"
                   aria-selected={lista === k}
                   onClick={() => { setLista(k); setSelId(null); }}
-                  className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-normal transition-colors ${lista === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:text-clinic-text"}`}
+                  className={`relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-normal transition-colors sm:px-3 ${lista === k ? "bg-navy-800 text-white" : "text-clinic-muted hover:text-clinic-text"}`}
                 >
-                  {label}
+                  <span aria-hidden className="sm:hidden">{corto}</span>
+                  <span className="sr-only sm:not-sr-only">{label}</span>
                   {n != null && (
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${lista === k ? "bg-white/20" : n > 0 ? "bg-state-errbg text-state-err" : "bg-clinic-bg"}`}>{n}</span>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${lista === k ? "bg-white/20" : k === "atrasadas" && n > 0 ? "bg-state-errbg text-state-err" : "bg-clinic-bg"}`}>{n}</span>
                   )}
                 </button>
               ))}
@@ -208,13 +227,16 @@ export default function TareasPage() {
                   </>
                 )}
               </Desplegable>
-              <label
-                className="flex cursor-pointer items-center gap-1.5 text-xs font-bold text-clinic-muted"
-                title="Las que se resolvieron solas (el paciente pagó, agendó o aceptó) cuando alguien ya las tenía asignadas o trabajadas."
-              >
-                <input type="checkbox" checked={esconderSistema} onChange={(e) => setEsconderSistema(e.target.checked)} className="accent-azure-600" />
-                Esconder tareas completadas por sistema
-              </label>
+              {/* «Todas las pendientes» no trae completadas (ni del sistema): no hay nada que esconder. */}
+              {lista !== "todas" && (
+                <label
+                  className="flex cursor-pointer items-center gap-1.5 text-xs font-bold text-clinic-muted"
+                  title="Las que se resolvieron solas (el paciente pagó, agendó o aceptó) cuando alguien ya las tenía asignadas o trabajadas."
+                >
+                  <input type="checkbox" checked={esconderSistema} onChange={(e) => setEsconderSistema(e.target.checked)} className="accent-azure-600" />
+                  Esconder tareas completadas por sistema
+                </label>
+              )}
             </div>
           </div>
 
@@ -225,17 +247,21 @@ export default function TareasPage() {
               <Card className="overflow-visible">
                 {filasLista.length === 0 ? (
                   <p className="px-6 py-14 text-center text-sm text-clinic-muted">
-                    {lista === "atrasadas"
-                      ? "No hay tareas atrasadas."
-                      : fecha === hoy ? "No hay tareas para hoy." : `No hay tareas para el ${tituloFecha(fecha, hoy).toLowerCase()}.`}
+                    {lista === "todas"
+                      ? "No hay tareas pendientes."
+                      : lista === "atrasadas"
+                        ? "No hay tareas atrasadas."
+                        : fecha === hoy ? "No hay tareas para hoy." : `No hay tareas para el ${tituloFecha(fecha, hoy).toLowerCase()}.`}
                   </p>
                 ) : (
-                  <ul aria-label={lista === "dia" ? "Tareas del día" : "Tareas atrasadas"} className="divide-y divide-clinic-border">
+                  <ul aria-label={lista === "todas" ? "Todas las pendientes" : lista === "dia" ? "Tareas del día" : "Tareas atrasadas"} className="divide-y divide-clinic-border">
                     {filasLista.map((f) => (
                       <FilaBandeja
                         key={f.id}
                         f={f}
                         hoy={hoy}
+                        nombres={nombres}
+                        conFecha={lista === "todas"}
                         seleccionada={f.id === selId}
                         onSeleccionar={() => seleccionar(f.id)}
                         onAsignar={(u) => tareas.asignar(f, u)}
@@ -270,9 +296,10 @@ export default function TareasPage() {
 
       {nueva && (
         <NuevaTareaModal
-          fechaInicial={fecha}
+          fechaInicial={lista === "todas" ? hoy : fecha}
           onClose={() => setNueva(false)}
-          onCreada={(t) => { if (t.dueDate) { setFecha(t.dueDate); setLista("dia"); } setSelId(t.id); }}
+          // En «Todas las pendientes» la nueva ya está en la lista (en su lugar): no hace falta ir a su día.
+          onCreada={(t) => { if (t.dueDate && lista !== "todas") { setFecha(t.dueDate); setLista("dia"); } setSelId(t.id); }}
         />
       )}
     </Reveal>
@@ -280,15 +307,29 @@ export default function TareasPage() {
 }
 
 /* ─── Fila de la bandeja ─── */
-function FilaBandeja({ f, hoy: hoyFila, seleccionada, onSeleccionar, onAsignar }: {
-  f: FilaTarea; hoy: string; seleccionada: boolean; onSeleccionar: () => void; onAsignar: (userId: string | undefined) => void;
+function FilaBandeja({ f, hoy: hoyFila, nombres, conFecha, seleccionada, onSeleccionar, onAsignar }: {
+  f: FilaTarea;
+  hoy: string;
+  /** Los de la página: armarlos en cada fila recorrería a todos los pacientes una vez por fila. */
+  nombres: ReturnType<typeof useNombres>;
+  /** «Todas las pendientes»: las filas son de fechas distintas, así que la fecha va bien a la vista y se avisa si la tarea está postergada. */
+  conFecha?: boolean;
+  seleccionada: boolean;
+  onSeleccionar: () => void;
+  onAsignar: (userId: string | undefined) => void;
 }) {
   const { db, session } = useStore();
-  const nombres = useNombres();
   const nombre = nombres.paciente(f) || "Tarea interna";
   const profesional = nombres.usuario(f.professionalId) || (f.type === "personalizada" ? nombres.usuario(f.createdBy) : "");
   const sub = [profesional, f.title].filter(Boolean).join(" · ");
   const atrasada = f.estado === "pendiente" && f.fecha < hoyFila;
+  const postergada = !!conFecha && estaPostergada(f, hoyFila);
+  const fecha = fechaCorta(f.fecha, hoyFila);
+  // Con lector de pantalla: en «Todas» cada fila dice su fecha, no solo las atrasadas.
+  const cuando = atrasada ? ` (atrasada, ${fecha})` : conFecha ? ` (${postergada ? "postergada, " : ""}${fecha})` : "";
+  const colorFecha = atrasada
+    ? "font-bold text-state-err"
+    : !conFecha ? "text-clinic-muted" : f.fecha === hoyFila ? "font-semibold text-azure-700" : "text-clinic-text";
   const asignado = nombres.usuario(f.assigneeId);
   // A quién se le puede asignar: a quien puede ver ese tipo de tarea (una
   // cobranza no se le asigna a un dentista, que no ve plata).
@@ -303,12 +344,13 @@ function FilaBandeja({ f, hoy: hoyFila, seleccionada, onSeleccionar, onAsignar }
           type="button"
           onClick={onSeleccionar}
           aria-current={seleccionada || undefined}
-          aria-label={`${TIPO_TAREA_LABEL[f.type]} — ${nombre} — ${ESTADO_LABEL[f.estado]}${atrasada ? ` (atrasada, ${fechaCorta(f.fecha, hoyFila)})` : ""}`}
+          aria-label={`${TIPO_TAREA_LABEL[f.type]} — ${nombre} — ${ESTADO_LABEL[f.estado]}${cuando}`}
           className="flex min-w-0 flex-1 flex-col items-start gap-1 text-left sm:flex-row sm:items-center sm:gap-3"
         >
           <span className="flex items-center gap-2 sm:w-[112px] sm:shrink-0">
             <TipoBadge type={f.type} apagada={f.estado !== "pendiente"} />
-            <span className={`whitespace-nowrap tabular-nums text-[11px] sm:hidden ${atrasada ? "font-bold text-state-err" : "text-clinic-muted"}`}>{fechaCorta(f.fecha, hoyFila)}</span>
+            <span className={`whitespace-nowrap tabular-nums text-[11px] sm:hidden ${colorFecha}`}>{fecha}</span>
+            {postergada && <span className="sm:hidden"><Badge tone="hold">Postergada</Badge></span>}
           </span>
           <span className="block w-full min-w-0">
             <span className={`block truncate text-sm font-bold ${f.estado === "pendiente" ? "text-clinic-text" : "text-clinic-muted"}`}>{nombre}</span>
@@ -348,7 +390,10 @@ function FilaBandeja({ f, hoy: hoyFila, seleccionada, onSeleccionar, onAsignar }
           <span className="max-w-[7rem] truncate text-xs text-clinic-muted">{asignado || "No asignado"}</span>
         )}
       </div>
-      <span className={`hidden w-14 shrink-0 text-right tabular-nums text-xs sm:block ${atrasada ? "font-bold text-state-err" : "text-clinic-muted"}`}>{fechaCorta(f.fecha, hoyFila)}</span>
+      <span className={`hidden shrink-0 text-right tabular-nums text-xs sm:block ${conFecha ? "w-[5.5rem]" : "w-14"}`}>
+        <span className={`block ${colorFecha}`}>{fecha}</span>
+        {postergada && <span className="mt-0.5 block"><Badge tone="hold">Postergada</Badge></span>}
+      </span>
       <button type="button" tabIndex={-1} aria-hidden onClick={onSeleccionar} className="hidden text-clinic-muted hover:text-clinic-text sm:block">
         <ChevronRight className="h-4 w-4" />
       </button>

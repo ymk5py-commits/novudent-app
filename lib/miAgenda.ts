@@ -13,14 +13,25 @@ import { HREF_DOCUMENTOS_PENDIENTES } from "./pendientes";
 import type { Permission } from "./rbac";
 import type { Appointment, CashSession, StockItem } from "./types";
 
-export type Ambito = "hoy" | "semana";
+export type Ambito = "hoy" | "semana" | "todas";
+
+/** Las pestañas de Mi agenda, en el orden en que se ven. */
+export const AMBITOS: readonly Ambito[] = ["hoy", "semana", "todas"];
+
+/** Cuántas pendientes muestra «Todas» en Inicio: el resto se ve en la bandeja de Tareas. */
+export const MAX_PENDIENTES_TODAS = 10;
 
 /** Rango inclusivo de días calendario (YYYY-MM-DD). */
 export interface Rango { desde: string; hasta: string }
 
-/** «Hoy», o la semana (lunes a domingo) que contiene a hoy. */
+// Fechas de calendario como texto: comparan bien con cualquier día real.
+const PRIMER_DIA = "0000-01-01";
+const ULTIMO_DIA = "9999-12-31";
+
+/** «Hoy», la semana (lunes a domingo) que contiene a hoy, o «todas»: cualquier fecha. */
 export function rangoDe(ambito: Ambito, hoy: string): Rango {
   if (ambito === "hoy") return { desde: hoy, hasta: hoy };
+  if (ambito === "todas") return { desde: PRIMER_DIA, hasta: ULTIMO_DIA };
   const dow = new Date(`${hoy}T00:00:00Z`).getUTCDay(); // 0 = domingo
   const desde = sumarDias(hoy, -((dow + 6) % 7));
   return { desde, hasta: sumarDias(desde, 6) };
@@ -232,7 +243,9 @@ const porOrigenYTitulo = (a: ItemAgenda, b: ItemAgenda) =>
 const porDiaYLuego = (a: ItemAgenda, b: ItemAgenda) => a.fecha.localeCompare(b.fecha) || porOrigenYTitulo(a, b);
 
 export function armarAgenda(items: readonly ItemAgenda[], ambito: Ambito, hoy: string): Agenda {
-  const ordenados = [...items].sort(porDiaYLuego);
+  // «Todas» es lo que falta, de cualquier fecha: lo hecho no se muestra ni cuenta en el avance.
+  const visibles = ambito === "todas" ? items.filter((i) => !i.hecha) : items;
+  const ordenados = [...visibles].sort(porDiaYLuego);
   const atrasadas = ordenados.filter((i) => i.atrasada);
   const delRango = ordenados.filter((i) => !i.atrasada);
   const dias: Agenda["dias"] = [];
@@ -241,7 +254,7 @@ export function armarAgenda(items: readonly ItemAgenda[], ambito: Ambito, hoy: s
     if (ultimo && ultimo.fecha === i.fecha) ultimo.items.push(i);
     else dias.push({ fecha: i.fecha, items: [i] });
   }
-  const hechasN = items.filter((i) => i.hecha).length;
+  const hechasN = visibles.filter((i) => i.hecha).length;
   return {
     ambito,
     rango: rangoDe(ambito, hoy),
@@ -249,8 +262,40 @@ export function armarAgenda(items: readonly ItemAgenda[], ambito: Ambito, hoy: s
     hechas: ordenados.filter((i) => i.hecha),
     atrasadas,
     dias,
-    total: items.length,
+    total: visibles.length,
     hechasN,
-    avance: items.length === 0 ? 0 : hechasN / items.length,
+    avance: visibles.length === 0 ? 0 : hechasN / visibles.length,
   };
+}
+
+/** Las primeras `max` pendientes de «Todas» en el orden en que se ven —primero las atrasadas, después cada
+ *  día— y cuántas quedan afuera (esas se ven en la bandeja de Tareas). Un día puede quedar a medias. */
+export function recortarAgenda(
+  a: Pick<Agenda, "atrasadas" | "dias">,
+  max: number = MAX_PENDIENTES_TODAS,
+): { atrasadas: ItemAgenda[]; dias: Agenda["dias"]; ocultas: number } {
+  let cupo = Math.max(0, max);
+  const atrasadas = a.atrasadas.slice(0, cupo);
+  cupo -= atrasadas.length;
+  let ocultas = a.atrasadas.length - atrasadas.length;
+  const dias: Agenda["dias"] = [];
+  for (const d of a.dias) {
+    const items = d.items.slice(0, cupo);
+    if (items.length > 0) dias.push({ fecha: d.fecha, items });
+    cupo -= items.length;
+    ocultas += d.items.length - items.length;
+  }
+  return { atrasadas, dias, ocultas };
+}
+
+/** A qué pestaña pasa el teclado (patrón de pestañas de ARIA): flecha derecha e izquierda dan la vuelta,
+ *  Inicio va a la primera y Fin a la última. `null` si la tecla no es de navegación. */
+export function pestanaPorTecla<T>(orden: readonly T[], actual: T, tecla: string): T | null {
+  const i = orden.indexOf(actual);
+  if (i < 0) return null;
+  if (tecla === "ArrowRight") return orden[(i + 1) % orden.length];
+  if (tecla === "ArrowLeft") return orden[(i - 1 + orden.length) % orden.length];
+  if (tecla === "Home") return orden[0];
+  if (tecla === "End") return orden[orden.length - 1];
+  return null;
 }
