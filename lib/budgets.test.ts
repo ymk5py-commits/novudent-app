@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { budgetRealizado, financialStatus, checkStatus } from "./budgets";
+import { budgetRealizado, budgetTotal, budgetDescuento, financialStatus, checkStatus, parsearDescuento, descuentoSaneado } from "./budgets";
 import type { BudgetItem, Payment } from "./types";
 
 const item = (price: number, status: "pendiente" | "realizado"): BudgetItem => ({
@@ -108,5 +108,49 @@ describe("netAmount", () => {
   });
   it("moneda inválida/desconocida cae a DEFAULT_CURRENCY en vez de crashear", () => {
     expect(netAmount({ amount: 1_000_000, method: "tarjeta" }, cfg, "XYZ" as any)).toBe(950_000);
+  });
+});
+
+describe("parsearDescuento — el % de un convenio o de un presupuesto", () => {
+  it("acepta de 0 a 100, con punto o con coma", () => {
+    expect(parsearDescuento("0")).toEqual({ ok: true, valor: 0 });
+    expect(parsearDescuento("15")).toEqual({ ok: true, valor: 15 });
+    expect(parsearDescuento("100")).toEqual({ ok: true, valor: 100 });
+    expect(parsearDescuento("12,5")).toEqual({ ok: true, valor: 12.5 });
+    expect(parsearDescuento(" 7.25 ")).toEqual({ ok: true, valor: 7.25 });
+    expect(parsearDescuento(30)).toEqual({ ok: true, valor: 30 });
+  });
+
+  it("se queda con dos decimales", () => {
+    expect(parsearDescuento("10.456")).toEqual({ ok: true, valor: 10.46 });
+  });
+
+  it("rechaza lo que pasa de 100, lo negativo, lo vacío y lo que no es un número, diciendo qué corregir", () => {
+    expect(parsearDescuento("150")).toMatchObject({ ok: false, error: expect.stringMatching(/100/) });
+    expect(parsearDescuento("100.5")).toMatchObject({ ok: false });
+    expect(parsearDescuento("-5")).toMatchObject({ ok: false, error: expect.stringMatching(/negativo/) });
+    expect(parsearDescuento("")).toMatchObject({ ok: false, error: expect.stringMatching(/Escribí/) });
+    expect(parsearDescuento("   ")).toMatchObject({ ok: false });
+    expect(parsearDescuento("abc")).toMatchObject({ ok: false, error: expect.stringMatching(/número/) });
+    expect(parsearDescuento("1e3")).toMatchObject({ ok: false });
+    expect(parsearDescuento(NaN)).toMatchObject({ ok: false });
+    expect(parsearDescuento(Infinity)).toMatchObject({ ok: false });
+  });
+});
+
+describe("descuentoSaneado — un % guardado con basura no rompe los totales", () => {
+  it("lo deja entre 0 y 100", () => {
+    expect(descuentoSaneado(150)).toBe(100);
+    expect(descuentoSaneado(-20)).toBe(0);
+    expect(descuentoSaneado(undefined)).toBe(0);
+    expect(descuentoSaneado(NaN)).toBe(0);
+    expect(descuentoSaneado(25)).toBe(25);
+  });
+
+  it("un convenio con 150 % ya guardado no da un total negativo", () => {
+    const b = { items: [item(1000, "pendiente"), item(500, "pendiente")], discountPct: 150 };
+    expect(budgetTotal(b)).toBe(0);
+    expect(budgetDescuento(b)).toBe(1500);
+    expect(budgetRealizado({ items: [item(1000, "realizado")], discountPct: 150 })).toBe(0);
   });
 });

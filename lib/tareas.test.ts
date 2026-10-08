@@ -1205,3 +1205,36 @@ describe("tareas propias que se tachan solas (autoCierre)", () => {
     expect(nuevaPersonalizada({ ...base, autoCierre })).not.toHaveProperty("autoCierre");
   });
 });
+
+import { aInputLocal, diaDe } from "./tareas";
+
+describe("diaDe — el día de calendario de una fecha guardada (Excel, gráfico de caja…)", () => {
+  it("un instante ISO se pasa a hora local: un pago de las 22:30 es de ese día, no del siguiente", () => {
+    expect(diaDe(new Date(2026, 9, 8, 22, 30).toISOString())).toBe("2026-10-08");
+    expect(diaDe(new Date(2026, 9, 8, 0, 20).toISOString())).toBe("2026-10-08");
+  });
+
+  it("una fecha sola (AAAA-MM-DD) se lee tal cual, sin correrla un día", () => {
+    expect(diaDe("2026-10-08")).toBe("2026-10-08");
+  });
+
+  it("una hora local sin zona (reserva online) es del día que dice", () => {
+    expect(diaDe("2026-10-08T23:00:00")).toBe("2026-10-08");
+  });
+});
+
+describe("aInputLocal — el valor de un <input type=\"datetime-local\"> a partir de una fecha guardada", () => {
+  it("es la hora LOCAL del instante, no la hora UTC", () => {
+    expect(aInputLocal(new Date(2026, 9, 8, 22, 30).toISOString())).toBe("2026-10-08T22:30");
+    expect(aInputLocal(new Date(2026, 9, 8, 9, 5).toISOString())).toBe("2026-10-08T09:05");
+  });
+
+  it("ida y vuelta sin correr la hora: editar un registro y guardarlo sin tocar la hora no lo mueve", () => {
+    const guardado = new Date(2026, 9, 8, 9, 5, 0, 0).toISOString();
+    expect(new Date(aInputLocal(guardado)).toISOString()).toBe(guardado);
+  });
+
+  it("una fecha sola (AAAA-MM-DD) arranca a las 00:00 de ese día", () => {
+    expect(aInputLocal("2026-10-08")).toBe("2026-10-08T00:00");
+  });
+});

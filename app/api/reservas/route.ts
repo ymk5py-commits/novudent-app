@@ -5,10 +5,13 @@ import {
   listCollection,
   setDocument,
   createIfAbsent,
+  queryRange,
+  queryIn,
 } from "@/lib/server/firestore-rest";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
-import { ahoraEnZona, slotAlcanzaAnticipacion, anticipacionDe } from "@/lib/reserva-online";
-import { camposDe, datosPaciente, extrasOnline, type ValoresCampos } from "@/lib/camposPaciente";
+import { ahoraEnZona, slotAlcanzaAnticipacion, anticipacionDe, turnosOcupados } from "@/lib/reserva-online";
+import { historiaClinicaPendiente, plantillasDeClinica } from "@/lib/documentosClinicos";
+import { camposDe, claveDeCI, datosPaciente, extrasOnline, type ValoresCampos } from "@/lib/camposPaciente";
 import type { FieldConfig } from "@/lib/types";
 
 /**
@@ -57,6 +60,39 @@ function sumarDias(fecha: string, dias: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Las citas que pueden pisar el día `date` de la clínica, pedidas a Firestore por rango de `start`. Antes se bajaban las primeras 500 de la
+ *  colección (las de menor id = las MÁS VIEJAS): con más de 500 citas la disponibilidad no veía las recientes y se reservaba encima.
+ *  El rango va de la víspera al día siguiente porque las citas del panel guardan un instante UTC («…T12:00:00.000Z») y las online la hora
+ *  local sin zona: ambas empiezan con AAAA-MM-DD, y un día de la clínica toca el día anterior o el siguiente en UTC. */
+async function citasAlrededorDe(clinicId: string, date: string) {
+  try {
+    return await queryRange(`clinics/${clinicId}`, "appointments", "start", sumarDias(date, -1), sumarDias(date, 2), 500);
+  } catch (e) {
+    // Si la consulta filtrada falla (un índice, un permiso…) se vuelve a la lectura de antes: es peor para una clínica con muchas citas,
+    // pero una reserva nunca se rompe por esto.
+    console.error("[reservas] queryRange falló, se lee la colección:", e instanceof Error ? e.message : e);
+    return listCollection(`clinics/${clinicId}`, "appointments", 500);
+  }
+}
+
+/** El paciente de esa CI: se busca en Firestore con y sin puntos («4123456» / «4.123.456»: así la guardan las clínicas) y, si no está,
+ *  se revisan las primeras 500 fichas por si la CI está escrita de otra forma («4 123 456»). `null` si no existe. */
+async function pacienteDeLaCI(clinicId: string, ci: string): Promise<string | null> {
+  const conPuntos = ci.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  try {
+    const exactos = await queryIn(`clinics/${clinicId}`, "patients", "document", [...new Set([ci, conPuntos])], 5);
+    if (exactos[0]) return exactos[0].id;
+  } catch (e) {
+    console.error("[reservas] queryIn falló, se revisan las primeras fichas:", e instanceof Error ? e.message : e);
+  }
+  const clave = claveDeCI(ci);
+  const todos = await listCollection(`clinics/${clinicId}`, "patients", 500);
+  return todos.find((p) => {
+    const doc = String(p.data.document || "");
+    return doc === ci || (clave !== null && claveDeCI(doc) === clave);
+  })?.id ?? null;
+}
+
 /** La matriz de campos del paciente de la clínica (clinic.config.patientFields). */
 function camposConfig(clinic: Record<string, unknown>): Record<string, FieldConfig> | undefined {
   return (clinic.config as { patientFields?: Record<string, FieldConfig> } | undefined)?.patientFields;
@@ -74,6 +110,19 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const clinicId = String(searchParams.get("clinicId") || "");
   const date = String(searchParams.get("date") || ""); // YYYY-MM-DD
+  // Sin fecha: solo el nombre de la clínica, para el encabezado de la página pública (antes se veía recién después de elegir un día).
+  // Nada más sale por acá: ni profesionales, ni agenda, ni configuración.
+  if (isValidId(clinicId) && !date) {
+    try {
+      const clinic = await getDocument(`clinics/${clinicId}`);
+      if (!clinic) return NextResponse.json({ ok: false, error: "Clínica no encontrada" }, { status: 404 });
+      return NextResponse.json({ ok: true, clinic: { name: String(clinic.name || "Clínica") } });
+    } catch (e) {
+      // Sin detalles internos (paths de Firestore, projectId) hacia una página pública.
+      console.error("[reservas GET nombre]", e);
+      return NextResponse.json({ ok: false, error: "No se pudo cargar la clínica." }, { status: 502 });
+    }
+  }
   if (!isValidId(clinicId) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ ok: false, error: "Parámetros inválidos" }, { status: 400 });
   }
@@ -107,15 +156,18 @@ export async function GET(req: NextRequest) {
       .filter((u) => u.data.role === "dentist" && u.data.active !== false)
       .map((u) => ({ id: u.id, name: String(u.data.name || "Profesional") }));
 
-    const appts = await listCollection(`clinics/${clinicId}`, "appointments", 500);
+    const appts = await citasAlrededorDe(clinicId, date);
+    // Ocupado = todo turno que una cita pisa, en la hora de la CLÍNICA: las del panel se guardan como instante UTC y las online como hora local
+    // sin zona, y compararlas como texto dejaba libre el turno ocupado (ver lib/reserva-online.ts › turnosOcupados).
+    const grilla = gridSlots();
     const busy: Record<string, Set<string>> = {};
     for (const a of appts) {
-      const start = String(a.data.start || "");
-      if (!start.startsWith(date)) continue;
       if (a.data.status === "cancelada") continue;
+      const ocupados = turnosOcupados({ start: String(a.data.start || ""), end: a.data.end ? String(a.data.end) : undefined }, date, grilla, tz, SLOT_MIN);
+      if (ocupados.length === 0) continue;
       const dId = String(a.data.dentistId || "");
       if (!busy[dId]) busy[dId] = new Set();
-      busy[dId].add(start.slice(11, 16));
+      for (const t of ocupados) busy[dId].add(t);
     }
 
     // Se filtra por anticipación ANTES de responder: el paciente no debería ver
@@ -252,12 +304,12 @@ export async function POST(req: NextRequest) {
 
     // Pre-chequeo de citas existentes (fuente de verdad de disponibilidad:
     // cubre slots ocupados por la agenda interna, no solo por reservas online).
-    const appts = await listCollection(`clinics/${clinicId}`, "appointments", 500);
+    const appts = await citasAlrededorDe(clinicId, date);
     const taken = appts.some(
       (a) =>
         String(a.data.dentistId) === dentistId &&
-        String(a.data.start || "").startsWith(`${date}T${time}`) &&
-        a.data.status !== "cancelada"
+        a.data.status !== "cancelada" &&
+        turnosOcupados({ start: String(a.data.start || ""), end: a.data.end ? String(a.data.end) : undefined }, date, [time], tz, SLOT_MIN).length > 0
     );
     if (taken) {
       return NextResponse.json(
@@ -267,8 +319,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Paciente por CI — reusar si existe, crear si no.
-    const patients = await listCollection(`clinics/${clinicId}`, "patients", 500);
-    let patientId = patients.find((p) => String(p.data.document || "") === ci)?.id || null;
+    let patientId = await pacienteDeLaCI(clinicId, ci);
     if (!patientId) {
       patientId = `p_${Date.now()}`;
       // Los extras solo se guardan en un paciente NUEVO. A uno existente no se le pisan
@@ -286,6 +337,13 @@ export async function POST(req: NextRequest) {
         emr: [],
         historyUpdatePending: false,
       });
+      // Igual que un alta de la recepción (`crearPaciente` del store): la Historia Clínica queda PENDIENTE para completarla en la primera visita.
+      const hc = historiaClinicaPendiente({
+        id: `cd_${patientId}_hc`, clinicId, patientId,
+        plantillas: plantillasDeClinica(clinic.config as Parameters<typeof plantillasDeClinica>[0]),
+        by: { id: "reserva-online", name: "Reserva online" }, now: new Date().toISOString(),
+      });
+      if (hc) await setDocument(`clinics/${clinicId}/clinicalDocs/${hc.id}`, JSON.parse(JSON.stringify(hc)) as Record<string, unknown>);
     }
 
     // La cita entra "pendiente": la clínica (o Botika) la confirma.

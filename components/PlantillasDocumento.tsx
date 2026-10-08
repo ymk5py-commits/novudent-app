@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Copy, Pencil, Plus, Power, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { idUnico, mover, normalizarPlantillas, plantillasDeClinica } from "@/lib/documentosClinicos";
+import { hayPlantillasSinGuardar, idUnico, mover, normalizarPlantillas, plantillasDeClinica } from "@/lib/documentosClinicos";
 import { PLANTILLAS_DE_FABRICA } from "@/lib/plantillasDocumento";
 import type { CampoDocumento, PlantillaDocumento, SeccionDocumento, TipoCampoDocumento } from "@/lib/types";
 import { Badge, Btn, Empty, Field, Modal, inputCls } from "@/components/ui";
@@ -35,10 +35,8 @@ export function PlantillasDocumento() {
   const [editando, setEditando] = useState<{ plantilla: PlantillaDocumento; nueva: boolean } | null>(null);
   const [guardado, setGuardado] = useState(false);
 
-  const sucio = useMemo(
-    () => JSON.stringify(lista) !== JSON.stringify(plantillasDeClinica(guardadas)),
-    [lista, guardadas],
-  );
+  // Se comparan normalizadas (ver `hayPlantillasSinGuardar`): lo guardado ya pasó por `normalizarPlantillas` y la lista de trabajo no.
+  const sucio = useMemo(() => hayPlantillasSinGuardar(lista, guardadas), [lista, guardadas]);
 
   const cambiar = (id: string, f: (p: PlantillaDocumento) => PlantillaDocumento) => setLista((l) => l.map((p) => (p.id === id ? f(p) : p)));
   const ids = lista.map((p) => p.id);

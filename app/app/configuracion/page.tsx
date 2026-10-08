@@ -1,16 +1,15 @@
 "use client";
 import Link from "next/link";
-/** Configuración de la práctica (solo Administrador): usuarios (con % comisión),
+/** Configuración de la práctica (solo Administrador): datos de la clínica, usuarios (con % comisión),
  *  servicios, convenios, plantilla de recordatorio y carga masiva de pacientes. */
 import { useEffect, useState } from "react";
-import { ShieldAlert, Plus, UserCog, Users, Building2, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, FileText, Image as ImageIcon, MapPin, ListChecks, Ban, Power } from "lucide-react";
+import { ShieldAlert, Plus, UserCog, Users, Handshake, Trash2, Pencil, MessageSquareText, UploadCloud, Percent, HandCoins, ScanLine, Sparkles, FileSignature, FileText, Image as ImageIcon, MapPin, ListChecks, Ban, Power } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
-import { CURRENCY_LIST, type CurrencyCode } from "@/lib/currency";
 import { can, rolLabel, rolDescripcion, rolesParaElegir } from "@/lib/rbac";
 import { planUserLimitError } from "@/lib/plan";
 import { PlazosTareas } from "@/components/tareas/PlazosTareas";
 import type { RolId, User, BotikaConfig, ConsentTemplate, Branch, PaymentMethod } from "@/lib/types";
-import { PAYMENT_METHOD_LABEL } from "@/lib/budgets";
+import { PAYMENT_METHOD_LABEL, parsearDescuento } from "@/lib/budgets";
 import { Card, Btn, Modal, Field, inputCls, Badge, Empty } from "@/components/ui";
 import { useClinicPlan } from "@/components/PlanGate";
 import DentalinkImport from "@/components/DentalinkImport";
@@ -24,6 +23,9 @@ import { ArancelPrecios } from "@/components/ArancelPrecios";
 import { BancosEntidades } from "@/components/BancosEntidades";
 import { PermisosDelEquipo } from "@/components/PermisosDelEquipo";
 import { Logotipo } from "@/components/Marca";
+import { DatosClinica } from "@/components/DatosClinica";
+import { ColorDeUsuario, SelectorDeColor } from "@/components/ColorDeAgenda";
+import { colorDelRol, usuariosConColor } from "@/lib/coloresUsuario";
 
 const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> = {
   diasGatillo: 5,
@@ -37,6 +39,7 @@ export default function ConfigPage() {
   const [addingUser, setAddingUser] = useState(false);
   const [mergeKeep, setMergeKeep] = useState(db.patients[0]?.id ?? "");
   const [mergeRemove, setMergeRemove] = useState("");
+  const [mergeError, setMergeError] = useState<string | null>(null);
   // Deep-link desde el menú Administración (/app/configuracion#arancel) → scroll a la sección.
   useEffect(() => {
     const go = () => { const id = window.location.hash.replace("#", ""); if (id) document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); };
@@ -46,9 +49,11 @@ export default function ConfigPage() {
   }, []);
   const [importing, setImporting] = useState(false);
   const [convName, setConvName] = useState("");
-  const [convPct, setConvPct] = useState(10);
+  const [convPct, setConvPct] = useState("10");
   const [convRuc, setConvRuc] = useState("");
   const [convPhone, setConvPhone] = useState("");
+  const convPctParsed = parsearDescuento(convPct);
+  const convPctError = convPctParsed.ok ? null : convPctParsed.error;
   const [template, setTemplate] = useState<string | null>(null);
   const [editBranch, setEditBranch] = useState<Branch | null>(null);
 
@@ -72,26 +77,9 @@ export default function ConfigPage() {
         <p className="text-sm text-clinic-muted">Usuarios, servicios y datos de la clínica.</p>
       </div>
 
-      {/* Clínica */}
+      {/* Datos de la clínica: nombre, dirección y teléfono editables, y la moneda (id="moneda" vive adentro) */}
       <Reveal>
-      <Card className="p-5">
-        <div className="mb-3 flex items-center gap-2"><Building2 className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Clínica</h2></div>
-        <div className="grid gap-3 text-sm sm:grid-cols-2">
-          <div><span className="text-clinic-muted">Nombre:</span> <b>{clinic?.name}</b></div>
-          <div id="moneda" className="scroll-mt-24"><span className="text-clinic-muted">Moneda:</span>{" "}
-            <select
-              value={clinic?.config.currency ?? "PYG"}
-              onChange={(e) => updateClinicConfig({ currency: e.target.value as CurrencyCode })}
-              className="ml-1 rounded-lg border border-clinic-border bg-white px-2 py-1 text-sm font-bold text-clinic-text focus:border-azure-400"
-            >
-              {CURRENCY_LIST.map((c) => <option key={c.code} value={c.code}>{c.symbol} · {c.name} ({c.code})</option>)}
-            </select>
-          </div>
-          <div><span className="text-clinic-muted">Dirección:</span> <b>{clinic?.config.address}</b></div>
-          <div><span className="text-clinic-muted">Teléfono:</span> <b>{clinic?.config.phone}</b></div>
-        </div>
-        <p className="mt-3 text-[11px] text-clinic-muted">Cambiar la moneda afecta el formato en toda la app (presupuestos, pagos, caja, reportes). No convierte montos por tipo de cambio.</p>
-      </Card>
+        <DatosClinica />
       </Reveal>
 
       <span id="sucursales" className="block scroll-mt-24" aria-hidden="true" />
@@ -181,9 +169,7 @@ export default function ConfigPage() {
             };
             return (
             <div key={u.id} className={`flex min-w-0 flex-wrap items-center gap-3 py-3 ${activo ? "" : "opacity-55"}`}>
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-bold text-white" style={{ background: u.color }}>
-                {u.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-              </span>
+              <ColorDeUsuario usuario={u} onCambiar={(color) => upsertUser({ ...u, color })} />
               <span className="min-w-0 flex-1 basis-[calc(100%-3rem)] sm:basis-auto">
                 <span className="flex flex-wrap items-center gap-2 text-sm font-bold text-clinic-text">{u.name}{!activo && <Badge tone="warn">Inactivo</Badge>}</span>
                 <span className="block break-all text-xs text-clinic-muted">{u.email}{u.phone ? ` · ${u.phone}` : ""}{u.specialty ? ` · ${u.specialty}` : ""}</span>
@@ -255,6 +241,7 @@ export default function ConfigPage() {
           })}
         </div>
         <p className="mt-2 text-[11px] text-clinic-muted">El % de comisión de cada dentista alimenta el cálculo de pago en <Link href="/app/reportes" className="font-bold text-azure-700">Reportes</Link>.</p>
+        <p className="mt-1 text-[11px] text-clinic-muted">El círculo de color de cada persona es el color con el que se ve en la agenda: tocalo para cambiarlo.</p>
       </Card>
       </Reveal>
 
@@ -286,20 +273,22 @@ export default function ConfigPage() {
         </div>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <input className={inputCls + " !w-48"} placeholder="Nombre (ej: IPS)" value={convName} onChange={(e) => setConvName(e.target.value)} />
-          <input type="number" min={0} max={100} className={inputCls + " !w-24"} value={convPct} onChange={(e) => setConvPct(Number(e.target.value))} title="% de cobertura/descuento" />
+          <input type="number" min={0} max={100} step="any" className={inputCls + (convPctError ? " !border-state-err" : "") + " !w-24"} value={convPct} onChange={(e) => setConvPct(e.target.value)} title="% de cobertura/descuento" aria-label="Porcentaje del convenio" aria-invalid={!!convPctError} />
           <input className={inputCls + " !w-32"} placeholder="RUC (opcional)" value={convRuc} onChange={(e) => setConvRuc(e.target.value)} />
           <input className={inputCls + " !w-36"} placeholder="Teléfono (opcional)" value={convPhone} onChange={(e) => setConvPhone(e.target.value)} />
           <Btn
             variant="outline"
-            disabled={!convName.trim()}
+            disabled={!convName.trim() || !!convPctError}
             onClick={() => {
-              updateClinicConfig({ convenios: [...(clinic.config.convenios ?? []).filter((x) => x.name !== convName.trim()), { name: convName.trim(), discountPct: convPct, ruc: convRuc.trim() || undefined, phone: convPhone.trim() || undefined }] });
-              setConvName(""); setConvRuc(""); setConvPhone("");
+              if (!convPctParsed.ok) return;
+              updateClinicConfig({ convenios: [...(clinic.config.convenios ?? []).filter((x) => x.name !== convName.trim()), { name: convName.trim(), discountPct: convPctParsed.valor, ruc: convRuc.trim() || undefined, phone: convPhone.trim() || undefined }] });
+              setConvName(""); setConvPct("10"); setConvRuc(""); setConvPhone("");
             }}
           >
             <Plus className="h-3.5 w-3.5" /> Agregar convenio
           </Btn>
         </div>
+        {convPctError && <p role="alert" className="mt-2 text-xs font-semibold text-state-err">{convPctError}</p>}
       </Card>
       </Reveal>
 
@@ -412,17 +401,17 @@ export default function ConfigPage() {
       </Card>
       </Reveal>
 
-      {/* Migración desde Dentalink / carga masiva */}
+      {/* Migración desde el sistema anterior / carga masiva (sin nombrar a otro sistema en pantalla) */}
       <Reveal>
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2"><UploadCloud className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Migración desde Dentalink</h2></div>
+          <div className="flex items-center gap-2"><UploadCloud className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Migración desde otro sistema</h2></div>
           <Btn onClick={() => setImporting(true)}><UploadCloud className="h-4 w-4" /> Iniciar migración</Btn>
         </div>
         <p className="text-xs leading-relaxed text-clinic-muted">
-          Traé toda tu base sin complicaciones: exportá <b>Reportes → Pacientes → Excel</b> en Dentalink, copiá y pegá (o subí el CSV) —
+          Traé toda tu base sin complicaciones: exportá la lista de <b>pacientes a Excel</b> desde tu sistema anterior, copiá y pegá (o subí el CSV) —
           Novudent detecta las columnas solo, omite duplicados por CI y si hay columna de <b>deuda</b> la carga directo en Cuentas por cobrar.
-          Sirve también para cualquier otro software o planilla propia.
+          Sirve también para cualquier otra planilla propia.
         </p>
       </Card>
       </Reveal>
@@ -450,13 +439,21 @@ export default function ConfigPage() {
         <div id="fusion" className="mb-3 flex scroll-mt-24 items-center gap-2"><Users className="h-4 w-4 text-azure-600" /><h2 className="font-bold text-clinic-text">Fusión de fichas</h2></div>
         <p className="mb-3 text-xs text-clinic-muted">Unificá dos fichas duplicadas: citas, presupuestos, pagos e historial pasan a la ficha que se mantiene; la otra se elimina.</p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Mantener esta ficha"><select className={inputCls} value={mergeKeep} onChange={(e) => { setMergeKeep(e.target.value); if (e.target.value === mergeRemove) setMergeRemove(""); }}>{db.patients.map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {p.document}</option>)}</select></Field>
-          <Field label="Fusionar y eliminar"><select className={inputCls} value={mergeRemove} onChange={(e) => setMergeRemove(e.target.value)}><option value="">— Elegí la ficha duplicada —</option>{db.patients.filter((p) => p.id !== mergeKeep).map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {p.document}</option>)}</select></Field>
+          <Field label="Mantener esta ficha"><select className={inputCls} value={mergeKeep} onChange={(e) => { setMergeKeep(e.target.value); setMergeError(null); if (e.target.value === mergeRemove) setMergeRemove(""); }}>{db.patients.map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {p.document}</option>)}</select></Field>
+          <Field label="Fusionar y eliminar"><select className={inputCls} value={mergeRemove} onChange={(e) => { setMergeRemove(e.target.value); setMergeError(null); }}><option value="">— Elegí la ficha duplicada —</option>{db.patients.filter((p) => p.id !== mergeKeep).map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {p.document}</option>)}</select></Field>
         </div>
+        {mergeError && <p role="alert" className="mt-3 rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold text-state-err">{mergeError}</p>}
         <div className="mt-3 flex justify-end">
           <Btn disabled={!mergeRemove || mergeRemove === mergeKeep} onClick={() => {
             const a = db.patients.find((p) => p.id === mergeKeep); const b = db.patients.find((p) => p.id === mergeRemove);
-            if (a && b && confirm(`¿Fusionar "${fullName(b)}" dentro de "${fullName(a)}"? Esta acción no se puede deshacer.`)) { mergePatients(mergeKeep, mergeRemove); setMergeRemove(""); }
+            if (!a || !b || !confirm(`¿Fusionar "${fullName(b)}" dentro de "${fullName(a)}"? Esta acción no se puede deshacer.`)) return;
+            const r = mergePatients(mergeKeep, mergeRemove);
+            if (!r.ok) { setMergeError(r.error); return; }
+            setMergeError(null);
+            setMergeRemove("");
+            if (r.piezasEnConflicto.length > 0) {
+              alert(`Fichas fusionadas. En ${r.piezasEnConflicto.length === 1 ? "la pieza" : "las piezas"} ${r.piezasEnConflicto.join(", ")} del odontograma las dos fichas tenían hallazgos distintos: quedaron los de «${fullName(a)}».`);
+            }
           }}><Users className="h-4 w-4" /> Fusionar fichas</Btn>
         </div>
       </Card>
@@ -500,6 +497,7 @@ export default function ConfigPage() {
       </Card>
       </Reveal>
 
+      <span id="consentimientos" className="block scroll-mt-24" aria-hidden="true" />
       {/* Plantillas de consentimiento */}
       <Reveal>
       <ConsentTemplatesCard
@@ -598,11 +596,14 @@ function NewUser({
   onClose: () => void;
   onCreate: (d: { name: string; email: string; role: RolId; password: string; color: string; phone?: string }) => Promise<void>;
 }) {
+  const { db } = useStore();
   const [f, setF] = useState({ name: "", email: "", role: "receptionist" as RolId, password: "", phone: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // El color de agenda sale del rol; un rol propio usa un gris azulado.
-  const COLORS: Record<string, string> = { admin: "#1769E0", cashier: "#7C3AED", receptionist: "#DB2777", commercial: "#0891B2", dentist: "#0E9F6E", assistant: "#B45309" };
+  // El color de agenda arranca con el del rol y se puede cambiar; lo que se eligió a mano no vuelve al del rol si se cambia el rol.
+  const [colorElegido, setColorElegido] = useState<string | null>(null);
+  const color = colorElegido ?? colorDelRol(f.role);
+  const yaLoUsan = usuariosConColor(db.users, color);
 
   return (
     <Modal title="Agregar usuario" onClose={onClose}>
@@ -613,7 +614,7 @@ function NewUser({
           setBusy(true);
           setError(null);
           try {
-            await onCreate({ name: f.name, email: f.email, role: f.role, password: f.password, color: COLORS[f.role] ?? "#475569", phone: f.phone || undefined });
+            await onCreate({ name: f.name, email: f.email, role: f.role, password: f.password, color, phone: f.phone || undefined });
           } catch (err: any) {
             const code = err?.code ?? "";
             setError(
@@ -647,6 +648,16 @@ function NewUser({
             {rolesParaElegir().map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
           </select>
         </Field>
+        <div>
+          <span className="mb-1 block text-[13px] font-semibold text-clinic-text">Color en la agenda</span>
+          <SelectorDeColor valor={color} aria="Color en la agenda" onChange={setColorElegido} />
+          <span className="mt-1 block text-[12px] text-clinic-muted">Es el color con el que se ve a esta persona en la agenda. Podés cambiarlo después, desde su fila.</span>
+          {yaLoUsan.length > 0 && (
+            <span role="status" className="mt-1 block text-[12px] font-semibold text-state-warn">
+              Ojo: ya lo {yaLoUsan.length > 1 ? "usan" : "usa"} {yaLoUsan.map((u) => u.name).join(", ")}. Elegí otro si querés distinguirlos en la agenda.
+            </span>
+          )}
+        </div>
         {f.role === "assistant" && (
           <p className="rounded-xl bg-clinic-bg p-3 text-xs leading-relaxed text-clinic-muted">
             Después de crearlo, elegí en la lista a qué doctores asiste: sin doctores asignados no ve agendas ni pacientes.

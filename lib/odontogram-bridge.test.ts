@@ -4,6 +4,7 @@ import {
   __setToothStateForTest,
 } from "../components/odontogram-engine/odontogram";
 import { toLabel, toDisplayLabel } from "../components/odontogram-engine/utils/numbering";
+import { PIEZA_SIN_HALLAZGOS } from "./odontogramaSinHallazgos";
 
 /** Límite de integración Novudent ↔ motor vendorizado (React-Odontogram-Modul).
  *
@@ -22,6 +23,15 @@ import { toLabel, toDisplayLabel } from "../components/odontogram-engine/utils/n
  *  no acá (ver components/odontogram-engine/NOTICE.md). */
 type TeethPayload = { version: string; globals: Record<string, boolean>; teeth: Record<string, Record<string, unknown>> };
 const payloadOf = () => collectExportPayload() as unknown as TeethPayload;
+
+describe("pieza sin hallazgos (lo que usa la fusión de fichas para saber qué se puede reemplazar)", () => {
+  it("lib/odontogramaSinHallazgos.ts es EXACTAMENTE lo que el motor exporta para una pieza que nadie tocó", () => {
+    const { teeth } = payloadOf();
+    for (const [pieza, estado] of Object.entries(teeth)) {
+      expect(estado, `la pieza ${pieza} sin tocar no coincide con PIEZA_SIN_HALLAZGOS: si el motor cambió lo que exporta por defecto, actualizá lib/odontogramaSinHallazgos.ts`).toEqual(PIEZA_SIN_HALLAZGOS);
+    }
+  });
+});
 
 describe("puente de datos odontograma (collectExportPayload — path de guardado)", () => {
   afterEach(() => {

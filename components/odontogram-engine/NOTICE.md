@@ -31,6 +31,13 @@ environment jsdom + `plugins: [react()]`), ver el `README.md` del repo origen.
 - `i18n/translations.ts`: `"app.title"` del locale `es` pasa de `"React Odontogram Modul"` (nombre
   del proyecto upstream) a `"Odontograma"` — Novudent solo usa el locale `es` (`language="es"`
   fijo), no se tocaron los otros 8 locales.
+- `i18n/translations.ts` (locale `es`, oct-2026): las indicaciones que el origen escribió en tuteo pasan a voseo
+  rioplatense, como habla el resto de la app: «Haz clic en un diente… usa CMD/CTRL + clic» →
+  «Hacé clic en un diente… usá Cmd/Ctrl + clic» (`chart.hint`), «Selecciona…» → «Seleccioná…» (`app.subtitle`,
+  `caries.hint`, `endo.hint`), «Toca… Mantén pulsado» → «Tocá… Mantené presionado» (`chart.hint.touch`) y los 12
+  pasos del recorrido guiado (`intro.step*.text`, hoy escondido). Son 17 textos del locale `es`; las claves y los otros
+  8 locales no se tocaron. Al re-sincronizar con el origen hay que volver a aplicarlo: `lib/odontogram-voseo.test.ts`
+  falla si vuelve el tuteo.
 - `App.tsx`: se agregan 3 props opcionales (`showTourButton`, `showLanguageSelector`,
   `showDarkModeToggle`, todas default `true` — el comportamiento upstream no cambia si no se pasan)
   para poder ocultar botones del topbar que ya estaban fuera de alcance de la integración pero
@@ -91,3 +98,6 @@ environment jsdom + `plugins: [react()]`), ver el `README.md` del repo origen.
   sola arcada corrían la fila de abajo 6 columnas. En `index.css`, una regla
   `.tooth-tile.occl-view.tpl-11/.tpl-13` les da 64×64 (si no, les ganaba la regla de su plantilla
   lateral, 60×102). Lo cubren `lib/odontogram-svg.test.ts` y `e2e/odontograma-realista.spec.ts`.
+- `odontogram.ts` (`#btnResetAll`, oct-2026): «Restablecer boca» borraba las 32 piezas sin preguntar y dejaba «Información dental» con lo
+  viejo, porque `setEdentulous(false)` avisa el cambio (`notifyStateChange`) antes de borrar las piezas. Ahora pide confirmación
+  (`status.resetAllConfirm`, locales `es` y `en`; los demás caen en inglés) y avisa de nuevo al terminar. Lo cubre `e2e/bugs-datos.spec.ts`.

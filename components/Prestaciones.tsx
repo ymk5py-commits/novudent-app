@@ -1,7 +1,8 @@
 "use client";
 /** Lista de prestaciones del plan agrupada por sección (paridad Dentalink):
- *  columnas Prestación / Pieza / Dscto / Precio / Pago (estado por fila).
- *  Sin money.view (roles v3) se ocultan descuento, precio y total. */
+ *  columnas Prestación / Pieza / Dscto / Precio / Estado.
+ *  «Estado» dice si la prestación YA SE HIZO (tilde verde «Realizada») o falta («Pendiente»); no dice si se pagó
+ *  (antes la columna se llamaba «Pago» y confundía). Sin money.view (roles v3) se ocultan descuento, precio y total. */
 import { Fragment } from "react";
 import { CircleCheck, ShoppingCart } from "lucide-react";
 import { fmtGs } from "@/lib/store";
@@ -30,7 +31,7 @@ export function PrestacionesList({ budget }: { budget: Budget }) {
             <th className="px-2 py-2">Pieza</th>
             {verMontos && <th className="px-2 py-2 text-right">Dscto</th>}
             {verMontos && <th className="px-2 py-2 text-right">Precio</th>}
-            <th className="px-2 py-2 text-center">Pago</th>
+            <th className="px-2 py-2 text-center">Estado</th>
           </tr>
         </thead>
         <tbody>
@@ -51,8 +52,10 @@ export function PrestacionesList({ budget }: { budget: Budget }) {
                     <td className="px-2 py-2.5 text-clinic-muted">{it.tooth ?? "—"}</td>
                     {verMontos && <td className="px-2 py-2.5 text-right text-clinic-muted">{dscto ? `${dscto}%` : "—"}</td>}
                     {verMontos && <td className="px-2 py-2.5 text-right tabular-nums">{fmtGs(it.price)}</td>}
-                    <td className="px-2 py-2.5 text-center" title={done ? "Realizado" : "Pendiente"}>
-                      {done ? <CircleCheck className="mx-auto h-4 w-4 text-state-ok" /> : <ShoppingCart className="mx-auto h-4 w-4 text-state-err" />}
+                    <td className="px-2 py-2.5 text-center">
+                      {done
+                        ? <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-state-ok"><CircleCheck aria-hidden className="h-4 w-4" />Realizada</span>
+                        : <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-state-err"><ShoppingCart aria-hidden className="h-4 w-4" />Pendiente</span>}
                     </td>
                   </tr>
                 );

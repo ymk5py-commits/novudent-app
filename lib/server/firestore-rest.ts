@@ -239,6 +239,67 @@ export async function queryWhere(
     }));
 }
 
+/** Corre una consulta estructurada sobre `parentPath` y devuelve los documentos (id + datos). */
+async function correrConsulta(
+  parentPath: string,
+  collectionId: string,
+  etiqueta: string,
+  filtro: Record<string, unknown>,
+  limit: number
+): Promise<Array<{ id: string; data: Record<string, unknown> }>> {
+  const res = await authedFetch(`${FS_BASE}/${encodePath(parentPath)}:runQuery`, {
+    method: "POST",
+    body: JSON.stringify({ structuredQuery: { from: [{ collectionId }], where: filtro, limit } }),
+  });
+  const data = await res.json().catch(() => []);
+  if (!res.ok) throw new Error(`query ${etiqueta} falló (${res.status})`);
+  return (Array.isArray(data) ? data : [])
+    .filter((row) => row.document)
+    .map((row) => ({
+      id: String(row.document.name).split("/").pop()!,
+      data: decodeFields(row.document.fields),
+    }));
+}
+
+/**
+ * Consulta por RANGO de un campo de texto: `desde <= field < hasta`.
+ *
+ * Es el filtro que tiene que usar toda ruta pública que mira "lo de un día" (la disponibilidad de la reserva online): `listCollection`
+ * trae los primeros N documentos por id, o sea los MÁS VIEJOS, y una clínica con más de N citas dejaba de ver las recientes.
+ * Un solo campo con rango no necesita índice compuesto. Los valores viajan como datos (encodeValue), nunca en el path.
+ */
+export async function queryRange(
+  parentPath: string,
+  collectionId: string,
+  field: string,
+  desde: string,
+  hasta: string,
+  limit = 500
+): Promise<Array<{ id: string; data: Record<string, unknown> }>> {
+  return correrConsulta(parentPath, collectionId, `${collectionId}.${field}`, {
+    compositeFilter: {
+      op: "AND",
+      filters: [
+        { fieldFilter: { field: { fieldPath: field }, op: "GREATER_THAN_OR_EQUAL", value: encodeValue(desde) } },
+        { fieldFilter: { field: { fieldPath: field }, op: "LESS_THAN", value: encodeValue(hasta) } },
+      ],
+    },
+  }, limit);
+}
+
+/** Consulta `field IN [valores]` (hasta 30 valores). Igual que `queryWhere`, el filtro corre en Firestore. */
+export async function queryIn(
+  parentPath: string,
+  collectionId: string,
+  field: string,
+  valores: unknown[],
+  limit = 10
+): Promise<Array<{ id: string; data: Record<string, unknown> }>> {
+  return correrConsulta(parentPath, collectionId, `${collectionId}.${field}`, {
+    fieldFilter: { field: { fieldPath: field }, op: "IN", value: encodeValue(valores) },
+  }, limit);
+}
+
 /** Crea (o reemplaza) un documento con id explícito. */
 export async function setDocument(path: string, value: Record<string, unknown>): Promise<void> {
   const res = await authedFetch(`${FS_BASE}/${encodePath(path)}`, {

@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { useStore, fmtGs, fmtTime, fmtDate, fullName } from "@/lib/store";
 import { recordTotal } from "@/lib/billing";
+import { proximasCitas } from "@/lib/citas";
+import { etiquetaDeNota } from "@/lib/historial";
 import { resizeToDataUrl } from "@/lib/image";
 import { can } from "@/lib/rbac";
 import { useAlcance } from "@/lib/useAlcance";
@@ -37,6 +39,7 @@ import Periodontogram from "@/components/Periodontogram";
 import RecoveryCard from "@/components/RecoveryCard";
 import { Reveal } from "@/components/motion";
 
+import { fechaLocal } from "@/lib/tareas";
 type SubTab =
   | "datos" | "citas" | "comentarios" | "tareas" | "emails" | "archivos" | "consentimientos" | "documentos"
   | "resumen" | "evoluciones" | "antecedentes" | "odontograma" | "periodoncia" | "historial" | "radiografias" | "copilot" | "recetas"
@@ -106,7 +109,7 @@ export default function PatientProfile() {
   const [fillingForm, setFillingForm] = useState<PatientForm | null>(null);
   const [writingNote, setWritingNote] = useState(false);
   const [clipOpen, setClipOpen] = useState(false);
-  const [clipDate, setClipDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [clipDate, setClipDate] = useState(() => fechaLocal());
   const [medOpen, setMedOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   // Enlace directo a una pestaña (#planes desde "Ir al tratamiento" de la bandeja
@@ -126,6 +129,9 @@ export default function PatientProfile() {
   if (!alcance.vePaciente(p.id)) {
     return <Empty title="Este paciente no está entre tus pacientes" desc="Solo ves los pacientes que tienen una cita o un plan de tratamiento con tus doctores." />;
   }
+
+  // «Próximas citas» del Resumen: las que vienen, de la más cercana a la más lejana, sin las anuladas.
+  const proximas = proximasCitas(appts, new Date());
 
   /* Pestañas por rol (roles v3). Datos personales, citas y comentarios: quien ve datos
    * personales. Formularios y consentimientos: la recepción. Ficha clínica y planes:
@@ -329,11 +335,11 @@ export default function PatientProfile() {
         <Reveal className="grid gap-5 lg:grid-cols-2">
           <Card className="p-5">
             <h2 className="mb-3 font-bold text-clinic-text">Próximas citas</h2>
-            {appts.filter((a) => new Date(a.start) >= new Date()).length === 0 ? (
+            {proximas.length === 0 ? (
               <p className="text-sm text-clinic-muted">Sin citas futuras.</p>
             ) : (
               <div className="divide-y divide-clinic-border">
-                {appts.filter((a) => new Date(a.start) >= new Date()).slice(0, 4).map((a) => (
+                {proximas.map((a) => (
                   <div key={a.id} className="flex items-center gap-3 py-2.5 text-sm">
                     <span className="tabular-nums text-xs font-bold">{new Date(a.start).toLocaleDateString("es-PY", { day: "2-digit", month: "short" })} {fmtTime(a.start)}</span>
                     <span className="flex-1 truncate font-semibold text-clinic-text">{a.title}</span>
@@ -352,7 +358,7 @@ export default function PatientProfile() {
                 {p.emr.slice(0, 3).map((n) => (
                   <div key={n.id} className="rounded-xl bg-clinic-bg p-3 text-sm">
                     <div className="mb-1 flex items-center gap-2 text-[11px] text-clinic-muted">
-                      <Badge tone="info">{n.kind}</Badge> {n.authorName} · {new Date(n.createdAt).toLocaleDateString("es-PY")}
+                      <Badge tone="info">{etiquetaDeNota(n.kind)}</Badge> {n.authorName} · {new Date(n.createdAt).toLocaleDateString("es-PY")}
                     </div>
                     <p className="text-clinic-text">{n.text}</p>
                   </div>
@@ -472,7 +478,7 @@ export default function PatientProfile() {
               {[...p.emr].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((n) => (
                 <Card key={n.id} className="p-4">
                   <div className="flex items-center justify-between gap-2">
-                    <Badge tone="info">{({ diagnostico: "Diagnóstico", tratamiento: "Tratamiento", plan: "Plan", nota: "Nota" } as Record<string, string>)[n.kind] ?? n.kind}</Badge>
+                    <Badge tone="info">{etiquetaDeNota(n.kind)}</Badge>
                     <span className="text-[11px] text-clinic-muted">{n.authorName} · {fmtDate(n.createdAt)}</span>
                   </div>
                   {n.soap ? (
@@ -616,7 +622,7 @@ function MedicalModal({ patient, onClose, onSave }: { patient: Patient; onClose:
 
 function FormFill({ form, onClose, onSave }: { form: PatientForm; onClose: () => void; onSave: (fields: { label: string; value: string }[], date: string) => void }) {
   const [fields, setFields] = useState(form.fields);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => fechaLocal());
   return (
     <Modal title={`Completar: ${form.templateName}`} onClose={onClose}>
       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onSave(fields, date); }}>
@@ -646,18 +652,21 @@ function NoteForm({ onClose, onSave, author }: { onClose: () => void; onSave: (n
   const [kind, setKind] = useState<EmrNote["kind"]>("tratamiento");
   const [text, setText] = useState("");
   const [soap, setSoap] = useState({ s: "", o: "", a: "", p: "" });
+  // Por qué no se firmó (una evolución vacía no se guarda): se muestra en el formulario y se va apenas se escribe algo.
+  const [error, setError] = useState<string | null>(null);
   const pill = (on: boolean) => `rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${on ? "bg-azure-600 text-white" : "text-clinic-muted hover:text-clinic-text"}`;
+  const cambiarSoap = (campo: "s" | "o" | "a" | "p", valor: string) => { setSoap((x) => ({ ...x, [campo]: valor })); setError(null); };
 
   const submit = (e: { preventDefault(): void }) => {
     e.preventDefault();
     const now = new Date().toISOString();
     const base = { id: `n_${Date.now()}`, authorId: author.id, authorName: author.name, createdAt: now, kind, signedBy: author.name, signedAt: now };
     if (mode === "soap") {
-      if (!soap.s && !soap.o && !soap.a && !soap.p) return;
+      if (![soap.s, soap.o, soap.a, soap.p].some((x) => x.trim())) { setError("Escribí al menos uno de los cuatro campos (S, O, A o P) antes de firmar."); return; }
       const composed = [soap.s && `S: ${soap.s}`, soap.o && `O: ${soap.o}`, soap.a && `A: ${soap.a}`, soap.p && `P: ${soap.p}`].filter(Boolean).join("\n");
       onSave({ ...base, text: composed, soap: { s: soap.s || undefined, o: soap.o || undefined, a: soap.a || undefined, p: soap.p || undefined } });
     } else {
-      if (!text.trim()) return;
+      if (!text.trim()) { setError("Escribí el detalle de la evolución antes de firmar."); return; }
       onSave({ ...base, text: text.trim() });
     }
   };
@@ -667,11 +676,11 @@ function NoteForm({ onClose, onSave, author }: { onClose: () => void; onSave: (n
       <form className="space-y-4" onSubmit={submit}>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-xl border border-clinic-border bg-white p-1">
-            <button type="button" onClick={() => setMode("soap")} className={pill(mode === "soap")}>SOAP</button>
-            <button type="button" onClick={() => setMode("libre")} className={pill(mode === "libre")}>Nota libre</button>
+            <button type="button" onClick={() => { setMode("soap"); setError(null); }} className={pill(mode === "soap")}>SOAP</button>
+            <button type="button" onClick={() => { setMode("libre"); setError(null); }} className={pill(mode === "libre")}>Nota libre</button>
           </div>
           {mode === "soap" && (
-            <select onChange={(e) => { const t = SOAP_TEMPLATES.find((x) => x.name === e.target.value); if (t) setSoap({ ...t.soap }); e.currentTarget.selectedIndex = 0; }} className={`${inputCls} w-auto`} defaultValue="">
+            <select onChange={(e) => { const t = SOAP_TEMPLATES.find((x) => x.name === e.target.value); if (t) { setSoap({ ...t.soap }); setError(null); } e.currentTarget.selectedIndex = 0; }} className={`${inputCls} w-auto`} defaultValue="">
               <option value="" disabled>Plantilla…</option>
               {SOAP_TEMPLATES.map((t) => <option key={t.name} value={t.name}>{t.name}</option>)}
             </select>
@@ -686,15 +695,16 @@ function NoteForm({ onClose, onSave, author }: { onClose: () => void; onSave: (n
 
         {mode === "soap" ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="S — Subjetivo"><textarea rows={3} className={inputCls} value={soap.s} onChange={(e) => setSoap({ ...soap, s: e.target.value })} placeholder="Lo que refiere el paciente" /></Field>
-            <Field label="O — Objetivo"><textarea rows={3} className={inputCls} value={soap.o} onChange={(e) => setSoap({ ...soap, o: e.target.value })} placeholder="Hallazgos clínicos, exámenes" /></Field>
-            <Field label="A — Análisis"><textarea rows={3} className={inputCls} value={soap.a} onChange={(e) => setSoap({ ...soap, a: e.target.value })} placeholder="Diagnóstico / impresión" /></Field>
-            <Field label="P — Plan"><textarea rows={3} className={inputCls} value={soap.p} onChange={(e) => setSoap({ ...soap, p: e.target.value })} placeholder="Tratamiento, indicaciones, próximos pasos" /></Field>
+            <Field label="S — Subjetivo"><textarea rows={3} className={inputCls} value={soap.s} onChange={(e) => cambiarSoap("s", e.target.value)} placeholder="Lo que refiere el paciente" /></Field>
+            <Field label="O — Objetivo"><textarea rows={3} className={inputCls} value={soap.o} onChange={(e) => cambiarSoap("o", e.target.value)} placeholder="Hallazgos clínicos, exámenes" /></Field>
+            <Field label="A — Análisis"><textarea rows={3} className={inputCls} value={soap.a} onChange={(e) => cambiarSoap("a", e.target.value)} placeholder="Diagnóstico / impresión" /></Field>
+            <Field label="P — Plan"><textarea rows={3} className={inputCls} value={soap.p} onChange={(e) => cambiarSoap("p", e.target.value)} placeholder="Tratamiento, indicaciones, próximos pasos" /></Field>
           </div>
         ) : (
-          <Field label="Detalle"><textarea rows={5} className={inputCls} value={text} onChange={(e) => setText(e.target.value)} placeholder="Hallazgos, piezas, indicaciones…" /></Field>
+          <Field label="Detalle"><textarea rows={5} className={inputCls} value={text} onChange={(e) => { setText(e.target.value); setError(null); }} placeholder="Hallazgos, piezas, indicaciones…" /></Field>
         )}
 
+        {error && <p role="alert" className="rounded bg-state-errbg px-3 py-2 text-xs font-semibold text-state-err">{error}</p>}
         <p className="text-[11px] text-clinic-muted">Se firma electrónicamente como <b className="text-clinic-text">{author.name}</b> al guardar.</p>
         <div className="flex justify-end gap-2"><Btn variant="outline" onClick={onClose}>Cancelar</Btn><Btn type="submit">Firmar y guardar</Btn></div>
       </form>

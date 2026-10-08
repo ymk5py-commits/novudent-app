@@ -139,7 +139,7 @@ export default function PatientsPage() {
           {list.length === 0 ? (
             <Empty
               title={alcance.sinDoctores ? "Todavía no tenés doctores asignados" : soloPendientes && !q.trim() ? "No hay pacientes con documentos pendientes" : "Sin resultados"}
-              desc={alcance.sinDoctores ? "Pedile al administrador que te asigne en Configuración → Usuarios." : soloPendientes && !q.trim() ? "Cuando un paciente tenga un documento clínico pendiente va a aparecer acá." : verPersonales ? "Probá con otro nombre o número de documento." : "Probá con otro nombre."}
+              desc={alcance.sinDoctores ? "Pedile al administrador que te asigne en Administración › Usuarios y profesionales." : soloPendientes && !q.trim() ? "Cuando un paciente tenga un documento clínico pendiente va a aparecer acá." : verPersonales ? "Probá con otro nombre o número de documento." : "Probá con otro nombre."}
             />
           ) : (
             <>

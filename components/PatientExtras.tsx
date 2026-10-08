@@ -15,6 +15,7 @@ import { Logotipo } from "@/components/Marca";
 import { EmailButton } from "@/components/EmailButton";
 import { anularReceta, baseDeDuplicado, recetaHtml, recetasVisibles } from "@/lib/recetas";
 
+import { fechaLocal } from "@/lib/tareas";
 /* ===================== PRESUPUESTOS ===================== */
 export function BudgetsTab({ patient }: { patient: Patient }) {
   const { db } = useStore();
@@ -256,8 +257,10 @@ function RxForm({ base, planes, onClose, onSave }: { base?: RxBase; planes: { id
 }
 
 function RxPrint({ rx, patient, onClose }: { rx: Prescription; patient: Patient; onClose: () => void }) {
-  const { db } = useStore();
+  const { db, session } = useStore();
   const clinic = db.clinics[0];
+  // La CI es un dato personal: sale en la receta solo si quien imprime puede verlo (el dentista no; el nombre alcanza para identificar).
+  const verCI = !!session && can(session.role, "patients.personal");
   return (
     <Modal title="Receta" onClose={onClose}>
       <div className="print-area space-y-5">
@@ -266,7 +269,7 @@ function RxPrint({ rx, patient, onClose }: { rx: Prescription; patient: Patient;
           <div className="text-xs text-clinic-muted">{clinic.name} · {clinic.config.address} · {clinic.config.phone}</div>
         </div>
         <div className="text-sm">
-          <div><span className="text-clinic-muted">Paciente:</span> <b>{fullName(patient)}</b> · CI {patient.document}</div>
+          <div><span className="text-clinic-muted">Paciente:</span> <b>{fullName(patient)}</b>{verCI && <> · CI {patient.document}</>}</div>
           <div><span className="text-clinic-muted">Fecha:</span> {new Date(rx.date).toLocaleDateString("es-PY")}</div>
         </div>
         <div className="rounded-xl border border-clinic-border p-4">
@@ -544,7 +547,7 @@ function ControlForm({ onSave, onClose }: { onSave: (note: string) => void; onCl
 function OrthoForm({ prev, onClose, onSave }: { prev?: OrthoRecord; onClose: () => void; onSave: (rec: OrthoRecord) => void }) {
   const [applianceType, setApplianceType] = useState(prev?.applianceType ?? "Brackets metálicos");
   const [diagnosis, setDiagnosis] = useState(prev?.diagnosis ?? "");
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(() => fechaLocal());
   const [monthlyFee, setMonthlyFee] = useState(prev?.monthlyFee ?? 350000);
   return (
     <Modal title="Activar módulo de ortodoncia" onClose={onClose}>

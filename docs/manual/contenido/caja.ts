@@ -172,7 +172,7 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "Con el rol de Recepcionista no aparece «Recibir pago» ni se ven montos: cobrar es de Recepción y caja y del administrador." },
       { tipo: "tip", texto: "Para dejar plata a favor del paciente sin plan (una seña, un adelanto), tildá «Ingresar abono libre» y escribí el monto. Para cobrar un plan puntual, también podés entrar desde el plan de tratamiento: «Opciones» › «Recaudar este tratamiento» abre **Recibir pago** con ese plan ya tildado." },
       { tipo: "tip", texto: "Si el plan está en cuotas, al pie de **Recibir pago** hay una tabla **Por cuotas de financiamiento** con el botón «Pagar cuota #…»: carga esa cuota en el paso 1. Cómo se arman: [[armar-las-cuotas-de-un-plan]]." },
-      { tipo: "error", texto: "Un pago ingresado desde la ficha queda fechado a las 12:00 del día elegido: antes del mediodía todavía no aparece en **Movimientos de la caja** ni suma en el **Total de caja**, y en una caja abierta después de las 12:00 no aparece nunca (el saldo del paciente sí baja). Tendría que quedar con la hora real del cobro." },
+      { tipo: "ojo", texto: "Con la **Fecha** de hoy, el pago queda con la hora real del cobro y entra enseguida en la caja que tenés abierta. Si cargás un pago de un día anterior, queda al mediodía de ese día y no suma en la caja de hoy." },
       { tipo: "revisar", texto: "No probé el botón «Link de pago (WhatsApp)» ni el envío del comprobante por e-mail: dependen de WhatsApp, del correo de la clínica y de su configuración de cobro online." },
     ],
     capturar: async (c) => {
@@ -304,9 +304,8 @@ export const procedimientos: Procedimiento[] = [
     avisos: [
       { tipo: "ojo", texto: "El **Acumulado** suma todos los medios de pago. En el cajón solo tiene que estar el efectivo: por eso el **Total de caja** muestra aparte «Efectivo que tiene que haber en el cajón»." },
       { tipo: "ojo", texto: "Anular no borra: el pago queda en **Pagos eliminados** y no hay botón para reactivarlo. Si fue un error, volvé a cargarlo." },
-      { tipo: "ojo", texto: "Si entrás como administrador vas a ver además un tachito en cada renglón de **Movimientos de la caja**: ese borra el pago para siempre, sin pedir confirmación y sin dejar registro. Para corregir, usá siempre «Anular pago» desde la ficha." },
+      { tipo: "tip", texto: "Si entrás como administrador vas a ver además un tachito en cada renglón de **Movimientos de la caja**: hace lo mismo que el de la ficha («Anular pago»). Pide confirmación y el pago queda en **Pagos eliminados**." },
       { tipo: "ojo", texto: "Con este rol no ves los reportes del negocio (ingresos totales, producción): son solo del administrador." },
-      { tipo: "revisar", texto: "Confirmar si el tachito del administrador en **Movimientos de la caja** debería anular, como el de la ficha, en lugar de borrar." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -462,12 +461,11 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Cuando el paciente dice que sí, tocá «Marcar aceptado»: pasa a **Aceptado**. Desde ese momento la tarjeta muestra lo **pagado** y el **saldo**, y el paciente entra en **Cuentas por cobrar**.", captura: "aceptar" },
     ],
     avisos: [
-      { tipo: "error", texto: "Después de «Guardar», la tarjeta del presupuesto nuevo puede no aparecer enseguida (queda un hueco en la lista). El presupuesto ya está guardado: recargá la página (F5) y vas a verlo." },
       { tipo: "ojo", texto: "«Presentar» y «Marcar aceptado» solo cambian el estado: no le mandan nada al paciente. Entregarlo o enviarlo es el paso de «Detalle»." },
       { tipo: "ojo", texto: "«Editar» existe solo en **Borrador**. «Anular» (en Borrador y Presentado) no pide confirmación y un presupuesto anulado no se puede reactivar desde esta pantalla." },
       { tipo: "tip", texto: "Un presupuesto **Presentado** sin ningún pago genera en **Tareas** la tarea «Presupuesto presentado sin aceptar», para hacerle seguimiento al paciente; al aceptarlo, esa tarea desaparece sola y, si queda saldo, el sistema arma la de cobranza («Saldo pendiente de pago»)." },
       { tipo: "revisar", texto: "«Marcar aceptado» no pide firma ni deja constancia de cómo aceptó el paciente (firmado, por WhatsApp). Confirmar si la clínica necesita registrarlo." },
-      { tipo: "error", texto: "Al editar un borrador con «Editar» y guardarlo, el plan pierde su nombre (por ejemplo «Blanqueamiento dental») y otros datos que el formulario no muestra. Tendría que conservarlos." },
+      { tipo: "tip", texto: "Al editar un borrador con «Editar» se conserva todo lo que tenía, incluido su nombre. Para cambiarlo o ponerle uno, usá **Nombre del plan (opcional)**." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -491,8 +489,7 @@ export const procedimientos: Procedimiento[] = [
       });
       await modal.getByRole("button", { name: "Guardar" }).click();
 
-      // La tarjeta nueva no se ve hasta recargar (error de la app): se vuelve a entrar a la lista, como haría la persona.
-      await c.ir("/app/presupuestos");
+      // La tarjeta nueva aparece enseguida, sin recargar la lista.
       const tarjeta = tarjetaDe(page, "Lucía Ferreira");
       await c.expect(tarjeta.getByRole("button", { name: "Presentar" })).toBeVisible();
       await tarjeta.getByRole("button", { name: "Detalle" }).click();
@@ -529,7 +526,8 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "Esta sección la ven el administrador y Recepción y caja. Recepcionista, Dentista y Asistente de doctores no ven montos." },
       { tipo: "tip", texto: "Los pagos de un mismo cobro (por ejemplo, parte en efectivo y parte con tarjeta) comparten el mismo número de comprobante." },
       { tipo: "revisar", texto: "La columna **N° Boleta** de **Pagos** muestra el número del comprobante del cobro, no el de la boleta emitida (ese está en **Documentos emitidos**). Confirmar cómo debería llamarse." },
-      { tipo: "revisar", texto: "«Registrar devolución» (el ícono ↺ de **Pagos**) solo deja un registro en **Devoluciones**: no cambia el saldo ni el total de la caja, no pide confirmación y se puede repetir sobre el mismo pago. Confirmar cómo debe funcionar una devolución." },
+      { tipo: "ojo", texto: "«Registrar devolución» (el ícono ↺ de **Pagos**) pide confirmación y se puede hacer una sola vez por pago: después el renglón dice «Devuelto». Solo deja un registro en **Devoluciones**; no cambia el saldo del paciente ni el total de la caja. Si el pago no tiene que seguir contando, anulalo." },
+      { tipo: "revisar", texto: "Confirmar cómo debe contarse una devolución: hoy es solo un registro. Si tiene que bajar el total abonado del paciente y salir de la caja del día, hay que definirlo." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -608,7 +606,6 @@ export const procedimientos: Procedimiento[] = [
       await opciones.click();
       const menu = page.getByRole("menu", { name: "Opciones del plan" });
       await c.expect(menu).toBeVisible();
-      // Con el menú abierto no se puede cambiar el tamaño de la ventana (el menú falla): esta foto entra en la ventana tal cual está.
       await c.foto("opciones", { resaltar: [opciones, menu.getByRole("menuitem", { name: /Financiamiento/ })], recorte: [opciones, menu] });
       await menu.getByRole("menuitem", { name: /Financiamiento/ }).click();
 

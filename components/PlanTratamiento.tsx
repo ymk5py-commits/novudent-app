@@ -8,7 +8,7 @@ import { useStore, fmtGs, fmtDate, fmtTime } from "@/lib/store";
 import { resizeToDataUrl } from "@/lib/image";
 import { SmileSimulator } from "@/components/SmileSimulator";
 import { can } from "@/lib/rbac";
-import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, budgetInteres, financialStatus, installmentValue, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
+import { budgetTotal, budgetRealizado, budgetPaid, budgetBalance, budgetInteres, financialStatus, installmentValue, BUDGET_STATUS_INFO, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
 import { PERIODICIDAD_LABEL } from "@/lib/financiamiento";
 import { orthoProgress } from "@/lib/ortho";
 import type { Patient, Budget, Payment, Appointment } from "@/lib/types";
@@ -110,9 +110,10 @@ function PlanLista({ patient, budgets, onOpen, onNuevo }: { patient: Patient; bu
           <span className="text-sm font-bold text-azure-700 hover:underline">#{b.id}: {b.name ?? esp}</span>
           <Pencil className="h-3.5 w-3.5 text-clinic-muted" />
         </div>
-        <div className={`grid grid-cols-2 items-start gap-y-3 ${verMontos ? "sm:grid-cols-5" : "sm:grid-cols-4"} sm:items-center`}>
+        <div className={`grid grid-cols-2 items-start gap-y-3 ${verMontos ? "sm:grid-cols-3 lg:grid-cols-6" : "sm:grid-cols-3 lg:grid-cols-5"} sm:items-center`}>
           <Col label="Profesional"><span className="flex items-center gap-1 text-clinic-text"><UserRound className="h-3.5 w-3.5 shrink-0 text-clinic-muted" /> {prof}</span></Col>
           <Col label="Especialidad"><span className="text-clinic-text">{esp}</span></Col>
+          <Col label="Estado del plan"><Badge tone={BUDGET_STATUS_INFO[b.status].tone} tip={BUDGET_STATUS_INFO[b.status].desc}>{BUDGET_STATUS_INFO[b.status].label}</Badge></Col>
           <Col label="Última cita">
             {ultimaCita ? (
               <div className="text-clinic-text">
@@ -229,7 +230,9 @@ function PlanFinanciero({
   budget, payments, citas, professional, hasIA, patient,
 }: { budget: Budget; payments: Payment[]; citas: Appointment[]; professional?: string; hasIA: boolean; patient: Patient }) {
   const [copied, setCopied] = useState(false);
-  const verMontos = useAlcance().puede("money.view");
+  const alcance = useAlcance();
+  const verMontos = alcance.puede("money.view");
+  const puedeLeerFicha = alcance.puede("emr.read");
   const total = budgetTotal(budget);
   const realizado = budgetRealizado(budget);
   const abonado = budgetPaid(budget.id, payments);
@@ -251,7 +254,8 @@ function PlanFinanciero({
           </button>
         </div>
         <PlanNameEdit budget={budget} />
-        {hasIA && (
+        {/* Resume la ficha clínica (evoluciones incluidas): solo para quien la lee, como en la cabecera de la ficha. */}
+        {hasIA && puedeLeerFicha && (
           <div className="mt-3">
             <PatientBriefButton patient={patient} context={{ budgets: [{ estado: budget.status, items: budget.items.length, ...(verMontos ? { total } : {}) }] }} />
           </div>
@@ -605,7 +609,8 @@ function EsteticaFacial({ budget }: { budget: Budget; patient: Patient }) {
         </div>
         {photos.length === 0 ? (
           <div className="grid place-items-center rounded-xl border border-dashed border-clinic-border py-8 text-center text-clinic-muted">
-            <Camera className="h-8 w-8" /><p className="mt-1 text-xs">Sin fotos. Subí registros frontal/perfil pre y post.</p>
+            <Camera className="h-8 w-8" />
+            <p className="mt-1 text-xs">{canWrite ? "Sin fotos. Subí registros frontal/perfil pre y post." : "Todavía no hay fotos cargadas."}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

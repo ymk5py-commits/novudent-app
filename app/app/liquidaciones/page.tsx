@@ -22,12 +22,13 @@ import { Card, Btn, Badge, Field, inputCls, Empty } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 
+import { fechaLocal } from "@/lib/tareas";
 /** primer/último día del mes actual en formato YYYY-MM-DD (default del selector) */
 function monthBounds() {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
   const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const iso = (d: Date) => fechaLocal(d);
   return { from: iso(from), to: iso(to) };
 }
 

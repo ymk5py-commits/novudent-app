@@ -66,16 +66,30 @@ export default function Odontogram({
   }, []);
 
   useEffect(() => {
+    /** Guarda YA lo que esté pendiente. Se usa al salir (cambiar de pestaña, de ficha, cerrar): sin esto el último cambio, hecho
+     *  menos de 0,8 s antes, se perdía porque la limpieza del efecto cancelaba el temporizador sin ejecutarlo. */
+    const guardarPendiente = () => {
+      if (!debounceRef.current) return;
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+      onChangeRef.current(collectExportPayload() as OdontogramStatus);
+    };
+    const alOcultarse = () => { if (document.visibilityState === "hidden") guardarPendiente(); };
     const unsubscribe = onStateChange(() => {
       if (!loadedRef.current || suppressRef.current) return;
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
+        debounceRef.current = null;
         onChangeRef.current(collectExportPayload() as OdontogramStatus);
       }, SAVE_DEBOUNCE_MS);
     });
+    window.addEventListener("pagehide", guardarPendiente);
+    document.addEventListener("visibilitychange", alOcultarse);
     return () => {
       unsubscribe();
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      window.removeEventListener("pagehide", guardarPendiente);
+      document.removeEventListener("visibilitychange", alOcultarse);
+      guardarPendiente();
     };
   }, []);
 

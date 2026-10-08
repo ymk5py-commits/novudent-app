@@ -10,9 +10,12 @@
  * Los documentos firmados se ven e imprimen; se pueden anular.
  *
  * - Gate de plan: feature `firma_electronica` (Clínica + Cadena).
- * - RBAC: crear/firmar/anular = gestión administrativa de documentos, mismo
- *   criterio que Formularios (`engagement.forms`: admin + asistente). El dentista
- *   y otros roles ven los documentos en solo lectura.
+ * - RBAC: ver la pestaña, crear, firmar y anular = `engagement.forms`. De fábrica lo tienen
+ *   el administrador, la caja, la recepción y el comercial (cada clínica puede repartirlo
+ *   distinto en «Permisos del equipo»). El dentista y la asistente NO ven la pestaña
+ *   «Consentimientos» (la ficha la esconde con ese mismo permiso): lo suyo son los
+ *   «Documentos clínicos». La vista de solo lectura de más abajo (`canManage` en falso)
+ *   queda como red de seguridad: hoy nadie llega a ella.
  * - El QR se genera en el cliente con `qrcode` (sin red); la URL apunta a la
  *   página pública por `cid` + `token` (el token ES la credencial de firma).
  */

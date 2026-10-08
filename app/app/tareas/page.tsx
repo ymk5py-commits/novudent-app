@@ -2,7 +2,8 @@
 /** Tareas de gestión (paridad Dentalink, "Configura las Tareas Automáticas").
  *
  *  Tres secciones con íconos, como Dentalink: la bandeja (✓), las estadísticas
- *  (indicador) y la configuración de plazos (engranaje).
+ *  (indicador) y los plazos de las tareas (engranaje). Cada una lleva su nombre escrito
+ *  al lado del ícono (en pantalla ancha) y como nombre accesible y tooltip siempre.
  *
  *  La bandeja es POR DÍA: "Tareas - Martes 19 Octubre" con ‹ Anterior · Fecha ·
  *  Siguiente ›. Las automáticas —cobranza, captura, control, cita, cheque— NO se
@@ -105,7 +106,7 @@ export default function TareasPage() {
     }
   };
 
-  const titulo = vistaEfectiva === "bandeja" ? `Tareas - ${tituloFecha(fecha, hoy)}` : vistaEfectiva === "estadisticas" ? "Estadísticas" : "Configuración";
+  const titulo = vistaEfectiva === "bandeja" ? `Tareas - ${tituloFecha(fecha, hoy)}` : vistaEfectiva === "estadisticas" ? "Estadísticas" : "Plazos de las tareas";
 
   return (
     <Reveal className="space-y-4">
@@ -116,7 +117,7 @@ export default function TareasPage() {
             {([
               ["bandeja", "Bandeja de tareas", ListChecks, true],
               ["estadisticas", "Estadísticas", Gauge, verStats],
-              ["configuracion", "Configuración de plazos", Settings, verConfig],
+              ["configuracion", "Plazos de las tareas", Settings, verConfig],
             ] as const).filter(([, , , ok]) => ok).map(([k, label, Icono]) => (
               <button
                 key={k}
@@ -126,9 +127,11 @@ export default function TareasPage() {
                 aria-label={label}
                 title={label}
                 onClick={() => { setVista(k); history.replaceState(null, "", k === "bandeja" ? window.location.pathname + window.location.search : `#${k}`); }}
-                className={`grid h-8 w-9 place-items-center rounded-lg transition-colors ${vistaEfectiva === k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}
+                className={`flex h-8 w-9 items-center justify-center gap-1.5 rounded-lg text-[13px] transition-colors sm:w-auto sm:px-3 ${vistaEfectiva === k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}
               >
-                <Icono className="h-4 w-4" />
+                <Icono aria-hidden className="h-4 w-4 shrink-0" />
+                {/* Con lugar (pantalla ancha) cada sección dice su nombre; en el celular queda el ícono, con su nombre accesible y el tooltip. */}
+                <span className="hidden sm:inline">{label}</span>
               </button>
             ))}
           </div>

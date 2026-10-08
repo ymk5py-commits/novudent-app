@@ -2,7 +2,7 @@ import type { Appointment, Budget, BudgetItem, Expense, Patient, Payment, Proced
 import { fechaLocal, parseFecha } from "./tareas";
 import { CATEGORY_LABEL, procedureCategory } from "./categorias";
 import { cuotasDe } from "./financiamiento";
-import { budgetTotal } from "./budgets";
+import { budgetTotal, descuentoSaneado } from "./budgets";
 import { porMedio } from "./caja";
 
 /* Reportes gráficos (paridad Dentalink: «Reportes gráficos», cada uno con su explicación,
@@ -53,7 +53,7 @@ export function realizadas(budgets: readonly Budget[]): Realizada[] {
     .filter((b) => b.status !== "anulado")
     .flatMap((b) => b.items
       .filter((i) => i.status === "realizado")
-      .map((item) => ({ budget: b, item, dia: diaLocal(item.doneAt ?? b.createdAt), monto: Math.round(item.price * (1 - (b.discountPct ?? 0) / 100)) })));
+      .map((item) => ({ budget: b, item, dia: diaLocal(item.doneAt ?? b.createdAt), monto: Math.round(item.price * (1 - descuentoSaneado(b.discountPct) / 100)) })));
 }
 
 /* ===== 1. Resultados ===== */

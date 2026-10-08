@@ -97,21 +97,20 @@ export const procedimientos: Procedimiento[] = [
     capitulo: "admin",
     titulo: "Cargar los datos de la clínica y el logotipo",
     roles: ["admin"],
-    paraQue: "Al poner en marcha la clínica, y cada vez que cambia el logotipo o se abre una sede: dejás lista la moneda, el logotipo que sale en los impresos y las sucursales.",
-    antes: ["El logotipo en un archivo de imagen (JPG o PNG) con fondo blanco."],
+    paraQue: "Al poner en marcha la clínica, y cada vez que cambia algún dato, el logotipo o se abre una sede: dejás al día el nombre, la dirección y el teléfono, la moneda, el logotipo que sale en los impresos y las sucursales.",
+    antes: ["El logotipo en un archivo de imagen (JPG o PNG)."],
     pasos: [
       { texto: "Entrá a **Administración** (menú de arriba) y elegí «Configuración general».", captura: "menu" },
-      { texto: "Mirá la tarjeta **Clínica**: muestra el nombre, la dirección y el teléfono. Si hace falta, elegí la **Moneda** en la que se muestran los montos.", captura: "clinica" },
+      { texto: "En la tarjeta **Datos de la clínica** corregí el **Nombre** (obligatorio), el **Teléfono** y la **Dirección** y tocá «Guardar datos»: se guardan juntos. Abajo, la **Moneda** en la que se muestran los montos.", captura: "clinica" },
       { texto: "Más abajo, en **Logotipo**, tocá «Subir logo» y elegí el archivo. El logotipo aparece en la tarjeta, en la cabecera de la app (junto al nombre de la clínica) y en los presupuestos impresos.", captura: "logo" },
       { texto: "En **Sucursales**, tocá «Agregar sucursal». Escribí el **Nombre**, la **Dirección** y el **Teléfono**, y tocá «Guardar».", captura: "sucursal" },
       { texto: "Revisá la lista: la sucursal nueva ya está. El lápiz la edita y el tachito la elimina (la sede principal no se puede eliminar).", captura: "sucursales" },
       { texto: "Para dejar a cada persona en su sede, elegila en su fila de **Usuarios del equipo**: ver [[crear-un-usuario]]." },
     ],
     avisos: [
-      { tipo: "ojo", texto: "El nombre, la dirección y el teléfono de la clínica se ven en la tarjeta **Clínica** pero no se pueden cambiar desde acá: los carga Novum al dar de alta la clínica. Si cambian, pedile el cambio a Novum." },
-      { tipo: "ojo", texto: "Si el logotipo tiene fondo transparente, se guarda con fondo negro. Usá una imagen con fondo blanco; el sistema la achica solo a un máximo de 400 píxeles." },
+      { tipo: "ojo", texto: "El nombre, la dirección y el teléfono salen en la cabecera de la app, en los documentos impresos (presupuestos, recetas, comprobantes) y en los mensajes a los pacientes: revisalos después de cambiarlos. El botón «Guardar datos» se enciende recién cuando cambiás algo." },
+      { tipo: "ojo", texto: "Si el logotipo tiene fondo transparente, se guarda con fondo blanco (la imagen se guarda sin transparencia). El sistema la achica solo a un máximo de 400 píxeles." },
       { tipo: "ojo", texto: "Cambiar la moneda cambia cómo se muestran todos los montos (presupuestos, pagos, caja, reportes), pero no convierte los importes que ya están cargados." },
-      { tipo: "revisar", texto: "Confirmar con Novum si la clínica debería poder editar sola su nombre, su dirección y su teléfono: hoy no hay un botón para hacerlo." },
     ],
     capturar: async (c) => {
       const { page } = c;
@@ -119,13 +118,15 @@ export const procedimientos: Procedimiento[] = [
       await c.entrar("admin", "/app");
       await irPorElMenu(c, "Configuración general", "menu");
 
-      const clinica = tarjeta(page, "Clínica");
+      const clinica = tarjeta(page, "Datos de la clínica");
       await colocar(page, clinica);
-      await c.foto("clinica", { recorte: clinica, margen: 4, resaltar: clinica.getByRole("combobox") });
+      // «Guardar datos» está apagado hasta que se cambia algo.
+      await c.expect(clinica.getByRole("button", { name: "Guardar datos" })).toBeDisabled();
+      await c.foto("clinica", { recorte: clinica, margen: 4, resaltar: [clinica.getByLabel("Nombre"), clinica.getByLabel("Teléfono"), clinica.getByLabel("Dirección"), clinica.getByRole("combobox")] });
 
       // El logotipo es un archivo de ejemplo dibujado al momento (ver logoDeEjemplo).
       const logoCard = tarjeta(page, "Logotipo");
-      // A 140 px la tarjeta de arriba (la de importar pacientes, que nombra a otro sistema) queda tapada por el menú fijo.
+      // A 140 px la tarjeta de arriba (la de importar pacientes) queda tapada por el menú fijo.
       await colocar(page, logoCard, 140);
       await logoCard.locator("input[type=file]").setInputFiles({ name: "logo-demo-dental.png", mimeType: "image/png", buffer: await logoDeEjemplo(page) });
       const vistaPrevia = logoCard.getByRole("img", { name: "Logo de la clínica" });
@@ -171,13 +172,14 @@ export const procedimientos: Procedimiento[] = [
       { texto: "En **Usuarios del equipo**, tocá «Agregar usuario».", captura: "boton" },
       { texto: "Escribí el **Nombre completo**, el **Email** y una **Contraseña provisional** de al menos 6 caracteres. El **Teléfono (WhatsApp)** es opcional.", captura: "formulario" },
       { texto: "Elegí el **Rol**: Administrador, Recepción y caja, Recepcionista, Comercial, Dentista o Asistente de doctores, o uno de los que creó tu clínica ([[crear-un-rol-propio]]). Debajo del desplegable se lee qué puede hacer la persona con ese rol.", captura: "rol" },
+      { texto: "Elegí el **Color en la agenda**: viene con el del rol, y es el color con el que se ve a la persona en la agenda. Si otra persona activa ya lo usa, aparece el aviso «Ojo: ya lo usa…» (no impide nada: elegí otro para poder distinguirlas)." },
       { texto: "Tocá «Crear usuario». Pasale a la persona su correo y su contraseña provisional: la primera vez que entre, el sistema le pide elegir una propia ([[cambiar-tu-contrasena]])." },
       { texto: "Si es un dentista, completá en su fila la **Especialidad** y el **%** de comisión (alimenta el cálculo del pago en Reportes). Si es una asistente, asignale sus doctores: [[asignar-doctores-a-una-asistente]].", captura: "dentista" },
     ],
     avisos: [
       { tipo: "ojo", texto: "El plan limita los usuarios. El **Plan Solo** admite hasta 3 usuarios activos y 1 profesional; el **Plan Clínica**, hasta 12 y 4; el **Plan Multi**, sin tope de usuarios y hasta 10 profesionales. Si te pasás, el sistema avisa y no crea la cuenta. Un usuario dado de baja no cuenta." },
       { tipo: "ojo", texto: "El correo no se puede repetir en la clínica, ni siquiera con un usuario dado de baja: en ese caso reactivá al que ya existe ([[dar-de-baja-a-un-usuario]])." },
-      { tipo: "ojo", texto: "No hay un selector de color: el sistema le da a cada persona el color de su rol, así que dos dentistas nuevos quedan con el mismo color en la agenda." },
+      { tipo: "tip", texto: "El color de agenda se puede cambiar después: en la fila de cada persona, tocá el círculo con sus iniciales y elegí otro de la paleta; se guarda al instante." },
       { tipo: "tip", texto: "Pasá el mouse por el número que está junto al título **Usuarios del equipo**: dice cuántos usuarios y cuántos profesionales incluye tu plan. Qué puede hacer cada rol está en el apéndice **Qué puede hacer cada rol**, al final del manual; si querés cambiarlo para tu clínica: [[elegir-que-puede-hacer-cada-rol]]." },
       { tipo: "revisar", texto: "En la demo el botón «Crear usuario» está apagado y un cuadro azul avisa que el alta de cuentas solo funciona en una clínica con conexión: por eso las capturas llegan hasta el formulario completo. Que la cuenta se cree, que el sistema pida cambiar la contraseña y los topes del plan salen de leer el código; hay que probarlos en una clínica real." },
     ],
@@ -197,6 +199,12 @@ export const procedimientos: Procedimiento[] = [
       await modal.getByLabel("Email").fill("rosa.benegas@tuclinica.com");
       await modal.getByLabel("Contraseña provisional").fill("Clinica2026");
       await modal.locator("select").selectOption({ label: "Dentista" });
+      // El color de agenda arranca con el del rol (Dentista: verde) y se puede cambiar; si otra persona activa lo usa, avisa.
+      const colores = modal.getByRole("radiogroup", { name: "Color en la agenda" });
+      await c.expect(colores.getByRole("radio", { name: "Verde" })).toBeChecked();
+      await c.expect(modal.getByText(/Ojo: ya lo usa/)).toBeVisible();
+      await colores.getByRole("radio", { name: "Rojo" }).check();
+      await c.expect(modal.getByText(/Ojo: ya lo usa/)).toHaveCount(0);
       await c.foto("formulario", {
         recorte: modal,
         margen: 4,
@@ -506,7 +514,7 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Así se usa: al armar un presupuesto, elegís el convenio en **Convenio** y el descuento se completa solo ([[presentar-y-aceptar-un-presupuesto]]).", captura: "presupuesto" },
     ],
     avisos: [
-      { tipo: "ojo", texto: "El porcentaje tiene que estar entre 0 y 100, pero el campo no frena un número mayor: revisalo antes de tocar «Agregar convenio»." },
+      { tipo: "tip", texto: "El porcentaje tiene que estar entre 0 y 100. Si escribís otro número, el campo se marca en rojo con el motivo y «Agregar convenio» queda apagado hasta que lo corrijas." },
       { tipo: "ojo", texto: "El tachito saca el convenio al instante, sin pedir confirmación. Los presupuestos que ya lo usaban conservan su descuento." },
       { tipo: "tip", texto: "Los nombres de los convenios también se ofrecen como sugerencia en el campo **Convenio** al cargar un paciente nuevo." },
       { tipo: "revisar", texto: "El convenio es solo un porcentaje de descuento sobre el total del presupuesto: no hay lista de precios propia ni topes por prestación. Confirmar con las clínicas si alcanza." },
@@ -569,9 +577,9 @@ export const procedimientos: Procedimiento[] = [
     avisos: [
       { tipo: "ojo", texto: "Editar una plantilla no cambia los documentos ni los consentimientos que ya se hicieron: cada uno guarda su propia copia del texto." },
       { tipo: "ojo", texto: "Si salís de la pantalla sin tocar «Guardar plantillas», se pierden los cambios." },
-      { tipo: "ojo", texto: "El atajo «Documentos y consentimientos» del menú abre esta pantalla pero no baja hasta **Plantillas de consentimiento**: bajá a mano." },
+      { tipo: "tip", texto: "El atajo «Documentos y consentimientos» del menú te lleva directo a **Plantillas de consentimiento**; «Documentos clínicos» abre las plantillas de arriba." },
       { tipo: "tip", texto: "Las plantillas se usan desde la ficha del paciente: [[completar-la-historia-clinica]] y [[pedir-un-consentimiento]]." },
-      { tipo: "error", texto: "Después de tocar «Guardar plantillas», la barra «Descartar / Guardar plantillas» no se va y no aparece el cartel «Plantillas guardadas», aunque los cambios ya quedaron guardados: la barra recién desaparece al recargar la pantalla. Tendría que irse al guardar." },
+      { tipo: "tip", texto: "Al tocar «Guardar plantillas» la barra de abajo desaparece y aparece el cartel «Plantillas guardadas»." },
       { tipo: "revisar", texto: "Los tres textos de indicaciones que trae Novudent son borradores generales: un odontólogo de la clínica tiene que revisarlos antes de marcarlos como revisados y dárselos a un paciente." },
       { tipo: "revisar", texto: "Los dos consentimientos de ejemplo son textos tipo: confirmar con el asesor legal de cada clínica antes de usarlos." },
     ],
@@ -614,7 +622,9 @@ export const procedimientos: Procedimiento[] = [
       await sacarMouse(page);
       await c.foto("guardar", { recorte: [fila("Higiene y cepillado en adultos"), guardar], margen: 4, resaltar: guardar });
       await guardar.click();
-      // Se comprueba en el estado local que quedó guardada (la barra de «Guardar plantillas» no se va sola hasta recargar: ver el aviso del procedimiento).
+      // Se comprueba que quedó guardada: la barra se va y aparece el cartel «Plantillas guardadas».
+      await c.expect(docs.getByText("Plantillas guardadas")).toBeVisible();
+      await c.expect(guardar).toHaveCount(0);
       await c.expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("novudent.db.v4") || "{}").clinics?.[0]?.config?.plantillasDocumento?.length)).toBe(5);
 
       // Duplicar, desactivar, activar y eliminar: se comprueba sobre la plantilla propia (queda sin guardar).
@@ -687,10 +697,11 @@ export const procedimientos: Procedimiento[] = [
       await c.ir("/app/pacientes/nuevo");
       const barrio = page.getByLabel("Barrio *");
       await c.expect(barrio).toBeVisible();
-      // El campo es obligatorio: el navegador no deja crear al paciente hasta completarlo (no se ve en la captura: es un globito del navegador).
+      // El campo es obligatorio: el formulario no deja crear al paciente hasta completarlo y avisa qué falta («Completá: …»).
       await c.expect(barrio).toHaveAttribute("required", "");
       await page.getByRole("button", { name: "Crear paciente" }).click();
       await c.expect(page).toHaveURL(/\/app\/pacientes\/nuevo/);
+      await c.expect(page.getByRole("alert").filter({ hasText: /Completá:.*Barrio/ })).toBeVisible();
       await c.foto("nuevo", { recorte: [page.getByText("Contacto y domicilio", { exact: true }), page.getByLabel("Teléfono móvil *").locator("xpath=ancestor::label[1]"), barrio.locator("xpath=ancestor::label[1]")], margen: 4, resaltar: barrio });
     },
   },
@@ -713,7 +724,7 @@ export const procedimientos: Procedimiento[] = [
     avisos: [
       { tipo: "ojo", texto: "«Anulación: Sí» quiere decir que el estado libera el horario en la agenda. Lo decide el comportamiento: solo los que se comportan como «Anulado» lo liberan." },
       { tipo: "ojo", texto: "Solo los estados propios se pueden borrar (tachito). Los de fábrica se renombran y se recolorean; los de uso interno —los que deja el sistema, como «Confirmado por WhatsApp»— además se pueden desactivar. Las citas que tenían un estado borrado o desactivado se muestran con el estado de fábrica equivalente." },
-      { tipo: "ojo", texto: "El menú de estados de la agenda es largo y no tiene scroll: en una pantalla chica los últimos —los propios van al final— quedan cortados. Si te pasa, achicá el zoom del navegador (Ctrl y la tecla −)." },
+      { tipo: "tip", texto: "Si el menú de estados de la agenda es más largo que la pantalla (muchos estados propios en una ventana baja), el propio menú se achica y se recorre con scroll: llegás a todos los estados." },
       { tipo: "tip", texto: "«Restablecer configuración original» vuelve a los estados de fábrica y borra los propios (pide confirmación)." },
     ],
     capturar: async (c) => {
@@ -777,27 +788,26 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Subí el archivo con «Subir .csv», o pegá en el cuadro los datos copiados de Excel (Ctrl+A, Ctrl+C y Ctrl+V).", captura: "datos" },
       { texto: "Dejá tildado «La primera fila son los encabezados» y tocá «Continuar»." },
       { texto: "Revisá las columnas: Novudent reconoce cada dato por el nombre del encabezado. Si alguna quedó mal, corregila en su desplegable. **Nombre** y **Apellido** son obligatorios.", captura: "columnas" },
-      { texto: "Tocá «Vista previa». Arriba ves cuántos pacientes son nuevos, cuántos están duplicados (misma CI) y cuántos tienen deuda.", captura: "vista-previa" },
-      { texto: "Tocá «Importar»: el botón dice cuántos pacientes nuevos entran, por ejemplo «Importar 2 pacientes». Los duplicados se omiten, los nuevos quedan en **Pacientes** y las deudas, en **Cuentas por cobrar**.", captura: "listo" },
+      { texto: "Tocá «Vista previa». Arriba ves cuántos pacientes son nuevos, cuántos ya están cargados (misma CI), cuántos se repiten dentro del archivo y cuántos tienen deuda.", captura: "vista-previa" },
+      { texto: "Tocá «Importar»: el botón dice cuántos pacientes nuevos entran, por ejemplo «Importar 2 pacientes». Los duplicados se omiten (el resumen final dice cuántos), los nuevos quedan en **Pacientes** y las deudas, en **Cuentas por cobrar**.", captura: "listo" },
     ],
     avisos: [
       { tipo: "ojo", texto: "No hay botón para deshacer. Probá primero con un archivo chico (tres o cuatro filas) y recién después cargá todo." },
-      { tipo: "ojo", texto: "Los duplicados se detectan por la cédula (CI) contra los pacientes que ya están cargados. Si un mismo paciente aparece dos veces dentro del archivo, se importan las dos filas: limpiá el archivo antes." },
+      { tipo: "ojo", texto: "Los duplicados se detectan por la cédula (CI, escrita con o sin puntos) contra los pacientes que ya están cargados y también dentro del archivo: la primera fila se carga y las repetidas se omiten. Las filas sin CI (o con «s/d» o solo ceros) se cargan todas." },
       { tipo: "ojo", texto: "Si el archivo trae una columna de deuda, por cada paciente con saldo se arma un presupuesto de saldo migrado ya aceptado, que aparece en **Cuentas por cobrar** ([[cobrar-a-quien-debe]])." },
-      { tipo: "ojo", texto: "Los pacientes importados no traen la Historia Clínica pendiente (los que se cargan a mano sí): pedila desde su ficha, en Documentos clínicos ([[completar-la-historia-clinica]])." },
+      { tipo: "ojo", texto: "Cada paciente importado queda con la Historia Clínica pendiente, igual que los que se cargan a mano: aparecen en la campana y en Documentos clínicos ([[completar-la-historia-clinica]]). Si la clínica importa miles de pacientes, la campana va a tener miles de pendientes." },
       { tipo: "tip", texto: "El archivo tiene datos personales de tus pacientes: borralo de la computadora cuando termines." },
       { tipo: "revisar", texto: "Se probó con un archivo armado a mano, no con exportaciones reales de otros sistemas. Si ninguna columna se reconoce por el encabezado, la pantalla toma las primeras cinco en este orden: nombre, apellido, CI, teléfono y correo." },
-      { tipo: "revisar", texto: "La pantalla y sus textos nombran al sistema de origen (el título del cuadro, la ayuda del primer paso y el nombre del presupuesto de saldo). Conviene un nombre neutro, como «Importar pacientes»; en las capturas de este manual esos textos están recortados." },
     ],
     capturar: async (c) => {
       const { page } = c;
       await c.entrar("admin", "/app");
       await irPorElMenu(c, "Configuración general");
 
-      // Solo se muestra el botón: el título y el texto de la tarjeta nombran al sistema de origen.
+      // Solo se muestra el botón.
       const iniciar = page.getByRole("button", { name: "Iniciar migración" });
       await colocar(page, iniciar);
-      await c.foto("boton", { recorte: iniciar, margen: 6, resaltar: iniciar, ocultar: page.getByText(/Dentalink/) });
+      await c.foto("boton", { recorte: iniciar, margen: 6, resaltar: iniciar });
       await iniciar.click();
 
       // Archivo de ejemplo armado a mano, con datos inventados: dos pacientes nuevos (uno con deuda) y uno que ya está en la clínica (misma CI).
@@ -825,11 +835,13 @@ export const procedimientos: Procedimiento[] = [
 
       const importar = modal.getByRole("button", { name: /^Importar/ });
       await c.expect(importar).toBeVisible();
+      await c.expect(modal.getByText("1 ya cargado")).toBeVisible(); // María González ya está en la clínica (misma CI)
       await c.foto("vista-previa", { recorte: [pasos, importar], margen: 0, resaltar: modal.locator("div.flex-wrap.gap-2").first() });
       await importar.click();
 
       const listo = modal.getByRole("heading", { name: "¡Migración completada!" });
       await c.expect(listo).toBeVisible();
+      await c.expect(modal.getByText(/1 duplicado omitido \(1 ya estaba cargado\)/)).toBeVisible();
       await c.foto("listo", { recorte: [modal.locator("svg.h-12"), modal.getByRole("button", { name: "Ver cuentas por cobrar" })], margen: 14, resaltar: listo });
     },
   },
@@ -842,7 +854,7 @@ export const procedimientos: Procedimiento[] = [
     roles: ["admin"],
     paraQue: "Para decidir cuánto tiempo después de un hecho —una cita que se perdió, un presupuesto presentado, un tratamiento terminado, un saldo pendiente— aparece la tarea automática en la bandeja.",
     pasos: [
-      { texto: "Entrá a **Tareas** (menú de arriba) y tocá el engranaje que está arriba a la izquierda, junto al título: se abre **Configuración de plazos**.", captura: "pestana" },
+      { texto: "Entrá a **Tareas** (menú de arriba) y tocá «Plazos de las tareas» (el engranaje de arriba a la izquierda, junto al título; en el celular se ve solo el engranaje): se abre **Configuración de plazos**.", captura: "pestana" },
       { texto: "Hay una tarjeta por cada tipo de tarea: **cita**, **captura**, **control** y **cobranza**. Cada una explica cuándo se genera." },
       { texto: "En la tarjeta que quieras cambiar, elegí el plazo: «Inmediato», «1 día», «1 semana», «1 mes», «1 año» u «otro» (y escribí cuántos días). Es el tiempo que pasa desde el hecho hasta que aparece la tarea.", captura: "plazo" },
       { texto: "Tocá «Guardar». Mientras no lo hagas, arriba dice que hay cambios no guardados.", captura: "guardado" },
@@ -857,11 +869,11 @@ export const procedimientos: Procedimiento[] = [
     capturar: async (c) => {
       const { page } = c;
       await c.entrar("admin", "/app/tareas");
-      await page.getByRole("tab", { name: "Configuración de plazos" }).click();
+      await page.getByRole("tab", { name: "Plazos de las tareas" }).click();
       const plazos = page.getByRole("heading", { name: "Configuración de plazos", level: 2 });
       await c.expect(plazos).toBeVisible();
       await page.waitForTimeout(900);
-      await c.foto("pestana", { pantalla: true, alto: 640, resaltar: page.getByRole("tab", { name: "Configuración de plazos" }) });
+      await c.foto("pestana", { pantalla: true, alto: 640, resaltar: page.getByRole("tab", { name: "Plazos de las tareas" }) });
 
       const tarjetaPlazos = plazos.locator(`xpath=ancestor::div[${conClase("p-4")}][1]`);
       const cobranza = page.getByRole("radiogroup", { name: "Plazo de la tarea de cobranza" });
@@ -937,14 +949,15 @@ export const procedimientos: Procedimiento[] = [
       { texto: "En **Mantener esta ficha**, elegí la ficha buena (la más completa). Es la que queda. Fijate en la cédula: dos personas distintas pueden tener el mismo nombre." },
       { texto: "En **Fusionar y eliminar**, elegí la ficha duplicada. Esa es la que desaparece.", captura: "fichas" },
       { texto: "Tocá «Fusionar fichas» y aceptá la pregunta.", captura: "boton" },
-      { texto: "La ficha duplicada deja de existir. Sus citas, presupuestos, pagos, evoluciones, consentimientos, radiografías y documentos pasan a la ficha que mantuviste.", captura: "resultado" },
+      { texto: "La ficha duplicada deja de existir. Sus citas, presupuestos, pagos, evoluciones, consentimientos, radiografías, documentos, recetas, tratamiento de ortodoncia, lista de espera, tareas y mensajes automáticos pasan a la ficha que mantuviste.", captura: "resultado" },
     ],
     avisos: [
       { tipo: "ojo", texto: "No se puede deshacer. Revisá dos veces las dos fichas antes de aceptar." },
       { tipo: "ojo", texto: "El primer desplegable viene con la primera ficha de la lista ya elegida: cambiala siempre por la que querés mantener." },
-      { tipo: "ojo", texto: "No pasan a la ficha que se mantiene: los datos personales de la duplicada (teléfono, correo, convenio, foto), sus alertas médicas de la cabecera, las recetas, el tratamiento de ortodoncia, la lista de espera, las tareas ni los mensajes automáticos de WhatsApp. Antes de fusionar, pasá a mano lo que haga falta." },
-      { tipo: "ojo", texto: "Si las dos fichas tenían la Historia Clínica pendiente, la que queda va a tener dos: anulá la que sobre desde Documentos clínicos ([[completar-la-historia-clinica]])." },
-      { tipo: "error", texto: "La fusión pierde las recetas y el tratamiento de ortodoncia de la ficha duplicada y deja sueltas su lista de espera, sus tareas y sus mensajes automáticos (en la lista de espera aparece una fila sin nombre). Tendrían que pasar a la ficha que se mantiene." },
+      { tipo: "ojo", texto: "Los datos personales de la ficha que mantenés no se pisan: si le falta alguno (teléfono, correo, convenio, foto…), se completa con el de la duplicada; si los dos tienen uno distinto, queda el de la ficha que mantenés. Las alertas médicas, enfermedades y medicamentos de la cabecera de las dos se juntan, sin repetir." },
+      { tipo: "ojo", texto: "Si las dos fichas tenían la Historia Clínica pendiente, la que sobra se anula sola (no se borra: queda en Documentos clínicos como anulada) y queda una sola por completar ([[completar-la-historia-clinica]])." },
+      { tipo: "ojo", texto: "El odontograma se junta pieza por pieza: las piezas con hallazgos de la ficha duplicada pasan a la que mantenés. Si las dos tenían hallazgos distintos en la misma pieza, quedan los de la ficha que mantenés y un aviso te dice qué piezas son." },
+      { tipo: "ojo", texto: "Si las dos fichas juntas pesan demasiado (muchas radiografías o archivos), la fusión se frena sin tocar nada y un cartel rojo lo explica: borrá algunos archivos de una de las dos y probá de nuevo." },
     ],
     capturar: async (c) => {
       const { page } = c;

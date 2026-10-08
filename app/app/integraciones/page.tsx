@@ -7,7 +7,10 @@ import {
 } from "lucide-react";
 import { useStore, fmtDate, fmtTime, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
-import { DEFAULT_TEMPLATES, AUTOMATION_LABEL, BOTIKA_TEMPLATE_VARS, type BotikaAutoKey } from "@/lib/botika";
+import {
+  DEFAULT_TEMPLATES, AUTOMATION_LABEL, BOTIKA_TEMPLATE_VARS, borradoresDePlantillas, plantillasModificadas, plantillasParaGuardar,
+  type BotikaAutoKey, type PlantillasBotika,
+} from "@/lib/botika";
 import type { OutboxTask, OutboxTaskType, BotikaConfig } from "@/lib/types";
 import { Card, Btn, Badge, Empty, Field, inputCls } from "@/components/ui";
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
@@ -15,14 +18,10 @@ import { Reveal } from "@/components/motion";
 
 /* ===== Editor de plantillas por automatización ===== */
 function TemplatesEditor({ botika, onSave }: { botika: BotikaConfig; onSave: (t: BotikaConfig["templates"]) => void }) {
-  const [drafts, setDrafts] = useState<Record<string, string>>(() => ({
-    confirmCita: botika.templates?.confirmCita ?? DEFAULT_TEMPLATES.confirmCita,
-    nps: botika.templates?.nps ?? DEFAULT_TEMPLATES.nps,
-    cobranza: botika.templates?.cobranza ?? DEFAULT_TEMPLATES.cobranza,
-    reagendar: botika.templates?.reagendar ?? DEFAULT_TEMPLATES.reagendar,
-  }));
+  // Un borrador por CADA plantilla con default (antes eran cuatro a mano y «Negociación de presupuestos» salía vacía).
+  const [drafts, setDrafts] = useState<PlantillasBotika>(() => borradoresDePlantillas(botika.templates));
   const keys = Object.keys(DEFAULT_TEMPLATES) as BotikaAutoKey[];
-  const dirty = keys.some((k) => drafts[k] !== (botika.templates?.[k] ?? DEFAULT_TEMPLATES[k]));
+  const dirty = plantillasModificadas(drafts, botika.templates);
 
   return (
     <Card className="p-5">
@@ -48,18 +47,15 @@ function TemplatesEditor({ botika, onSave }: { botika: BotikaConfig; onSave: (t:
                 ↺ Restaurar default
               </button>
             )}
+            {k === "reagendar" && (
+              <span className="mt-1 block text-[11px] text-clinic-muted">Todavía no se envía: esta automatización aún no manda mensajes.</span>
+            )}
           </Field>
         ))}
       </div>
       {dirty && (
         <div className="mt-3 flex justify-end">
-          <Btn
-            onClick={() => {
-              const t: BotikaConfig["templates"] = {};
-              keys.forEach((k) => { if (drafts[k] !== DEFAULT_TEMPLATES[k]) t[k] = drafts[k]; });
-              onSave(t);
-            }}
-          >
+          <Btn onClick={() => onSave(plantillasParaGuardar(drafts, botika.templates))}>
             Guardar plantillas
           </Btn>
         </div>
@@ -79,11 +75,17 @@ const TYPE_INFO: Record<OutboxTaskType, { label: string; icon: any; tone: "info"
   negociacion_listo: { label: "Presupuesto listo para cerrar", icon: CheckCircle2, tone: "ok" },
 };
 
-const AUTOMATIONS: { key: keyof BotikaConfig["automations"]; label: string; desc: string; icon: any }[] = [
+/** `pronto`: la automatización todavía no manda ningún mensaje. Ninguna pantalla encola la tarea al cancelar una cita, así que el
+ *  interruptor no hacía nada (prenderlo o apagarlo daba lo mismo): se muestra apagado y sin poder tocarse, con esta nota. */
+const AUTOMATIONS: { key: keyof BotikaConfig["automations"]; label: string; desc: string; icon: any; pronto?: string }[] = [
   { key: "confirmCita", label: "Confirmación de citas", desc: "Al crear una cita, Botika escribe al paciente y la confirma sola cuando responde.", icon: CalendarClock },
   { key: "nps", label: "Encuestas NPS", desc: "Al completar un tratamiento, Botika pregunta del 0 al 10 y guarda el puntaje en la ficha.", icon: Star },
   { key: "cobranza", label: "Cobranza conversacional", desc: "Recordatorios de deuda con respuesta inteligente: cuotas, medios de pago, comprobantes.", icon: Wallet },
-  { key: "reagendar", label: "Reagendar canceladas", desc: "Cuando se cancela una cita, Botika ofrece nuevos horarios automáticamente.", icon: RefreshCcw },
+  {
+    key: "reagendar", label: "Reagendar canceladas", icon: RefreshCcw,
+    desc: "La idea: cuando se cancela una cita, Botika le ofrece al paciente nuevos horarios.",
+    pronto: "Todavía no envía ningún mensaje. Por ahora, las citas anuladas se reagendan a mano desde Agenda › Reprogramación.",
+  },
 ];
 
 export default function IntegrationsPage() {
@@ -173,15 +175,16 @@ export default function IntegrationsPage() {
         {/* automatizaciones */}
         <div className="relative mt-6 grid gap-3 sm:grid-cols-2">
           {AUTOMATIONS.map((a) => {
-            const on = botika.connected && botika.automations[a.key];
+            const on = !a.pronto && botika.connected && botika.automations[a.key];
+            const tocable = botika.connected && !a.pronto;
             return (
               <button
                 key={a.key}
-                disabled={!botika.connected}
+                disabled={!tocable}
                 onClick={() => setBotika({ automations: { ...botika.automations, [a.key]: !botika.automations[a.key] } })}
                 className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition-[color,background-color,border-color,box-shadow,transform,opacity] ${
                   on ? "border-azure-300 bg-azure-50/60" : "border-clinic-border bg-white opacity-80"
-                } ${botika.connected ? "hover:-translate-y-0.5 hover:shadow-card" : "cursor-not-allowed"}`}
+                } ${tocable ? "hover:-translate-y-0.5 hover:shadow-card" : "cursor-not-allowed"}`}
               >
                 <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${on ? "bg-azure-600 text-white" : "bg-clinic-bg text-clinic-muted"}`}>
                   <a.icon className="h-4 w-4" />
@@ -189,11 +192,16 @@ export default function IntegrationsPage() {
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between gap-2">
                     <b className="text-sm text-clinic-text">{a.label}</b>
-                    <span className={`h-5 w-9 shrink-0 rounded-full p-0.5 transition-colors ${on ? "bg-azure-600" : "bg-clinic-border"}`}>
-                      <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${on ? "translate-x-4" : ""}`} />
-                    </span>
+                    {a.pronto ? (
+                      <span className="shrink-0 whitespace-nowrap"><Badge tone="muted">Todavía no envía</Badge></span>
+                    ) : (
+                      <span className={`h-5 w-9 shrink-0 rounded-full p-0.5 transition-colors ${on ? "bg-azure-600" : "bg-clinic-border"}`}>
+                        <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${on ? "translate-x-4" : ""}`} />
+                      </span>
+                    )}
                   </span>
                   <span className="mt-0.5 block text-xs leading-relaxed text-clinic-muted">{a.desc}</span>
+                  {a.pronto && <span className="mt-1 block text-xs font-semibold leading-relaxed text-clinic-text">{a.pronto}</span>}
                 </span>
               </button>
             );

@@ -260,6 +260,20 @@ permisos del apéndice salen de `lib/rbac.ts` y `npm test` se rompe si un permis
 **Si cambiás una pantalla, un botón o un permiso que el manual explica, volvé a correr las capturas**: una captura que ya no
 encuentra su botón falla, que es justamente el aviso. El manual de agosto (`generar-manual.py`) sigue siendo el del dueño. Los avisos son `ojo` / `tip` / `revisar` (decisiones para Angel y Camila) / `error` (un defecto de la app: va al apéndice «Errores conocidos» y se saca el aviso cuando se corrige); `verComo` muestra la pantalla de otro rol; el captor falla si una captura muestra texto prohibido (otro sistema, el pie de soporte, localhost) y se tapa con `ocultar`. La lista de bugs que encontró el proceso, con dónde están, es `docs/manual/hallazgos-de-la-app.md`.
 
+**Arreglo de bugs (8-oct-2026) — lo que quedó como convención** (la lista, con dónde estaba cada uno, es `docs/manual/hallazgos-de-la-app.md`):
+**Fechas:** «hoy» es `fechaLocal()`; el día de una fecha guardada, `diaDe(x)` (instante ISO → día local, `AAAA-MM-DD` tal cual); el valor de un
+`datetime-local`, `aInputLocal(iso)` (nunca `toISOString().slice(0, 16)`: es la hora UTC); un día de calendario se guarda como `AAAA-MM-DD`
+(las órdenes de laboratorio viejas, guardadas como medianoche UTC, se leen con `diaDeLaOrden`). **Fusión de fichas** (`lib/fusionFichas.ts`):
+`fichaConTodo: Required<Patient>` en su test deja de compilar si se suma un campo a `Patient`: hay que decidir cómo se fusiona; el
+odontograma se junta pieza por pieza con `PIEZA_SIN_HALLAZGOS` (`lib/odontogramaSinHallazgos.ts`, atada al motor por
+`lib/odontogram-bridge.test.ts`: actualizarla al re-sincronizar el motor, porque el editor guarda SIEMPRE las 32 piezas); `mergePatients`
+devuelve `ResultadoFusion` y se frena sin tocar nada si la ficha resultante no entra en un documento (~900 KB). **Rutas públicas** (`/api/reservas`):
+`listCollection(…, N)` baja los N documentos de MENOR id, o sea los más viejos: para buscar usá `queryWhere` / `queryRange` / `queryIn`
+(filtran en Firestore). `fsSave` es `setDoc` SIN merge (omitir un campo lo borra); la configuración de la clínica (`updateClinicConfig`,
+`fsMeta`) sí usa merge (vaciar un campo = `""`). **Dinero:** un pago no se borra, se anula (`voidPayment`); «Registrar devolución» solo deja un
+registro (no mueve saldo ni caja: decisión pendiente); los descuentos pasan por `parsearDescuento` / `descuentoSaneado`. **Menús flotantes:**
+`Desplegable` + `lib/ubicarPanel.ts` (se reubican y recorren con scroll). El texto del odontograma está en voseo (`lib/odontogram-voseo.test.ts`).
+
 ## Diferenciadores (cross-repo con Botika)
 
 Monitor post-op + Negociación de presupuestos: contrato outbox con Botika

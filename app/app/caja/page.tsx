@@ -19,6 +19,7 @@ import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui
 import { PlanLocked, useClinicPlan } from "@/components/PlanGate";
 import { Reveal } from "@/components/motion";
 
+import { fechaLocal } from "@/lib/tareas";
 const METHOD_ICON: Record<PaymentMethod, any> = { efectivo: Banknote, tarjeta: CreditCard, transferencia: Landmark, cheque: Landmark, qr: QrCode };
 
 /** Totales de una sesión (lib/caja): pagos no anulados + gastos en [apertura, cierre/ahora]. */
@@ -143,7 +144,14 @@ function MiCajaPanel({ s, onCerrar, onPay }: { s: CashSession; onCerrar: () => v
                       <span className="block text-[11px] leading-4 text-clinic-muted">{fmtTime(p.date)} · {PAYMENT_METHOD_LABEL[p.method]} · {p.receivedBy}</span>
                     </span>
                     <span className="col-start-2 shrink-0 tabular-nums text-sm font-bold text-state-ok">+ {fmtGs(p.amount)}</span>
-                    {isAdmin && <button onClick={() => store.deletePayment(p.id)} className="col-start-3 grid h-10 w-10 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err sm:h-8 sm:w-8" title="Eliminar pago"><Trash2 className="h-3.5 w-3.5" /></button>}
+                    {isAdmin && session && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`¿Anular el pago de ${fmtGs(p.amount)}${patient ? ` de ${fullName(patient)}` : ""}?\n\nDeja de contar en la caja y en el saldo del paciente, y queda en «Pagos eliminados» de su ficha.`)) store.voidPayment(p.id, session.name);
+                        }}
+                        className="col-start-3 grid h-10 w-10 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err sm:h-8 sm:w-8" title="Anular pago" aria-label="Anular pago"
+                      ><Trash2 className="h-3.5 w-3.5" /></button>
+                    )}
                   </li>
                 );
               })}
@@ -399,7 +407,7 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
   const [method, setMethod] = useState<PaymentMethod>("efectivo");
   const [checkNumber, setCheckNumber] = useState("");
   const [checkBank, setCheckBank] = useState("");
-  const [checkCashDate, setCheckCashDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [checkCashDate, setCheckCashDate] = useState(() => fechaLocal());
   const [concept, setConcept] = useState("");
 
   const openBudgets = db.budgets.filter((b) => b.patientId === patientId && (b.status === "aceptado" || b.status === "completado") && budgetBalance(b, db.payments) > 0);
@@ -469,7 +477,7 @@ function ChequesPanel() {
   const { db, session, markCheckCobrado } = useStore();
   const [vista, setVista] = useState<ChequeVista>("porCobrar");
   const [anular, setAnular] = useState<Payment | null>(null);
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = fechaLocal();
 
   const cheques = db.payments.filter((p): p is Payment & { check: NonNullable<Payment["check"]> } => p.method === "cheque" && !!p.check);
   const porCobrar = cheques.filter((p) => checkStatus(p) === "pendiente").sort((a, b) => a.check.cashDate.localeCompare(b.check.cashDate));

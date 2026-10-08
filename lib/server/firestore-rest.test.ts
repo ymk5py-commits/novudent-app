@@ -11,7 +11,7 @@
  * la URL que efectivamente sale, que es donde estaba el bug.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { getDocument, setDocument, patchFields } from "./firestore-rest";
+import { getDocument, setDocument, patchFields, queryRange, queryIn } from "./firestore-rest";
 
 const DOCS = "https://firestore.googleapis.com/v1/projects/novudent-664f3/databases/(default)/documents";
 
@@ -76,5 +76,50 @@ describe("encodeo de paths (anti path traversal)", () => {
     const u = new URL(urls[urls.length - 1]);
     expect(u.searchParams.get("updateMask.fieldPaths")).toBe("mustChangePassword");
     expect(u.pathname).toContain("cl_x%23");
+  });
+});
+
+describe("consultas filtradas EN Firestore (no dependen de los primeros N documentos de la colección)", () => {
+  /** El cuerpo del runQuery que salió (el primer fetch es el sign-in del usuario de servicio). */
+  let consultas: { url: string; body: any }[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
+  beforeEach(() => {
+    consultas = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).includes("identitytoolkit")) return new Response(JSON.stringify({ idToken: "t", expiresIn: "3600" }), { status: 200 });
+      consultas.push({ url: String(url), body: init?.body ? JSON.parse(String(init.body)) : null });
+      return new Response(JSON.stringify([{ document: { name: "projects/p/databases/(default)/documents/clinics/c1/appointments/a1", fields: { start: { stringValue: "2026-10-08T12:00:00.000Z" } } } }, { readTime: "x" }]), { status: 200 });
+    }));
+  });
+
+  it("queryRange pide un rango [desde, hasta) sobre UN solo campo (no necesita índice compuesto)", async () => {
+    const filas = await queryRange("clinics/c1", "appointments", "start", "2026-10-07", "2026-10-10", 300);
+    expect(consultas).toHaveLength(1);
+    expect(consultas[0].url).toContain("/clinics/c1:runQuery");
+    const q = consultas[0].body.structuredQuery;
+    expect(q.from).toEqual([{ collectionId: "appointments" }]);
+    expect(q.limit).toBe(300);
+    expect(q.where.compositeFilter.op).toBe("AND");
+    expect(q.where.compositeFilter.filters).toEqual([
+      { fieldFilter: { field: { fieldPath: "start" }, op: "GREATER_THAN_OR_EQUAL", value: { stringValue: "2026-10-07" } } },
+      { fieldFilter: { field: { fieldPath: "start" }, op: "LESS_THAN", value: { stringValue: "2026-10-10" } } },
+    ]);
+    expect(filas).toEqual([{ id: "a1", data: { start: "2026-10-08T12:00:00.000Z" } }]);
+  });
+
+  it("queryIn pide field IN [valores]", async () => {
+    await queryIn("clinics/c1", "patients", "document", ["4123456", "4.123.456"], 5);
+    const q = consultas[0].body.structuredQuery;
+    expect(q.from).toEqual([{ collectionId: "patients" }]);
+    expect(q.limit).toBe(5);
+    expect(q.where.fieldFilter).toEqual({
+      field: { fieldPath: "document" }, op: "IN",
+      value: { arrayValue: { values: [{ stringValue: "4123456" }, { stringValue: "4.123.456" }] } },
+    });
+  });
+
+  it("los valores viajan como datos, nunca dentro del path", async () => {
+    await queryRange("clinics/c1", "appointments", "start", "../../x", "y#z");
+    expect(consultas[0].url).not.toContain("..");
+    expect(consultas[0].url).not.toContain("y#z");
   });
 });

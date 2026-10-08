@@ -33,6 +33,9 @@ export async function resizeToDataUrl(
   canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) return dataUrl;
+  // El JPEG no tiene transparencia: lo transparente de un PNG (un logotipo, por ejemplo) saldría negro.
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, w, h);
   ctx.drawImage(img, 0, 0, w, h);
   return canvas.toDataURL("image/jpeg", quality);
 }

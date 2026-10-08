@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useStore, fmtGs, fullName } from "@/lib/store";
-import { budgetTotal } from "@/lib/budgets";
+import { budgetTotal, descuentoSaneado } from "@/lib/budgets";
 import type { Budget, BudgetItem } from "@/lib/types";
 import { Btn, Modal, Field, inputCls } from "@/components/ui";
 
@@ -31,7 +31,10 @@ export function BudgetForm({ budget, onClose, onSave, sinMontos = false, pacient
   const [discountPct, setDiscountPct] = useState(budget?.discountPct ?? 0);
   const [installments, setInstallments] = useState(budget?.installments ?? 1);
   const [notes, setNotes] = useState(budget?.notes ?? "");
+  const [name, setName] = useState(budget?.name ?? "");
   const [items, setItems] = useState<BudgetItem[]>(budget?.items ?? []);
+  // Las secciones que ya tiene el plan, para ofrecerlas al escribir (el plan se muestra agrupado por sección).
+  const secciones = [...new Set(items.map((x) => x.section?.trim()).filter((x): x is string => !!x))];
 
   const addItem = () => {
     const pr = db.procedures[0];
@@ -72,7 +75,7 @@ export function BudgetForm({ budget, onClose, onSave, sinMontos = false, pacient
               onChange={(e) => {
                 const c = convenios.find((x) => x.name === e.target.value);
                 setConvenio(e.target.value);
-                setDiscountPct(c?.discountPct ?? 0);
+                setDiscountPct(descuentoSaneado(c?.discountPct));
               }}
             >
               <option value="">Sin convenio</option>
@@ -81,7 +84,7 @@ export function BudgetForm({ budget, onClose, onSave, sinMontos = false, pacient
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Descuento %">
-              <input type="number" min={0} max={100} className={inputCls} value={discountPct} onChange={(e) => setDiscountPct(Number(e.target.value))} />
+              <input type="number" min={0} max={100} step="any" className={inputCls} value={discountPct} onChange={(e) => setDiscountPct(descuentoSaneado(Number(e.target.value)))} />
             </Field>
             <Field label="Cuotas" hint="1 = contado">
               <input type="number" min={1} max={36} className={inputCls} value={installments} onChange={(e) => setInstallments(Number(e.target.value))} />
@@ -97,6 +100,7 @@ export function BudgetForm({ budget, onClose, onSave, sinMontos = false, pacient
             <Btn variant="outline" onClick={addItem}><Plus className="h-3.5 w-3.5" /> Agregar</Btn>
           </div>
           {items.length === 0 && <p className="py-3 text-center text-sm text-clinic-muted">Agregá al menos un procedimiento.</p>}
+          <datalist id="secciones-del-plan">{secciones.map((x) => <option key={x} value={x} />)}</datalist>
           <div className="space-y-2">
             {items.map((it, i) => (
               <div key={it.id} className={`grid ${sinMontos ? "grid-cols-[1fr_72px_32px]" : "grid-cols-[1fr_72px_120px_32px]"} items-center gap-2`}>
@@ -115,10 +119,23 @@ export function BudgetForm({ budget, onClose, onSave, sinMontos = false, pacient
                 <button onClick={() => setItems((xs) => xs.filter((_, ix) => ix !== i))} className="grid h-8 w-8 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err" aria-label="Quitar">
                   <Trash2 className="h-4 w-4" />
                 </button>
+                <input
+                  className={`${inputCls} col-span-full`}
+                  placeholder="Sección del plan (opcional): Fase 1, Arcada superior…"
+                  aria-label={`Sección de la prestación ${i + 1}`}
+                  list="secciones-del-plan"
+                  maxLength={60}
+                  value={it.section ?? ""}
+                  onChange={(e) => setItem(i, { section: e.target.value || undefined })}
+                />
               </div>
             ))}
           </div>
         </div>
+
+        <Field label="Nombre del plan (opcional)" hint="Se ve en la lista de planes. Ej.: Ortodoncia fija, Rehabilitación superior.">
+          <input className={inputCls} maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+        </Field>
 
         <Field label="Notas">
           <textarea className={inputCls} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -138,6 +155,9 @@ export function BudgetForm({ budget, onClose, onSave, sinMontos = false, pacient
             disabled={items.length === 0 || !patientId || !dentistId}
             onClick={() =>
               onSave({
+                // Se parte del presupuesto original: el formulario no muestra todos sus datos (nombre del plan, vencimiento, cuotas, financiamiento,
+                // seguimiento, estética facial…) y armarlo de cero los borraba al guardar.
+                ...(budget ?? {}),
                 id: budget?.id ?? `g_${Date.now()}`,
                 clinicId: db.clinics[0].id,
                 patientId, dentistId,
@@ -148,6 +168,7 @@ export function BudgetForm({ budget, onClose, onSave, sinMontos = false, pacient
                 convenio: convenio || undefined,
                 installments: installments > 1 ? installments : undefined,
                 notes: notes || undefined,
+                name: name.trim() || undefined,
                 history: budget
                   ? [...budget.history, { at: new Date().toISOString(), action: sinMontos ? "Plan de tratamiento editado" : "Presupuesto editado", by: session!.name }]
                   : [{ at: new Date().toISOString(), action: sinMontos ? "Plan de tratamiento creado por el profesional" : "Presupuesto creado", by: session!.name }],

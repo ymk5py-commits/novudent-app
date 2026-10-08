@@ -90,6 +90,19 @@ export function plantillasDeClinica(config: { plantillasDocumento?: PlantillaDoc
   return Array.isArray(guardadas) ? normalizarPlantillas(guardadas) : PLANTILLAS_DE_FABRICA;
 }
 
+/** ¿La lista con la que se está trabajando en Configuración tiene cambios que todavía no se guardaron?
+ *
+ *  Se comparan las dos NORMALIZADAS. Lo que se guarda siempre pasa por `normalizarPlantillas`, que además reordena las claves de cada
+ *  objeto; la lista de trabajo conserva el orden con el que se la fue armando (`{ ...x, inactiva: true }` deja `inactiva` al final) y
+ *  `JSON.stringify` depende de ese orden. Comparar la de trabajo cruda con la guardada daba «hay cambios» para siempre: la barra
+ *  «Descartar / Guardar plantillas» no se iba y nunca aparecía «Plantillas guardadas», aunque los cambios sí se habían guardado. */
+export function hayPlantillasSinGuardar(
+  lista: readonly PlantillaDocumento[],
+  config: { plantillasDocumento?: PlantillaDocumento[] } | undefined,
+): boolean {
+  return JSON.stringify(normalizarPlantillas(lista)) !== JSON.stringify(normalizarPlantillas(plantillasDeClinica(config)));
+}
+
 /** Las que se ofrecen al crear un documento. */
 export const plantillasActivas = (lista: readonly PlantillaDocumento[]): PlantillaDocumento[] => lista.filter((p) => !p.inactiva);
 
@@ -219,6 +232,18 @@ export function anularDocumento(doc: DocumentoClinico, o: { now: string; by: str
   return doc.estado === "anulado" ? doc : { ...doc, estado: "anulado", voidedAt: o.now, voidedBy: o.by };
 }
 
+/** Al fusionar dos fichas, la Historia Clínica que el alta le dejó pendiente a cada una pasa a la ficha que queda y ésta termina con
+ *  dos (la campana y la cabecera cuentan las dos). Devuelve las que sobran, YA anuladas (no se borran): si el paciente ya tiene una
+ *  completada, todas las pendientes sobran; si no, queda la pendiente más vieja. Solo mira la Historia Clínica: otros documentos
+ *  pendientes pueden ser de ocasiones distintas. */
+export function anularHistoriasClinicasRepetidas(docs: readonly DocumentoClinico[], patientId: string, o: { now: string; by: string }): DocumentoClinico[] {
+  const delPaciente = docs.filter((d) => d.patientId === patientId && d.plantillaId === "historia_clinica" && d.estado !== "anulado");
+  const hayCompletada = delPaciente.some((d) => d.estado === "completado");
+  const pendientes = delPaciente.filter((d) => d.estado === "pendiente").sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const sobran = hayCompletada ? pendientes : pendientes.slice(1);
+  return sobran.map((d) => anularDocumento(d, o));
+}
+
 /** Lo que se imprime o se manda por correo: solo lo respondido, por sección. Las preguntas que
  *  no corresponden al paciente no salen aunque tengan un valor viejo. */
 export function respuestasParaImprimir(doc: DocumentoClinico, sexo?: Sexo): { titulo: string; filas: { etiqueta: string; valor: string }[] }[] {
@@ -290,6 +315,15 @@ export function historiaClinicaPendiente(o: {
 }): DocumentoClinico | null {
   const plantilla = plantillasActivas(o.plantillas).find((p) => p.id === "historia_clinica");
   return plantilla ? nuevoDocumento({ id: o.id, clinicId: o.clinicId, patientId: o.patientId, plantilla, by: o.by, now: o.now }) : null;
+}
+
+/** Las Historias Clínicas pendientes de varios pacientes recién cargados a la vez (la importación de pacientes). Cada
+ *  una lleva el mismo id que le pone `crearPaciente` al alta de uno solo: repetir la carga no duplica el documento. */
+export function historiasClinicasPendientes(
+  pacientes: readonly Pick<Patient, "id" | "clinicId">[],
+  o: { plantillas: readonly PlantillaDocumento[]; by: { id: string; name: string }; now: string },
+): DocumentoClinico[] {
+  return pacientes.flatMap((p) => historiaClinicaPendiente({ id: `cd_${p.id}_hc`, clinicId: p.clinicId, patientId: p.id, ...o }) ?? []);
 }
 
 /* ═══ Permisos y etiquetas ═══ */

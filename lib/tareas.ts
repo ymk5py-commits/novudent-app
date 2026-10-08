@@ -539,6 +539,15 @@ export function parseFecha(iso: string): Date {
   return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
 }
 
+/** El valor de un `<input type="datetime-local">` («AAAA-MM-DDTHH:mm») para una fecha guardada, en hora LOCAL. Con `toISOString().slice(0, 16)`
+ *  el campo mostraba la hora UTC (3 h adelantada en Paraguay) y, al guardar sin tocarla, cada edición corría el registro otras 3 h. Una fecha
+ *  sola (AAAA-MM-DD) arranca a las 00:00 de ese día. */
+export function aInputLocal(iso: string): string {
+  const d = parseFecha(iso);
+  const dos = (n: number) => String(n).padStart(2, "0");
+  return `${fechaLocal(d)}T${dos(d.getHours())}:${dos(d.getMinutes())}`;
+}
+
 /** Suma días a una fecha YYYY-MM-DD (aritmética de calendario, sin husos). */
 export function sumarDias(fecha: string, n: number): string {
   const d = new Date(`${fecha}T00:00:00Z`);

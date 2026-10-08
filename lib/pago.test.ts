@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { comprobanteDe, repartirPago, siguienteNumero } from "./pago";
-import type { Payment } from "./types";
+import { comprobanteDe, repartirPago, siguienteNumero, fechaDelPago, devolucionDelPago } from "./pago";
+import type { FiscalDoc, Payment } from "./types";
 
 describe("repartirPago", () => {
   it("un plan y un medio: una sola línea", () => {
@@ -106,5 +106,48 @@ describe("comprobanteDe", () => {
 
   it("devuelve null si el comprobante no tiene pagos vigentes", () => {
     expect(comprobanteDe("99", pagos)).toBeNull();
+  });
+});
+
+describe("fechaDelPago — a qué hora queda un pago", () => {
+  const ahora = new Date(2026, 9, 8, 9, 15, 30); // jueves 8-oct, 09:15 hora local
+
+  it("un pago de hoy queda con la hora real del cobro: así entra en la caja que está abierta ahora", () => {
+    expect(fechaDelPago("2026-10-08", ahora)).toBe(ahora.toISOString());
+  });
+
+  it("un pago de un día anterior queda al mediodía de ese día", () => {
+    expect(fechaDelPago("2026-10-07", ahora)).toBe(new Date(2026, 9, 7, 12, 0, 0).toISOString());
+  });
+
+  it("una fecha futura no puede ser «ahora»: queda al mediodía de ese día", () => {
+    expect(fechaDelPago("2026-10-09", ahora)).toBe(new Date(2026, 9, 9, 12, 0, 0).toISOString());
+  });
+
+  it("de noche sigue siendo el día local: a las 23:30 en Paraguay un pago de hoy no pasa a ser de mañana", () => {
+    const tarde = new Date(2026, 9, 8, 23, 30, 0);
+    expect(fechaDelPago("2026-10-08", tarde)).toBe(tarde.toISOString());
+  });
+});
+
+describe("devolucionDelPago — una devolución por pago", () => {
+  const doc = (kind: FiscalDoc["kind"], paymentId?: string): FiscalDoc => ({
+    id: `fd_${kind}_${paymentId ?? "libre"}`, clinicId: "c1", patientId: "p1", kind, amount: 100000,
+    date: "2026-10-08T12:00:00.000Z", paymentId, by: "Ana",
+  });
+
+  it("devuelve la devolución ya registrada de ese pago", () => {
+    const docs = [doc("devolucion", "pg1"), doc("devolucion", "pg2")];
+    expect(devolucionDelPago(docs, "pg2")?.paymentId).toBe("pg2");
+  });
+
+  it("una boleta del mismo pago no cuenta como devolución", () => {
+    expect(devolucionDelPago([doc("boleta", "pg1")], "pg1")).toBeUndefined();
+  });
+
+  it("un pago sin devolución no la tiene, y una devolución suelta (sin pago) no se la adjudica a ninguno", () => {
+    expect(devolucionDelPago([doc("devolucion", "pg1")], "pg9")).toBeUndefined();
+    expect(devolucionDelPago([doc("devolucion", undefined)], "pg1")).toBeUndefined();
+    expect(devolucionDelPago([], "pg1")).toBeUndefined();
   });
 });

@@ -1,0 +1,56 @@
+/* Cómo exporta el motor del odontograma una pieza SIN hallazgos (la que nadie tocó).
+ *
+ * `collectExportPayload()` (components/odontogram-engine/odontogram.ts) escribe SIEMPRE todas las piezas, también las sanas: un
+ * odontograma que pasó por el editor tiene sus 32 piezas, la mayoría en este estado. Para fusionar dos fichas hay que saber cuál
+ * es una pieza «vacía» (que se puede reemplazar sin perder nada) y cuál tiene hallazgos (que se conserva). Este objeto es una
+ * copia a mano de ese estado: `lib/odontogram-bridge.test.ts` falla si el motor cambia lo que exporta por defecto (al
+ * re-sincronizar el motor con el origen) y ahí hay que actualizar esto. No importa el motor a propósito: es DOM y pesa. */
+
+export const PIEZA_SIN_HALLAZGOS: Readonly<Record<string, unknown>> = {
+  toothSelection: "tooth-base",
+  pulpDx: "normal",
+  pulpLatin: "none",
+  apicalDx: "normal",
+  endoResection: false,
+  resorptionType: "none",
+  periImplant: "none",
+  mods: [],
+  periapicalType: "none",
+  endo: "none",
+  caries: [],
+  cariesActiveDepth: 2,
+  cariesSeverity: {},
+  fillingMaterial: "none",
+  fillingSurfaces: [],
+  fillingSurfaceMaterials: {},
+  fissureSealing: false,
+  calculus: false,
+  contactMesial: false,
+  contactDistal: false,
+  wearEdge: "none",
+  wearCervical: "none",
+  discoloration: "none",
+  orthoAppliance: "none",
+  orthoDrift: "none",
+  orthoVertical: "none",
+  orthoRotation: false,
+  brokenMesial: false,
+  brokenIncisal: false,
+  brokenDistal: false,
+  extractionWound: false,
+  extractionPlan: false,
+  parapulpalPin: false,
+  crownReplace: false,
+  crownNeeded: false,
+  missingClosed: false,
+  bridgePillar: false,
+  prosthesis: "none",
+  mobility: "none",
+  toothSubstrate: "natural",
+  restorationType: "none",
+  restorationMaterial: "none",
+  crownLeakage: false,
+  rootCaries: "none",
+  radiographicDepth: {},
+  fillingDefect: {},
+};

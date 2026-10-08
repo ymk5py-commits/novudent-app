@@ -11,7 +11,9 @@ import { ChevronLeft, ChevronRight, Plus, Search, Video, Hourglass, X } from "lu
 import { useStore, fullName } from "@/lib/store";
 import { useAlcance } from "@/lib/useAlcance";
 import { TIPOS_CONSULTA, especialidadCoincide, huecosDelDia, diasDesde, inicioDe, finDeCita, type TipoConsulta } from "@/lib/disponibilidad";
-import { camposDe, faltantes, datosPaciente, nuevoPaciente, siguienteCodigo, type ValoresCampos } from "@/lib/camposPaciente";
+import { camposDe, datosPaciente, nuevoPaciente, siguienteCodigo, type ValoresCampos } from "@/lib/camposPaciente";
+import { useRevisionAlta } from "@/lib/useRevisionAlta";
+import { AvisoCiRepetida } from "@/components/AvisoCiRepetida";
 import { CamposPacienteForm } from "@/components/CamposPacienteForm";
 import type { Appointment, Patient } from "@/lib/types";
 import { Btn, Modal, Field, inputCls } from "@/components/ui";
@@ -286,6 +288,7 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, onClose, onGu
         <CrearPaciente
           onClose={() => setCreandoPaciente(false)}
           onCreado={(p) => { if (session) crearPaciente(p, { id: session.userId, name: session.name }); setPacienteId(p.id); setCreandoPaciente(false); }}
+          onUsar={(p) => { setPacienteId(p.id); setError(null); setCreandoPaciente(false); }}
           clinicId={cita.clinicId}
         />
       )}
@@ -390,25 +393,31 @@ function BuscadorPaciente({ valor, onElegir, onCrear }: { valor: string; onElegi
   );
 }
 
-/** Popup con la ficha del paciente nuevo (campos de «Al agendar» en Pacientes → Configuración). */
-function CrearPaciente({ onClose, onCreado, clinicId }: { onClose: () => void; onCreado: (p: Patient) => void; clinicId: string }) {
+/** Popup con la ficha del paciente nuevo (campos de «Al agendar» en Pacientes → Configuración). `noValidate`: lo que
+ *  falta, lo mal cargado y una CI repetida se avisan con `useRevisionAlta`, no con el globito del navegador. Si la CI ya
+ *  la tiene un paciente se ofrece usar ese (`onUsar`) en vez de crear otra ficha. */
+function CrearPaciente({ onClose, onCreado, onUsar, clinicId }: { onClose: () => void; onCreado: (p: Patient) => void; onUsar: (p: Patient) => void; clinicId: string }) {
   const { db } = useStore();
   const campos = camposDe(db.clinics[0]?.config.patientFields, "agenda");
   const [valores, setValores] = useState<ValoresCampos>({});
-  const [error, setError] = useState<string | null>(null);
+  const alta = useRevisionAlta(campos, valores, db.patients);
   return (
     <Modal title="Nuevo paciente" onClose={onClose} wide>
       <form
         className="space-y-4"
+        noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          const falta = faltantes(campos, valores);
-          if (falta.length > 0) { setError(`Completá: ${falta.join(", ")}.`); return; }
+          if (!alta.validar()) return;
           onCreado(nuevoPaciente(datosPaciente(campos, valores), clinicId, Date.now(), siguienteCodigo(db.patients)));
         }}
       >
-        <CamposPacienteForm campos={campos} valores={valores} onChange={setValores} convenios={(db.clinics[0]?.config.convenios ?? []).map((c) => c.name)} />
-        {error && <p role="alert" className="rounded-xl bg-state-errbg px-3 py-2 text-xs font-semibold text-state-err">{error}</p>}
+        <CamposPacienteForm
+          campos={campos} valores={valores} onChange={setValores} convenios={(db.clinics[0]?.config.convenios ?? []).map((c) => c.name)}
+          problemas={alta.problemas}
+          avisos={{ documento: <AvisoCiRepetida repetidos={alta.repetidos} otraPersona={alta.otraPersona} onOtraPersona={alta.setOtraPersona} onUsar={onUsar} /> }}
+        />
+        {alta.mensaje && <p role="alert" className="rounded-xl bg-state-errbg px-3 py-2 text-xs font-semibold text-state-err">{alta.mensaje}</p>}
         <div className="flex justify-end gap-2"><Btn variant="outline" onClick={onClose}>Cancelar</Btn><Btn type="submit">Crear paciente</Btn></div>
       </form>
     </Modal>

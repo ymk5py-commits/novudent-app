@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
-  clasificarError, mensajeDe, registrarFallo, resolverFallo, limpiarFallos,
+  causaMostrada, clasificarError, mensajeDe, registrarFallo, resolverFallo, limpiarFallos,
   fallosActuales, suscribirFallos, reintentarTodo, vigilarEscritura,
 } from "./write-errors";
 
@@ -37,6 +37,41 @@ describe("mensajeDe", () => {
     const m = mensajeDe("conexion");
     expect(m.ayuda).toMatch(/reintent/i);
     expect(m.ayuda).toMatch(/sigue en pantalla/i);
+  });
+});
+
+/* Con la suscripción vencida la clínica queda en solo lectura y `firestore.rules` rechaza toda escritura con permission-denied: el
+   aviso tiene que decir ESA causa (no «no tenés permiso», que manda a buscar un problema de rol que no existe). */
+describe("suscripción vencida", () => {
+  it("el aviso lo dice con claridad: la suscripción está vencida y la clínica está en solo lectura", () => {
+    const m = mensajeDe("suscripcion");
+    expect(m.titulo).toMatch(/^No se guardó/);
+    expect(m.titulo).toMatch(/suscripción/i);
+    expect(m.titulo).toMatch(/vencid/i);
+    expect(m.titulo).toMatch(/solo lectura/i);
+    expect(m.ayuda).toMatch(/Suscripción/); // dónde regularizarla
+  });
+
+  it("no promete que reintentar lo arregla: hasta pagar, se va a rechazar igual", () => {
+    expect(mensajeDe("suscripcion").ayuda).toMatch(/no lo va a resolver|antes de pagar/i);
+  });
+
+  it("no le echa la culpa al rol ni habla de permisos", () => {
+    const m = mensajeDe("suscripcion");
+    expect(m.titulo).not.toMatch(/permiso/i);
+  });
+
+  it("un rechazo por permisos con la suscripción vencida es, en verdad, la suscripción", () => {
+    expect(causaMostrada("permiso", true)).toBe("suscripcion");
+  });
+
+  it("con la suscripción al día, un rechazo por permisos sigue siendo de permisos", () => {
+    expect(causaMostrada("permiso", false)).toBe("permiso");
+  });
+
+  it("la red caída y lo desconocido no cambian por tener la suscripción vencida", () => {
+    expect(causaMostrada("conexion", true)).toBe("conexion");
+    expect(causaMostrada("desconocido", true)).toBe("desconocido");
   });
 });
 

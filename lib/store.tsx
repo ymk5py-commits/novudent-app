@@ -53,13 +53,17 @@ import type {
 import { DEFAULT_ODONTOGRAM_STATUS } from "./types";
 import { buildSeed } from "./seed";
 import { can, aplicarRolesDeLaClinica, mismaConfiguracionDeRoles } from "./rbac";
-import { historiaClinicaPendiente, plantillasDeClinica } from "./documentosClinicos";
+import { fichaDemasiadoGrande, fusionarFichas, piezasEnConflicto, reasignarClaveDerivada, type ResultadoFusion } from "./fusionFichas";
+import { citasSinBox } from "./boxes";
+import { anularHistoriasClinicasRepetidas, historiaClinicaPendiente, plantillasDeClinica } from "./documentosClinicos";
 import { submitToBilling, releaseFromHold } from "./billing";
 import { worstSeverity } from "./recovery";
 import { formatMoney, DEFAULT_CURRENCY, type CurrencyCode } from "./currency";
 import { registrarFallo, resolverFallo, clasificarError, vigilarEscritura } from "./write-errors";
 import { parseFecha } from "./tareas";
 import { idCheck, type PasoId } from "./rutinaAdmin";
+import { historiasClinicasPendientes } from "./documentosClinicos";
+import { aplicarDatosClinica, type DatosClinica } from "./datosClinica";
 
 const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
@@ -465,7 +469,6 @@ interface Ctx {
   deleteBudget: (id: string) => void;
   /* — Caja — */
   addPayment: (p: Payment) => void;
-  deletePayment: (id: string) => void;
   addExpense: (e: Expense) => void;
   updateExpense: (e: Expense) => void;
   deleteExpense: (id: string) => void;
@@ -483,12 +486,16 @@ interface Ctx {
   updatePrescription: (patientId: string, rx: Prescription) => void;
   addPatientFile: (patientId: string, f: PatientFileRec) => void;
   removePatientFile: (patientId: string, fileId: string) => void;
-  mergePatients: (keepId: string, removeId: string) => void;
+  /** Fusiona la ficha `removeId` dentro de `keepId` (irreversible). Se frena, sin tocar nada, si las dos juntas no entrarían en un documento. */
+  mergePatients: (keepId: string, removeId: string) => ResultadoFusion;
   setOrtho: (patientId: string, ortho: OrthoRecord | null) => void;
   addOrthoControl: (patientId: string, c: { date: string; note: string; by: string }) => void;
   /* — Configuración — */
   /** `true` si se guardó (o no hay servidor); `false` si Firestore la rechazó (queda el aviso «No se guardó»). Se puede ignorar el resultado. */
   updateClinicConfig: (patch: Partial<Clinic["config"]>) => Promise<boolean>;
+  /** Nombre (campo `name` del documento de la clínica), dirección y teléfono (`config`) de una sola vez, para que un solo guardado
+   *  no pise al otro. Los datos tienen que venir revisados (`revisarDatosClinica`). Mismo resultado que `updateClinicConfig`. */
+  updateClinicProfile: (datos: DatosClinica) => Promise<boolean>;
   importPatients: (list: Patient[]) => void;
   /* — Integración Botika (outbox) — */
   addOutboxTask: (t: OutboxTask) => void;
@@ -1158,15 +1165,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (hc) fsSave("clinicalDocs", hc.id, hc);
       },
       mergePatients: (keepId, removeId) => {
-        if (keepId === removeId) return;
+        if (keepId === removeId) return { ok: false, error: "Elegí dos fichas distintas." };
         const keep = db.patients.find((p) => p.id === keepId);
         const remove = db.patients.find((p) => p.id === removeId);
-        if (!keep || !remove) return;
-        // Reasigna patientId en todas las colecciones y re-guarda los docs cambiados.
-        const reassign = <T extends { id: string; patientId: string }>(col: string, arr: T[]): T[] =>
+        if (!keep || !remove) return { ok: false, error: "No se encontró alguna de las dos fichas." };
+        // Primero se arma la ficha que queda y se mira que entre en un documento de Firestore (1 MiB: radiografías y archivos pesan). Si no
+        // entra no se toca NADA: Firestore rechazaría el guardado y la duplicada, ya borrada, se perdería con sus evoluciones y archivos.
+        const merged = fusionarFichas(keep, remove);
+        if (fichaDemasiadoGrande(merged)) {
+          return { ok: false, error: "Las dos fichas juntas pesan demasiado para guardarse en una sola (por los archivos y radiografías). Borrá algunos archivos de una de las dos y probá de nuevo." };
+        }
+        const enConflicto = piezasEnConflicto(keep, remove);
+        // Reasigna patientId en TODAS las colecciones que lo llevan y re-guarda los docs cambiados. Si falta una, esos registros quedan
+        // apuntando a una ficha que ya no existe (una fila sin nombre en la lista de espera, mensajes automáticos huérfanos…).
+        const reassign = <T extends { id: string; patientId?: string }>(col: string, arr: T[], extra?: (x: T) => Partial<T>): T[] =>
           arr.map((x) => {
             if (x.patientId !== removeId) return x;
-            const up = { ...x, patientId: keepId };
+            const up = { ...x, patientId: keepId, ...(extra?.(x) ?? {}) };
             fsSave(col, x.id, up);
             return up;
           });
@@ -1181,25 +1196,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const labOrders = reassign("labOrders", db.labOrders);
         const patientNotes = reassign("patientNotes", db.patientNotes);
         const fiscalDocs = reassign("fiscalDocs", db.fiscalDocs);
-        const clinicalDocs = reassign("clinicalDocs", db.clinicalDocs);
-        // Fusiona los datos embebidos en la ficha que se mantiene.
-        const merged: Patient = {
-          ...keep,
-          forms: [...keep.forms, ...remove.forms],
-          emr: [...keep.emr, ...remove.emr],
-          files: [...(keep.files ?? []), ...(remove.files ?? [])],
-          perio: [...(keep.perio ?? []), ...(remove.perio ?? [])],
-          odontogram: (keep.odontogram || remove.odontogram) ? {
-            ...DEFAULT_ODONTOGRAM_STATUS,
-            ...(remove.odontogram ?? {}),
-            ...(keep.odontogram ?? {}),
-            teeth: { ...(remove.odontogram?.teeth ?? {}), ...(keep.odontogram?.teeth ?? {}) },
-          } : undefined,
-        };
+        const waitlist = reassign("waitlist", db.waitlist);
+        const outbox = reassign("outbox", db.outbox);
+        // Documentos clínicos: la Historia Clínica pendiente que el alta le dejó a cada ficha termina duplicada en la que queda; la que sobra se anula.
+        let clinicalDocs = reassign("clinicalDocs", db.clinicalDocs);
+        const anuladas = anularHistoriasClinicasRepetidas(clinicalDocs, keepId, { now: new Date().toISOString(), by: session?.name ?? "Fusión de fichas" });
+        if (anuladas.length > 0) {
+          const porId = new Map(anuladas.map((d) => [d.id, d]));
+          clinicalDocs = clinicalDocs.map((d) => porId.get(d.id) ?? d);
+          anuladas.forEach((d) => fsSave("clinicalDocs", d.id, d));
+        }
+        // Tareas: al paciente nuevo, y las claves de tareas derivadas que llevan el id del paciente (`cobranza:p6`) pasan a la ficha que queda
+        // para no perder lo cerrado, postergado o asignado (salvo que la ficha que queda ya tenga una tarea con esa misma clave).
+        const nombre = `${keep.firstName} ${keep.lastName}`.trim();
+        const clavesEnUso = new Set(db.mgmtTasks.map((t) => t.derivedKey).filter((k): k is string => !!k));
+        const mgmtTasks = reassign("mgmtTasks", db.mgmtTasks, (t) => {
+          const clave = reasignarClaveDerivada(t.derivedKey, removeId, keepId);
+          return { patientName: nombre, ...(clave !== t.derivedKey && clave && !clavesEnUso.has(clave) ? { derivedKey: clave } : {}) };
+        });
         const patients = db.patients.filter((p) => p.id !== removeId).map((p) => (p.id === keepId ? merged : p));
-        persist((prev) => ({ ...prev, patients, appointments, billing, budgets, payments, signatures, radiographs, recoveryMonitors, crmCards, labOrders, patientNotes, fiscalDocs, clinicalDocs }));
+        persist((prev) => ({ ...prev, patients, appointments, billing, budgets, payments, signatures, radiographs, recoveryMonitors, crmCards, labOrders, patientNotes, fiscalDocs, clinicalDocs, waitlist, outbox, mgmtTasks }));
         fsSave("patients", keepId, merged);
         fsDelete("patients", removeId);
+        return { ok: true, piezasEnConflicto: enConflicto };
       },
       completeForm: (patientId, formId, fields, completedAt) =>
         patchPatient(patientId, (p) => {
@@ -1308,10 +1327,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         persist((prev) => ({ ...prev, payments: [...prev.payments, p] }));
         fsSave("payments", p.id, p);
       },
-      deletePayment: (id) => {
-        persist((prev) => ({ ...prev, payments: prev.payments.filter((x) => x.id !== id) }));
-        fsDelete("payments", id);
-      },
       addExpense: (e) => {
         persist((prev) => ({ ...prev, expenses: [...prev.expenses, e] }));
         fsSave("expenses", e.id, e);
@@ -1379,9 +1394,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         persist((prev) => ({ ...prev, clinics: [{ ...prev.clinics[0], config: { ...prev.clinics[0].config, ...patch } }] }));
         return fsMeta(next);
       },
+      updateClinicProfile: (datos) => {
+        const c = db.clinics[0];
+        if (!c) return Promise.resolve(false);
+        const next = { ...db, clinics: [aplicarDatosClinica(c, datos)] };
+        // Estado local desde `prev` (el último), como `updateClinicConfig`.
+        persist((prev) => ({ ...prev, clinics: [aplicarDatosClinica(prev.clinics[0], datos)] }));
+        return fsMeta(next);
+      },
       importPatients: (list) => {
-        persist((prev) => ({ ...prev, patients: [...prev.patients, ...list] }));
+        if (list.length === 0) return;
+        // Igual que el alta de la recepción (`crearPaciente`): cada paciente importado queda con la Historia Clínica pendiente.
+        const hcs = historiasClinicasPendientes(list, {
+          plantillas: plantillasDeClinica(db.clinics[0]?.config),
+          by: { id: session?.userId ?? "", name: session?.name ?? "Importación" },
+          now: new Date().toISOString(),
+        });
+        const idsHc = new Set(hcs.map((h) => h.id));
+        persist((prev) => ({
+          ...prev,
+          patients: [...prev.patients, ...list],
+          clinicalDocs: [...hcs, ...prev.clinicalDocs.filter((x) => !idsHc.has(x.id))],
+        }));
         list.forEach((p) => fsSave("patients", p.id, p));
+        hcs.forEach((h) => fsSave("clinicalDocs", h.id, h));
       },
       /* — Integración Botika (outbox) — */
       addOutboxTask: (t) => {
@@ -1670,8 +1706,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         fsSave("boxes", b.id, b);
       },
       deleteBox: (id: string) => {
-        persist((prev) => ({ ...prev, boxes: prev.boxes.filter((x) => x.id !== id) }));
+        // Las citas de ese box quedan sin box (no se borran ni quedan apuntando a un box que ya no existe).
+        const sueltas = citasSinBox(db.appointments, id);
+        persist((prev) => ({
+          ...prev,
+          boxes: prev.boxes.filter((x) => x.id !== id),
+          appointments: prev.appointments.map((a) => {
+            if (a.boxId !== id) return a;
+            const { boxId: _quitado, ...resto } = a;
+            return resto;
+          }),
+        }));
         fsDelete("boxes", id);
+        for (const a of sueltas) fsSave("appointments", a.id, a);
       },
       /* — Negociación de presupuestos — */
       confirmNegociacion: (budgetId, by) => {

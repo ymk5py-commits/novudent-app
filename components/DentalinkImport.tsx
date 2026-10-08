@@ -1,17 +1,21 @@
 "use client";
 import Link from "next/link";
-/** Migración desde Dentalink (u otro software) sin fricción:
+/** Migración desde el sistema anterior (o una planilla) sin fricción:
  *  pegás el export (CSV o copiado de Excel), Novudent detecta separador y columnas,
  *  mapea automáticamente por nombre de encabezado, deduplica por CI e importa.
+ *  Una CI que ya tiene un paciente de la clínica, o que se repite en el archivo, se saltea
+ *  (`planificarImportacion`) y el resumen cuenta cuántas. Cada paciente importado queda con la
+ *  Historia Clínica pendiente, igual que el alta de la recepción (lo hace `importPatients`).
  *  Si hay columna de deuda, crea un presupuesto "Saldo migrado" para que
- *  Cuentas por cobrar funcione desde el día uno. */
+ *  Cuentas por cobrar funcione desde el día uno. En pantalla no se nombra a otro sistema. */
 import { useMemo, useRef, useState } from "react";
 import { UploadCloud, ArrowRight, ArrowLeft, CheckCircle2, FileSpreadsheet, Wand2 } from "lucide-react";
 import { useStore, fmtGs } from "@/lib/store";
 import type { Patient, Budget } from "@/lib/types";
+import { planificarImportacion } from "@/lib/importacionPacientes";
 import { Btn, Modal, Field, inputCls, Badge } from "@/components/ui";
 
-/* Campos destino y palabras clave para auto-mapear encabezados de Dentalink */
+/* Campos destino y palabras clave para auto-mapear los encabezados del archivo */
 const FIELDS = [
   { key: "firstName", label: "Nombre", required: true, kw: ["nombre", "nombres", "first"] },
   { key: "lastName", label: "Apellido", required: true, kw: ["apellido", "apellidos", "last", "paterno"] },
@@ -63,7 +67,7 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
   const [raw, setRaw] = useState("");
   const [hasHeader, setHasHeader] = useState(true);
   const [mapping, setMapping] = useState<Partial<Record<FieldKey, number>>>({});
-  const [done, setDone] = useState<{ imported: number; skipped: number; debts: number } | null>(null);
+  const [done, setDone] = useState<{ imported: number; yaExistian: number; repetidos: number; debts: number } | null>(null);
 
   /* ---- parseo ---- */
   const parsed = useMemo(() => {
@@ -100,8 +104,7 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
   /* ---- filas mapeadas ---- */
   const mapped = useMemo(() => {
     const get = (row: string[], k: FieldKey) => (mapping[k] !== undefined ? row[mapping[k]!] ?? "" : "");
-    const existing = new Set(db.patients.map((p) => p.document));
-    const out: { patient: Patient; debt: number; dup: boolean }[] = [];
+    const out: { patient: Patient; debt: number }[] = [];
     const now = Date.now();
     parsed.rows.forEach((row, i) => {
       const firstName = get(row, "firstName").trim();
@@ -109,7 +112,6 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
       if (!firstName || !lastName) return;
       const doc = get(row, "document").trim();
       out.push({
-        dup: !!doc && existing.has(doc),
         debt: parseMoney(get(row, "debt")),
         patient: {
           id: `p_${now}_${i}`,
@@ -125,10 +127,12 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
       });
     });
     return out;
-  }, [parsed.rows, mapping, db.patients, db.clinics]);
+  }, [parsed.rows, mapping, db.clinics]);
 
+  /* Una CI que ya tiene un paciente de la clínica, o que se repite más arriba en el archivo, no se carga otra vez. */
+  const plan = useMemo(() => planificarImportacion(mapped, db.patients), [mapped, db.patients]);
   const ready = mapping.firstName !== undefined && mapping.lastName !== undefined;
-  const news = mapped.filter((x) => !x.dup);
+  const news = plan.nuevos;
   const withDebt = news.filter((x) => x.debt > 0);
 
   const runImport = () => {
@@ -142,24 +146,29 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
         dentistId: db.users.find((u) => u.role === "dentist")?.id ?? "",
         createdAt: new Date().toISOString(),
         status: "aceptado",
-        items: [{ id: `gi_mig_${i}`, cpt: "MIG", description: "Saldo migrado de Dentalink", price: x.debt, status: "realizado", doneAt: new Date().toISOString(), doneBy: "Migración" }],
+        items: [{ id: `gi_mig_${i}`, cpt: "MIG", description: "Saldo migrado de otro sistema", price: x.debt, status: "realizado", doneAt: new Date().toISOString(), doneBy: "Migración" }],
         notes: "Generado automáticamente por la migración — representa la deuda previa del paciente.",
-        history: [{ at: new Date().toISOString(), action: "Saldo inicial migrado desde Dentalink", by: session?.name ?? "Migración" }],
+        history: [{ at: new Date().toISOString(), action: "Saldo inicial migrado desde otro sistema", by: session?.name ?? "Migración" }],
       };
       store.upsertBudget(b);
     });
-    setDone({ imported: news.length, skipped: mapped.length - news.length, debts: withDebt.length });
+    setDone({ imported: news.length, yaExistian: plan.yaExisten.length, repetidos: plan.repetidos.length, debts: withDebt.length });
   };
 
   return (
-    <Modal title="Migración desde Dentalink" onClose={onClose} wide>
+    <Modal title="Migración desde otro sistema" onClose={onClose} wide>
       {done ? (
         <div className="space-y-4 py-4 text-center">
           <CheckCircle2 className="mx-auto h-12 w-12 text-state-ok" />
           <h3 className="text-lg font-bold text-clinic-text">¡Migración completada!</h3>
           <p className="text-sm text-clinic-muted">
             <b className="text-clinic-text">{done.imported}</b> paciente{done.imported !== 1 && "s"} importado{done.imported !== 1 && "s"}
-            {done.skipped > 0 && <> · {done.skipped} duplicado{done.skipped > 1 && "s"} omitido{done.skipped > 1 && "s"}</>}
+            {done.yaExistian + done.repetidos > 0 && (
+              <> · {done.yaExistian + done.repetidos} duplicado{done.yaExistian + done.repetidos > 1 && "s"} omitido{done.yaExistian + done.repetidos > 1 && "s"} ({[
+                done.yaExistian > 0 && `${done.yaExistian} ya ${done.yaExistian > 1 ? "estaban cargados" : "estaba cargado"}`,
+                done.repetidos > 0 && `${done.repetidos} ${done.repetidos > 1 ? "repetidos" : "repetido"} en el archivo`,
+              ].filter(Boolean).join(", ")})</>
+            )}
             {done.debts > 0 && <> · <b className="text-clinic-text">{done.debts}</b> saldo{done.debts > 1 && "s"} pendiente{done.debts > 1 && "s"} cargado{done.debts > 1 && "s"} en Cuentas por cobrar</>}.
           </p>
           <div className="flex justify-center gap-2">
@@ -182,8 +191,8 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
           {step === 1 && (
             <>
               <p className="rounded-xl bg-azure-50 p-3 text-xs leading-relaxed text-azure-700">
-                En Dentalink: <b>Reportes → Pacientes → Exportar a Excel</b>. Abrí el archivo y <b>copiá y pegá todo acá</b> (Ctrl+A, Ctrl+C, Ctrl+V) — también podés subir el .csv.
-                Novudent detecta solo el separador y las columnas. Sirve para cualquier otro software con el mismo método.
+                En tu sistema anterior, buscá la opción para <b>exportar los pacientes a Excel</b> (o CSV). Abrí el archivo y <b>copiá y pegá todo acá</b> (Ctrl+A, Ctrl+C, Ctrl+V) — también podés subir el .csv.
+                Novudent detecta solo el separador y las columnas. Sirve para cualquier otro sistema o planilla con el mismo método.
               </p>
               <div className="flex gap-2">
                 <Btn variant="outline" onClick={() => fileRef.current?.click()}><UploadCloud className="h-4 w-4" /> Subir .csv</Btn>
@@ -250,8 +259,9 @@ export default function DentalinkImport({ onClose }: { onClose: () => void }) {
           {step === 3 && (
             <>
               <div className="flex flex-wrap gap-2">
-                <Badge tone="ok">{news.length} nuevos</Badge>
-                {mapped.length - news.length > 0 && <Badge tone="warn" tip="Ya existen en Novudent (mismo CI) — se omiten">{mapped.length - news.length} duplicados</Badge>}
+                <Badge tone="ok">{news.length} nuevo{news.length !== 1 && "s"}</Badge>
+                {plan.yaExisten.length > 0 && <Badge tone="warn" tip="Ya hay un paciente con esa CI en Novudent — se omiten">{plan.yaExisten.length} ya cargado{plan.yaExisten.length !== 1 && "s"}</Badge>}
+                {plan.repetidos.length > 0 && <Badge tone="warn" tip="Su CI ya aparece más arriba en el archivo — se omiten">{plan.repetidos.length} repetido{plan.repetidos.length !== 1 && "s"} en el archivo</Badge>}
                 {withDebt.length > 0 && <Badge tone="info" tip="Se crea un presupuesto «Saldo migrado» por cada uno — aparecen en Caja → Cuentas por cobrar">{withDebt.length} con deuda · {fmtGs(withDebt.reduce((s, x) => s + x.debt, 0))}</Badge>}
               </div>
               <div className="overflow-x-auto rounded-xl border border-clinic-border">

@@ -3,9 +3,10 @@
  *  Pagos / Documentos emitidos / Devoluciones / Pagos eliminados / Balance. */
 import { useState } from "react";
 import { Trash2, RotateCcw, Receipt } from "lucide-react";
-import { useStore, fmtGs, fmtDate } from "@/lib/store";
+import { useStore, fmtGs, fmtDate, fullName } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { budgetTotal, patientBalance, PAYMENT_METHOD_LABEL } from "@/lib/budgets";
+import { devolucionDelPago } from "@/lib/pago";
 import type { Patient, Payment } from "@/lib/types";
 import { Card, Empty } from "@/components/ui";
 
@@ -35,7 +36,8 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
     if (session && confirm("¿Anular este pago? Pasa a 'Pagos eliminados' y deja de contar en el saldo.")) voidPayment(id, session.name);
   };
   const devolver = (p: Payment) => {
-    if (!session) return;
+    if (!session || devolucionDelPago(db.fiscalDocs, p.id)) return;
+    if (!confirm(`¿Registrar la devolución de ${fmtGs(p.amount)} a ${fullName(patient)}?\n\nQueda anotada en «Devoluciones» y no se puede repetir sobre este pago. No cambia el saldo del paciente ni la caja: si el pago no tiene que seguir contando, anulalo.`)) return;
     addFiscalDoc({ id: `fd_${Date.now()}_${p.id}`, clinicId: patient.clinicId, patientId: patient.id, kind: "devolucion", amount: p.amount, date: new Date().toISOString(), paymentId: p.id, reason: "Devolución de pago", by: session.name });
   };
   const emitirBoleta = (p: Payment) => {
@@ -73,7 +75,9 @@ export function FacturacionPaciente({ patient }: { patient: Patient }) {
                     {canManage && (
                       <span className="flex items-center justify-end gap-1">
                         {!boletas.some((d) => d.paymentId === p.id) && <button onClick={() => emitirBoleta(p)} title="Emitir boleta" className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-azure-50 hover:text-azure-700"><Receipt className="h-3.5 w-3.5" /></button>}
-                        <button onClick={() => devolver(p)} title="Registrar devolución" className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-state-warnbg hover:text-state-warn"><RotateCcw className="h-3.5 w-3.5" /></button>
+                        {devolucionDelPago(db.fiscalDocs, p.id)
+                          ? <span title="Ya se registró la devolución de este pago" className="px-1 text-[11px] font-semibold text-state-warn">Devuelto</span>
+                          : <button onClick={() => devolver(p)} title="Registrar devolución" className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-state-warnbg hover:text-state-warn"><RotateCcw className="h-3.5 w-3.5" /></button>}
                         <button onClick={() => anular(p.id)} title="Anular pago" className="grid h-7 w-7 place-items-center rounded-lg text-clinic-muted hover:bg-state-errbg hover:text-state-err"><Trash2 className="h-3.5 w-3.5" /></button>
                       </span>
                     )}

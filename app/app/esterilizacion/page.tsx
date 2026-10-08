@@ -5,6 +5,7 @@
 import { useMemo, useState } from "react";
 import { can } from "@/lib/rbac";
 import { useStore, fmtDate } from "@/lib/store";
+import { aInputLocal, diaDe, fechaLocal } from "@/lib/tareas";
 import { Card, Btn, Badge, Modal, Field, inputCls, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 import { ShieldCheck, Plus, Pencil, Trash2, AlertTriangle, ShieldAlert } from "lucide-react";
@@ -23,7 +24,7 @@ function indTone(v?: string): "ok" | "err" | "warn" | "muted" {
 
 function Esterilizacion() {
   const { db, addSterilizationCycle, updateSterilizationCycle, deleteSterilizationCycle } = useStore();
-  const ym = new Date().toISOString().slice(0, 7);
+  const ym = fechaLocal().slice(0, 7);
   const [mes, setMes] = useState(ym);
   const [editing, setEditing] = useState<SterilizationCycle | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -32,7 +33,7 @@ function Esterilizacion() {
 
   const list = useMemo(
     () => db.sterilizationCycles
-      .filter((c) => c.date.slice(0, 7) === mes)
+      .filter((c) => diaDe(c.date).slice(0, 7) === mes)
       .sort((a, b) => b.date.localeCompare(a.date)),
     [db.sterilizationCycles, mes],
   );
@@ -139,7 +140,7 @@ function CicloForm({ cycle, users, onClose, onSave }: {
 }) {
   const { db } = useStore();
   const cid = db.clinics[0]?.id ?? "";
-  const [date, setDate] = useState((cycle?.date ?? new Date().toISOString()).slice(0, 16));
+  const [date, setDate] = useState(aInputLocal(cycle?.date ?? new Date().toISOString()));
   const [responsibleId, setResponsibleId] = useState(cycle?.responsibleId ?? users[0]?.id ?? "");
   const [method, setMethod] = useState<SterilizationCycle["method"]>(cycle?.method ?? "autoclave");
   const [load, setLoad] = useState(cycle?.load ?? "");

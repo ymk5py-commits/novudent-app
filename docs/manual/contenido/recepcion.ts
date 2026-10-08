@@ -382,11 +382,11 @@ export const procedimientos: Procedimiento[] = [
       { texto: "En **Datos principales**, completá los campos con asterisco (*): **Nombre legal**, **Apellidos**, **Cédula / DNI**, **Fecha de nacimiento**, **Sexo** y **Género**.", captura: "principales" },
       { texto: "En **Contacto y domicilio**, cargá el **Teléfono móvil** y el **Email** (los dos son obligatorios: los avisos al paciente salen por correo) y, si lo tenés, la ciudad, el barrio y la dirección. «Subir foto», a la izquierda, es opcional.", captura: "contacto" },
       { texto: "Si el paciente es menor de 18 años, al cargar su fecha de nacimiento aparecen los datos del **Responsable** y pasan a ser obligatorios.", captura: "menor" },
-      { texto: "Tocá «Crear paciente». El **Código interno** (arriba a la derecha del formulario) se asigna solo y se abre la ficha del paciente." },
+      { texto: "Tocá «Crear paciente». Si falta algún dato obligatorio, el formulario marca los campos y lista todo junto («Completá: …») y lleva el cursor al primero. Cuando está completo, el **Código interno** (arriba a la derecha del formulario) se asigna solo y se abre la ficha del paciente." },
       { texto: "La **Historia Clínica** del paciente queda pendiente: la campana suma uno y el paciente aparece en «Documentos clínicos pendientes». Completala en su primera visita: [[completar-la-historia-clinica]].", captura: "campana" },
     ],
     avisos: [
-      { tipo: "ojo", texto: "El sistema no avisa si ya existe un paciente con la misma CI: buscalo antes para no duplicar la ficha." },
+      { tipo: "ojo", texto: "Si la CI (con o sin puntos) ya la tiene otro paciente, el formulario avisa «Ya hay un paciente con esa CI: …», con un enlace a su ficha, y no crea la nueva hasta que marques «Es otra persona» (por ejemplo, un menor que usa la CI de su responsable). Igual conviene buscarlo antes." },
       { tipo: "tip", texto: "Los datos que se piden, y cuáles son obligatorios, los define la administración: [[configurar-los-campos-del-paciente]]. En «Dar cita» también podés cargar un paciente nuevo, con «Crear nuevo paciente»." },
       { tipo: "revisar", texto: "Hoy la CI, el teléfono móvil y el email son obligatorios y no hay manera de cargar a un paciente sin CI (por ejemplo, un niño) ni sin correo. Confirmar si alcanza o si hace falta un caso «sin documento» o «sin email»." },
     ],
@@ -433,6 +433,13 @@ export const procedimientos: Procedimiento[] = [
       await c.foto("menor", { resaltar: responsable, recorte: responsable });
       await nacimiento.fill("1990-05-20");
 
+      // Con la CI de otro paciente (María González, 3.456.789) avisa y no crea la ficha hasta marcar «Es otra persona».
+      await main.getByLabel("Cédula / DNI *").fill("3.456.789");
+      await main.getByRole("button", { name: "Crear paciente" }).click();
+      await c.expect(main.getByText(/Ya hay un paciente con esa CI/).first()).toBeVisible();
+      await c.expect(page).toHaveURL(/\/app\/pacientes\/nuevo/);
+      await main.getByLabel("Cédula / DNI *").fill("7.777.777");
+
       await main.getByRole("button", { name: "Crear paciente" }).click();
       await page.waitForURL(/\/app\/pacientes\/p_/);
       const campana = page.getByRole("button", { name: /^Ver pendientes/ });
@@ -460,6 +467,7 @@ export const procedimientos: Procedimiento[] = [
     avisos: [
       { tipo: "ojo", texto: "Deshabilitar no borra nada: la ficha, las citas y los documentos quedan como estaban. Lo que cambia es que el paciente no sale en la lista de siempre ni se ofrece al dar una cita nueva." },
       { tipo: "ojo", texto: "Si cambiás algo en **Datos** y salís sin tocar «Guardar datos», el cambio se pierde." },
+      { tipo: "ojo", texto: "«Datos requeridos» lista lo que la clínica pide de todos sus pacientes (lo define la administración). Si vaciás un dato obligatorio que el paciente ya tenía, «Guardar datos» te dice cuál es y no guarda; si nunca se cargó (por ejemplo, el correo de un paciente de antes), la ficha lo avisa pero igual podés guardar otros cambios." },
       { tipo: "tip", texto: "El teléfono y el correo de la ficha son los que se usan para avisarle al paciente de sus citas: mantenelos al día." },
       { tipo: "tip", texto: "Con «Todos» en el selector ves a la vez los pacientes habilitados y los deshabilitados." },
     ],
@@ -476,7 +484,7 @@ export const procedimientos: Procedimiento[] = [
       // Este ítem recarga la página (va a la ficha con la pestaña pedida).
       await irDatos.click();
       await page.waitForURL(/tab=datos/);
-      await c.expect(main.getByText("Datos requeridos")).toBeVisible();
+      await c.expect(main.getByRole("heading", { name: "Datos requeridos" })).toBeVisible();
 
       const email = main.getByLabel("Email");
       await email.fill("lucia@example.com");
@@ -680,16 +688,16 @@ export const procedimientos: Procedimiento[] = [
     pasos: [
       { texto: "El paciente abre el link, elige el día, el profesional y el horario, y deja nombre, apellido, CI, WhatsApp y email. Al final toca «Confirmar reserva» y ve «¡Reserva recibida!».", captura: "pagina" },
       { texto: "La reserva entra a la agenda como «No confirmado», con la marca «Online» junto al nombre. Arriba de la tabla, un cartel verde avisa «Hay N agendamiento(s) online que deben ser validados» y trae el enlace «Ver y validar».", captura: "cartel" },
-      { texto: "Tocá «Ver y validar»: la tabla deja solo las citas sin confirmar de ese día. El teléfono del paciente está debajo de su nombre." },
+      { texto: "Tocá «Ver y validar»: la tabla deja solo las reservas online sin confirmar (si el día abierto no tiene ninguna, te lleva al primer día que sí). El teléfono del paciente está debajo de su nombre." },
       { texto: "Llamá o escribile al paciente. Si viene, pasá la cita a «Confirmado» desde su estado; si no puede, a «Anulado»: mirá [[cambiar-el-estado-de-una-cita]].", captura: "filtrada" },
       { texto: "Cuando ya no queda ninguna reserva online sin confirmar, el cartel desaparece." },
     ],
     avisos: [
-      { tipo: "ojo", texto: "Al confirmar una cita desde «Ver y validar», sale de la tabla porque ya no está sin confirmar: tocá «Marcar todos», en **Estados**, para volver a ver todas las citas del día." },
-      { tipo: "ojo", texto: "El cartel vale para el día que tenés abierto: una reserva para otro día no se ve hasta que vas a ese día. **Mi agenda**, en Inicio, te recuerda con «Validar las reservas online» cuántas hay por validar: [[usar-mi-agenda]]." },
+      { tipo: "ojo", texto: "Al confirmar una cita desde «Ver y validar», sale de la tabla porque ya no está sin confirmar. Cuando quieras volver a ver todas las citas del día, tocá «Ver todas las citas» en el aviso azul que queda arriba de la tabla." },
+      { tipo: "ojo", texto: "El cartel cuenta las reservas online sin validar de hoy en adelante, de cualquier día (no solo del que tenés abierto); las de días que ya pasaron no se cuentan. Solo lo ven quienes pueden confirmar citas: la asistente de doctores no. **Mi agenda**, en Inicio, también te recuerda con «Validar las reservas online» cuántas hay por validar: [[usar-mi-agenda]]." },
       { tipo: "tip", texto: "El paciente puede reservar hasta 30 días adelante, de lunes a sábado. Con cuánta anticipación mínima lo define la administración, en **Administración › Agenda online**, en «Anticipación mínima»." },
       { tipo: "revisar", texto: "No pude hacer una reserva real: en la demo, la página del paciente avisa «Reservas online no configuradas» al elegir un día. Los pasos 2 a 5 se hicieron con la cita online que trae la demo en la agenda." },
-      { tipo: "revisar", texto: "Si el paciente no tenía ficha, el sistema la crea con lo que dejó (nombre, apellido, CI, WhatsApp y email); si ya la tenía, usa la existente por su CI. Por cómo está hecha la pantalla, la Historia Clínica de quien reserva por la web no queda pendiente sola, a diferencia de cuando lo cargás vos: no pude comprobarlo sin el servicio de reservas." },
+      { tipo: "tip", texto: "Si el paciente no tenía ficha, el sistema la crea con lo que dejó (nombre, apellido, CI, WhatsApp y email) y le deja la Historia Clínica pendiente, igual que cuando la cargás vos; si ya la tenía, usa la existente por su CI. Esto se probó con pruebas automáticas del servicio de reservas, no con una reserva real de una clínica." },
       { tipo: "revisar", texto: "El WhatsApp de «te llega un mensaje para confirmar» depende de la integración de la clínica. Confirmar si está activa en cada caso." },
     ],
     capturar: async (c) => {
@@ -698,11 +706,27 @@ export const procedimientos: Procedimiento[] = [
       // La página del paciente es pública: no hace falta entrar. Solo se ve el primer paso (elegir el día); los siguientes piden un servicio que la demo no tiene.
       await c.ir("/reservar/cl_demo");
       await c.expect(page.getByText("¿Qué día te queda bien?")).toBeVisible();
-      await c.foto("pagina", { margen: 24, recorte: [page.getByRole("img", { name: "Novudent" }), page.locator("section").first()] });
+      await c.foto("pagina", { margen: 24, recorte: [page.getByRole("heading", { level: 1 }), page.locator("section").first()] });
 
       await c.entrar("receptionist", "/app/agenda");
       await page.setViewportSize({ width: 1280, height: 1000 });
-      await irAlDia(page, await fechaDeSemana(page));
+      // El cartel cuenta las reservas online de hoy en adelante. La de la demo está en el lunes de esta semana, que puede haber pasado:
+      // se pasa ese día entero (con la cita confirmada de María) a hoy, en el estado local de la demo, y se recarga la agenda.
+      const lunes = await fechaDeSemana(page);
+      await page.evaluate((lunesDeEstaSemana) => {
+        const db = JSON.parse(localStorage.getItem("novudent.db.v4") || "null");
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        const dias = Math.round((hoy.getTime() - new Date(`${lunesDeEstaSemana}T00:00:00`).getTime()) / 86_400_000);
+        if (dias > 0) {
+          for (const a of db.appointments as { start: string; end: string }[]) {
+            if (new Date(a.start).toLocaleDateString("en-CA") !== lunesDeEstaSemana) continue;
+            for (const k of ["start", "end"] as const) { const x = new Date(a[k]); x.setDate(x.getDate() + dias); a[k] = x.toISOString(); }
+          }
+          localStorage.setItem("novudent.db.v4", JSON.stringify(db));
+        }
+      }, lunes);
+      await c.ir("/app/agenda");
+      await irAlDia(page, await page.evaluate(() => new Date().toLocaleDateString("en-CA")));
       const juan = main.getByRole("row", { name: /Juan Ríos/ });
       const marca = juan.getByText("Online", { exact: true });
       const validar = main.getByRole("button", { name: "Ver y validar" });
