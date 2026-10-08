@@ -72,7 +72,7 @@ const COLUMNA_FIJA = "sticky left-0 z-[1] border-r px-4 shadow-[-1px_0_0_0_#fff]
 const botonDeFila = "inline-flex min-h-[30px] items-center gap-1 whitespace-nowrap rounded border border-clinic-border bg-white px-2 text-[12px] font-semibold transition-colors";
 
 function TablaEstudio({ vista }: { vista: Exclude<Vista, "ortodoncia"> }) {
-  const { db, session, upsertPatient } = useStore();
+  const { db, session, setSeguimientoPaciente } = useStore();
   const alcance = useAlcance();
   const estados = useEstadosCita();
   const verPersonales = alcance.puede("patients.personal");
@@ -124,21 +124,17 @@ function TablaEstudio({ vista }: { vista: Exclude<Vista, "ortodoncia"> }) {
   const textoDeSeguimiento = (r: Seguimiento) =>
     r.proxima ? "Con próxima cita" : r.enLista ? "A recontactar" : r.quita ? `Quitado: ${r.quita.motivo}` : r.finalizado ? "Plan finalizado" : "Sin asistencias";
 
+  // Se escribe SOLO el campo `seguimiento` (no la ficha entera): la que tiene esta pantalla puede estar vieja y reescribirla pisaría lo que otra
+  // persona cargó después en la ficha clínica.
   const quitar = (f: Fila, quita: QuitaDeLista) => {
-    const actual = db.patients.find((p) => p.id === f.p.id); // el paciente tal cual está ahora: se guarda entero (setDoc sin merge)
     setQuitando(null);
-    if (!actual) return;
-    upsertPatient({ ...actual, seguimiento: quita });
-    setAviso(`Quitaste a ${fullName(actual)} de la lista. Podés volver a incluir al paciente desde «Ver quitados».`);
+    setSeguimientoPaciente(f.p.id, quita);
+    setAviso(`Quitaste a ${fullName(f.p)} de la lista. Podés volver a incluir al paciente desde «Ver quitados».`);
     tituloRef.current?.focus();
   };
   const volverAIncluir = (f: Fila) => {
-    const actual = db.patients.find((p) => p.id === f.p.id);
-    if (!actual) return;
-    const { seguimiento: _quitado, ...sinQuita } = actual;
-    void _quitado;
-    upsertPatient(sinQuita);
-    setAviso(`${fullName(actual)} volvió a la lista.`);
+    setSeguimientoPaciente(f.p.id, null);
+    setAviso(`${fullName(f.p)} volvió a la lista.`);
     tituloRef.current?.focus();
   };
 
