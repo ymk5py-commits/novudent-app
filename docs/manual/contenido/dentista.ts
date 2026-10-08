@@ -105,6 +105,8 @@ export const procedimientos: Procedimiento[] = [
       { tipo: "ojo", texto: "Ves solo las citas de tus doctores: con el rol Dentista, las tuyas; con el rol Asistente de doctores, las de los doctores que la administración te asignó." },
       { tipo: "tip", texto: "A la izquierda, **Estados** esconde o muestra las citas según su estado y cuenta cuántas hay de cada uno; el buscador de arriba encuentra a un paciente dentro del día. «Imprimir» saca la agenda en papel." },
       { tipo: "tip", texto: "«Mensual» da un vistazo al mes, con las citas de cada día; «Diaria global» pone a cada doctor en su columna (con el rol Dentista, solo la tuya); «Lista de espera» muestra a los pacientes que esperan un hueco, y la recepción los agenda." },
+      { tipo: "tip", texto: "Los espacios bloqueados (almuerzo, reunión, feriado) salen rayados en gris en la Semanal y arriba de la tabla en la Diaria: en ese horario no te pueden dar citas. Los bloquea la recepción." },
+      { tipo: "tip", texto: "Una cita con la marca «Sobrecupo» se dio a propósito en un horario que ya tenía otra cita tuya (una urgencia, un control corto)." },
     ],
     capturar: async (c) => {
       const { page } = c;

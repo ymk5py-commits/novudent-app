@@ -117,7 +117,8 @@ export function BloquearEspacio({ fecha, hora, dentistId, boxId, onClose, onGuar
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {/* Una columna: «Todos los días hábiles (lunes a sábado)» no entra en media. */}
+        <div className="grid grid-cols-1 gap-3">
           <Field label="Repetir">
             <select
               id="bl-repetir"
