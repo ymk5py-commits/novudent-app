@@ -14,3 +14,13 @@ export function proximasCitas<T extends Pick<Appointment, "start" | "status">>(c
     .sort((a, b) => inicio(a) - inicio(b))
     .slice(0, max);
 }
+
+/** Las reservas que entraron por la web y nadie validó todavía: de origen online, siguen «No confirmado» (estado base `pendiente`) y
+ *  son de `desde` en adelante (con `desde` = el principio de hoy). Las de días que ya pasaron no tienen nada que validar. Van de la
+ *  más próxima a la más lejana: la primera es adonde lleva «Ver y validar». Es el mismo criterio que «Validar las reservas online»
+ *  de Mi agenda (`lib/miAgenda.ts`). */
+export function reservasPorValidar<T extends Pick<Appointment, "start" | "status" | "source">>(citas: readonly T[], desde: Date): T[] {
+  return citas
+    .filter((a) => a.source === "online" && a.status === "pendiente" && inicio(a) >= desde.getTime())
+    .sort((a, b) => inicio(a) - inicio(b));
+}

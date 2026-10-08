@@ -330,3 +330,77 @@ test.describe("Suscripción vencida", () => {
     await expect(page.getByRole("link", { name: "Regularizar pago" })).toBeVisible();
   });
 });
+
+/* ═══ Agenda: reservas online por validar ═══ */
+
+test.describe("Agenda: el cartel «agendamiento(s) online que deben ser validados»", () => {
+  /** Juan Ríos: online sin validar hoy · Camila Ortega: online sin validar mañana · Marco Giménez: online sin validar AYER (no cuenta)
+   *  · Lucía Ferreira: online ya confirmada hoy · Andrés Mejía: cita de la recepción sin confirmar hoy y mañana. */
+  const armar = async (page: Page, { hoy }: { hoy: boolean }) => {
+    await conDemo(page, (db: any, args: { hoy: boolean }) => {
+      // Una cita de la demo `dias` días desde hoy (negativo = ayer) a la hora `hora`.
+      const cita = (dias: number, hora: number, resto: Record<string, unknown>) => {
+        const ini = new Date(); ini.setDate(ini.getDate() + dias); ini.setHours(hora, 0, 0, 0);
+        const fin = new Date(ini); fin.setHours(hora + 1);
+        db.appointments.push({ clinicId: db.clinics[0].id, dentistId: "u2", amount: 0, discount: 0, start: ini.toISOString(), end: fin.toISOString(), ...resto });
+      };
+      db.appointments = db.appointments.filter((a: { source?: string }) => a.source !== "online");
+      if (args.hoy) cita(0, 8, { id: "o_hoy", patientId: "p2", title: "Reserva de hoy", status: "pendiente", source: "online" });
+      cita(1, 10, { id: "o_manana", patientId: "p3", title: "Reserva de mañana", status: "pendiente", source: "online" });
+      cita(-1, 10, { id: "o_ayer", patientId: "p6", title: "Reserva de ayer", status: "pendiente", source: "online" });
+      cita(0, 12, { id: "o_conf", patientId: "p5", title: "Reserva confirmada", status: "confirmada", source: "online" });
+      cita(0, 14, { id: "i_hoy", patientId: "p4", title: "Cita interna de hoy", status: "pendiente", source: "interna" });
+      cita(1, 15, { id: "i_manana", patientId: "p4", title: "Cita interna de mañana", status: "pendiente", source: "interna" });
+    }, { hoy });
+  };
+  const cartel = (page: Page) => main(page).getByText(/agendamiento\(s\) online/);
+
+  test("la recepción ve cuántas reservas online hay por validar en TODOS los días que vienen, no solo en el día abierto", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+    await armar(page, { hoy: true });
+    await page.goto("/app/agenda");
+    // Hoy + mañana. No cuentan la de ayer, la ya confirmada ni las citas de la recepción.
+    await expect(cartel(page)).toContainText("Hay 2 agendamiento(s) online que deben ser validados");
+    await sinScrollHorizontal(page);
+  });
+
+  test("«Ver y validar» muestra solo las reservas online sin validar, y se puede volver a ver todo", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+    await armar(page, { hoy: true });
+    await page.goto("/app/agenda");
+    await expect(main(page)).toContainText("Andrés Mejía"); // sin filtro, la cita de la recepción está
+
+    await main(page).getByRole("button", { name: "Ver y validar" }).click();
+    await expect(main(page).getByRole("link", { name: "Juan Ríos" })).toBeVisible();
+    await expect(main(page).getByRole("link", { name: "Andrés Mejía" })).toHaveCount(0); // sin confirmar, pero no es online
+    await expect(main(page).getByRole("link", { name: "Lucía Ferreira" })).toHaveCount(0); // online, pero ya confirmada
+
+    await main(page).getByRole("button", { name: "Ver todas las citas" }).click();
+    await expect(main(page).getByRole("link", { name: "Andrés Mejía" })).toBeVisible();
+    await expect(main(page).getByRole("link", { name: "Lucía Ferreira" })).toBeVisible();
+  });
+
+  test("si en el día abierto no hay ninguna, «Ver y validar» lleva al primer día que sí tiene", async ({ page }) => {
+    await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+    await armar(page, { hoy: false });
+    await page.goto("/app/agenda");
+    await expect(cartel(page)).toContainText("Hay 1 agendamiento(s) online que deben ser validados");
+
+    await main(page).getByRole("button", { name: "Ver y validar" }).click();
+    await expect(page.getByLabel("Elegir fecha")).toHaveValue(await fechaEn(page, 1));
+    await expect(main(page).getByRole("link", { name: "Camila Ortega" })).toBeVisible();
+    await expect(main(page).getByRole("link", { name: "Andrés Mejía" })).toHaveCount(0);
+  });
+
+  for (const [rol, usuario] of [["la asistente", USUARIOS_DEMO.asistente], ["el dentista", USUARIOS_DEMO.dentista]] as const) {
+    test(`${rol} no ve el cartel: no puede validar reservas`, async ({ page }) => {
+      await entrarDemo(page, usuario);
+      await armar(page, { hoy: true });
+      await page.goto("/app/agenda");
+      // La reserva está en su agenda, pero no es suya para validar.
+      await expect(main(page).getByText("Online", { exact: true }).first()).toBeVisible();
+      await expect(cartel(page)).toHaveCount(0);
+      await expect(main(page).getByRole("button", { name: "Ver y validar" })).toHaveCount(0);
+    });
+  }
+});
