@@ -2,7 +2,7 @@
  *  de Firebase en producción). Requiere Java y el CLI de Firebase: `npm run test:backend`. */
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -174,5 +174,34 @@ describe("la línea de comandos contra el emulador", () => {
     const ayuda = correr(["--ayuda"], { programa: enlace });
     expect(ayuda.status, ayuda.stderr).toBe(0);
     expect(ayuda.stdout).toContain("Uso:");
+  });
+
+  it("--base a otro servidor con la credencial del CLI de Firebase sale con código 1 SIN pedir ningún token", () => {
+    // Un «CLI de Firebase» de mentira en el PATH: si el programa llegara a pedirle el token, `lib/auth.js` deja una marca.
+    const tmp = mkdtempSync(join(tmpdir(), "export-sin-token-"));
+    temporales.push(tmp);
+    const marca = join(tmp, "se-pidio-el-token");
+    mkdirSync(join(tmp, "firebase-tools/bin"), { recursive: true });
+    mkdirSync(join(tmp, "firebase-tools/lib"), { recursive: true });
+    writeFileSync(join(tmp, "firebase-tools/bin/firebase"), "#!/bin/sh\n", { mode: 0o755 });
+    chmodSync(join(tmp, "firebase-tools/bin/firebase"), 0o755);
+    writeFileSync(join(tmp, "firebase-tools/lib/auth.js"), [
+      `require("node:fs").writeFileSync(${JSON.stringify(marca)}, "pedido");`,
+      `module.exports = { getGlobalDefaultAccount: () => ({ tokens: { refresh_token: "r" }, user: { email: "falso@x.com" } }), getAccessToken: async () => ({ access_token: "TOKEN-FALSO" }) };`,
+    ].join("\n"));
+
+    // `.invalid` nunca resuelve: si la guarda faltara, el pedido no llegaría a ningún servidor real.
+    const salida = salidaNueva();
+    const r = spawnSync(process.execPath, [PROGRAMA, "--credencial", "firebase-cli", "--base", "https://ejemplo.invalid/x", "--salida", salida], {
+      cwd: RAIZ_DEL_REPO,
+      env: { ...process.env, PATH: `${join(tmp, "firebase-tools/bin")}:${process.env.PATH}` },
+      encoding: "utf8",
+    });
+    expect(r.status, r.stderr).toBe(1);
+    expect(r.stderr).toContain("--base solo se acepta con --credencial entorno, o apuntando a este equipo (el emulador): no mandamos un token real a otro servidor.");
+    expect(existsSync(marca), "no debió tocar el CLI de Firebase").toBe(false);
+    expect(r.stderr).not.toContain("TOKEN-FALSO");
+    expect(r.stderr).not.toContain("Proyecto "); // esa línea sale recién después de resolver el token
+    expect(existsSync(salida)).toBe(false);
   });
 });

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect } from "vitest";
-import { carpetaDeSalida, leerArgumentos } from "./exportar-firestore.mjs";
+import { carpetaDeSalida, leerArgumentos, validarBase } from "./exportar-firestore.mjs";
 
 describe("leerArgumentos", () => {
   it("los valores por defecto", () => {
@@ -64,6 +64,37 @@ describe("carpetaDeSalida", () => {
       expect(carpetaDeSalida(join(fuera, "otra"), opciones)).toBe(join(fuera, "otra"));
     } finally {
       rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("validarBase (--base nunca manda una credencial real a otro servidor)", () => {
+  const MENSAJE = /--base solo se acepta con --credencial entorno, o apuntando a este equipo \(el emulador\): no mandamos un token real a otro servidor\./;
+  const LOCALES = ["http://localhost:8080/v1/x", "http://127.0.0.1:8080/v1/x", "http://[::1]:8080/v1/x", "https://localhost/x", "http://LOCALHOST:8080/x"];
+  const MODOS = ["firebase-cli", "servicio", "entorno"];
+
+  it("sin --base no hay nada que validar, con cualquier credencial", () => {
+    for (const modo of MODOS) expect(() => validarBase(null, modo)).not.toThrow();
+    for (const modo of MODOS) expect(() => validarBase(undefined, modo)).not.toThrow();
+  });
+  it("un host de este equipo (localhost, 127.0.0.1, ::1) vale con todas las credenciales", () => {
+    for (const base of LOCALES) for (const modo of MODOS) expect(() => validarBase(base, modo), `${base} · ${modo}`).not.toThrow();
+  });
+  it("otro servidor se rechaza con firebase-cli y con servicio, y vale con entorno (ese token lo puso la persona a propósito)", () => {
+    const googleapis = "https://firestore.googleapis.com/v1/projects/p/databases/(default)/documents";
+    expect(() => validarBase(googleapis, "firebase-cli")).toThrow(MENSAJE);
+    expect(() => validarBase(googleapis, "servicio")).toThrow(MENSAJE);
+    expect(() => validarBase(googleapis, "entorno")).not.toThrow();
+    expect(() => validarBase("https://ejemplo.com/x", "firebase-cli")).toThrow(MENSAJE);
+  });
+  it("un nombre que solo se parece a un host local no engaña (lo que cuenta es el host de verdad)", () => {
+    for (const base of ["http://localhost.ejemplo.com/x", "http://127.0.0.1.ejemplo.com/x", "http://localhost@ejemplo.com/x", "http://ejemplo.com/localhost", "http://ejemplo.com:8080/?h=127.0.0.1", "http://10.0.0.5:8080/x"]) {
+      expect(() => validarBase(base, "firebase-cli"), base).toThrow(MENSAJE);
+    }
+  });
+  it("una URL mal formada falla con un mensaje claro (con cualquier credencial)", () => {
+    for (const base of ["", "no es una url", "localhost:8080", "//localhost/x", "ftp://localhost/x"]) {
+      for (const modo of MODOS) expect(() => validarBase(base, modo), `«${base}» · ${modo}`).toThrow(/--base no es una URL válida/);
     }
   });
 });

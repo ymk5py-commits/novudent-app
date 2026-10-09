@@ -20,7 +20,7 @@ const AYUDA = `Uso: node scripts/migracion/exportar-firestore.mjs [opciones]
   --salida DIR            carpeta de la exportación (por defecto ~/novudent-export/<fecha>; no puede estar dentro del repositorio)
   --credencial MODO       ${MODOS.join(" | ")} (por defecto firebase-cli)
   --proyecto ID           proyecto de Firebase (por defecto FIREBASE_PROJECT_ID o novudent-664f3)
-  --base URL              API de Firestore alternativa (el emulador)
+  --base URL              API de Firestore alternativa (el emulador). Solo con --credencial entorno, o apuntando a este equipo
   --clinica ID            solo las subcolecciones de esa clínica (se puede repetir)
   --solo-medir            cuenta y mide sin guardar los datos
   --permitir-incompleto   no fallar si alguna colección no se pudo leer
@@ -78,6 +78,29 @@ function estaAdentro(padre, hijo) {
   return r === "" || (r !== ".." && !r.startsWith(`..${sep}`) && !isAbsolute(r));
 }
 
+/** Los hosts que son «este equipo»: ahí vive el emulador y el token no sale de la máquina. */
+const HOSTS_DE_ESTE_EQUIPO = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+
+/** `--base` cambia el servidor al que se le manda la credencial. Con la sesión del CLI de Firebase (`cloud-platform` del dueño, 1 hora) o el usuario de
+ *  servicio, solo se acepta apuntando a este equipo (el emulador): si no, ese token real viajaría a la dirección que se haya tipeado, en claro si es
+ *  `http`. Con `--credencial entorno` la persona puso el token a propósito, así que vale cualquier servidor. Se llama ANTES de resolver el token.
+ *  @param {string | null | undefined} base @param {string} credencial */
+export function validarBase(base, credencial) {
+  if (base == null) return;
+  let url;
+  try {
+    url = new URL(base);
+  } catch {
+    url = null;
+  }
+  if (!url || (url.protocol !== "http:" && url.protocol !== "https:")) {
+    throw new Error("--base no es una URL válida: tiene que empezar con http:// o https:// (por ejemplo http://127.0.0.1:8080/v1/projects/mi-proyecto/databases/(default)/documents).");
+  }
+  if (credencial !== "entorno" && !HOSTS_DE_ESTE_EQUIPO.has(url.hostname)) {
+    throw new Error("--base solo se acepta con --credencial entorno, o apuntando a este equipo (el emulador): no mandamos un token real a otro servidor.");
+  }
+}
+
 const dosDigitos = (n) => String(n).padStart(2, "0");
 
 /** La exportación tiene datos de pacientes: no puede terminar dentro del repositorio (se subiría con un `git add .`). Se comparan las rutas
@@ -94,6 +117,7 @@ export function carpetaDeSalida(salida, { hoy = new Date(), directorioActual = p
 async function principal() {
   const opciones = leerArgumentos(process.argv.slice(2));
   if (opciones.ayuda) { console.log(AYUDA); return 0; }
+  validarBase(opciones.base, opciones.credencial); // antes de pedir el token: un token real no se manda a cualquier lado
   const carpeta = carpetaDeSalida(opciones.salida);
   const colecciones = JSON.parse(readFileSync(new URL("../../lib/backend/colecciones.json", import.meta.url), "utf8"));
 
