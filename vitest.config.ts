@@ -22,6 +22,6 @@ export default defineConfig({
     // lib/odontogram-bridge.test.ts. Para correr el suite del motor manualmente,
     // ver components/odontogram-engine/NOTICE.md.
     include: ["**/*.test.ts"],
-    exclude: ["**/node_modules/**", "**/.next/**", "components/odontogram-engine/**"],
+    exclude: ["**/node_modules/**", "**/.next/**", "components/odontogram-engine/**", "**/*.emulador.test.ts"],
   },
 });
