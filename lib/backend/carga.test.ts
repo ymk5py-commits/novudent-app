@@ -110,8 +110,14 @@ describe("cargarDB", () => {
     expect(memoria.ids("clinics/cl_demo/outbox").length).toBe(seed.outbox.length);
     expect(memoria.leer("clinics/cl_demo")?.config).toHaveProperty("botika");
     expect(db.clinics[0].config).toHaveProperty("botika");
-    // La segunda vez ya no hay nada que agregar: la base devuelve lo que se escribió.
+    // La segunda vez no hay nada que agregar: lo que alguien cambió después de la primera carga sobrevive. Si las guardas «una sola vez» de la
+    // puesta al día no anduvieran, la demo volvería a la semilla en cada carga y esto fallaría.
+    const idPresupuesto = memoria.ids("clinics/cl_demo/budgets")[0];
+    const idTarea = memoria.ids("clinics/cl_demo/outbox")[0];
+    memoria.sembrar(`clinics/cl_demo/budgets/${idPresupuesto}`, { id: idPresupuesto, cambiadoPor: "visitante" });
+    memoria.sembrar(`clinics/cl_demo/outbox/${idTarea}`, { id: idTarea, cambiadoPor: "visitante" });
     const otra = await cargarDB(memoria, CLINICA_DEMO);
-    expect(otra.budgets.length).toBe(seed.budgets.length);
+    expect(otra.budgets.find((b) => b.id === idPresupuesto)).toMatchObject({ cambiadoPor: "visitante" });
+    expect(otra.outbox.find((t) => t.id === idTarea)).toMatchObject({ cambiadoPor: "visitante" });
   });
 });
