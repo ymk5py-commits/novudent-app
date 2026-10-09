@@ -165,7 +165,7 @@ interface BackendDeDatos {
 }
 ```
 
-> La interfaz que quedó (P1) es más fina y está en `lib/backend/tipos.ts`: `cargarClinica` se partió en `leerClinica` + `cargarDB` (`lib/backend/carga.ts`), `escuchar` en `escucharSuscripcion` / `escucharClinica` / `escucharColeccion`, y se sumaron `esperarSesion`, `iniciarSesionDeDemo` y `clinicaDelUsuario`.
+> La interfaz que quedó (P1) es más fina y está en `lib/backend/tipos.ts`: `cargarClinica` se partió en `leerClinica` + `cargarDB` (`lib/backend/carga.ts`), `escuchar` en `escucharSuscripcion` / `escucharClinica` / `escucharColeccion`, y se sumaron `esperarSesion`, `iniciarSesionDeDemo` y `clinicaDelUsuario`. `cambiarClave` (el viejo `updateCurrentPassword` de `lib/firebase.ts`, que no usa nadie) quedó fuera de la interfaz a propósito.
 
 - Se elige con `NEXT_PUBLIC_BACKEND=firestore | supabase`. **El valor por defecto es `firestore`**: publicar P1 no cambia nada visible.
 - Del lado servidor, `lib/server/firestore-rest.ts` se parte en una interfaz `DatosDeServidor` con **las mismas 8 operaciones y firmas**; las 13 rutas solo cambian el `import`. La implementación Supabase usa la clave `service_role` con `pg` o PostgREST.
@@ -197,7 +197,7 @@ Tamaño y ubicación acordados: **8 vCPU, 16 GB de RAM, 240 GB o más de NVMe**,
 ## 11. Migración de datos y corte (P5, P7)
 
 ### 11.1 Exportar (P1)
-`scripts/migracion/exportar-firestore.mjs`: lee, con el usuario de servicio y por páginas, todas las clínicas y colecciones; escribe un archivo JSONL por colección y clínica y un `manifiesto.json` con cantidades, bytes y SHA-256. También informa: tamaño total, documentos más grandes, tipos de dato que no sean JSON puro (hay que confirmar que no aparece ningún `Timestamp`), usuarios reales frente a anónimos y clínicas reales. **Es de solo lectura.** La credencial por defecto es la sesión del CLI de Firebase (`firebase login`), porque es la única que lee `directMessages` (las reglas no se lo permiten al usuario de servicio); el comando es `npm run migracion:exportar`.
+`scripts/migracion/exportar-firestore.mjs`: lee, con una credencial de solo lectura (por defecto la sesión del CLI de Firebase) y por páginas, todas las clínicas y colecciones; escribe un archivo JSONL por colección y clínica y un `manifiesto.json` con cantidades, bytes y SHA-256. También informa: tamaño total, documentos más grandes, tipos de dato que no sean JSON puro (hay que confirmar que no aparece ningún `Timestamp`), usuarios reales frente a anónimos y clínicas reales. **Es de solo lectura.** La credencial por defecto es la sesión del CLI de Firebase (`firebase login`), porque es la única que lee `directMessages` (las reglas no se lo permiten al usuario de servicio); el comando es `npm run migracion:exportar`.
 
 ### 11.2 Cargar (P5)
 `scripts/migracion/cargar-postgres.mjs`: lee el JSONL y hace `upsert` (se puede correr varias veces sin duplicar), crea los usuarios de GoTrue y reescribe `authUid`. Genera un informe: cantidades por colección contra el manifiesto, SHA-256 de cada documento (comparación completa, no por muestra) y diferencias.

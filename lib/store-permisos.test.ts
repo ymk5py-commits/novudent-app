@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 /* Fija el contrato de carga de las colecciones de la clínica (`leerClinica`, en lib/backend/firestore.ts).
  *
- * EL BUG QUE ESTE TEST IMPIDE QUE VUELVA: las 31 colecciones de la clínica se
+ * EL BUG QUE ESTE TEST IMPIDE QUE VUELVA: las 35 colecciones de la tienda se
  * piden en un único `Promise.all`, y `Promise.all` rechaza al PRIMER rechazo.
  * Como `expenses` y `settlements` son admin-only en firestore.rules, el
  * permission-denied de un dentista o de una asistente tumbaba el arranque
@@ -15,7 +15,7 @@ import { describe, it, expect } from "vitest";
  * cualquier otro error sigue explotando. Con las reglas reales de Firestore lo cubre
  * lib/backend/firestore.reglas.emulador.test.ts. */
 
-/** Copia exacta de la lógica del `leer` de `leerClinica` en lib/backend/firestore.ts (la que usa `col()`). */
+/** Copia exacta de la lógica del helper `leer` de `crearDatosFirestore` (lib/backend/firestore.ts; la que usa `col()` dentro de `leerClinica`). */
 async function leerColeccion<T>(getDocs: () => Promise<{ docs: { data: () => T }[] }>) {
   try {
     return await getDocs();

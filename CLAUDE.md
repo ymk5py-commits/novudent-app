@@ -323,9 +323,10 @@ pasó el horario», «No entra en el horario», «Bloqueado», «Sin lugar»); e
 `lote`, `escuchar*`) y `SesionDeBackend` (login, token para `/api`, recuperar contraseña) de `tipos.ts`. Hoy la única implementación es
 `firestore.ts`; `NEXT_PUBLIC_BACKEND` (por defecto `firestore`) la elige y `supabase` todavía no existe (parte P3, ver
 `docs/superpowers/specs/2026-10-09-servidor-propio-supabase-design.md`). **El SDK `firebase/*` (también `@firebase/*`) solo lo pueden importar
-`lib/firebase.ts` y `lib/backend/firestore.ts` (y las pruebas `*.emulador.test.ts`); y el envoltorio `lib/firebase.ts` solo lo importa
-`lib/backend/firestore.ts`** (las dos reglas las exige `lib/backend/aislamiento.test.ts`): una pantalla que necesite algo de la base se lo pide a
-la interfaz. Qué se lee al abrir una clínica, cómo se arma la `DB` y la semilla y puesta al día de la demo viven en `carga.ts` (`cargarDB`),
+`lib/firebase.ts` y `lib/backend/firestore.ts` (y las `lib/backend/*.emulador.test.ts`); el envoltorio `lib/firebase.ts` solo lo importa
+`lib/backend/firestore.ts`; y `lib/backend/firestore.ts` solo lo importan `lib/backend/index.ts` (el selector `NEXT_PUBLIC_BACKEND`) y esas mismas pruebas**
+(las tres reglas las exige `lib/backend/aislamiento.test.ts`): una pantalla que necesite algo de la base se lo pide a la interfaz.
+Qué se lee al abrir una clínica, cómo se arma la `DB` y la semilla y puesta al día de la demo viven en `carga.ts` (`cargarDB`),
 probadas con el backend en memoria (`memoria.ts`).
 **Para sumar una colección:** agregala a `lib/backend/colecciones.json` (`colecciones.test.ts` la ata a `firestore.rules` y a la semilla) además de lo de
 siempre. **Toda implementación pasa el mismo contrato** (`contrato-de-datos.ts`): `npm test` lo corre contra la memoria y `npm run test:backend` (necesita
