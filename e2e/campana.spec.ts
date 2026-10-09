@@ -21,7 +21,7 @@ test.describe("Campana de pendientes", () => {
     await expect(panel(page)).toContainText(/Retenciones de facturación \(\d+\)/);
 
     await documentos.getByRole("menuitem", { name: /Juan Ríos/ }).click();
-    await page.waitForURL("**/app/pacientes/p2?tab=documentos");
+    await page.waitForURL("**/app/pacientes/p2/documentos");
     await expect(page.getByRole("heading", { name: "Documentos clínicos" })).toBeVisible();
     await expect(panel(page)).toHaveCount(0); // se cerró al elegir
   });

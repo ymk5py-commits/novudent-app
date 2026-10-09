@@ -65,7 +65,7 @@ export function AgendaOnline() {
           </p>
           <p className="mt-3 text-xs text-clinic-muted">
             Los datos que se piden al reservar (cédula, WhatsApp, correo…) se eligen en{" "}
-            <Link href="/app/pacientes#configuracion" className="font-bold text-azure-700 hover:underline">Campos del paciente</Link>, columna «Agenda online».
+            <Link href="/app/pacientes/configuracion" className="font-bold text-azure-700 hover:underline">Campos del paciente</Link>, columna «Agenda online».
           </p>
         </div>
 

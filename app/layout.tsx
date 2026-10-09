@@ -9,6 +9,7 @@ import Consentimiento from "@/components/landing/Consentimiento";
  *  las convierte en proxies y el script inline sale con `[object Object]`. */
 import { MOTION_FALLBACK_CLASS, HYDRATION_GRACE_MS } from "@/lib/motion-fallback";
 import { SITE_URL } from "@/lib/site";
+import { verificacionDeBuscadores } from "@/lib/seo";
 
 /** TIPOGRAFÍA.
  *
@@ -56,6 +57,8 @@ export const metadata: Metadata = {
     description: "Agenda, odontograma FDI, ficha clínica y facturación con estados. Software dental para Paraguay, por NOVUM.",
   },
   robots: { index: true, follow: true },
+  // Verificación del dominio en Google Search Console y Bing: el token va en las variables de Vercel (lib/seo.ts). Sin ellas no sale nada.
+  verification: verificacionDeBuscadores(process.env),
 };
 
 export const viewport: Viewport = {

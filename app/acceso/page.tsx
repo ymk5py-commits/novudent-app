@@ -7,7 +7,7 @@ import SolicitarAcceso from "@/components/SolicitarAcceso";
 export const metadata: Metadata = {
   title: "Pedí una demo de Novudent",
   description:
-    "Dejanos tus datos y te mostramos Novudent funcionando. Respuesta en menos de 24 horas hábiles; la puesta en marcha lleva una semana e incluye la migración de tus datos desde otro sistema, planillas o papel.",
+    "Dejanos tus datos y te mostramos Novudent funcionando. Respondemos en menos de 24 horas hábiles; la puesta en marcha, con tus datos migrados, lleva una semana.",
   alternates: { canonical: "/acceso" },
 };
 

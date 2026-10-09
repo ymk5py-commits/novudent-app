@@ -5,7 +5,7 @@ import { SeccionAccion } from "@/components/Landing";
 export const metadata: Metadata = {
   title: "El producto en acción — consultorio y app en un loop",
   description:
-    "Una animación con el producto real: la cita se agenda, el dentista atiende, el hallazgo se marca en la pieza 16 y el cobro pasa a facturado. Catorce segundos del día completo de una consulta en Novudent.",
+    "Novudent en acción: la cita se agenda, el dentista atiende, el hallazgo se marca en la pieza 16 y el cobro pasa a facturado. Una consulta en 14 segundos.",
   alternates: { canonical: "/en-accion" },
 };
 

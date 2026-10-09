@@ -111,7 +111,7 @@ export function PanelTarea({
           {detalle && <Linea icono={MessageSquare} etiqueta="Detalle"><span className="font-semibold text-clinic-text">{detalle}</span></Linea>}
           {referencia && (
             <Linea icono={ClipboardList} etiqueta="Presupuesto de referencia">
-              <Link href={`/app/pacientes/${referencia.patientId}#planes`} className="text-azure-700 hover:underline">Plan #{referencia.id}{referencia.name ? ` · ${referencia.name}` : ""}</Link>
+              <Link href={`/app/pacientes/${referencia.patientId}/planes`} className="text-azure-700 hover:underline">Plan #{referencia.id}{referencia.name ? ` · ${referencia.name}` : ""}</Link>
             </Linea>
           )}
           {fila.estado === "pendiente" && fila.autoCierre && (
@@ -372,7 +372,7 @@ function Presupuestos({ paciente }: { paciente: Patient }) {
                 {ESTADO_PLAN[b.status] ?? BUDGET_STATUS_INFO[b.status].label}
               </span>
               <span className="text-clinic-muted">Presupuesto generado el {new Date(b.createdAt).toLocaleDateString("es-PY", { day: "numeric", month: "long", year: "numeric" })}</span>
-              <Link href={`/app/pacientes/${paciente.id}#planes`} className="ml-auto inline-flex items-center gap-1 font-bold text-azure-700 hover:underline">
+              <Link href={`/app/pacientes/${paciente.id}/planes`} className="ml-auto inline-flex items-center gap-1 font-bold text-azure-700 hover:underline">
                 Ir al tratamiento <ExternalLink aria-hidden className="h-3 w-3" />
               </Link>
             </div>
@@ -415,7 +415,7 @@ function Citas({ paciente }: { paciente: Patient }) {
           <div className="mt-2 flex items-center gap-2">
             <StatusBadge status={a.status} estadoId={a.estadoId} />
             {a.budgetId && (
-              <Link href={`/app/pacientes/${paciente.id}#planes`} className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-azure-700 hover:underline">
+              <Link href={`/app/pacientes/${paciente.id}/planes`} className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold text-azure-700 hover:underline">
                 Ir al tratamiento <ExternalLink aria-hidden className="h-3 w-3" />
               </Link>
             )}

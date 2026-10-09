@@ -356,7 +356,7 @@ test.describe("Permisos del equipo — menú", () => {
     const barra = page.getByRole("banner").getByRole("navigation");
     await barra.getByRole("button", { name: "Administración", exact: true }).click();
     await barra.getByRole("link", { name: "Permisos del equipo", exact: true }).click();
-    await page.waitForURL("**/app/configuracion#permisos");
+    await page.waitForURL("**/app/configuracion/permisos");
     await expect(permisos(page)).toBeInViewport();
   });
 });

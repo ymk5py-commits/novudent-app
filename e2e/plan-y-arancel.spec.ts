@@ -34,11 +34,11 @@ async function abrirCarga(page: Page) {
 
 /** Abre «Nuevo plan de tratamiento» desde la ficha del paciente (pestaña Planes de tratamiento). */
 async function nuevoPlanDesdeLaFicha(page: Page, paciente: string) {
-  await page.goto(`/app/pacientes/${paciente}#planes`);
+  await page.goto(`/app/pacientes/${paciente}/planes`); // URL limpia (lib/rutasPanel)
   await main(page).getByRole("button", { name: "Nuevo plan de tratamiento" }).click();
   const dialogo = page.getByRole("dialog", { name: "Nuevo plan de tratamiento" });
   await expect(dialogo).toBeVisible();
-  expect(new URL(page.url()).pathname, "se queda en la ficha: no va a la lista de Presupuestos").toBe(`/app/pacientes/${paciente}`);
+  expect(new URL(page.url()).pathname, "se queda en la ficha: no va a la lista de Presupuestos").toMatch(new RegExp(`^/app/pacientes/${paciente}(/planes)?$`));
   return dialogo;
 }
 
@@ -219,7 +219,7 @@ test.describe("C2 · El formulario del plan con cualquier arancel", () => {
     await expect(dialogo.getByRole("status")).toContainText("Todavía no hay prestaciones cargadas");
     await expect(dialogo.getByRole("button", { name: "Guardar" })).toBeDisabled();
     await dialogo.getByRole("link", { name: "Cargalas en Configuración › Arancel de precios" }).click();
-    await page.waitForURL("**/app/configuracion#arancel");
+    await page.waitForURL("**/app/configuracion/arancel");
     await expect(tarjeta(page, "Arancel de precios")).toContainText("Sin servicios");
   });
 

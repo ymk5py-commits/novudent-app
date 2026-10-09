@@ -51,14 +51,14 @@ test.describe("Menú — administrador", () => {
   test("«Campos del paciente» lleva a donde están los campos", async ({ page }) => {
     await desplegable(page, "Administración");
     await barra(page).getByRole("link", { name: "Campos del paciente", exact: true }).click();
-    await page.waitForURL("**/app/pacientes#configuracion");
+    await page.waitForURL("**/app/pacientes/configuracion");
     await expect(page.getByRole("heading", { name: "Configuración de campos del paciente" })).toBeVisible();
   });
 
   test("«Agenda online» está en el menú y lleva a su link", async ({ page }) => {
     expect(await desplegable(page, "Administración")).toContain("Agenda online");
     await barra(page).getByRole("link", { name: "Agenda online", exact: true }).click();
-    await page.waitForURL("**/app/configuracion#agendamiento");
+    await page.waitForURL("**/app/configuracion/agenda-online");
     await expect(page.getByRole("heading", { name: "Agenda online", level: 2 })).toBeVisible();
     await expect(page.getByRole("button", { name: "Copiar link" })).toBeVisible();
   });
@@ -66,11 +66,11 @@ test.describe("Menú — administrador", () => {
   test("«Arancel de precios» y «Bancos y entidades financieras» están en Administración y llevan a su tarjeta", async ({ page }) => {
     expect(await desplegable(page, "Administración")).toEqual(expect.arrayContaining(["Arancel de precios", "Bancos y entidades financieras"]));
     await barra(page).getByRole("link", { name: "Bancos y entidades financieras", exact: true }).click();
-    await page.waitForURL("**/app/configuracion#bancos");
+    await page.waitForURL("**/app/configuracion/bancos");
     await expect(page.getByRole("heading", { name: "Bancos y entidades financieras", level: 2 })).toBeVisible();
     await desplegable(page, "Administración");
     await barra(page).getByRole("link", { name: "Arancel de precios", exact: true }).click();
-    await page.waitForURL("**/app/configuracion#arancel");
+    await page.waitForURL("**/app/configuracion/arancel");
     await expect(page.getByRole("heading", { name: "Arancel de precios", level: 2 })).toBeVisible();
   });
 

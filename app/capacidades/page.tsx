@@ -5,7 +5,7 @@ import { CAPACIDADES } from "@/lib/capacidades";
 export const metadata: Metadata = {
   title: "Capacidades — agenda, odontograma, cobros y más",
   description:
-    "Las ocho herramientas que mueven una clínica dental: agenda con confirmación por WhatsApp, odontograma por superficies, presupuestos, caja, inventario, comisiones, ortodoncia, informes y facturación con estados.",
+    "Agenda con confirmación por WhatsApp, odontograma por superficies, presupuestos, caja, inventario, comisiones, ortodoncia e informes para tu clínica dental.",
   alternates: { canonical: "/capacidades" },
 };
 

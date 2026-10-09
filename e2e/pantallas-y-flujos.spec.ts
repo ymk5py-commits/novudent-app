@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect, entrarDemo, leerDB, sinScrollHorizontal, USUARIOS_DEMO } from "./soporte";
 import { DEFAULT_TEMPLATES } from "../lib/botika";
 import { ESTADOS_DEFAULT } from "../lib/estadosCita";
+import { seccionDeRuta } from "../lib/rutasPanel";
 
 /* Defectos de pantallas y flujos que salieron al armar el manual (docs/manual/hallazgos-de-la-app.md, «Abiertos — pantallas y
    flujos»). Cada prueba reproduce el recorrido que ahí se describe y falla si el defecto vuelve.
@@ -92,11 +93,13 @@ test.describe("Administración: los atajos a Configuración", () => {
   test("todos llevan a una tarjeta que existe (antes «Documentos y consentimientos» iba a un ancla inexistente)", async ({ page }) => {
     await entrarDemo(page);
     await abrirAdministracion(page);
-    const hrefs = await page.getByRole("banner").locator("a[href^='/app/configuracion#']").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""));
+    const hrefs = await page.getByRole("banner").locator("a[href^='/app/configuracion/']").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""));
     expect(hrefs.length).toBeGreaterThan(8);
-    expect(hrefs).toContain("/app/configuracion#consentimientos");
+    expect(hrefs).toContain("/app/configuracion/consentimientos");
     for (const href of new Set(hrefs)) {
-      const ancla = href.split("#")[1];
+      // URL limpia (/app/configuracion/agenda-online) → la sección de la página (id="agendamiento"): lib/rutasPanel.
+      const ancla = seccionDeRuta(href)?.id;
+      expect(ancla, `el atajo ${href} no es una sección conocida`).toBeTruthy();
       await page.goto(href);
       await expect(page.locator(`[id="${ancla}"]`), `el atajo ${href} no tiene a dónde llegar`).toHaveCount(1);
     }
@@ -106,7 +109,7 @@ test.describe("Administración: los atajos a Configuración", () => {
     await entrarDemo(page);
     await abrirAdministracion(page);
     await barra(page).getByRole("link", { name: "Documentos y consentimientos", exact: true }).click();
-    await page.waitForURL("**/app/configuracion#consentimientos");
+    await page.waitForURL("**/app/configuracion/consentimientos");
     await expect(page.getByRole("heading", { name: "Plantillas de consentimiento", level: 2 })).toBeInViewport();
   });
 });

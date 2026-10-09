@@ -25,10 +25,25 @@ const securityHeaders = [
   },
 ];
 
+// Un solo dominio (SEO, 8-oct-2026): las páginas que se abren por la URL de Vercel van al dominio propio con una redirección permanente,
+// así buscadores y personas consolidan todo en un lugar (el canonical ya apuntaba ahí). La API NO se redirige: hay integraciones que la
+// llaman directo y un POST redirigido se pierde. Las URLs de preview de Vercel (otros hosts) no se tocan. Test: lib/dominioPropio.test.ts.
+const DOMINIO_PROPIO = (process.env.NEXT_PUBLIC_SITE_URL || "https://novudent.novumholding.lat").replace(/\/$/, "");
+
 const nextConfig = {
   reactStrictMode: true,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  async redirects() {
+    return [
+      {
+        source: "/:path((?!api(?:/|$)).*)",
+        has: [{ type: "host", value: "novudent-app.vercel.app" }],
+        destination: `${DOMINIO_PROPIO}/:path`,
+        permanent: true,
+      },
+    ];
   },
 };
 

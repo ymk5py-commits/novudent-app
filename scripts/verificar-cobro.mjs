@@ -15,7 +15,7 @@
 const args = process.argv.slice(2);
 const arg = (n, def) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : def; };
 
-const BASE = (arg("--url", "https://novudent-app.vercel.app")).replace(/\/$/, "");
+const BASE = (arg("--url", "https://novudent.novumholding.lat")).replace(/\/$/, "");
 const CID = arg("--cid", null);
 const PROJECT = "novudent-664f3";
 

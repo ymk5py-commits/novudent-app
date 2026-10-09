@@ -5,7 +5,7 @@ import { SeccionFlujo, SeccionOdontograma } from "@/components/Landing";
 export const metadata: Metadata = {
   title: "Cómo se trabaja — de la agenda al control",
   description:
-    "El recorrido de un paciente con Novudent: agenda y reservas online, ficha y odontograma por superficies, presupuesto y cobro en cuotas, recontacto y permisos por rol. Sin planillas.",
+    "El recorrido de un paciente en Novudent: agenda y reservas online, ficha y odontograma, presupuesto y cobro en cuotas, recontacto y permisos por rol.",
   alternates: { canonical: "/como-se-trabaja" },
 };
 

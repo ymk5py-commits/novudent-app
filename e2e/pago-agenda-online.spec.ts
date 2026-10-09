@@ -106,7 +106,7 @@ test.describe("Configuración › Agenda online", () => {
 
   test("avisa dónde se eligen los datos que se piden al reservar", async ({ page }) => {
     await tarjeta(page, "Agenda online").getByRole("link", { name: "Campos del paciente" }).click();
-    await page.waitForURL("**/app/pacientes#configuracion");
+    await page.waitForURL("**/app/pacientes/configuracion");
     await expect(page.getByRole("heading", { name: "Configuración de campos del paciente" })).toBeVisible();
   });
 });

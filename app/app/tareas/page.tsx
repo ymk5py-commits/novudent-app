@@ -16,6 +16,7 @@
  *  personalizadas y los OVERRIDES: la decisión humana sobre una derivada (asignarla,
  *  trabajarla desde "Finalizar ▾", reprogramarla). */
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ArrowUp, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Gauge, ListChecks, ListFilter, Plus, Settings, ShieldAlert } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { can } from "@/lib/rbac";
@@ -26,6 +27,7 @@ import {
   bandejaDelDia, esFecha, estaPostergada, fechaCorta, ordenarFilas, sumarDias, tituloFecha, todasLasPendientes, TIPO_TAREA_LABEL, type FilaTarea,
 } from "@/lib/tareas";
 import type { MgmtTaskType } from "@/lib/types";
+import { rutaDeSeccion, seccionDeRuta } from "@/lib/rutasPanel";
 import { Badge, Btn, Card } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 import { Desplegable, ESTADO_LABEL, EstadoCheck, Opcion, TipoBadge, useNombres } from "@/components/tareas/comun";
@@ -46,6 +48,12 @@ export default function TareasPage() {
   const { hoy } = tareas;
 
   const [vista, setVista] = useState<Vista>("bandeja");
+  // La sección sale de la URL limpia (/app/tareas/estadisticas, /app/tareas/plazos: lib/rutasPanel) y la sigue también con «atrás».
+  const pathname = usePathname();
+  useLayoutEffect(() => {
+    const s = seccionDeRuta(pathname);
+    if (s?.area === "tareas") setVista(s.id as Vista);
+  }, [pathname]);
   const [fecha, setFecha] = useState(hoy);
   // «Todas las pendientes» es la que abre; con ?fecha=… (ver el efecto de abajo) se abre «Tareas del día» de ese día.
   const [lista, setLista] = useState<Lista>("todas");
@@ -70,6 +78,7 @@ export default function TareasPage() {
     if (esFecha(f)) { setFecha(f); setLista("dia"); }
     const id = q.get("tarea");
     if (id) setSelId(id);
+    // Enlaces viejos con #estadisticas / #configuracion (el Shell además los pasa a la URL limpia).
     const h = window.location.hash.slice(1);
     if (h === "estadisticas" || h === "configuracion") setVista(h);
   }, []);
@@ -142,7 +151,11 @@ export default function TareasPage() {
                 aria-selected={vistaEfectiva === k}
                 aria-label={label}
                 title={label}
-                onClick={() => { setVista(k); history.replaceState(null, "", k === "bandeja" ? window.location.pathname + window.location.search : `#${k}`); }}
+                onClick={() => {
+                  setVista(k);
+                  const destino = rutaDeSeccion("tareas", k);
+                  if (window.location.pathname !== destino) window.history.pushState(null, "", destino + (k === "bandeja" ? window.location.search : ""));
+                }}
                 className={`flex h-8 w-9 items-center justify-center gap-1.5 rounded-lg text-[13px] transition-colors sm:w-auto sm:px-3 ${vistaEfectiva === k ? "border-azure-600 text-azure-700" : "border-transparent text-clinic-text hover:text-azure-600"}`}
               >
                 <Icono aria-hidden className="h-4 w-4 shrink-0" />

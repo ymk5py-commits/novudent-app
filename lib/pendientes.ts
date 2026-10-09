@@ -59,7 +59,7 @@ export function listaPendientes(o: {
             tipo: "documentos" as const,
             titulo: nombreCompleto(p),
             detalle: resumenDeNombres(pendientes.map((i) => i.nombre)),
-            href: `/app/pacientes/${p.id}?tab=documentos`,
+            href: `/app/pacientes/${p.id}/documentos`,
           }];
         })
         .sort((a, b) => a.titulo.localeCompare(b.titulo, "es"))
