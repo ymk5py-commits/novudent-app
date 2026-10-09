@@ -713,7 +713,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
          * la cuota del mismo proyecto Firebase que usan las clínicas reales.
          *
          * Se hace acá y no en el arranque: solo cuando alguien entra de verdad a
-         * la demo. Ver el comentario de `signInAnonymousIfNeeded`. */
+         * la demo. Ver el comentario de `signInAnonymousIfNeeded` en lib/firebase.ts. */
         if (u.clinicId === DEMO_CLINIC_ID) await backendDeDatos.iniciarSesionDeDemo();
         const s: Session = { userId: u.id, clinicId: u.clinicId, role: u.role, name: u.name };
         setSession(s);

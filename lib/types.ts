@@ -1217,7 +1217,7 @@ export interface DB {
   cashSessions: CashSession[];
   sterilizationCycles: SterilizationCycle[];
   teamMessages: TeamMessage[];
-  /** Solo los directos propios; el admin y la demo, todos (ver loadFirestore). */
+  /** Solo los directos propios; el admin y la demo, todos (ver `filtroDeDirectos` en lib/backend/carga.ts). */
   directMessages: DirectMessage[];
   surveys: Survey[];
   surveyResponses: SurveyResponse[];

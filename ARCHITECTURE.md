@@ -160,7 +160,7 @@ servicio.
 ## 6. Estado en el cliente — `lib/store.tsx`
 
 Un **único objeto `DB`** con todas las colecciones de la clínica activa, cargado de una
-vez al entrar (`loadFirestore`) y mantenido en React Context.
+vez al entrar (`cargarDB` en `lib/backend/carga.ts`, con las colecciones de `lib/backend/colecciones.json`) y mantenido en React Context.
 
 - **Write-through**: cada acción actualiza el estado local *y* escribe Firestore
   (`fsSave`/`fsDelete`). No hay capa de sincronización ni caché intermedia.
