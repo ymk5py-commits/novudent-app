@@ -36,24 +36,32 @@ const NEGOCIACION_DEFAULTS: Required<NonNullable<BotikaConfig["negociacion"]>> =
 };
 
 export default function ConfigPage() {
-  const { db, session, mergePatients, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, saveConsentTemplates, addBranch, updateBranch, deleteBranch } = useStore();
+  const { db, session, ready, mergePatients, setOnboarding, createTeamUser, backend, updateClinicConfig, upsertUser, saveConsentTemplates, addBranch, updateBranch, deleteBranch } = useStore();
   const plan = useClinicPlan();
   const [addingUser, setAddingUser] = useState(false);
   const [mergeKeep, setMergeKeep] = useState(db.patients[0]?.id ?? "");
   const [mergeRemove, setMergeRemove] = useState("");
   const [mergeError, setMergeError] = useState<string | null>(null);
   // Enlace directo a una sección: la URL limpia /app/configuracion/arancel (lib/rutasPanel) o un enlace viejo con #arancel → scroll a la sección.
+  // Con los datos de Firestore la página se termina de dibujar después: se espera a que el store esté listo (si no, lo de arriba crece y la
+  // sección queda fuera de la vista) y se reintenta un rato hasta que la sección exista.
   const pathname = usePathname();
   useEffect(() => {
+    if (!ready) return;
+    let intentos = 0;
+    let t: ReturnType<typeof setTimeout>;
     const go = () => {
       const s = seccionDeRuta(window.location.pathname);
       const id = (s?.area === "configuracion" && s.id) || window.location.hash.replace("#", "");
-      if (id) document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (!id) return;
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      else if (intentos++ < 30) t = setTimeout(go, 100);
     };
-    const t = setTimeout(go, 90);
+    t = setTimeout(go, 120);
     window.addEventListener("hashchange", go);
     return () => { clearTimeout(t); window.removeEventListener("hashchange", go); };
-  }, [pathname]);
+  }, [pathname, ready]);
   const [importing, setImporting] = useState(false);
   const [convName, setConvName] = useState("");
   const [convPct, setConvPct] = useState("10");
