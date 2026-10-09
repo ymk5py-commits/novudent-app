@@ -6,15 +6,20 @@ import { describe, it, expect } from "vitest";
  *  así el día que la base sea otra (Supabase) no hay que tocar nada de eso y, con `NEXT_PUBLIC_BACKEND=supabase`, ninguna pantalla le pide
  *  nada a Firebase.
  *
- *  Hay dos formas de hablar con Firebase y las dos se vigilan:
+ *  Hay tres formas de hablar con Firebase y las tres se vigilan:
  *   A. Importar el SDK (`firebase/…`, `@firebase/…`). Lo permiten `lib/firebase.ts` (que lo inicializa), `lib/backend/firestore.ts` y las
  *      pruebas con el emulador (arman una instancia de Firestore para probar la implementación).
- *   B. Importar el envoltorio `lib/firebase.ts` (`@/lib/firebase`, `./firebase`, `../firebase`…). Solo lo permite `lib/backend/firestore.ts`. */
+ *   B. Importar el envoltorio `lib/firebase.ts` (`@/lib/firebase`, `./firebase`, `../firebase`…). Solo lo permite `lib/backend/firestore.ts`.
+ *   C. Importar el módulo `lib/backend/firestore` (`@/lib/backend/firestore`, `./firestore`…). Solo lo permiten `lib/backend/index.ts` (que lo elige
+ *      según `NEXT_PUBLIC_BACKEND`) y las `lib/backend/*.emulador.test.ts`: cualquier otro se saltaría el selector y seguiría hablando con Firestore
+ *      aunque la app esté configurada para otra base. */
 const PERMITIDOS_SDK = new Set(["lib/firebase.ts", "lib/backend/firestore.ts"]);
 const PERMITIDOS_ENVOLTORIO = new Set(["lib/backend/firestore.ts"]);
+const PERMITIDOS_BACKEND_FIRESTORE = new Set(["lib/backend/index.ts"]);
 const esPruebaConEmulador = (ruta: string) => ruta.startsWith("lib/backend/") && ruta.endsWith(".emulador.test.ts");
 const RAIZ = join(__dirname, "..", "..");
 const ENVOLTORIO = join(RAIZ, "lib", "firebase");
+const BACKEND_FIRESTORE = join(RAIZ, "lib", "backend", "firestore");
 const CARPETAS = ["app", "components", "lib"];
 
 /** Todo lo que se importa: `from "x"`, `import "x"`, `import("x")` y `require("x")`, con comillas simples o dobles. */
@@ -34,13 +39,15 @@ function especificadores(texto: string): string[] {
   return [...texto.matchAll(ESPECIFICADOR)].map((m) => m[2]);
 }
 
-/** ¿Este especificador, escrito en `rutaAbsoluta`, apunta a `lib/firebase.ts`? (con o sin extensión, con o sin `/index`) */
-function apuntaAlEnvoltorio(especificador: string, rutaAbsoluta: string): boolean {
+/** ¿Este especificador, escrito en `rutaAbsoluta`, apunta al módulo `destino` (ruta absoluta sin extensión)? (con o sin extensión, con o sin `/index`) */
+function apuntaA(especificador: string, rutaAbsoluta: string, destino: string): boolean {
   const sinExtension = (r: string) => r.replace(/\.(ts|tsx|js|mjs)$/, "").replace(/[\\/]index$/, "");
-  if (especificador.startsWith("@/")) return sinExtension(resolve(RAIZ, especificador.slice(2))) === ENVOLTORIO;
-  if (especificador.startsWith(".")) return sinExtension(resolve(dirname(rutaAbsoluta), especificador)) === ENVOLTORIO;
+  if (especificador.startsWith("@/")) return sinExtension(resolve(RAIZ, especificador.slice(2))) === destino;
+  if (especificador.startsWith(".")) return sinExtension(resolve(dirname(rutaAbsoluta), especificador)) === destino;
   return false;
 }
+const apuntaAlEnvoltorio = (especificador: string, rutaAbsoluta: string) => apuntaA(especificador, rutaAbsoluta, ENVOLTORIO);
+const apuntaAlBackendFirestore = (especificador: string, rutaAbsoluta: string) => apuntaA(especificador, rutaAbsoluta, BACKEND_FIRESTORE);
 
 const TODOS = CARPETAS.flatMap((c) => archivos(join(RAIZ, c))).map((absoluta) => ({
   absoluta,
@@ -63,8 +70,15 @@ describe("aislamiento de Firebase", () => {
     expect(infractores).toEqual([]);
   });
 
+  it("solo lib/backend/index.ts (y las lib/backend/*.emulador.test.ts) importan lib/backend/firestore: el resto pasa por el selector NEXT_PUBLIC_BACKEND", () => {
+    const infractores = TODOS
+      .filter(({ ruta }) => !PERMITIDOS_BACKEND_FIRESTORE.has(ruta) && !esPruebaConEmulador(ruta))
+      .flatMap(({ ruta, absoluta, imports }) => imports.filter((e) => apuntaAlBackendFirestore(e, absoluta)).map((e) => `${ruta} importa el backend de Firestore «${e}» sin pasar por lib/backend/index.ts`));
+    expect(infractores).toEqual([]);
+  });
+
   it("la lista de permitidos existe (si se renombra un archivo, este test lo avisa)", () => {
-    for (const ruta of new Set([...PERMITIDOS_SDK, ...PERMITIDOS_ENVOLTORIO])) expect(() => statSync(join(RAIZ, ruta))).not.toThrow();
+    for (const ruta of new Set([...PERMITIDOS_SDK, ...PERMITIDOS_ENVOLTORIO, ...PERMITIDOS_BACKEND_FIRESTORE])) expect(() => statSync(join(RAIZ, ruta))).not.toThrow();
   });
 
   it("el lector de imports entiende las formas que se usan (y no se confunde con texto)", () => {
@@ -84,5 +98,17 @@ describe("aislamiento de Firebase", () => {
     expect(apuntaAlEnvoltorio("../firebase.ts", desdeBackend)).toBe(true);
     expect(apuntaAlEnvoltorio("./firebase", desdeBackend)).toBe(false); // lib/backend/firebase no existe: no es el envoltorio
     expect(apuntaAlEnvoltorio("@/lib/backend", desdeLib)).toBe(false);
+    // y el módulo del backend de Firestore, escrito de todas las formas
+    const desdeIndex = join(RAIZ, "lib", "backend", "index.ts");
+    const desdeUnComponente = join(RAIZ, "components", "Shell.tsx");
+    expect(apuntaAlBackendFirestore("@/lib/backend/firestore", desdeUnComponente)).toBe(true);
+    expect(apuntaAlBackendFirestore("@/lib/backend/firestore.ts", desdeUnComponente)).toBe(true);
+    expect(apuntaAlBackendFirestore("./backend/firestore", desdeLib)).toBe(true);
+    expect(apuntaAlBackendFirestore("../lib/backend/firestore", desdeUnComponente)).toBe(true);
+    expect(apuntaAlBackendFirestore("./firestore", desdeIndex)).toBe(true);
+    expect(apuntaAlBackendFirestore("@/lib/backend", desdeUnComponente)).toBe(false); // el índice (el selector) es lo que SÍ se importa
+    expect(apuntaAlBackendFirestore("@/lib/backend/index", desdeUnComponente)).toBe(false);
+    expect(apuntaAlBackendFirestore("./firestore.contrato.emulador.test", desdeIndex)).toBe(false);
+    expect(apuntaAlBackendFirestore("./firestore", desdeLib)).toBe(false); // lib/firestore no existe: no es el backend
   });
 });
