@@ -385,7 +385,7 @@ test.describe("Mi agenda — IA (simulada)", () => {
     await page.getByRole("button", { name: "Armar las tareas" }).click();
     await expect(page.getByRole("dialog").getByText(/La IA no está activa en la demo pública/)).toBeVisible();
     await expect(page.getByText(/no está asignada/)).toHaveCount(0);
-    await page.keyboard.press("Escape");
+    await page.getByRole("dialog").getByRole("button", { name: "Cerrar" }).click();
     await abrirResumen(page);
     await expect(page.getByRole("region", { name: "Resumen de la semana" }).getByText(/La IA no está activa en la demo pública/)).toBeVisible();
   });

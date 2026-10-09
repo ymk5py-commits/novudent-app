@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { huecosDelDia, citasEnElHueco, diasDesde, HORARIO_POR_DEFECTO, finDeCita, especialidadCoincide, TIPOS_CONSULTA } from "./disponibilidad";
+import { huecosDelDia, citasEnElHueco, diasDesde, HORARIO_POR_DEFECTO, finDeCita, especialidadCoincide, TIPOS_CONSULTA, motivoSinHuecos, TEXTO_SIN_HUECOS, opcionesDeDuracion, textoDuracion } from "./disponibilidad";
 
 /** Martes 6 de octubre de 2026, medianoche local. */
 const MARTES = new Date(2026, 9, 6);
@@ -165,5 +165,61 @@ describe("apoyo", () => {
     expect(especialidadCoincide("rehabilitacion", "Rehabilitacion oral")).toBe(true);
     expect(especialidadCoincide("general", "Endodoncia")).toBe(false);
     expect(especialidadCoincide("todas", "Endodoncia")).toBe(true);
+  });
+});
+
+describe("motivoSinHuecos — por qué un día no tiene horarios (pedido de Croman, 8-oct-2026: «cada detalle»)", () => {
+  const base = { dentistId: "u2", citas: [] as ReturnType<typeof cita>[], ahora: ANTES };
+
+  it("el día que el profesional no atiende", () => {
+    expect(motivoSinHuecos(DOMINGO, 30, base)).toBe("no-atiende");
+  });
+
+  it("hoy, cuando ya pasó la última hora en que entraba la consulta", () => {
+    expect(motivoSinHuecos(MARTES, 30, { ...base, ahora: new Date(2026, 9, 6, 17, 45).getTime() })).toBe("ya-paso");
+    expect(motivoSinHuecos(MARTES, 30, { ...base, ahora: new Date(2026, 9, 6, 23, 0).getTime() })).toBe("ya-paso");
+  });
+
+  it("una consulta más larga que el horario de atención no entra nunca", () => {
+    expect(motivoSinHuecos(MARTES, 11 * 60, base)).toBe("muy-larga");
+  });
+
+  it("todo bloqueado (aunque se sobreagende) o todo ocupado", () => {
+    const todoElDia = [{ start: iso(MARTES, 8), end: iso(MARTES, 18), dentistId: "u2" }];
+    expect(motivoSinHuecos(MARTES, 30, { ...base, bloqueos: todoElDia })).toBe("bloqueado");
+    const llena = [cita(8, 0, 600)];
+    expect(motivoSinHuecos(MARTES, 30, { ...base, citas: llena })).toBe("completo");
+  });
+
+  it("con lugar no hay motivo", () => {
+    expect(motivoSinHuecos(MARTES, 30, base)).toBeNull();
+  });
+
+  it("cada motivo tiene su texto corto", () => {
+    for (const m of ["no-atiende", "ya-paso", "muy-larga", "bloqueado", "completo"] as const) expect(TEXTO_SIN_HUECOS[m].length).toBeGreaterThan(3);
+    expect(TEXTO_SIN_HUECOS.completo).toBe("Sin lugar");
+  });
+});
+
+describe("duración de la cita — una sola lista, de 15 en 15 minutos", () => {
+  it("de 15 min a 8 h", () => {
+    const o = opcionesDeDuracion(30);
+    expect(o[0]).toBe(15);
+    expect(o.at(-1)).toBe(480);
+    expect(o.every((m, i) => i === 0 || m - o[i - 1] === 15)).toBe(true);
+  });
+
+  it("si la cita que se edita dura otra cosa (20 min), la ofrece en su lugar", () => {
+    const o = opcionesDeDuracion(20);
+    expect(o.slice(0, 3)).toEqual([15, 20, 30]);
+    expect(opcionesDeDuracion(0)[0]).toBe(15); // una cita rota no suma «0 min»
+    expect(opcionesDeDuracion(600).at(-1)).toBe(600);
+  });
+
+  it("se lee como se dice", () => {
+    expect(textoDuracion(15)).toBe("15 min");
+    expect(textoDuracion(60)).toBe("1 h");
+    expect(textoDuracion(90)).toBe("1 h 30 min");
+    expect(textoDuracion(480)).toBe("8 h");
   });
 });

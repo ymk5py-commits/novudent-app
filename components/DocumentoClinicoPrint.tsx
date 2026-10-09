@@ -2,10 +2,10 @@
 /** Vista previa, impresión y envío por correo de un documento clínico. Mismo patrón que el
  *  visor de consentimientos: un diálogo para mirarlo y, aparte, la hoja que sale por la
  *  impresora (en un portal directo en <body>, con el membrete de la clínica). */
-import { Printer, X } from "lucide-react";
+import { Printer } from "lucide-react";
 import { PrintLetterhead, PrintPortal } from "@/components/PrintDocument";
 import { EmailButton } from "@/components/EmailButton";
-import { Badge, Btn, useDialogA11y } from "@/components/ui";
+import { Badge, Btn, useDialogA11y, useAvisoDeCierre, BotonCerrar } from "@/components/ui";
 import { fullName } from "@/lib/store";
 import { documentoHtml, respuestasParaImprimir, sexoDe } from "@/lib/documentosClinicos";
 import type { Clinic, DocumentoClinico, Patient } from "@/lib/types";
@@ -63,11 +63,12 @@ function HojaImpresa({ doc, clinic, paciente, profesional }: Props) {
 }
 
 export function VisorDocumentoClinico({ doc, clinic, paciente, profesional, onClose }: Props & { onClose: () => void }) {
-  const { titleId, dialogProps } = useDialogA11y(onClose);
+  const { titleId, dialogProps } = useDialogA11y();
+  const { aviso, alTocarElFondo } = useAvisoDeCierre();
   const secciones = respuestasParaImprimir(doc, sexoDe(paciente));
   const fecha = fechaLarga(doc.completedAt ?? doc.createdAt);
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4 print:static print:bg-transparent print:p-0" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4 print:static print:bg-transparent print:p-0" onClick={alTocarElFondo} role="presentation">
       <div
         {...dialogProps}
         className="max-h-[90vh] w-full max-w-3xl overflow-y-auto overscroll-contain rounded bg-white p-6 shadow-pop outline-none print:max-h-none print:w-full print:max-w-none print:rounded-none print:shadow-none"
@@ -82,9 +83,7 @@ export function VisorDocumentoClinico({ doc, clinic, paciente, profesional, onCl
               label="Enviar por correo"
             />
             <Btn variant="outline" onClick={() => window.print()}><Printer aria-hidden className="h-4 w-4" /> Imprimir</Btn>
-            <button onClick={onClose} aria-label="Cerrar" className="grid h-8 w-8 place-items-center rounded-full hover:bg-clinic-bg">
-              <X className="h-4 w-4 text-clinic-muted" />
-            </button>
+            <BotonCerrar onClose={onClose} aviso={aviso} />
           </div>
         </div>
 

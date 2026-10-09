@@ -307,6 +307,17 @@ propio con 308, salvo `/api/` (hay integraciones que la llaman directo). La veri
 del sitemap (correrlo después de publicar). `e2e/seo.spec.ts` cuida título (≤ 70), descripción (70–170), canónica, un solo `<h1>`, `alt` y el `noindex`
 de lo privado.
 
+**Ventanas persistentes (8-oct-2026, pedido de Croman: «que se cierren con cancelar o con la X de arriba, para evitar que se cierren»):**
+ningún diálogo se cierra con un clic afuera ni con Escape (se perdía lo que se estaba cargando); se cierran con la X o con «Cancelar».
+`Modal` (`components/ui.tsx`) ya lo hace; un diálogo con markup propio usa `useDialogA11y()` (sin argumentos: ya no recibe `onClose`) +
+`useAvisoDeCierre()` en el fondo + `BotonCerrar` (un clic afuera marca la X y muestra «Para cerrar, tocá la X o «Cancelar»»). Al abrir, el
+foco va al panel (no a la X: un Enter de más la cerraba), salvo que un campo tenga `autoFocus`. El título con la X queda fijo arriba; para
+una ventana larga, `ModalPie` deja el pie (botones) fijo abajo. En los tests y las capturas del manual, cerrar con la X
+(`getByRole("dialog").getByRole("button", { name: "Cerrar" })`), nunca con `keyboard.press("Escape")`. Los menús (`Desplegable`, la campana)
+siguen cerrándose con Escape y con un clic afuera: no son ventanas. **«Dar cita»:** duración en una sola lista de 15 en 15 minutos
+(`opcionesDeDuracion`, `textoDuracion`), la grilla con un solo scroll y cada día vacío dice por qué (`motivoSinHuecos`: «No atiende», «Ya
+pasó el horario», «No entra en el horario», «Bloqueado», «Sin lugar»); el pie (`data-testid="pie-dar-cita"`) muestra el horario elegido.
+
 ## Diferenciadores (cross-repo con Botika)
 
 Monitor post-op + Negociación de presupuestos: contrato outbox con Botika

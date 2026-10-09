@@ -432,11 +432,7 @@ export default function SettingsModal({
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-        return;
-      }
+      // Novudent: las ventanas son persistentes (Escape no cierra; ver NOTICE.md).
       if (e.key !== "Tab") return;
       const dialog = dialogRef.current;
       if (!dialog) return;
@@ -494,12 +490,7 @@ export default function SettingsModal({
   const current = SETTINGS_TABS.find((tab) => tab.id === activeTab) ?? SETTINGS_TABS[0];
 
   return (
-    <div
-      className="odon-settings-backdrop"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
+    <div className="odon-settings-backdrop">
       <div
         ref={dialogRef}
         className="odon-settings-modal"

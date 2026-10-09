@@ -101,3 +101,7 @@ environment jsdom + `plugins: [react()]`), ver el `README.md` del repo origen.
 - `odontogram.ts` (`#btnResetAll`, oct-2026): «Restablecer boca» borraba las 32 piezas sin preguntar y dejaba «Información dental» con lo
   viejo, porque `setEdentulous(false)` avisa el cambio (`notifyStateChange`) antes de borrar las piezas. Ahora pide confirmación
   (`status.resetAllConfirm`, locales `es` y `en`; los demás caen en inglés) y avisa de nuevo al terminar. Lo cubre `e2e/bugs-datos.spec.ts`.
+- `SettingsModal.tsx` (oct-2026): **ventana persistente**, como todas las de Novudent (pedido de Croman, 8-oct-2026): ni Escape ni un
+  clic en el fondo la cierran; se cierra con su X. Se sacaron el `onMouseDown` del fondo y el `Escape` de `onKeyDown`; los dos tests
+  del origen («closes on Escape / on backdrop click») pasan a decir que queda abierta. Al re-sincronizar con el origen hay que volver a
+  aplicarlo.

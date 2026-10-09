@@ -1,7 +1,7 @@
 "use client";
 /** «Dar cita» (revisión de Novum, 27/9/2026): a la izquierda el formulario —paciente
  *  «CI | Nombre» con «Crear nuevo paciente», tipo de consulta que filtra a los
- *  profesionales por especialidad, procedimiento a realizar, duración en horas y minutos,
+ *  profesionales por especialidad, procedimiento a realizar, duración (de 15 en 15 minutos),
  *  sucursal y box solo si hay más de uno, comentario, sobreagendar, multiconsulta y lista
  *  de espera— y a la derecha la agenda disponible del profesional en los próximos 7 días
  *  (o desde la fecha que se elija en el calendario), con los horarios donde entra la
@@ -9,12 +9,16 @@
  *  los que ya tienen una cita, marcados «Ya hay 1 cita», y la cita queda como sobrecupo
  *  (pedido de Camila, 8-oct-2026). La cita nueva nace «No confirmado»: estado e importe
  *  salen del formulario y se cambian desde la agenda. La lógica de horarios está en
- *  lib/disponibilidad.ts y la del procedimiento, en lib/prestacionesCita.ts. */
+ *  lib/disponibilidad.ts y la del procedimiento, en lib/prestacionesCita.ts.
+ *  Detalles (pedido de Croman, 8-oct-2026): la ventana no se cierra con un clic afuera ni con
+ *  Escape; el pie con el horario elegido y los botones queda fijo abajo; la grilla tiene un
+ *  solo scroll y cada día sin horarios dice por qué («No atiende», «Ya pasó el horario»,
+ *  «Bloqueado», «Sin lugar»). */
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Video, Hourglass, X } from "lucide-react";
 import { useStore, fullName } from "@/lib/store";
 import { useAlcance } from "@/lib/useAlcance";
-import { TIPOS_CONSULTA, especialidadCoincide, huecosDelDia, citasEnElHueco, diasDesde, inicioDe, finDeCita, type TipoConsulta } from "@/lib/disponibilidad";
+import { TIPOS_CONSULTA, TEXTO_SIN_HUECOS, especialidadCoincide, huecosDelDia, motivoSinHuecos, citasEnElHueco, diasDesde, inicioDe, finDeCita, opcionesDeDuracion, textoDuracion, type TipoConsulta } from "@/lib/disponibilidad";
 import { alternarItem, budgetIdDeCita, estaTildado, nombreDelPlan, planesParaCita, prestacionDeItem, textoPrestacion, tituloDeCita } from "@/lib/prestacionesCita";
 import { fechaLocal, parseFecha, esFecha } from "@/lib/tareas";
 import { camposDe, datosPaciente, nuevoPaciente, siguienteCodigo, type ValoresCampos } from "@/lib/camposPaciente";
@@ -24,7 +28,7 @@ import { BuscadorPaciente } from "@/components/BuscadorPaciente";
 import { BuscadorPrestacion } from "@/components/BuscadorPrestacion";
 import { CamposPacienteForm } from "@/components/CamposPacienteForm";
 import type { Appointment, Patient, PrestacionCita } from "@/lib/types";
-import { Btn, Modal, Field, inputCls } from "@/components/ui";
+import { Btn, Modal, ModalPie, Field, inputCls } from "@/components/ui";
 
 type Turno = { fecha: Date; hora: string };
 const clave = (t: Turno) => `${t.fecha.toDateString()} ${t.hora}`;
@@ -54,8 +58,7 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, sobreagendar:
   const [tipo, setTipo] = useState<TipoConsulta>(cita.tipoConsulta ?? "todas");
   const [dentistId, setDentistId] = useState(cita.dentistId);
   const duracionActual = esNueva ? 30 : Math.max(0, Math.round((Date.parse(cita.end) - Date.parse(cita.start)) / 60_000));
-  const [horas, setHoras] = useState(Math.min(8, Math.floor(duracionActual / 60)));
-  const [minutos, setMinutos] = useState(duracionActual % 60);
+  const [duracion, setDuracion] = useState(duracionActual > 0 ? duracionActual : 30);
   const sucursales = db.branches.filter((b) => b.active !== false);
   const [branchId, setBranchId] = useState(cita.branchId ?? sucursales.find((b) => b.isMain)?.id ?? sucursales[0]?.id);
   const boxes = db.boxes;
@@ -91,21 +94,21 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, sobreagendar:
   }, [opciones, dentistId]);
   const dentista = db.users.find((u) => u.id === dentistId);
 
-  const duracion = horas * 60 + minutos;
   const dias = diasDesde(desde, 7);
   const boxElegido = boxes.length > 0 ? boxId : undefined;
   // El horario con el que se abrió (el de la cita que se edita o el tocado en la agenda) se ofrece aunque no caiga en los pasos de 30
   // minutos: sobreagendar una cita de las 09:20 ofrece las 09:20.
   const turnoInicial = !esNueva ? { fecha: medianoche(new Date(cita.start)), hora: horaDe(cita.start) } : preseleccion;
-  const huecos = useMemo(() => {
-    if (!dentistId || duracion <= 0) return dias.map(() => [] as string[]);
+  const [huecos, motivos] = useMemo(() => {
+    if (!dentistId || duracion <= 0) return [dias.map(() => [] as string[]), dias.map(() => null)];
     const ahora = Date.now();
-    return dias.map((d) => huecosDelDia(d, duracion, {
+    const opts = (d: Date) => ({
       dentistId, boxId: boxElegido, citas: db.appointments, ahora,
       horario: dentista?.horario, ignorarId: esNueva ? undefined : cita.id,
       bloqueos: db.agendaBlocks, permitirSuperponer: sobreagendar,
       incluir: turnoInicial && d.toDateString() === turnoInicial.fecha.toDateString() ? [turnoInicial.hora] : undefined,
-    }));
+    });
+    return [dias.map((d) => huecosDelDia(d, duracion, opts(d))), dias.map((d) => motivoSinHuecos(d, duracion, opts(d)))];
   }, [dias.map((d) => d.getTime()).join(","), dentistId, duracion, boxElegido, db.appointments, db.agendaBlocks, sobreagendar, dentista?.horario, esNueva, cita.id, turnoInicial?.hora, turnoInicial?.fecha.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
   /** Cuántas citas del profesional (o del box) ya hay en ese horario: al sobreagendar se marca, y al guardar queda como sobrecupo. */
   const citasEn = (t: Turno) => citasEnElHueco(t.fecha, t.hora, duracion, { dentistId, boxId: boxElegido, citas: db.appointments, ignorarId: esNueva ? undefined : cita.id });
@@ -172,7 +175,7 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, sobreagendar:
         title: titulo,
         tipoConsulta: tipo === "todas" ? undefined : tipo,
         start,
-        end: finDeCita(start, horas, minutos),
+        end: finDeCita(start, 0, duracion),
         status: esNueva ? "pendiente" : cita.status,
         branchId: sucursales.length > 0 ? branchId : undefined,
         boxId: boxElegido,
@@ -191,6 +194,10 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, sobreagendar:
 
   const n = seleccion.length;
   const textoBoton = !esNueva ? "Guardar cambios" : n === 0 && espera ? "Agregar a la lista de espera" : n > 1 ? `Crear ${n} citas` : "Crear cita";
+  const fechaCorta = (d: Date) => d.toLocaleDateString("es-PY", { weekday: "short", day: "numeric", month: "short" }).replace(/\./g, "");
+  const resumen = n === 0
+    ? (espera ? "Sin horario: el paciente queda en la lista de espera." : "Elegí un horario en la agenda disponible.")
+    : `${n === 1 ? "Horario elegido: " : `${n} horarios elegidos: `}${seleccion.map((s) => `${fechaCorta(s.fecha)} ${s.hora}`).join(" · ")} · ${textoDuracion(duracion)}`;
   const rango = `${dias[0].toLocaleDateString("es-PY", { weekday: "short", day: "numeric", month: "short" })} al ${dias[6].toLocaleDateString("es-PY", { weekday: "short", day: "numeric", month: "short" })}`;
 
   return (
@@ -268,22 +275,11 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, sobreagendar:
               {opciones.map((d) => <option key={d.id} value={d.id}>{d.name}{d.specialty ? ` · ${d.specialty}` : ""}</option>)}
             </select>
           </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Duración: horas">
-              <select id="dc-horas" className={inputCls} value={horas} onChange={(e) => setHoras(Number(e.target.value))}>
-                {Array.from({ length: 9 }, (_, h) => <option key={h} value={h}>{h}</option>)}
-              </select>
-            </Field>
-            <Field label="Minutos">
-              <input
-                id="dc-minutos" type="number" inputMode="numeric" min={0} max={60} step={1} className={inputCls} value={minutos}
-                onChange={(e) => {
-                  const v = Math.round(Number(e.target.value.replace(/[^\d]/g, "")) || 0);
-                  setMinutos(Math.max(0, Math.min(60, v)));
-                }}
-              />
-            </Field>
-          </div>
+          <Field label="Duración">
+            <select id="dc-duracion" className={inputCls} value={duracion} onChange={(e) => setDuracion(Number(e.target.value))}>
+              {opcionesDeDuracion(duracionActual).map((m) => <option key={m} value={m}>{textoDuracion(m)}</option>)}
+            </select>
+          </Field>
           {sucursales.length > 1 && (
             <Field label="Sucursal">
               <select id="dc-sucursal" className={inputCls} value={branchId} onChange={(e) => setBranchId(e.target.value)}>
@@ -332,7 +328,7 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, sobreagendar:
         </div>
 
         {/* ===== Agenda disponible ===== */}
-        <section aria-labelledby="dc-grilla" className="min-w-0 space-y-2">
+        <section aria-labelledby="dc-grilla" className="min-w-0 space-y-2 lg:sticky lg:top-16 lg:self-start">
           <div className="flex flex-wrap items-center gap-2">
             <h3 id="dc-grilla" className="text-sm font-bold text-clinic-text">Agenda disponible{dentista ? ` · ${dentista.name}` : ""}</h3>
             <div className="ml-auto flex flex-wrap items-center gap-1">
@@ -351,22 +347,23 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, sobreagendar:
             </div>
           </div>
           <p className="text-xs text-clinic-muted">
-            Del {rango.replace(/\.$/, "")}. Aparecen solo los horarios donde entra una consulta de {[horas > 0 && `${horas} h`, (minutos > 0 || horas === 0) && `${minutos} min`].filter(Boolean).join(" ")}
+            Del {rango.replace(/\.$/, "")}. Aparecen solo los horarios donde entra una consulta de {textoDuracion(duracion)}
             {sobreagendar ? ", también los que ya tienen una cita (con el borde ámbar). Los espacios bloqueados no aparecen." : "."}
           </p>
-          <div className="overflow-x-auto rounded-xl border border-clinic-border">
+          {/* Un solo scroll para toda la semana (antes cada día tenía el suyo) y la cabecera de los días fija arriba. */}
+          <div className="relative max-h-[55vh] overflow-auto overscroll-contain rounded-xl border border-clinic-border lg:max-h-[calc(90vh-17rem)]">
             <div className="grid min-w-[700px] grid-cols-7 divide-x divide-clinic-border">
               {dias.map((d, i) => {
                 const libres = huecos[i] ?? [];
                 return (
                   <div key={d.toDateString()} className="min-w-0">
-                    <div className={`border-b border-clinic-border px-1.5 py-2 text-center ${d.getTime() === hoy.getTime() ? "bg-azure-50" : "bg-clinic-bg/60"}`}>
+                    <div className={`sticky top-0 z-[1] border-b border-clinic-border px-1.5 py-2 text-center ${d.getTime() === hoy.getTime() ? "bg-azure-50" : "bg-clinic-bg"}`}>
                       <div className="text-[13px] font-semibold text-clinic-muted">{d.toLocaleDateString("es-PY", { weekday: "short" })}</div>
                       <div className="text-sm font-bold text-clinic-text">{d.getDate()}/{d.getMonth() + 1}</div>
                     </div>
-                    <div className="max-h-[360px] space-y-1 overflow-y-auto p-1.5">
+                    <div className="space-y-1 p-1.5">
                       {libres.length === 0 ? (
-                        <p className="py-3 text-center text-[11px] text-clinic-muted">{dentistId && duracion > 0 ? "Sin lugar" : "—"}</p>
+                        <p className="py-3 text-center text-[11px] leading-tight text-clinic-muted">{motivos[i] ? TEXTO_SIN_HUECOS[motivos[i]!] : "—"}</p>
                       ) : libres.map((h) => {
                         const t = { fecha: d, hora: h };
                         const elegido = seleccion.some((s) => clave(s) === clave(t));
@@ -396,20 +393,18 @@ export function DarCita({ cita, esNueva, preseleccion, desdeFecha, sobreagendar:
               })}
             </div>
           </div>
-          {n > 0 && (
-            <p className="text-xs text-clinic-text" role="status">
-              {n === 1 ? "Horario elegido: " : `${n} horarios elegidos: `}
-              <b>{seleccion.map((s) => `${s.fecha.toLocaleDateString("es-PY", { weekday: "short", day: "numeric", month: "short" })} ${s.hora}`).join(" · ")}</b>
-            </p>
-          )}
         </section>
       </div>
 
-      {error && <p role="alert" className="mt-4 rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold text-state-err">{error}</p>}
-      <div className="mt-4 flex justify-end gap-2">
-        <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
-        <Btn onClick={guardar}>{textoBoton}</Btn>
-      </div>
+      {/* El pie queda fijo abajo: el horario elegido y los botones se ven sin bajar hasta el final. */}
+      <ModalPie data-testid="pie-dar-cita">
+        {error && <p role="alert" className="mb-2 rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold text-state-err">{error}</p>}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <p role="status" className={`mr-auto w-full min-w-0 text-xs sm:w-auto sm:flex-1 ${n > 0 ? "font-semibold text-clinic-text" : "text-clinic-muted"}`}>{resumen}</p>
+          <Btn variant="outline" onClick={onClose}>Cancelar</Btn>
+          <Btn onClick={guardar}>{textoBoton}</Btn>
+        </div>
+      </ModalPie>
 
       {creandoPaciente && (
         <CrearPaciente
