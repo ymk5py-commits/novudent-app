@@ -1,0 +1,14 @@
+{
+  "porClinica": [
+    "users", "patients", "appointments", "billing", "procedures", "budgets",
+    "payments", "expenses", "stock", "stockMoves", "waitlist", "outbox",
+    "slotLocks", "recoveryMonitors", "radiographs", "signatures", "crmCards",
+    "campaigns", "labOrders", "settlements", "boxes", "patientNotes",
+    "fiscalDocs", "cashSessions", "sterilizationCycles", "teamMessages",
+    "surveys", "surveyResponses", "mgmtTasks", "environmentalLogs", "eduVideos",
+    "branches", "directMessages", "clinicalDocs", "routineChecks", "agendaBlocks"
+  ],
+  "raiz": ["clinics", "directory", "subscriptions", "webhookEvents", "leads", "checkoutTokens"],
+  "noSeMigra": ["serviceAccounts"],
+  "soloServidor": ["slotLocks"]
+}

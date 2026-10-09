@@ -26,8 +26,8 @@ import { doc, getDoc, getDocs, collection, collectionGroup, setDoc, updateDoc, d
 const PROJECT_ID = "novudent-rules-test";
 let testEnv;
 
-/** Las 36 colecciones por clínica que escribe el store (loadFirestore en
- *  lib/store.tsx) + `slotLocks`, que escribe la ruta de reservas online. Se usan
+/** Las 36 colecciones por clínica: las colecciones que carga `leerClinica`
+ *  (lib/backend/firestore.ts) + `slotLocks`, que escribe la ruta de reservas online. Se usan
  *  para barrer el aislamiento colección por colección: alcanza con que UNA se
  *  escape para que se filtre historia clínica entre clínicas. */
 const COLECCIONES_DE_CLINICA = [

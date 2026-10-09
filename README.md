@@ -172,8 +172,8 @@ El orden importa — si te salteás el último paso, **las clínicas reales no g
 demo sí**, lo que enmascara el fallo:
 
 1. `lib/types.ts` — el tipo + sumarlo a la interfaz `DB`
-2. `lib/store.tsx` — `col("<nombre>")` en el `Promise.all` de `loadFirestore` + acciones
-   `add/update/delete` (molde: `addRadiograph`)
+2. `lib/backend/colecciones.json` — el nombre de la colección (`cargarDB` en `lib/backend/carga.ts` lee lo que dice ahí) +
+   `lib/store.tsx`: acciones `add/update/delete` (molde: `addRadiograph`)
 3. `lib/seed.ts` — default `[]`
 4. **`firestore.rules`** — el bloque `match`. Sin esto queda **denegado por default-deny**
 5. **`firebase deploy --only firestore:rules`** ← manual, no lo hace el deploy de Vercel

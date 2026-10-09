@@ -9,8 +9,7 @@
  *  del equipo se escucha en vivo acá; los directos los escucha el store, porque el
  *  contador de no leídos del menú tiene que moverse en cualquier pantalla. */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import { fsdb } from "@/lib/firebase";
+import { backendDeDatos } from "@/lib/backend";
 import { useStore, fmtTime, fmtDate } from "@/lib/store";
 import { can, rolLabel } from "@/lib/rbac";
 import {
@@ -41,9 +40,7 @@ export default function ChatPage() {
   // Canal del equipo en vivo (solo modo Firestore). Si falla, cae a db.teamMessages.
   useEffect(() => {
     if (backend !== "firebase" || !cid) return;
-    const qy = query(collection(fsdb, "clinics", cid, "teamMessages"), orderBy("createdAt", "asc"));
-    const unsub = onSnapshot(qy, (snap) => setLiveEquipo(snap.docs.map((d) => d.data() as TeamMessage)), () => setLiveEquipo(null));
-    return () => unsub();
+    return backendDeDatos.escucharColeccion(cid, "teamMessages", (docs) => setLiveEquipo(docs as unknown as TeamMessage[]), { ordenarPor: "createdAt" }, () => setLiveEquipo(null));
   }, [backend, cid]);
 
   const equipo = useMemo(

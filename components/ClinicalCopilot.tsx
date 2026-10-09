@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { useStore, fmtGs } from "@/lib/store";
 import { useAlcance } from "@/lib/useAlcance";
-import { currentIdToken } from "@/lib/firebase";
+import { backendDeDatos } from "@/lib/backend";
 import { resizeToDataUrl } from "@/lib/image";
 import { Card, Btn, Badge, Empty } from "@/components/ui";
 import { Sparkles, Upload, Loader2, Check, Smile, FileSpreadsheet, AlertTriangle } from "lucide-react";
@@ -41,7 +41,7 @@ export function ClinicalCopilot({ patient }: { patient: Patient }) {
     if (!img) return;
     setBusy(true); setError(null); setRes(null); setDone(null);
     try {
-      const token = await currentIdToken();
+      const token = await backendDeDatos.token();
       const procedures = db.procedures.map((p) => ({ cpt: p.cpt, description: p.description, price: p.price }));
       const r = await fetch("/api/ia/copilot", {
         method: "POST",

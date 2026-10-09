@@ -7,45 +7,10 @@
  * interfaz en ambos modos.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import {
-  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, writeBatch, onSnapshot, query, where, type Query,
-} from "firebase/firestore";
-import { app, fsdb, signInEmail, currentIdToken, signOutUser, currentAuthUid, signInAnonymousIfNeeded } from "./firebase";
+import { backendDeDatos } from "./backend";
+import { cargarDB, opsDeSemilla } from "./backend/carga";
+import { CLINICA_DEMO } from "./backend/constantes";
 
-/** Espera a que Firebase Auth termine de restaurar la sesión guardada.
- *
- *  ⚠️ ACÁ VIVÍA UN `signInAnonymously` Y NO HAY QUE REPONERLO.
- *
- *  Existía porque las reglas desplegadas en producción eran las de por defecto
- *  de Firebase (`allow read, write: if request.auth != null`), o sea que hacía
- *  falta CUALQUIER sesión para leer algo. Con las reglas reales ya desplegadas
- *  eso no aplica: `isDemo(cid)` es `cid == 'cl_demo'` y no pide sesión, y los
- *  usuarios reales entran con email y contraseña.
- *
- *  Y hacía daño de dos formas:
- *
- *  1. ROMPÍA LA SESIÓN REAL. La restauración de Firebase es asíncrona: en una
- *     carga fría `auth.currentUser` es `null` aunque el usuario tenga sesión
- *     válida. El `if (!auth.currentUser) signInAnonymously(...)` se disparaba
- *     entonces y le PISABA la sesión real con una anónima. Con la regla abierta
- *     no se notaba (cualquier sesión servía); con las reglas reales, anónimo no
- *     es miembro de ninguna clínica → Firestore deniega → el store cae a "modo
- *     local" y descarta las escrituras en silencio. Ese era el "entro y no
- *     guarda nada".
- *  2. Dejaba basura: una cuenta anónima nueva por visita. Se habían acumulado
- *     213 de 216 usuarios del proyecto.
- *
- *  Lo que sí hace falta es ESPERAR a que la restauración termine antes de
- *  consultar Firestore, para que `loadFirestore` corra con el usuario de verdad
- *  y no con `null`. */
-async function ensureAuth() {
-  try {
-    const { getAuth } = await import("firebase/auth");
-    await getAuth(app).authStateReady();
-  } catch (e) {
-    console.warn("No se pudo esperar el estado de sesión:", e);
-  }
-}
 import type {
   DB, Session, Appointment, Patient, BillingRecord, User, Procedure, EmrNote, OdontogramStatus, OdontogramToothState, Budget, Payment, Expense, StockItem, StockMove, WaitlistEntry, Prescription, PatientFileRec, OrthoRecord, Clinic, OutboxTask, OutboxResult, RecoveryMonitor, RadiographRec, SignatureDoc, ConsentTemplate, PatientNote, FiscalDoc, CashSession, SterilizationCycle, TeamMessage, DirectMessage, Survey, SurveyResponse, MgmtTask, EnvironmentalLog, EduVideo, Branch, CrmCard, Campaign, LabOrder, Settlement, Box, Subscription,
   DocumentoClinico, RutinaCheck, RolId, QuitaDeLista, AgendaBlock,
@@ -68,13 +33,13 @@ import { aplicarDatosClinica, type DatosClinica } from "./datosClinica";
 
 const DB_KEY = "novudent.db.v4";
 const SES_KEY = "novudent.session.v1";
-const DEMO_CLINIC_ID = "cl_demo";
+const DEMO_CLINIC_ID = CLINICA_DEMO;
 /** Id de la clínica de ejemplo: la pantalla de ingreso lo usa para saber si lo cargado es la demo. */
 export const CLINICA_DEMO_ID = DEMO_CLINIC_ID;
 /** Clínica activa (multi-clínica). Se resuelve desde la sesión guardada antes
- *  de cargar Firestore; cambia al iniciar sesión con una cuenta de otra clínica. */
+ *  de cargar la base; cambia al iniciar sesión con una cuenta de otra clínica. */
 let CLINIC_ID = DEMO_CLINIC_ID;
-/** Moneda activa de la clínica. La setea `loadFirestore` al cargar y
+/** Moneda activa de la clínica. La setea `loadRemote` al cargar y
  *  `updateClinicConfig` al cambiarla; `fmtGs`/`fmtMoney` la consumen. */
 let ACTIVE_CURRENCY: CurrencyCode = DEFAULT_CURRENCY;
 function resolveClinicId(): string {
@@ -85,9 +50,6 @@ function resolveClinicId(): string {
   return DEMO_CLINIC_ID;
 }
 type Backend = "connecting" | "firebase" | "local";
-
-/* Firestore no acepta `undefined` → sanitizamos vía JSON */
-const clean = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
 
 function loadLocal(): DB {
   try {
@@ -102,214 +64,12 @@ function loadLocal(): DB {
   return seed;
 }
 
-async function seedFirestore(seed: DB) {
-  const batch = writeBatch(fsdb);
-  const clinic = seed.clinics[0];
-  batch.set(doc(fsdb, "clinics", CLINIC_ID), clean({ ...clinic, onboarding: seed.onboarding }));
-  for (const u of seed.users) batch.set(doc(fsdb, "clinics", CLINIC_ID, "users", u.id), clean(u));
-  for (const p of seed.patients) batch.set(doc(fsdb, "clinics", CLINIC_ID, "patients", p.id), clean(p));
-  for (const a of seed.appointments) batch.set(doc(fsdb, "clinics", CLINIC_ID, "appointments", a.id), clean(a));
-  for (const b of seed.billing) batch.set(doc(fsdb, "clinics", CLINIC_ID, "billing", b.id), clean(b));
-  for (const pr of seed.procedures) batch.set(doc(fsdb, "clinics", CLINIC_ID, "procedures", pr.cpt), clean(pr));
-  for (const g of seed.budgets) batch.set(doc(fsdb, "clinics", CLINIC_ID, "budgets", g.id), clean(g));
-  for (const p of seed.payments) batch.set(doc(fsdb, "clinics", CLINIC_ID, "payments", p.id), clean(p));
-  for (const e of seed.expenses) batch.set(doc(fsdb, "clinics", CLINIC_ID, "expenses", e.id), clean(e));
-  for (const s of seed.stock) batch.set(doc(fsdb, "clinics", CLINIC_ID, "stock", s.id), clean(s));
-  for (const m of seed.stockMoves) batch.set(doc(fsdb, "clinics", CLINIC_ID, "stockMoves", m.id), clean(m));
-  for (const w of seed.waitlist) batch.set(doc(fsdb, "clinics", CLINIC_ID, "waitlist", w.id), clean(w));
-  for (const t of seed.outbox) batch.set(doc(fsdb, "clinics", CLINIC_ID, "outbox", t.id), clean(t));
-  for (const n of seed.patientNotes) batch.set(doc(fsdb, "clinics", CLINIC_ID, "patientNotes", n.id), clean(n));
-  for (const d of seed.fiscalDocs) batch.set(doc(fsdb, "clinics", CLINIC_ID, "fiscalDocs", d.id), clean(d));
-  for (const cs of seed.cashSessions) batch.set(doc(fsdb, "clinics", CLINIC_ID, "cashSessions", cs.id), clean(cs));
-  for (const sc of seed.sterilizationCycles) batch.set(doc(fsdb, "clinics", CLINIC_ID, "sterilizationCycles", sc.id), clean(sc));
-  for (const tm of seed.teamMessages) batch.set(doc(fsdb, "clinics", CLINIC_ID, "teamMessages", tm.id), clean(tm));
-  for (const dm of seed.directMessages) batch.set(doc(fsdb, "clinics", CLINIC_ID, "directMessages", dm.id), clean(dm));
-  for (const s of seed.surveys) batch.set(doc(fsdb, "clinics", CLINIC_ID, "surveys", s.id), clean(s));
-  for (const r of seed.surveyResponses) batch.set(doc(fsdb, "clinics", CLINIC_ID, "surveyResponses", r.id), clean(r));
-  for (const mt of seed.mgmtTasks) batch.set(doc(fsdb, "clinics", CLINIC_ID, "mgmtTasks", mt.id), clean(mt));
-  for (const e of seed.environmentalLogs) batch.set(doc(fsdb, "clinics", CLINIC_ID, "environmentalLogs", e.id), clean(e));
-  for (const v of seed.eduVideos) batch.set(doc(fsdb, "clinics", CLINIC_ID, "eduVideos", v.id), clean(v));
-  for (const br of seed.branches) batch.set(doc(fsdb, "clinics", CLINIC_ID, "branches", br.id), clean(br));
-  for (const cd of seed.clinicalDocs) batch.set(doc(fsdb, "clinics", CLINIC_ID, "clinicalDocs", cd.id), clean(cd));
-  for (const rc of seed.routineChecks) batch.set(doc(fsdb, "clinics", CLINIC_ID, "routineChecks", rc.id), clean(rc));
-  for (const ab of seed.agendaBlocks) batch.set(doc(fsdb, "clinics", CLINIC_ID, "agendaBlocks", ab.id), clean(ab));
-  await batch.commit();
-}
-
-async function loadFirestore(): Promise<DB> {
-  const clinicSnap = await getDoc(doc(fsdb, "clinics", CLINIC_ID));
-  if (!clinicSnap.exists()) {
-    /* Solo la clínica demo se auto-siembra. Una clínica real inexistente
-     * significa sesión huérfana → el caller limpia y vuelve a la demo. */
-    if (CLINIC_ID !== DEMO_CLINIC_ID) throw new Error("CLINICA_NO_ENCONTRADA");
-    const seed = buildSeed();
-    await seedFirestore(seed);
-    return seed;
-  }
-  const meta = clinicSnap.data() as any;
-  /* Suscripción SaaS: colección RAÍZ, solo-lectura para el cliente (la escribe
-   * el webhook con el usuario de servicio). Si no existe, la clínica es
-   * anterior al cobro → grandfathered (ver lib/subscription.ts). */
-  const subSnap = await getDoc(doc(fsdb, "subscriptions", CLINIC_ID)).catch(() => null);
-  /* Una colección que el ROL no tiene permiso de leer devuelve vacío, no rompe.
-   *
-   * Esto no es defensa preventiva: sin el catch, Novudent queda INUTILIZABLE
-   * para dentistas y asistentes en cuanto se despliegan las reglas de RBAC.
-   * Las 32 colecciones se piden en un solo `Promise.all`, que rechaza al primer
-   * error; `expenses` y `settlements` son admin-only por regla, así que el
-   * permission-denied de un dentista tumbaba el arranque ENTERO y lo mandaba a
-   * "modo local". O sea: la clínica compra el sistema y solo el dueño puede
-   * entrar. Que no se haya notado todavía es porque las reglas del 30-jul
-   * pueden no estar desplegadas — el bug estaba armado esperando ese deploy.
-   *
-   * Devolver vacío es lo correcto, no un parche: que una asistente no vea los
-   * gastos ES la regla de negocio. La interfaz ya esconde esas pantallas por
-   * `can(role, …)`, así que una lista vacía es exactamente lo que corresponde. */
-  const leer = async (ref: Query) => {
-    try {
-      return await getDocs(ref);
-    } catch (e: any) {
-      if (e?.code === "permission-denied") return null;
-      throw e; // red caída, cuota, config rota: eso sí tiene que explotar
-    }
-  };
-  const col = (name: string) => leer(collection(fsdb, "clinics", CLINIC_ID, name));
-  /** `.docs` de un snapshot que puede no haberse podido leer. */
-  const filas = <T,>(snap: { docs: { data: () => unknown }[] } | null): T[] =>
-    snap ? snap.docs.map((d) => d.data() as T) : [];
-  const usersP = col("users");
-  /* Mensajes directos del chat: la ÚNICA colección de la clínica que un miembro no
-   * lee entera. Un directo es de sus dos participantes y del admin
-   * (firestore.rules), y como las reglas NO son filtros, pedir la colección
-   * completa siendo recepcionista no devuelve "lo suyo": Firestore rechaza la
-   * consulta ENTERA (y el `leer` de arriba la dejaría vacía). Cada uno pide sus
-   * conversaciones con `participants array-contains <su uid>`; la colección
-   * completa queda para el admin y para la demo, que es pública.
-   *
-   * El rol sale del padrón que se está cargando —la misma fuente que usan las
-   * reglas— y no de la sesión de localStorage, que se edita a mano. En una clínica
-   * real el id del usuario ES su uid de Firebase (users/{uid}, lo que mira
-   * isMember), así que `participants` y `request.auth.uid` hablan de lo mismo. */
-  const directosP = (async () => {
-    const ref = collection(fsdb, "clinics", CLINIC_ID, "directMessages");
-    if (CLINIC_ID === DEMO_CLINIC_ID) return leer(ref);
-    const uid = await currentAuthUid();
-    const yo = uid ? filas<User>(await usersP).find((u) => u.id === uid) : undefined;
-    if (!uid || !yo || yo.active === false) return null;
-    return leer(can(yo.role, "users.manage") ? ref : query(ref, where("participants", "array-contains", uid)));
-  })();
-  const [users, patients, appointments, billing, procedures, budgets, payments, expenses, stock, stockMoves, waitlist, outbox, recoveryMonitors, radiographs, signatures, crmCards, campaigns, labOrders, settlements, boxes, patientNotes, fiscalDocs, cashSessions, sterilizationCycles, teamMessages, surveys, surveyResponses, mgmtTasks, environmentalLogs, eduVideos, branches, directMessages, clinicalDocs, routineChecks, agendaBlocks] = await Promise.all([
-    usersP, col("patients"), col("appointments"), col("billing"), col("procedures"),
-    col("budgets"), col("payments"), col("expenses"), col("stock"), col("stockMoves"), col("waitlist"), col("outbox"), col("recoveryMonitors"), col("radiographs"), col("signatures"),
-    col("crmCards"), col("campaigns"), col("labOrders"), col("settlements"), col("boxes"), col("patientNotes"), col("fiscalDocs"), col("cashSessions"), col("sterilizationCycles"), col("teamMessages"), col("surveys"), col("surveyResponses"), col("mgmtTasks"), col("environmentalLogs"), col("eduVideos"), col("branches"),
-    directosP,
-    col("clinicalDocs"),
-    col("routineChecks"),
-    // Sin la regla publicada, `leer` devuelve null (permission-denied) y la agenda arranca sin bloqueos en vez de romper la carga.
-    col("agendaBlocks"),
-  ]);
-  const db: DB = {
-    clinics: [{ id: CLINIC_ID, name: meta.name, plan: meta.plan, config: meta.config }],
-    users: filas<User>(users),
-    patients: filas<Patient>(patients),
-    appointments: filas<Appointment>(appointments),
-    billing: filas<BillingRecord>(billing),
-    procedures: filas<Procedure>(procedures),
-    budgets: filas<Budget>(budgets),
-    payments: filas<Payment>(payments),
-    expenses: filas<Expense>(expenses),
-    stock: filas<StockItem>(stock),
-    stockMoves: filas<StockMove>(stockMoves),
-    waitlist: filas<WaitlistEntry>(waitlist),
-    outbox: filas<OutboxTask>(outbox),
-    recoveryMonitors: filas<RecoveryMonitor>(recoveryMonitors),
-    radiographs: filas<RadiographRec>(radiographs),
-    signatures: filas<SignatureDoc>(signatures),
-    crmCards: filas<CrmCard>(crmCards),
-    campaigns: filas<Campaign>(campaigns),
-    labOrders: filas<LabOrder>(labOrders),
-    settlements: filas<Settlement>(settlements),
-    boxes: filas<Box>(boxes),
-    patientNotes: filas<PatientNote>(patientNotes),
-    fiscalDocs: filas<FiscalDoc>(fiscalDocs),
-    cashSessions: filas<CashSession>(cashSessions),
-    sterilizationCycles: filas<SterilizationCycle>(sterilizationCycles),
-    teamMessages: filas<TeamMessage>(teamMessages),
-    directMessages: filas<DirectMessage>(directMessages),
-    clinicalDocs: filas<DocumentoClinico>(clinicalDocs),
-    routineChecks: filas<RutinaCheck>(routineChecks),
-    agendaBlocks: filas<AgendaBlock>(agendaBlocks),
-    surveys: filas<Survey>(surveys),
-    surveyResponses: filas<SurveyResponse>(surveyResponses),
-    mgmtTasks: filas<MgmtTask>(mgmtTasks),
-    environmentalLogs: filas<EnvironmentalLog>(environmentalLogs),
-    eduVideos: filas<EduVideo>(eduVideos),
-    branches: filas<Branch>(branches),
-    onboarding: meta.onboarding ?? { usersCreated: false, servicesDefined: false, tourDone: false },
-    subscription: subSnap?.exists() ? (subSnap.data() as Subscription) : null,
-  };
-  ACTIVE_CURRENCY = (db.clinics[0]?.config?.currency as CurrencyCode) ?? DEFAULT_CURRENCY;
-  /* Upgrade v3: bases creadas antes de los módulos nuevos — sembramos
-   * presupuestos/caja/inventario/espera demo una sola vez. SOLO en la demo:
-   * una clínica real recién creada está vacía a propósito. */
-  if (CLINIC_ID === DEMO_CLINIC_ID && db.budgets.length === 0 && db.stock.length === 0) {
-    const seed = buildSeed();
-    const batch = writeBatch(fsdb);
-    for (const g of seed.budgets) batch.set(doc(fsdb, "clinics", CLINIC_ID, "budgets", g.id), clean(g));
-    for (const p of seed.payments) batch.set(doc(fsdb, "clinics", CLINIC_ID, "payments", p.id), clean(p));
-    for (const e of seed.expenses) batch.set(doc(fsdb, "clinics", CLINIC_ID, "expenses", e.id), clean(e));
-    for (const s of seed.stock) batch.set(doc(fsdb, "clinics", CLINIC_ID, "stock", s.id), clean(s));
-    for (const m of seed.stockMoves) batch.set(doc(fsdb, "clinics", CLINIC_ID, "stockMoves", m.id), clean(m));
-    for (const w of seed.waitlist) batch.set(doc(fsdb, "clinics", CLINIC_ID, "waitlist", w.id), clean(w));
-    /* enriquecer config (convenios/plantilla) y pacientes demo (recetas/ortodoncia) si faltan */
-    const cfg = { ...seed.clinics[0].config, ...db.clinics[0].config };
-    if (!db.clinics[0].config?.convenios) {
-      batch.set(doc(fsdb, "clinics", CLINIC_ID), clean({ config: cfg }), { merge: true });
-      db.clinics[0].config = cfg;
-    }
-    db.patients = db.patients.map((p) => {
-      const sp = seed.patients.find((x) => x.id === p.id);
-      if (!sp) return p;
-      const upgraded = { ...p, prescriptions: p.prescriptions ?? sp.prescriptions, ortho: p.ortho ?? sp.ortho };
-      if (upgraded !== p && (sp.prescriptions || sp.ortho)) batch.set(doc(fsdb, "clinics", CLINIC_ID, "patients", p.id), clean(upgraded));
-      return upgraded;
-    });
-    db.users = db.users.map((u) => {
-      const su = seed.users.find((x) => x.id === u.id);
-      if (su?.commissionPct && u.commissionPct === undefined) {
-        const up = { ...u, commissionPct: su.commissionPct };
-        batch.set(doc(fsdb, "clinics", CLINIC_ID, "users", u.id), clean(up));
-        return up;
-      }
-      return u;
-    });
-    await batch.commit().catch((e) => console.warn("upgrade v3", e));
-    db.budgets = seed.budgets; db.payments = seed.payments; db.expenses = seed.expenses;
-    db.stock = seed.stock; db.stockMoves = seed.stockMoves; db.waitlist = seed.waitlist;
-  }
-  /* Upgrade v4: integración Botika (outbox + NPS + config) — solo demo */
-  if (CLINIC_ID === DEMO_CLINIC_ID && db.outbox.length === 0) {
-    const seed = buildSeed();
-    const batch = writeBatch(fsdb);
-    for (const t of seed.outbox) batch.set(doc(fsdb, "clinics", CLINIC_ID, "outbox", t.id), clean(t));
-    if (!db.clinics[0].config?.botika) {
-      const cfg = { ...db.clinics[0].config, botika: seed.clinics[0].config.botika };
-      batch.set(doc(fsdb, "clinics", CLINIC_ID), clean({ config: cfg }), { merge: true });
-      db.clinics[0].config = cfg;
-    }
-    db.patients = db.patients.map((p) => {
-      const sp = seed.patients.find((x) => x.id === p.id);
-      if (sp?.nps && !p.nps) {
-        const up = { ...p, nps: sp.nps };
-        batch.set(doc(fsdb, "clinics", CLINIC_ID, "patients", p.id), clean(up));
-        return up;
-      }
-      return p;
-    });
-    await batch.commit().catch((e) => console.warn("upgrade v4", e));
-    db.outbox = seed.outbox;
-  }
-  return db;
+/** Carga la clínica activa (`CLINIC_ID`) desde la base y deja lista su moneda. Qué se lee, cómo se arma la `DB` y qué se siembra o se pone al
+ *  día en la demo: lib/backend/carga.ts (`cargarDB`). */
+async function loadRemote(): Promise<DB> {
+  const remota = await cargarDB(backendDeDatos, CLINIC_ID);
+  ACTIVE_CURRENCY = (remota.clinics[0]?.config?.currency as CurrencyCode) ?? DEFAULT_CURRENCY;
+  return remota;
 }
 
 const withTimeout = <T,>(p: Promise<T>, ms: number) =>
@@ -633,7 +393,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
      * calculan en el cliente. La demo (`cl_demo`) se restaura sin auth a
      * propósito: no tiene cuentas, se entra clickeando un rol. */
     if (guardada && guardada.clinicId !== DEMO_CLINIC_ID) {
-      void currentAuthUid().then((uid) => {
+      void backendDeDatos.usuarioActual().then((uid) => {
         if (uid && uid === guardada!.userId) setSession(guardada);
         else {
           localStorage.removeItem(SES_KEY);
@@ -647,17 +407,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     CLINIC_ID = resolveClinicId();
     (async () => {
       try {
-        await withTimeout(ensureAuth(), 6000).catch(() => {});
+        await withTimeout(backendDeDatos.esperarSesion(), 6000).catch(() => {});
         let remote: DB;
         try {
-          remote = await withTimeout(loadFirestore(), 9000);
+          remote = await withTimeout(loadRemote(), 9000);
         } catch (e: any) {
           if (String(e?.message).includes("CLINICA_NO_ENCONTRADA")) {
             // sesión apunta a una clínica que ya no existe → limpiar y volver a la demo
             localStorage.removeItem(SES_KEY);
             setSession(null);
             CLINIC_ID = DEMO_CLINIC_ID;
-            remote = await withTimeout(loadFirestore(), 9000);
+            remote = await withTimeout(loadRemote(), 9000);
           } else throw e;
         }
         setDb(remote);
@@ -716,7 +476,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   /* ===== Tiempo real: suscripción (plan pagado) =====
    * `subscriptions/{cid}` la escribe SOLO el webhook de Lemon Squeezy — nunca el
    * cliente (firestore.rules). Antes se leía una vez con getDoc al cargar
-   * loadFirestore y quedaba congelada en memoria: alguien pagaba una mejora de
+   * cargarDB y quedaba congelada en memoria: alguien pagaba una mejora de
    * plan con la pestaña abierta y el sistema seguía negándole los módulos y
    * usuarios del plan nuevo hasta que recargaba a mano. Con onSnapshot el pago
    * se refleja apenas el webhook escribe, sin F5 — mismo patrón que el outbox
@@ -724,21 +484,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (backend !== "firebase") return;
     const cid = activeClinicId;
-    const unsub = onSnapshot(
-      doc(fsdb, "subscriptions", cid),
-      (snap) => {
+    return backendDeDatos.escucharSuscripcion(
+      cid,
+      (suscripcion) => {
         setDb((prev) => {
           // La clínica activa ya cambió (login multi-clínica): ignorar snapshot tardío.
           if ((prev.clinics[0]?.id ?? cid) !== cid) return prev;
-          const subscription = snap.exists() ? (snap.data() as Subscription) : null;
-          const next = { ...prev, subscription };
+          const next = { ...prev, subscription: suscripcion as Subscription | null };
           try { localStorage.setItem(DB_KEY, JSON.stringify(next)); } catch {}
           return next;
         });
       },
       (e) => console.warn("listener subscription:", e)
     );
-    return unsub;
   }, [backend, activeClinicId]);
 
   /* ===== Tiempo real: permisos y roles del equipo =====
@@ -751,10 +509,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (backend !== "firebase") return;
     const cid = activeClinicId;
-    const unsub = onSnapshot(
-      doc(fsdb, "clinics", cid),
-      (snap) => {
-        const remota = (snap.data() as { config?: { permisos?: unknown; rolesPropios?: unknown; nombresDeRoles?: unknown } } | undefined)?.config;
+    return backendDeDatos.escucharClinica(
+      cid,
+      (clinicaRemota) => {
+        const remota = (clinicaRemota as { config?: { permisos?: unknown; rolesPropios?: unknown; nombresDeRoles?: unknown } } | null)?.config;
         setDb((prev) => {
           if ((prev.clinics[0]?.id ?? cid) !== cid) return prev; // snapshot tardío de otra clínica
           const clinica = prev.clinics[0];
@@ -772,7 +530,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
       (e) => console.warn("listener roles:", e)
     );
-    return unsub;
   }, [backend, activeClinicId]);
 
   /* ===== Tiempo real: outbox de Botika =====
@@ -783,12 +540,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // Fijamos el id de la clínica al suscribir: la suscripción y los writes del
     // callback usan SIEMPRE el mismo `cid`, aunque la clínica activa cambie.
     const cid = activeClinicId;
-    const unsub = onSnapshot(
-      collection(fsdb, "clinics", cid, "outbox"),
-      (snap) => {
-        const incoming = snap.docs
-          .map((d) => d.data() as OutboxTask)
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return backendDeDatos.escucharColeccion(
+      cid,
+      "outbox",
+      (docs) => {
+        const incoming = [...(docs as unknown as OutboxTask[])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         setDb((prev) => {
           // Si la clínica activa ya cambió, ignoramos snapshots tardíos de la vieja.
           if ((prev.clinics[0]?.id ?? cid) !== cid) return prev;
@@ -798,36 +554,36 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             const r = reflectOutbox(next, t);
             next = r.next;
             r.saves.forEach(([c, i, d]) =>
-              setDoc(doc(fsdb, "clinics", cid, c, i), clean(d)).catch(() => {})
+              backendDeDatos.guardar(cid, c, i, d).catch(() => {})
             );
           }
           try { localStorage.setItem(DB_KEY, JSON.stringify(next)); } catch {}
           return next;
         });
       },
+      undefined,
       (e) => console.warn("listener outbox:", e)
     );
-    return unsub;
     // re-suscribir si cambia la clínica cargada (login multi-clínica)
   }, [backend, activeClinicId]);
 
   /* ===== Tiempo real: mensajes directos del chat =====
    * Un directo tiene que llegar sin F5, y el contador de no leídos del menú tiene
    * que moverse en cualquier pantalla: por eso escucha el store y no la página del
-   * chat. Misma consulta que loadFirestore (ver ahí por qué un no-admin NO puede
-   * pedir la colección entera). En una clínica real `session.userId` es el uid de
+   * chat. Misma consulta que `cargarDB` (ver `filtroDeDirectos` en lib/backend/carga.ts por qué un
+   * no-admin NO puede pedir la colección entera). En una clínica real `session.userId` es el uid de
    * Firebase: la sesión solo se restaura si coincide (ver el primer efecto). */
   const sesionUid = session?.userId;
   const sesionRol = session?.role;
   useEffect(() => {
     if (backend !== "firebase" || !sesionUid || !sesionRol) return;
     const cid = activeClinicId;
-    const ref = collection(fsdb, "clinics", cid, "directMessages");
     const todos = cid === DEMO_CLINIC_ID || can(sesionRol, "users.manage");
-    const unsub = onSnapshot(
-      todos ? ref : query(ref, where("participants", "array-contains", sesionUid)),
-      (snap) => {
-        const directMessages = snap.docs.map((d) => d.data() as DirectMessage);
+    return backendDeDatos.escucharColeccion(
+      cid,
+      "directMessages",
+      (docs) => {
+        const directMessages = docs as unknown as DirectMessage[];
         setDb((prev) => {
           if ((prev.clinics[0]?.id ?? cid) !== cid) return prev; // snapshot tardío de otra clínica
           const next = { ...prev, directMessages };
@@ -835,9 +591,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           return next;
         });
       },
+      todos ? undefined : { participante: sesionUid },
       (e) => console.warn("listener directMessages:", e)
     );
-    return unsub;
   }, [backend, activeClinicId, sesionUid, sesionRol]);
 
   /* write-through a Firestore (no-op en modo local). Siempre escribe en la
@@ -858,8 +614,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // Un id vacío hace crashear a Firestore doc() (ResourcePath.fromString(undefined));
     // guardá acá para que un doc mal formado nunca tumbe una operación de escritura.
     if (!id) { console.warn("fsSave: id vacío, se omite", colName); return; }
-    const escribir = () =>
-      setDoc(doc(fsdb, "clinics", clinicIdRef.current, colName, id), clean(data));
+    const escribir = () => backendDeDatos.guardar(clinicIdRef.current, colName, id, data);
     escribir().then(
       () => resolverFallo(`${colName}/${id}`), // se recuperó: sacá el aviso
       (e) => {
@@ -878,7 +633,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const fsDelete = useCallback((colName: string, id: string) => {
     if (backendRef.current !== "firebase") return;
     if (!id) { console.warn("fsDelete: id vacío, se omite", colName); return; }
-    const borrar = () => deleteDoc(doc(fsdb, "clinics", clinicIdRef.current, colName, id));
+    const borrar = () => backendDeDatos.quitar(clinicIdRef.current, colName, id);
     borrar().then(
       () => resolverFallo(`${colName}/${id}`),
       (e) => {
@@ -897,8 +652,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const fsCampo = useCallback((colName: string, id: string, campo: string, valor: unknown) => {
     if (backendRef.current !== "firebase") return;
     if (!id) { console.warn("fsCampo: id vacío, se omite", colName); return; }
-    // `clean` pasa el valor por JSON (saca los `undefined`) y rompería el marcador de `deleteField()`: por eso se lo aplica solo al valor.
-    const escribir = () => updateDoc(doc(fsdb, "clinics", clinicIdRef.current, colName, id), { [campo]: valor === undefined ? deleteField() : clean(valor) });
+    const escribir = () => backendDeDatos.fijarCampo(clinicIdRef.current, colName, id, campo, valor);
     escribir().then(
       () => resolverFallo(`${colName}/${id}`),
       (e) => {
@@ -920,12 +674,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (backendRef.current !== "firebase") return Promise.resolve(true);
     const c = dbNow.clinics[0];
     if (!c) return Promise.resolve(true);
-    const cuerpo = (d: DB) => clean({ ...d.clinics[0], onboarding: d.onboarding });
+    const cuerpo = (d: DB) => ({ ...d.clinics[0], onboarding: d.onboarding });
     return vigilarEscritura({
       coleccion: "clinics",
       docId: c.id,
-      escribir: () => setDoc(doc(fsdb, "clinics", c.id), cuerpo(dbNow), { merge: true }),
-      reintentar: () => (dbRef.current.clinics[0] ? setDoc(doc(fsdb, "clinics", c.id), cuerpo(dbRef.current), { merge: true }) : Promise.resolve()),
+      escribir: () => backendDeDatos.mezclarClinica(c.id, cuerpo(dbNow)),
+      reintentar: () => (dbRef.current.clinics[0] ? backendDeDatos.mezclarClinica(c.id, cuerpo(dbRef.current)) : Promise.resolve()),
     });
   }, []);
 
@@ -959,14 +713,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
          * la cuota del mismo proyecto Firebase que usan las clínicas reales.
          *
          * Se hace acá y no en el arranque: solo cuando alguien entra de verdad a
-         * la demo. Ver el comentario de `signInAnonymousIfNeeded`. */
-        if (u.clinicId === DEMO_CLINIC_ID) await signInAnonymousIfNeeded();
+         * la demo. Ver el comentario de `signInAnonymousIfNeeded` en lib/firebase.ts. */
+        if (u.clinicId === DEMO_CLINIC_ID) await backendDeDatos.iniciarSesionDeDemo();
         const s: Session = { userId: u.id, clinicId: u.clinicId, role: u.role, name: u.name };
         setSession(s);
         localStorage.setItem(SES_KEY, JSON.stringify(s));
       },
       loginWithEmail: async (email, password) => {
-        const uid = await signInEmail(email, password); // lanza error de Firebase si falla
+        const uid = await backendDeDatos.iniciarSesion(email, password); // lanza error de Firebase si falla
 
         /* ESPERAR A QUE EL TOKEN LLEGUE A FIRESTORE.
          *
@@ -981,7 +735,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
          * y las reglas desplegadas aceptaban cualquier sesión: siempre había un
          * token. Al sacar la anónima y desplegar las reglas de verdad, quedó al
          * descubierto. */
-        await currentAuthUid();
+        await backendDeDatos.usuarioActual();
 
         /* IDENTIDAD POR uid, NUNCA POR EMAIL CONTRA LO QUE ESTÉ CARGADO.
          *
@@ -1006,8 +760,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           /* Multi-clínica: la cuenta pertenece a la clínica que diga el
            * directorio global (uid → clinicId). */
           let dirErr: unknown = null;
-          const dir = await getDoc(doc(fsdb, "directory", uid)).catch((e) => { dirErr = e; return null; });
-          const clinicId = dir?.exists() ? (dir.data() as any).clinicId : null;
+          const clinicId = await backendDeDatos.clinicaDelUsuario(uid).catch((e) => { dirErr = e; return null; });
 
           if (dirErr) {
             /* Antes esto se descartaba en silencio y el usuario recibía el
@@ -1027,7 +780,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           if (clinicId) {
             const anterior = CLINIC_ID;
             CLINIC_ID = clinicId;
-            const remote = await loadFirestore();
+            const remote = await loadRemote();
             u =
               remote.users.find((x) => x.authUid === uid) ??
               remote.users.find((x) => x.email.toLowerCase() === email.toLowerCase());
@@ -1056,7 +809,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (!session || session.clinicId !== cid || !can(session.role, "users.manage")) {
           throw new Error("Tu sesión no tiene permiso para crear usuarios en esta clínica.");
         }
-        const token = await currentIdToken();
+        const token = await backendDeDatos.token();
         if (!token) throw new Error("Tu sesión expiró. Volvé a iniciar sesión.");
         const res = await fetch("/api/team-users", {
           method: "POST",
@@ -1073,7 +826,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // El cambio ocurre EN EL SERVIDOR: rota la contraseña en Firebase Auth y
         // recién entonces limpia mustChangePassword (que es inmutable desde el
         // cliente por reglas). Así el gate no se puede saltar sin cambiar la clave.
-        const token = await currentIdToken();
+        const token = await backendDeDatos.token();
         if (!token) throw new Error("No hay sesión activa. Volvé a iniciar sesión.");
         const res = await fetch("/api/change-password", {
           method: "POST",
@@ -1092,7 +845,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }
       },
       /* Cerrar sesión de verdad, en este orden:
-       *   1. `signOutUser()` mata la credencial de Firebase Auth. Sin esto el
+       *   1. `backendDeDatos.cerrarSesion()` mata la credencial de Firebase Auth. Sin esto el
        *      logout era cosmético: la uid seguía autenticada en IndexedDB y
        *      cualquiera en esa PC volvía a entrar reescribiendo la clave de
        *      sesión en localStorage, o leía el padrón entero desde la consola.
@@ -1103,7 +856,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
        * en vivo, que si no seguían reescribiendo el padrón a localStorage
        * después de haberlo borrado. */
       logout: () => {
-        void signOutUser().catch((e) => console.warn("signOut:", e));
+        void backendDeDatos.cerrarSesion().catch((e) => console.warn("signOut:", e));
         localStorage.removeItem(SES_KEY);
         try { localStorage.removeItem(DB_KEY); } catch { /* ignore */ }
         setSession(null);
@@ -1113,14 +866,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
        * esconde) y decía «La demo está vacía», y «Restaurar datos de demo» no hacía nada porque
        * jamás siembra sobre una clínica real. Esto cierra esa sesión y carga la demo. */
       entrarEnDemo: async () => {
-        void signOutUser().catch((e) => console.warn("signOut:", e));
+        void backendDeDatos.cerrarSesion().catch((e) => console.warn("signOut:", e));
         localStorage.removeItem(SES_KEY);
         try { localStorage.removeItem(DB_KEY); } catch { /* ignore */ }
         setSession(null);
         CLINIC_ID = DEMO_CLINIC_ID;
         try {
-          await withTimeout(ensureAuth(), 6000).catch(() => {});
-          setDb(await withTimeout(loadFirestore(), 9000));
+          await withTimeout(backendDeDatos.esperarSesion(), 6000).catch(() => {});
+          setDb(await withTimeout(loadRemote(), 9000));
           setBackend("firebase");
         } catch (e) {
           console.warn("Firestore no disponible — usando modo local:", e);
@@ -1130,15 +883,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       },
       seedDemo: async () => {
         if (clinicIdRef.current !== DEMO_CLINIC_ID) return; // jamás sobre una clínica real
-        CLINIC_ID = DEMO_CLINIC_ID; // seedFirestore escribe en CLINIC_ID — lo forzamos a demo
+        CLINIC_ID = DEMO_CLINIC_ID; // la clínica activa pasa a ser la demo
         const seed = buildSeed();
-        if (backendRef.current === "firebase") await seedFirestore(seed).catch((e) => console.warn("seedDemo", e));
+        if (backendRef.current === "firebase") await backendDeDatos.lote(DEMO_CLINIC_ID, opsDeSemilla(seed)).catch((e) => console.warn("seedDemo", e));
         const realUsers = db.users.filter((u) => u.authUid && !seed.users.some((s) => s.id === u.id));
         persist({ ...seed, users: [...seed.users, ...realUsers] });
       },
       resetDemo: () => {
         if (clinicIdRef.current !== DEMO_CLINIC_ID) return; // jamás sobre una clínica real
-        CLINIC_ID = DEMO_CLINIC_ID; // seedFirestore/fsDelete operan sobre demo
+        CLINIC_ID = DEMO_CLINIC_ID; // la clínica activa pasa a ser la demo
         const seed = buildSeed();
         if (backendRef.current === "firebase") {
           // borrar extras y reescribir semilla
@@ -1167,7 +920,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           delExtras("routineChecks", db.routineChecks.map((x) => x.id), seed.routineChecks.map((x) => x.id));
           // Los espacios que bloquearon los visitantes de la demo.
           delExtras("agendaBlocks", db.agendaBlocks.map((x) => x.id), seed.agendaBlocks.map((x) => x.id));
-          seedFirestore(seed).catch(() => {});
+          backendDeDatos.lote(DEMO_CLINIC_ID, opsDeSemilla(seed)).catch(() => {});
         }
         persist(seed);
       },

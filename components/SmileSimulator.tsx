@@ -3,7 +3,7 @@
  *  foto del paciente usando el modelo de generación de imagen de Gemini
  *  (/api/ia/simulador). Es una estimación, no un resultado garantizado. */
 import { useState } from "react";
-import { currentIdToken } from "@/lib/firebase";
+import { backendDeDatos } from "@/lib/backend";
 import { resizeToDataUrl } from "@/lib/image";
 import { Btn } from "@/components/ui";
 import { Sparkles, Upload, Loader2, Download, Save } from "lucide-react";
@@ -49,7 +49,7 @@ export function SmileSimulator({ onSave }: { onSave?: (dataUrl: string, label: s
     if (!src) return;
     setBusy(true); setError(null); setResult(null);
     try {
-      const token = await currentIdToken();
+      const token = await backendDeDatos.token();
       const res = await fetch("/api/ia/simulador", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },

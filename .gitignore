@@ -27,3 +27,9 @@ firestore-debug.log
 
 # Manual de procedimientos: capturas, HTML y PDF se regeneran (npm run manual:capturas && npm run manual:pdf)
 /docs/manual/salida/
+
+# Exportación de Firestore (datos de pacientes): jamás al repositorio
+/novudent-export*/
+*.jsonl
+manifiesto.json
+informe-de-volumen.md

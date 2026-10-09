@@ -28,8 +28,8 @@ desde `main`.
 
 ## Patrones (seguir al agregar features)
 
-- **Colección nueva por clínica:** sumar `col("<nombre>")` al `Promise.all` de
-  `loadFirestore()` + al `DB`; default `[]` en `lib/seed.ts`; acciones
+- **Colección nueva por clínica:** sumar su nombre a `lib/backend/colecciones.json`
+  (el manifiesto: `COLECCIONES_DE_LA_TIENDA` es lo que lee `leerClinica`) + al `DB`; default `[]` en `lib/seed.ts`; acciones
   `add/update/delete` en el store (molde `addRadiograph`). **Y agregar la regla** en
   `firestore.rules`: `match /<col>/{id} { allow read, write: if isMember(cid) ||
   isService() || isDemo(cid); }` — si te olvidás, las clínicas reales no guardan
@@ -317,6 +317,26 @@ una ventana larga, `ModalPie` deja el pie (botones) fijo abajo. En los tests y l
 siguen cerrándose con Escape y con un clic afuera: no son ventanas. **«Dar cita»:** duración en una sola lista de 15 en 15 minutos
 (`opcionesDeDuracion`, `textoDuracion`), la grilla con un solo scroll y cada día vacío dice por qué (`motivoSinHuecos`: «No atiende», «Ya
 pasó el horario», «No entra en el horario», «Bloqueado», «Sin lugar»); el pie (`data-testid="pie-dar-cita"`) muestra el horario elegido.
+
+**Capa de datos (9-oct-2026, parte P1 del servidor propio)** — `lib/backend/`. La tienda y las pantallas ya no hablan con Firebase: usan
+`backendDeDatos` (`lib/backend/index.ts`), que cumple `DatosDeBackend` (leer la clínica, `guardar`, `quitar`, `fijarCampo`, `mezclarClinica`,
+`lote`, `escuchar*`) y `SesionDeBackend` (login, token para `/api`, recuperar contraseña) de `tipos.ts`. Hoy la única implementación es
+`firestore.ts`; `NEXT_PUBLIC_BACKEND` (por defecto `firestore`) la elige y `supabase` todavía no existe (parte P3, ver
+`docs/superpowers/specs/2026-10-09-servidor-propio-supabase-design.md`). **El SDK `firebase/*` (también `@firebase/*`) solo lo pueden importar
+`lib/firebase.ts` y `lib/backend/firestore.ts` (y las `lib/backend/*.emulador.test.ts`); el envoltorio `lib/firebase.ts` solo lo importa
+`lib/backend/firestore.ts`; y `lib/backend/firestore.ts` solo lo importan `lib/backend/index.ts` (el selector `NEXT_PUBLIC_BACKEND`) y esas mismas pruebas**
+(las tres reglas las exige `lib/backend/aislamiento.test.ts`): una pantalla que necesite algo de la base se lo pide a la interfaz.
+Qué se lee al abrir una clínica, cómo se arma la `DB` y la semilla y puesta al día de la demo viven en `carga.ts` (`cargarDB`),
+probadas con el backend en memoria (`memoria.ts`).
+**Para sumar una colección:** agregala a `lib/backend/colecciones.json` (`colecciones.test.ts` la ata a `firestore.rules` y a la semilla) además de lo de
+siempre. **Toda implementación pasa el mismo contrato** (`contrato-de-datos.ts`): `npm test` lo corre contra la memoria y `npm run test:backend` (necesita
+Java y el CLI de Firebase) contra el emulador de Firestore, incluida la lectura con las reglas reales. El `backend` del store
+(`"connecting" | "firebase" | "local"`) es otra cosa —el estado de la conexión—; por eso el objeto se llama `backendDeDatos`.
+**Exportar Firestore (solo lectura):** `npm run migracion:exportar -- --solo-medir` cuenta y mide todo sin guardar datos de pacientes y deja
+`informe-de-volumen.md` (con la proyección para 30 clínicas); sin `--solo-medir` guarda un JSONL por colección y clínica, con `manifiesto.json` (cantidades,
+bytes y SHA-256). La credencial por defecto es la sesión del CLI de Firebase (`firebase login`), la única que lee los mensajes directos del chat. **La
+exportación tiene datos de pacientes: va fuera del repo (`~/novudent-export`), y `scripts/migracion/exportar-firestore.mjs` se niega a escribir adentro
+del repositorio** (compara las rutas reales, también por un enlace simbólico). Código de salida 2 = quedó algo sin leer.
 
 ## Diferenciadores (cross-repo con Botika)
 

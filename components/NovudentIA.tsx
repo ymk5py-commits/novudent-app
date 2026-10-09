@@ -16,14 +16,14 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, Square, Sparkles, Loader2, X, Copy, Check, Send, ShieldCheck, RefreshCw } from "lucide-react";
 import type { EmrNote, Patient } from "@/lib/types";
 import { Btn, Modal, Field, inputCls, Card } from "@/components/ui";
-import { currentIdToken } from "@/lib/firebase";
+import { backendDeDatos } from "@/lib/backend";
 import { useAlcance } from "@/lib/useAlcance";
 import { useStore } from "@/lib/store";
 import { pendientesPorPaciente } from "@/lib/documentosClinicos";
 
 /** POST a una ruta /api/ia/* con el Firebase ID token (cierra el proxy abierto). */
 export async function iaFetch(url: string, payload: unknown): Promise<Response> {
-  const token = await currentIdToken();
+  const token = await backendDeDatos.token();
   return fetch(url, {
     method: "POST",
     headers: {
