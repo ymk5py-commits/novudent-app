@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.mjs\"",
     "test:backend": "firebase emulators:exec --only firestore \"vitest run -c vitest.emulador.config.ts\"",
+    "migracion:exportar": "node scripts/migracion/exportar-firestore.mjs",
     "verificar:cobro": "node scripts/verificar-cobro.mjs",
     "indexnow": "node scripts/indexnow.mjs",
     "marca": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generar-marca.mjs",
