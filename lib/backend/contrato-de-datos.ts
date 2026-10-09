@@ -125,6 +125,27 @@ export function describeContratoDeDatos(nombre: string, abrir: () => Promise<Ban
         expect((await leer()).clinica).toStrictEqual({ id: CID, name: "Clínica", config: { a: {}, b: { y: 2 }, lista: [] } });
       });
 
+      it("mezclarClinica con null guarda null (no borra la clave)", async () => {
+        await banco.sembrar(`clinics/${CID}`, { id: CID, name: "Clínica", config: { a: 1, b: 2 } });
+        await b().mezclarClinica(CID, { config: { a: null } });
+        expect((await leer()).clinica).toStrictEqual({ id: CID, name: "Clínica", config: { a: null, b: 2 } });
+      });
+
+      it("fijarCampo con null guarda null, solo undefined borra", async () => {
+        await b().guardar(CID, "patients", "p1", { id: "p1", x: 1 });
+        await b().fijarCampo(CID, "patients", "p1", "x", null);
+        expect((await leer()).colecciones.patients).toStrictEqual([{ id: "p1", x: null }]);
+        await b().fijarCampo(CID, "patients", "p1", "x", undefined);
+        expect((await leer()).colecciones.patients).toStrictEqual([{ id: "p1" }]);
+      });
+
+      it("fijarCampo rechaza un nombre de campo con punto (Firestore lo leería como una ruta anidada) o vacío, y no toca el documento", async () => {
+        await b().guardar(CID, "patients", "p1", { id: "p1", a: { b: 1 } });
+        await expect(b().fijarCampo(CID, "patients", "p1", "a.b", 2)).rejects.toThrow();
+        await expect(b().fijarCampo(CID, "patients", "p1", "", 2)).rejects.toThrow();
+        expect((await leer()).colecciones.patients).toStrictEqual([{ id: "p1", a: { b: 1 } }]);
+      });
+
       it("lote aplica guardar, guardarClinica y mezclarClinica juntos", async () => {
         await b().lote(CID, [
           { tipo: "guardar", col: "users", id: "u1", data: { id: "u1", name: "Ana" } },

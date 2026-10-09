@@ -81,8 +81,8 @@ create table public.<coleccion> (
 | Firestore | Postgres |
 |---|---|
 | `setDoc(doc, data)` sin merge | `insert … on conflict (clinic_id,id) do update set data = excluded.data` (reemplaza entero, igual que hoy) |
-| `updateDoc(doc, {campo})` / `deleteField` | función `fijar_campo(tabla, clinic_id, id, campo, valor)`; con `valor = null` quita la clave (`data - campo`). Lista blanca de tablas; corre con los permisos de quien llama |
-| `setDoc(clinics/{cid}, {config}, {merge:true})` | función `mezclar_clinica(cid, parche)` con **fusión profunda de objetos** (los arreglos se reemplazan, `null` borra la clave), como la de Firestore |
+| `updateDoc(doc, {campo})` / `deleteField` | función `fijar_campo(tabla, clinic_id, id, campo, valor)`; `valor = null` se GUARDA como `null` (igual que Firestore) y la clave se quita solo con `undefined` (`data - campo`; el adaptador distingue ambos casos, p. ej. con un parámetro `quitar`). Un `campo` vacío o con punto se rechaza (Firestore lo leería como una ruta anidada). Lista blanca de tablas; corre con los permisos de quien llama |
+| `setDoc(clinics/{cid}, {config}, {merge:true})` | función `mezclar_clinica(cid, parche)` con **fusión profunda de objetos** (los arreglos se reemplazan; `null` se guarda como `null`, no borra la clave), como la de Firestore |
 | `deleteDoc` | `delete` |
 | `writeBatch` | una sola llamada RPC con todas las operaciones dentro de una transacción |
 | `getDocs(colección)` | `select data from … where clinic_id = $1` (RLS filtra) |

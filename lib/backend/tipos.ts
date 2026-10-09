@@ -56,9 +56,11 @@ export interface DatosDeBackend {
   guardar(cid: string, col: string, id: string, data: unknown): Promise<void>;
   /** Borra el documento; si no existe no falla. */
   quitar(cid: string, col: string, id: string): Promise<void>;
-  /** Cambia UN campo sin tocar el resto; `undefined` lo borra. Rechaza (`code: "not-found"`) si el documento no existe. */
+  /** Cambia UN campo de primer nivel sin tocar el resto: `null` se GUARDA como `null` y solo `undefined` borra el campo. Rechaza (`code: "not-found"`)
+   *  si el documento no existe, y rechaza un nombre de campo vacío o con punto (Firestore lo leería como una ruta anidada). */
   fijarCampo(cid: string, col: string, id: string, campo: string, valor: unknown): Promise<void>;
-  /** Fusiona en `clinics/{cid}`: los mapas se mezclan en profundidad, los arreglos y valores simples se reemplazan, lo demás se conserva. */
+  /** Fusiona en `clinics/{cid}`: los mapas se mezclan en profundidad, los arreglos y valores simples (también `null`, que se guarda y NO borra la
+   *  clave) se reemplazan, lo demás se conserva. */
   mezclarClinica(cid: string, data: unknown): Promise<void>;
   /** Aplica varias operaciones juntas (todas o ninguna). */
   lote(cid: string, ops: OperacionDeLote[]): Promise<void>;

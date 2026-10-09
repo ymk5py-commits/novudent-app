@@ -16,6 +16,11 @@ export interface BackendEnMemoria extends DatosDeBackend {
   vaciar(): void;
 }
 
+/** Como en Firestore, un nombre con punto sería una ruta anidada (`a.b` = el campo `b` dentro de `a`): la interfaz solo conoce campos de primer nivel. */
+const validarCampo = (campo: string) => {
+  if (campo === "" || campo.includes(".")) throw new Error(`Nombre de campo no válido: ${JSON.stringify(campo)} (no puede estar vacío ni llevar puntos)`);
+};
+
 const noEncontrado = (ruta: string) => Object.assign(new Error(`No existe el documento ${ruta}`), { code: "not-found" });
 
 function filtrarDirectos(lista: Doc[], filtro: FiltroDeDirectos): Doc[] {
@@ -93,6 +98,7 @@ export function crearBackendEnMemoria(usuarioActual: () => Promise<string | null
       avisar();
     },
     async fijarCampo(cid, col, id, campo, valor) {
+      validarCampo(campo);
       const ruta = rutaDe(cid, col, id);
       const actual = docs.get(ruta);
       if (!actual) throw noEncontrado(ruta);
