@@ -25,7 +25,7 @@ import { useStore } from "@/lib/store";
 import { can } from "@/lib/rbac";
 import { useClinicPlan, PlanLocked } from "@/components/PlanGate";
 import { resizeToDataUrl, dataUrlBytes } from "@/lib/image";
-import { currentIdToken } from "@/lib/firebase";
+import { backendDeDatos } from "@/lib/backend";
 
 /* ===== Constantes de presentación ===== */
 
@@ -180,7 +180,7 @@ function RadiografiasInner({ patient, canEdit }: { patient: Patient; canEdit: bo
     setError(null);
     setAnalyzing(true);
     try {
-      const token = await currentIdToken();
+      const token = await backendDeDatos.token();
       const res = await fetch("/api/ia/radiografia", {
         method: "POST",
         headers: {

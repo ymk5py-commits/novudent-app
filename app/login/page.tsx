@@ -5,7 +5,7 @@ import { ShieldCheck, Stethoscope, Headset, Wallet, ClipboardList, Handshake, Us
 import { useStore, CLINICA_DEMO_ID } from "@/lib/store";
 import { rolLabel } from "@/lib/rbac";
 import { Field, inputCls } from "@/components/ui";
-import { sendPasswordReset } from "@/lib/firebase";
+import { backendDeDatos } from "@/lib/backend";
 import { Isologo, Logotipo } from "@/components/Marca";
 
 const ICON: Record<string, typeof ShieldCheck> = { admin: ShieldCheck, cashier: Wallet, receptionist: ClipboardList, commercial: Handshake, dentist: Stethoscope, assistant: Headset };
@@ -99,7 +99,7 @@ export default function Login() {
     setRecBusy(true);
     setRecError(null);
     try {
-      await sendPasswordReset(recEmail.trim());
+      await backendDeDatos.enviarRecuperacion(recEmail.trim());
       setRecEnviado(true);
     } catch (err: any) {
       // user-not-found se trata IGUAL que un envío exitoso: no hay que

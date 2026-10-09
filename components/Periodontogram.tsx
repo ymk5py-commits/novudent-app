@@ -13,12 +13,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Activity, Droplets, AlertTriangle, ChevronDown, Save, X, Mic, Square, Loader2 } from "lucide-react";
 import type { PerioSession, PerioToothRecord } from "@/lib/types";
 import { Card, Btn, Badge, Empty, inputCls } from "@/components/ui";
-import { currentIdToken } from "@/lib/firebase";
+import { backendDeDatos } from "@/lib/backend";
 import { validatePerioVoice } from "@/lib/perio-voice";
 
 /** POST a /api/ia/perio-voz con el Firebase ID token. */
 async function perioDictFetch(payload: unknown): Promise<Response> {
-  const token = await currentIdToken();
+  const token = await backendDeDatos.token();
   return fetch("/api/ia/perio-voz", {
     method: "POST",
     headers: {

@@ -2,7 +2,7 @@
 /* Pide al servidor que le avise al paciente por correo sobre su cita
  * (app/api/notificaciones/cita). En la demo no se manda nada: la demo no tiene sesión
  * de Firebase ni un paciente real al otro lado. */
-import { currentIdToken } from "./firebase";
+import { backendDeDatos } from "./backend";
 import type { TipoCorreoCita } from "./correoCita";
 
 export type ResultadoAviso = { ok: true; demo?: boolean } | { ok: false; error: string };
@@ -10,7 +10,7 @@ export type ResultadoAviso = { ok: true; demo?: boolean } | { ok: false; error: 
 export async function enviarAvisoCita(clinicId: string, appointmentId: string, tipo: TipoCorreoCita): Promise<ResultadoAviso> {
   if (clinicId === "cl_demo") return { ok: true, demo: true };
   try {
-    const token = await currentIdToken();
+    const token = await backendDeDatos.token();
     const r = await fetch("/api/notificaciones/cita", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },

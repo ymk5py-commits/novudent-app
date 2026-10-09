@@ -3,7 +3,7 @@
  *  mensaje claro si el servidor no tiene RESEND_API_KEY/EMAIL_FROM o el paciente
  *  no tiene email cargado. */
 import { useState } from "react";
-import { currentIdToken } from "@/lib/firebase";
+import { backendDeDatos } from "@/lib/backend";
 import { Mail, Loader2, Check } from "lucide-react";
 
 export function EmailButton({ to, subject, html, label = "Enviar por email", disabled, onSent }: {
@@ -18,7 +18,7 @@ export function EmailButton({ to, subject, html, label = "Enviar por email", dis
     if (!to) { setState("error"); setMsg("El paciente no tiene email cargado."); return; }
     setState("sending"); setMsg(null);
     try {
-      const token = await currentIdToken();
+      const token = await backendDeDatos.token();
       const res = await fetch("/api/email", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
