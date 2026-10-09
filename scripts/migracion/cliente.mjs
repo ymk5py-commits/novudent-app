@@ -43,29 +43,41 @@ export function crearCliente({ proyecto, token, base, fetch: pedir = fetch, espe
     }
   }
 
+  /** Cada página trae el token de la siguiente. Si la base devuelve uno que ya se usó (el mismo de recién, o uno que da la vuelta), pedir esa
+   *  página otra vez no terminaría nunca: se corta con un error (la lectura queda como incompleta) en vez de dar vueltas para siempre.
+   *  @param {Set<string>} usados @param {string | undefined} siguiente @param {string} ruta */
+  function siguientePagina(usados, siguiente, ruta) {
+    if (siguiente && usados.has(siguiente)) throw new ErrorDeLectura(`la base repitió el token de página leyendo ${ruta}`, { ruta });
+    if (siguiente) usados.add(siguiente);
+    return siguiente;
+  }
+
   return {
     /** Todos los documentos de una colección (`rutaPadre` vacío = de primer nivel), de a páginas. Incluye los «fantasma». */
     async *listarDocumentos(rutaPadre, coleccion, tamanoDePagina = 300) {
       const ruta = [rutaPadre, coleccion].filter(Boolean).join("/");
+      const usados = new Set();
       let pagina;
       do {
         const params = new URLSearchParams({ pageSize: String(tamanoDePagina), showMissing: "true" });
         if (pagina) params.set("pageToken", pagina);
         const datos = await solicitar(`${BASE}/${segmentos(ruta)}?${params}`, { method: "GET" }, ruta);
+        pagina = siguientePagina(usados, datos.nextPageToken, ruta); // antes de entregar: si el token se repite, esta página tampoco es de fiar (duplicaría líneas)
         for (const documento of datos.documents ?? []) yield documento;
-        pagina = datos.nextPageToken;
       } while (pagina);
     },
 
     /** Los nombres de las subcolecciones de un documento (`rutaDocumento` vacío = las colecciones de primer nivel). */
     async listarColecciones(rutaDocumento = "") {
       const url = `${BASE}${rutaDocumento ? `/${segmentos(rutaDocumento)}` : ""}:listCollectionIds`;
+      const ruta = rutaDocumento || "(raíz)";
       const nombres = [];
+      const usados = new Set();
       let pagina;
       do {
-        const datos = await solicitar(url, { method: "POST", body: JSON.stringify({ pageSize: 100, ...(pagina ? { pageToken: pagina } : {}) }) }, rutaDocumento || "(raíz)");
+        const datos = await solicitar(url, { method: "POST", body: JSON.stringify({ pageSize: 100, ...(pagina ? { pageToken: pagina } : {}) }) }, ruta);
+        pagina = siguientePagina(usados, datos.nextPageToken, ruta);
         nombres.push(...(datos.collectionIds ?? []));
-        pagina = datos.nextPageToken;
       } while (pagina);
       return nombres;
     },

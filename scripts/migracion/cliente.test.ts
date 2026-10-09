@@ -104,6 +104,51 @@ describe("listarDocumentos", () => {
   });
 });
 
+describe("un token de página repetido no puede dejar el programa dando vueltas para siempre", () => {
+  it("listarDocumentos: si la base devuelve siempre el mismo nextPageToken falla a lo sumo en la segunda página", async () => {
+    let n = 0;
+    const fetch = vi.fn(async () => respuesta({ documents: [doc("clinics/a")], nextPageToken: ++n < 50 ? "SIEMPRE" : undefined })); // corta a las 50: si la guarda falla, que falle la prueba y no que se cuelgue
+    const cliente = crearCliente({ proyecto: "p", token: "t", fetch: fetch as unknown as typeof globalThis.fetch, esperar: sinEspera });
+    const error = await todos(cliente.listarDocumentos("clinics/c1", "patients")).catch((e) => e);
+    expect(error).toBeInstanceOf(ErrorDeLectura);
+    expect(error).toMatchObject({ message: "la base repitió el token de página leyendo clinics/c1/patients", ruta: "clinics/c1/patients", permiso: false });
+    expect(error.estado).toBeUndefined();
+    expect(fetch.mock.calls.length).toBeLessThanOrEqual(2);
+  });
+
+  it("listarDocumentos: tampoco da vueltas si los tokens se repiten en ciclo (A, B, A…)", async () => {
+    let n = 0;
+    const fetch = vi.fn(async () => respuesta({ documents: [doc(`clinics/d${n}`)], nextPageToken: ++n < 50 ? (n % 2 ? "A" : "B") : undefined }));
+    const cliente = crearCliente({ proyecto: "p", token: "t", fetch: fetch as unknown as typeof globalThis.fetch, esperar: sinEspera });
+    const error = await todos(cliente.listarDocumentos("", "clinics")).catch((e) => e);
+    expect(error).toBeInstanceOf(ErrorDeLectura);
+    expect(error.message).toContain("repitió el token de página");
+    expect(fetch.mock.calls.length).toBeLessThanOrEqual(3);
+  });
+
+  it("listarColecciones: si la base devuelve siempre el mismo nextPageToken falla a lo sumo en la segunda página", async () => {
+    let n = 0;
+    const fetch = vi.fn(async () => respuesta({ collectionIds: ["users"], nextPageToken: ++n < 50 ? "SIEMPRE" : undefined }));
+    const cliente = crearCliente({ proyecto: "p", token: "t", fetch: fetch as unknown as typeof globalThis.fetch, esperar: sinEspera });
+    const error = await cliente.listarColecciones("clinics/c1").catch((e) => e);
+    expect(error).toBeInstanceOf(ErrorDeLectura);
+    expect(error).toMatchObject({ message: "la base repitió el token de página leyendo clinics/c1", ruta: "clinics/c1", permiso: false });
+    expect(fetch.mock.calls.length).toBeLessThanOrEqual(2);
+    n = 0;
+    const raiz = await cliente.listarColecciones().catch((e) => e);
+    expect(raiz).toMatchObject({ message: "la base repitió el token de página leyendo (raíz)", ruta: "(raíz)" });
+  });
+
+  it("las listas que sí paginan bien (tokens distintos) no se ven afectadas", async () => {
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const t = JSON.parse(String(init.body ?? "{}")).pageToken;
+      return t === "T2" ? respuesta({ collectionIds: ["c"] }) : t === "T1" ? respuesta({ collectionIds: ["b"], nextPageToken: "T2" }) : respuesta({ collectionIds: ["a"], nextPageToken: "T1" });
+    });
+    const cliente = crearCliente({ proyecto: "p", token: "t", fetch: fetch as unknown as typeof globalThis.fetch, esperar: sinEspera });
+    expect(await cliente.listarColecciones("clinics/c1")).toEqual(["a", "b", "c"]);
+  });
+});
+
 describe("listarColecciones", () => {
   it("lista las colecciones de primer nivel y las de un documento, con paginación", async () => {
     const fetch = vi.fn(async (url: string, init: RequestInit) => {
