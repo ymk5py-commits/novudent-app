@@ -326,7 +326,7 @@ export const procedimientos: Procedimiento[] = [
         resaltar: [total.getByText("Efectivo que tiene que haber en el cajón").locator("xpath=ancestor::tr[1]"), total.getByRole("button", { name: "Imprimir" })],
         recorte: total, margen: 4,
       });
-      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).click(); // las ventanas no se cierran con Escape
+      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).first().click(); // la X: las ventanas no se cierran con Escape
 
       await c.ir("/app/pacientes/p3");
       await grupo(page, "Facturación y pagos").click();
@@ -500,7 +500,7 @@ export const procedimientos: Procedimiento[] = [
       await tarjeta.getByRole("button", { name: "Detalle" }).click();
       const detalle = page.getByRole("dialog", { name: "Presupuesto" });
       await c.foto("detalle", { resaltar: detalle.getByRole("button", { name: "Imprimir / PDF" }), recorte: detalle, margen: 4, alto: 1100 });
-      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).click(); // las ventanas no se cierran con Escape
+      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).first().click(); // la X: las ventanas no se cierran con Escape
       await quitarFoco(page);
 
       await c.foto("presentar", { resaltar: tarjeta.getByRole("button", { name: "Presentar" }), recorte: tarjeta, margen: 6, esperar: 900 });

@@ -554,7 +554,7 @@ export const procedimientos: Procedimiento[] = [
       await reloj.click();
       const historial = page.getByRole("dialog", { name: "Historial del reclamo" });
       await c.foto("historial", { resaltar: historial.locator("div").filter({ hasText: "Retención automática (HOLD)" }).last(), recorte: historial, margen: 4 });
-      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).click(); // las ventanas no se cierran con Escape
+      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).first().click(); // la X: las ventanas no se cierran con Escape
       await soltar(page);
 
       const liberar = main.getByRole("button", { name: "Release from Hold" }).first();

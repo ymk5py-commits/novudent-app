@@ -141,7 +141,7 @@ export const procedimientos: Procedimiento[] = [
       await c.expect(page.getByRole("menuitem")).toHaveText(["Ver"]); // sin «Editar» ni «Eliminar»
       await page.getByRole("menuitem", { name: "Ver" }).click();
       await c.expect(page.getByRole("dialog", { name: "Control post-operatorio" })).toBeVisible();
-      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).click(); // las ventanas no se cierran con Escape
+      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).first().click(); // la X: las ventanas no se cierran con Escape
       await c.expect(page.getByRole("button", { name: "Dar cita" })).toHaveCount(0);
       await page.locator("label").filter({ hasText: /^Anulado\s*\d+$/ }).getByRole("checkbox").uncheck();
       await c.expect(page.getByRole("link", { name: "María González" })).toHaveCount(0);
@@ -165,7 +165,7 @@ export const procedimientos: Procedimiento[] = [
       await page.getByRole("button", { name: /Resina pieza 16/ }).click();
       const modal = page.getByRole("dialog", { name: "Resina pieza 16" });
       await c.foto("detalle", { resaltar: modal.getByRole("link", { name: "María González" }), recorte: modal, margen: 4 });
-      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).click(); // las ventanas no se cierran con Escape
+      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).first().click(); // la X: las ventanas no se cierran con Escape
 
       // Las otras vistas que el texto menciona.
       await page.getByRole("button", { name: "Mensual" }).click();

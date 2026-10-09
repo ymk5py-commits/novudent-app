@@ -130,7 +130,7 @@ export const procedimientos: Procedimiento[] = [
       await modal.getByLabel("Detalle *").fill("Avisarle que su saldo está pendiente");
       await modal.getByLabel("Se tacha sola cuando el paciente…").selectOption({ label: "Registre un pago" });
       await c.foto("con-paciente", { alto: 900, margen: 4, resaltar: modal.getByLabel("Se tacha sola cuando el paciente…"), recorte: modal });
-      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).click(); // las ventanas no se cierran con Escape
+      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).first().click(); // la X: las ventanas no se cierran con Escape
 
       await page.getByRole("tab", { name: "Semana" }).click();
       await c.foto("semana", { recorte: tarjeta, resaltar: page.getByRole("tab", { name: "Semana" }) });
