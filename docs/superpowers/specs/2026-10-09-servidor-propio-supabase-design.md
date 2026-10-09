@@ -185,7 +185,7 @@ interface BackendDeDatos {
 | (nuevo) | `NEXT_PUBLIC_BACKEND`, `DATABASE_URL` si el servidor usa `pg` directo |
 
 ### 10.2 Servidor (se contrata más adelante)
-Tamaño y ubicación acordados: **8 vCPU, 16 GB de RAM, 240 GB o más de NVMe**, un solo servidor para la app y Supabase; mínimo viable 4 vCPU, 8 GB, 160 GB. Con centro de datos en São Paulo o Asunción (30–60 ms de latencia; desde Europa ronda 200 ms y se nota porque el navegador habla directo con la base). Hay que confirmar proveedores y precios. **Esto es una estimación:** el volumen real de Firestore lo mide el script de exportación de P1 y se ajusta *antes* de contratar. Se pasa a separar base y app con más de 30 clínicas, la base arriba de 100 GB o CPU sostenida arriba del 60 %.
+Tamaño y ubicación acordados: **8 vCPU, 16 GB de RAM, 240 GB o más de NVMe**, un solo servidor para la app y Supabase; mínimo viable 4 vCPU, 8 GB, 160 GB. Con centro de datos en São Paulo o Asunción (30–60 ms de latencia; desde Europa ronda 200 ms y se nota porque el navegador habla directo con la base). Hay que confirmar proveedores y precios. **Medición del 9-oct-2026** (`npm run migracion:exportar -- --solo-medir`, 5 segundos, leyó todo sin errores): Firestore tiene **178 documentos y 0,23 MB** en total. Casi todo es la clínica demo (125 documentos); las otras 4 clínicas dadas de alta son cascarones (un usuario, el arancel inicial y **ningún paciente**). El documento más grande mide 0,03 MB, muy por debajo del tope de 1 MB. **Todavía no hay datos reales con los que proyectar**, así que el tamaño del servidor sale de supuestos, no de una medición: por clínica y con unos 2 años de uso, 2.000 pacientes a 0,03 MB (lo medido en la demo), una radiografía cada dos pacientes a 0,2–0,5 MB (la app las achica a 1400 px y calidad 0,8 antes de guardarlas), una firma o consentimiento por paciente a 0,03 MB y el resto (citas, pagos, notas) en unos 10 MB suman **entre 0,5 y 1 GB**. Con 30 clínicas son 15–30 GB de JSON y, con el factor 1,5 de Postgres (índices y relleno), 25–45 GB; al quintuple de tiempo de uso, unos 100 GB. Los 160 GB del mínimo alcanzan y los 240 GB recomendados dejan lugar al crecimiento y a los respaldos locales. **Las imágenes en base64 son lo que más pesa**: si una clínica usa mucha radiografía, ese es el número que hay que volver a medir. Se repite la medición con la primera clínica real cargada y otra vez antes del corte. Se pasa a separar base y app con más de 30 clínicas, la base arriba de 100 GB o CPU sostenida arriba del 60 %.
 
 ### 10.3 Endurecimiento y operación (guía en `docs/servidor/`)
 - Cortafuegos: solo 80/443 abiertos y SSH por llave (sin contraseña, sin root), `fail2ban`. Postgres **nunca** expuesto. Studio solo por túnel.
@@ -262,7 +262,8 @@ Cada parte lleva su plan, sus pruebas y se publica sola; las cuatro primeras **n
 5. Quién recibe las alertas de monitoreo.
 
 ## 17. Verificaciones que quedan abiertas (se cierran en P1)
-- Volumen real de datos y documento más grande (hoy es una estimación).
-- Que no haya `Timestamp` ni otros tipos que no sean JSON.
-- Cantidad de clínicas y de usuarios reales.
-- Si algún otro sistema, además de Botika, lee o escribe Firestore.
+- ~~Volumen real de datos y documento más grande.~~ **Medido el 9-oct-2026:** 178 documentos, 0,23 MB; el mayor, 0,03 MB (ver §10.2). Queda pendiente volver a medir con datos reales: hoy ninguna clínica real tiene pacientes.
+- ~~Que no haya `Timestamp` ni otros tipos que no sean JSON.~~ **Cerrada:** ninguno (todo es texto, números, booleanos, mapas y arreglos). No hay colecciones fuera del manifiesto ni documentos «fantasma»; `serviceAccounts` es lo único que no se migra.
+- ~~Cantidad de clínicas y de usuarios reales.~~ **Cerrada:** 5 clínicas (la demo con 4 usuarios y 4 dadas de alta con 1 usuario cada una, sin pacientes). En la raíz hay 4 entradas de `directory`, 2 `subscriptions`, 1 `leads` y 1 `checkoutTokens`.
+- ~~Que la credencial del CLI de Firebase lea todo, incluidos los mensajes directos.~~ **Cerrada:** leyó todas las colecciones sin ningún permiso denegado.
+- Si algún otro sistema, además de Botika, lee o escribe Firestore. **Sigue abierta:** no se puede saber desde el código; hay que preguntarle a Croman.
