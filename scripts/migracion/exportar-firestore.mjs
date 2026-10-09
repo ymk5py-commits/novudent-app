@@ -7,10 +7,10 @@
  *  Opciones: --salida DIR · --credencial firebase-cli|servicio|entorno · --proyecto ID · --base URL (el emulador) · --clinica ID (repetible)
  *            --solo-medir · --permitir-incompleto · --ayuda
  *  Código de salida: 0 completa · 2 hay colecciones que no se pudieron leer (la exportación NO sirve para migrar) · 1 error. */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { isAbsolute, join, relative, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { crearCliente } from "./cliente.mjs";
 import { MODOS, resolverToken } from "./credenciales.mjs";
 import { crearEscritorDeArchivos, escritorNulo, exportarFirestore } from "./exportar.mjs";
@@ -52,11 +52,40 @@ export function leerArgumentos(argv, env = process.env) {
   return opciones;
 }
 
-/** La exportación tiene datos de pacientes: no puede terminar dentro del repositorio (se subiría con un `git add .`). */
-export function carpetaDeSalida(salida, { hoy = new Date(), directorioActual = process.cwd(), casa = homedir() } = {}) {
-  const carpeta = resolve(salida ?? join(casa, "novudent-export", hoy.toISOString().slice(0, 10)));
-  const relativa = relative(directorioActual, carpeta);
-  if (relativa === "" || (!relativa.startsWith("..") && !isAbsolute(relativa))) {
+/** La raíz de ESTE repositorio (donde está este script), no el directorio desde donde se lo corre. */
+const RAIZ_DEL_REPO = fileURLToPath(new URL("../../", import.meta.url));
+
+/** La ruta con los enlaces simbólicos ya resueltos, también si la carpeta todavía no existe: se resuelve el ancestro más profundo que SÍ existe
+ *  y se le agregan los tramos que faltan. Si no se puede resolver nada, queda la ruta tal cual. */
+function rutaReal(ruta) {
+  const faltan = [];
+  let actual = resolve(ruta);
+  for (;;) {
+    try {
+      return join(realpathSync(actual), ...faltan.reverse());
+    } catch {
+      const padre = dirname(actual);
+      if (padre === actual) return resolve(ruta);
+      faltan.push(basename(actual));
+      actual = padre;
+    }
+  }
+}
+
+/** ¿`hijo` es `padre` o está adentro? Con rutas absolutas ya resueltas; `..export` o `...x` son nombres de carpeta, no «subir un nivel». */
+function estaAdentro(padre, hijo) {
+  const r = relative(padre, hijo);
+  return r === "" || (r !== ".." && !r.startsWith(`..${sep}`) && !isAbsolute(r));
+}
+
+const dosDigitos = (n) => String(n).padStart(2, "0");
+
+/** La exportación tiene datos de pacientes: no puede terminar dentro del repositorio (se subiría con un `git add .`). Se comparan las rutas
+ *  REALES (con los enlaces simbólicos resueltos) y contra la raíz del repositorio, venga de donde venga el comando. */
+export function carpetaDeSalida(salida, { hoy = new Date(), directorioActual = process.cwd(), casa = homedir(), raizDelRepo = RAIZ_DEL_REPO } = {}) {
+  const fecha = `${hoy.getFullYear()}-${dosDigitos(hoy.getMonth() + 1)}-${dosDigitos(hoy.getDate())}`; // el día local, no el de UTC
+  const carpeta = resolve(directorioActual, salida ?? join(casa, "novudent-export", fecha));
+  if (estaAdentro(rutaReal(raizDelRepo), rutaReal(carpeta))) {
     throw new Error(`La exportación contiene datos de pacientes: no la guardes dentro del repositorio (${carpeta}). Usá una carpeta fuera, por ejemplo ~/novudent-export.`);
   }
   return carpeta;
@@ -92,7 +121,17 @@ async function principal() {
   return 0;
 }
 
-// Solo corre como programa (no cuando lo importan las pruebas).
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+/** ¿Se está corriendo este archivo como programa (y no importado por las pruebas)? Compara rutas reales: también vale si lo llaman por un enlace
+ *  simbólico (si no, no correría nada y saldría con 0, y un cron creería que salió bien). */
+function esElPrograma() {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (esElPrograma()) {
   principal().then((codigo) => process.exit(codigo), (e) => { console.error(`Error: ${e.message}`); process.exit(1); });
 }
