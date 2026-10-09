@@ -52,6 +52,9 @@ export interface DatosDeBackend {
   /** A qué clínica pertenece un usuario (enrutamiento del login multi-clínica); `null` si no figura. Rechaza si no se pudo leer. */
   clinicaDelUsuario(uid: string): Promise<string | null>;
 
+  /* Las escrituras (`guardar`, `quitar`, `fijarCampo`, `mezclarClinica`, `lote`) devuelven una promesa y TODA falla llega como un rechazo: un id mal
+   * armado, un permiso negado, la red caída. Nunca lanzan una excepción síncrona al llamarlas. Un id de documento no puede estar vacío ni llevar `/`
+   * (rechazan con un `Error`). */
   /** Crea o REEMPLAZA el documento entero (lo que falte en `data` desaparece). Los `undefined` se descartan. */
   guardar(cid: string, col: string, id: string, data: unknown): Promise<void>;
   /** Borra el documento; si no existe no falla. */

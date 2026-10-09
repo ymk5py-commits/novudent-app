@@ -68,8 +68,10 @@ export function crearDatosFirestore(db: Firestore, usuarioActual: () => Promise<
       return typeof clinicId === "string" ? clinicId : null;
     },
 
-    guardar: (cid, col, id, data) => setDoc(docDe(cid, col, id), limpiar(data as Doc)),
-    quitar: (cid, col, id) => deleteDoc(docDe(cid, col, id)),
+    // Las escrituras son `async` a propósito: el SDK lanza SINCRÓNICAMENTE ante un id vacío o con «/» (`doc()` arma la referencia antes de devolver
+    // la promesa) y la interfaz promete una promesa que rechaza, igual que la memoria. El camino feliz no cambia: el cuerpo corre en el mismo turno.
+    guardar: async (cid, col, id, data) => setDoc(docDe(cid, col, id), limpiar(data as Doc)),
+    quitar: async (cid, col, id) => deleteDoc(docDe(cid, col, id)),
     // `updateDoc` lee `"a.b"` como una ruta anidada y la interfaz solo conoce campos de primer nivel: un nombre con punto (o vacío) se rechaza.
     // `limpiar` pasa el valor por JSON (saca los `undefined`) y rompería el marcador de `deleteField()`: por eso se lo aplica solo al valor.
     // `null` se guarda como `null`; solo `undefined` borra el campo.
@@ -77,7 +79,7 @@ export function crearDatosFirestore(db: Firestore, usuarioActual: () => Promise<
       if (campo === "" || campo.includes(".")) throw new Error(`Nombre de campo no válido: ${JSON.stringify(campo)} (no puede estar vacío ni llevar puntos)`);
       return updateDoc(docDe(cid, col, id), { [campo]: valor === undefined ? deleteField() : limpiar(valor) });
     },
-    mezclarClinica: (cid, data) => setDoc(doc(db, "clinics", cid), limpiar(data as Doc), { merge: true }),
+    mezclarClinica: async (cid, data) => setDoc(doc(db, "clinics", cid), limpiar(data as Doc), { merge: true }),
     async lote(cid, ops) {
       const lote = writeBatch(db);
       for (const op of ops) {

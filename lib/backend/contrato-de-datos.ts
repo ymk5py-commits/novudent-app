@@ -146,6 +146,20 @@ export function describeContratoDeDatos(nombre: string, abrir: () => Promise<Ban
         expect((await leer()).colecciones.patients).toStrictEqual([{ id: "p1", a: { b: 1 } }]);
       });
 
+      it("un id vacío o con barra rechaza (no lanza de forma síncrona) y no escribe nada", async () => {
+        const llamadas: Array<() => Promise<void>> = [
+          ...["", "a/b"].map((id) => () => b().guardar(CID, "patients", id, { id })),
+          ...["", "a/b"].map((id) => () => b().quitar(CID, "patients", id)),
+          ...["", "a/b"].map((id) => () => b().fijarCampo(CID, "patients", id, "a", 1)),
+        ];
+        for (const llamar of llamadas) {
+          let promesa: Promise<void> | undefined;
+          expect(() => { promesa = llamar(); }).not.toThrow(); // un error de uso llega como rechazo, no como excepción al llamar
+          await expect(promesa).rejects.toThrow();
+        }
+        expect((await leer()).colecciones.patients).toEqual([]);
+      });
+
       it("lote aplica guardar, guardarClinica y mezclarClinica juntos", async () => {
         await b().lote(CID, [
           { tipo: "guardar", col: "users", id: "u1", data: { id: "u1", name: "Ana" } },
