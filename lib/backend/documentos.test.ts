@@ -31,4 +31,10 @@ describe("mezclarProfundo (igual que setDoc con merge:true de Firestore)", () =>
     expect(base).toStrictEqual({ a: { x: 1 } });
     expect(parche.a).toStrictEqual({ y: undefined });
   });
+  it("un mapa vacío en el parche vacía el mapa, como en Firestore", () => {
+    expect(mezclarProfundo({ a: { x: 1 }, b: { y: 2 } }, { a: {} })).toStrictEqual({ a: {}, b: { y: 2 } });
+  });
+  it("un mapa vacío en profundidad conserva los hermanos", () => {
+    expect(mezclarProfundo({ config: { a: { x: 1 }, z: 9 } }, { config: { a: {} } })).toStrictEqual({ config: { a: {}, z: 9 } });
+  });
 });
