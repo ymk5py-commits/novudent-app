@@ -65,6 +65,43 @@ describe("listarDocumentos", () => {
     const error = await todos(cliente.listarDocumentos("", "clinics")).catch((e) => e);
     expect(String(error.message)).not.toContain("TOKEN-SECRETO");
   });
+
+  it("reintenta json() que falla una vez con TypeError", async () => {
+    const esperas: number[] = [];
+    let llamadas = 0;
+    const fetch = vi.fn(async () => {
+      llamadas++;
+      if (llamadas === 1) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => { throw new TypeError("network error during streaming"); }
+        } as unknown as Response;
+      }
+      return respuesta({ documents: [doc("clinics/a")] });
+    });
+    const cliente = crearCliente({ proyecto: "p", token: "t", fetch: fetch as unknown as typeof globalThis.fetch, esperar: async (ms) => { esperas.push(ms); } });
+    expect(await todos(cliente.listarDocumentos("", "clinics"))).toHaveLength(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(esperas).toEqual([500]);
+  });
+
+  it("json() que siempre falla con SyntaxError que cita el cuerpo no expone el contenido en el error", async () => {
+    const fetch = vi.fn(async () => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => { throw new SyntaxError('Unexpected token in {"nombre":"Luis Gómez"}'); }
+      } as unknown as Response;
+    });
+    const cliente = crearCliente({ proyecto: "p", token: "t", fetch: fetch as unknown as typeof globalThis.fetch, esperar: async () => {}, reintentos: 2 });
+    const error = await todos(cliente.listarDocumentos("", "clinics")).catch((e) => e);
+    expect(error).toBeInstanceOf(ErrorDeLectura);
+    expect(error).toMatchObject({ permiso: false });
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(String(error.message)).not.toContain("Luis");
+    expect(String(error.message)).not.toContain("Unexpected token");
+  });
 });
 
 describe("listarColecciones", () => {

@@ -40,9 +40,9 @@ export function decodificarCampos(campos, hallazgos) {
 }
 
 /** Un documento de la lista de la API → `{ id, data, fantasma }`. «Fantasma» = el documento no existe pero tiene subcolecciones (la API lo
- *  devuelve con `showMissing=true`, solo con su nombre). */
+ *  devuelve con `showMissing=true`, solo con su nombre). La API devuelve los nombres sin codificar (como vienen del Firestore interno). */
 export function decodificarDocumento(documento, hallazgos) {
-  const id = decodeURIComponent(String(documento.name).split("/").pop());
+  const id = String(documento.name).split("/").pop();
   const fantasma = !documento.createTime && !documento.fields;
   return { id, data: fantasma ? {} : decodificarCampos(documento.fields, hallazgos), fantasma };
 }

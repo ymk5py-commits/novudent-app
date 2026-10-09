@@ -42,9 +42,14 @@ describe("decodificarValor", () => {
 });
 
 describe("decodificarDocumento", () => {
-  it("saca el id del nombre y decodifica los campos", () => {
-    const d = decodificarDocumento({ name: "projects/p/databases/(default)/documents/clinics/c1/patients/p%201", createTime: "x", fields: { n: { integerValue: "5" } } }, nuevosHallazgos());
+  it("saca el id del nombre (la API devuelve nombres sin codificar) y decodifica los campos", () => {
+    const d = decodificarDocumento({ name: "projects/p/databases/(default)/documents/clinics/c1/patients/p 1", createTime: "x", fields: { n: { integerValue: "5" } } }, nuevosHallazgos());
     expect(d).toEqual({ id: "p 1", data: { n: 5 }, fantasma: false });
+  });
+  it("no decodifica el id: la API lo devuelve tal cual", () => {
+    const h = nuevosHallazgos();
+    expect(decodificarDocumento({ name: "projects/p/databases/(default)/documents/col/100%", createTime: "t", fields: {} }, h).id).toBe("100%");
+    expect(decodificarDocumento({ name: "projects/p/databases/(default)/documents/col/D10%25", createTime: "t", fields: {} }, h).id).toBe("D10%25");
   });
   it("un documento vacío que existe no es fantasma; uno sin createTime ni campos sí", () => {
     const h = nuevosHallazgos();

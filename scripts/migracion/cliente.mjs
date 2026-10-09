@@ -29,17 +29,17 @@ export function crearCliente({ proyecto, token, base, fetch: pedir = fetch, espe
       let res;
       try {
         res = await pedir(url, { ...init, headers: cabeceras });
+        if (res.ok) return await res.json();
+        if (REINTENTABLES.has(res.status) && intento < reintentos) {
+          await esperar(Math.min(8000, 500 * 2 ** intento));
+          continue;
+        }
+        throw new ErrorDeLectura(`la base respondió ${res.status} leyendo ${ruta}`, { estado: res.status, ruta, permiso: res.status === 401 || res.status === 403 });
       } catch (e) {
-        if (intento >= reintentos) throw new ErrorDeLectura(`sin conexión leyendo ${ruta}: ${e?.message ?? e}`, { ruta });
+        if (e instanceof ErrorDeLectura) throw e;
+        if (intento >= reintentos) throw new ErrorDeLectura(`sin conexión leyendo ${ruta} (${e?.cause?.code ?? e?.name ?? "error"})`, { ruta });
         await esperar(Math.min(8000, 500 * 2 ** intento));
-        continue;
       }
-      if (res.ok) return res.json();
-      if (REINTENTABLES.has(res.status) && intento < reintentos) {
-        await esperar(Math.min(8000, 500 * 2 ** intento));
-        continue;
-      }
-      throw new ErrorDeLectura(`la base respondió ${res.status} leyendo ${ruta}`, { estado: res.status, ruta, permiso: res.status === 401 || res.status === 403 });
     }
   }
 
