@@ -219,7 +219,7 @@ export function describeContratoDeDatos(nombre: string, abrir: () => Promise<Ban
         await esperar(() => vistos.length >= 1);
         expect(vistos[0]).toMatchObject({ id: CID, name: "Clínica" });
         await b().mezclarClinica(CID, { config: { moneda: "USD" } });
-        await esperar(() => (vistos.at(-1) as Doc | null)?.config !== vistos[0]?.config);
+        await esperar(() => (vistos.at(-1) as { config?: { moneda?: string } } | null)?.config?.moneda === "USD");
         parar();
         expect((vistos.at(-1) as Doc).config).toEqual({ moneda: "USD" });
       });
