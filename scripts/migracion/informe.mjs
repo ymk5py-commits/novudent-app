@@ -44,6 +44,8 @@ export function armarInforme(manifiesto, { proyecto = "(sin nombre)", credencial
 
   const partes = [
     `# Informe de volumen de Firestore`,
+    // Una exportación filtrada con --clinica no sirve para migrar: se avisa antes que cualquier número.
+    ...(Array.isArray(manifiesto.clinicasFiltradas) ? [`⚠️ Exportación PARCIAL: solo las clínicas ${manifiesto.clinicasFiltradas.join(", ")}. No sirve para migrar.`] : []),
     `Generado el ${manifiesto.generado} · proyecto \`${proyecto}\` · credencial: ${credencial}`,
     `## Resumen`,
     tabla(["Qué", "Cantidad"], [

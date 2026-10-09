@@ -26,6 +26,7 @@ export const escritorNulo = { abrir: () => ({ escribir() {}, cerrar() {} }) };
  * @typedef {{ sinDocumento: boolean, documentos: number, bytes: number, colecciones: Record<string, EstadisticaDeColeccion> }} RegistroDeClinica
  * @typedef {{
  *   generado: string,
+ *   clinicasFiltradas: string[] | null,
  *   totales: { documentos: number, bytes: number },
  *   raiz: Record<string, EstadisticaDeColeccion>,
  *   clinicas: Record<string, RegistroDeClinica>,
@@ -54,9 +55,12 @@ const MAYORES = 10;
  */
 export async function exportarFirestore({ cliente, colecciones, escritor, clinicas = null, alAvanzar = () => {}, ahora = () => new Date() }) {
   const hallazgos = nuevosHallazgos();
+  /** El filtro de `--clinica` (sin repetidos); `null` = todas las clínicas. Una lista vacía es «sin filtro», no «ninguna». */
+  const filtro = clinicas?.length ? [...new Set(clinicas)] : null;
   /** @type {Manifiesto} */
   const manifiesto = {
     generado: ahora().toISOString(),
+    clinicasFiltradas: filtro,
     totales: { documentos: 0, bytes: 0 },
     raiz: {},
     clinicas: {},
@@ -133,8 +137,15 @@ export async function exportarFirestore({ cliente, colecciones, escritor, clinic
   // 2. Las clínicas: su documento y cada una de sus subcolecciones.
   const { estadistica: docsDeClinicas, encontrados } = await volcar("", "clinics", "raiz/clinics.jsonl");
   manifiesto.raiz.clinics = docsDeClinicas;
+  // Un id de --clinica que no existe es casi seguro un error de tipeo: sin esto la exportación saldría vacía y con código 0.
+  // (Si la lista de clínicas no se pudo leer ya quedó anotada como «no leída»: no se puede decir que el id no existe.)
+  if (filtro && !docsDeClinicas.incompleta) {
+    const hay = encontrados.map((c) => c.id);
+    const faltan = filtro.filter((cid) => !hay.includes(cid));
+    if (faltan.length) throw new Error(`Clínicas que no existen en Firestore: ${faltan.join(", ")}. Las que hay: ${hay.join(", ") || "(ninguna)"}`);
+  }
   for (const { id: cid, fantasma } of encontrados) {
-    if (clinicas && !clinicas.includes(cid)) continue;
+    if (filtro && !filtro.includes(cid)) continue;
     const subcolecciones = await leerOAnotar(() => cliente.listarColecciones(`clinics/${cid}`), `clinics/${cid}`, []);
     const desconocidas = subcolecciones.filter((c) => !colecciones.porClinica.includes(c));
     if (desconocidas.length) manifiesto.desconocidas.clinicas[cid] = desconocidas;

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -97,6 +97,33 @@ describe("exportarFirestore", () => {
     expect(Object.keys(m.clinicas)).toEqual(["c1"]);
   });
 
+  it("--clinica con un id que no existe falla con la lista de las que sí hay (nada de exportación vacía con código 0)", async () => {
+    const salida = temporal();
+    const cliente = clienteFalso(baseDeEjemplo(), { colecciones: coleccionesDeLaBase });
+    await expect(exportarFirestore({ cliente, colecciones: COLECCIONES, escritor: crearEscritorDeArchivos(salida), clinicas: ["c1", "c11", "otra"] }))
+      .rejects.toThrow("Clínicas que no existen en Firestore: c11, otra. Las que hay: c1, cl_demo");
+    expect(existsSync(join(salida, "clinicas"))).toBe(false); // ni siquiera las subcolecciones de la que sí existe
+    await expect(exportarFirestore({ cliente: clienteFalso({}), colecciones: COLECCIONES, escritor: escritorNulo, clinicas: ["c1"] }))
+      .rejects.toThrow("Clínicas que no existen en Firestore: c1. Las que hay: (ninguna)");
+  });
+
+  it("--clinica no culpa al pedido si la lista de clínicas no se pudo leer (eso ya queda como «no leída»)", async () => {
+    const falla = { clinics: new ErrorDeLectura("denegado", { estado: 403, ruta: "clinics", permiso: true }) };
+    const m = await exportarFirestore({ cliente: clienteFalso(baseDeEjemplo(), { colecciones: coleccionesDeLaBase, falla }), colecciones: COLECCIONES, escritor: escritorNulo, clinicas: ["c1"] });
+    expect(m.noLeidas).toEqual([{ ruta: "clinics", estado: 403, permiso: true }]);
+  });
+
+  it("el manifiesto anota el filtro de --clinica (clinicasFiltradas), y es null si no hubo filtro", async () => {
+    const cliente = () => clienteFalso(baseDeEjemplo(), { colecciones: coleccionesDeLaBase });
+    const filtrado = await exportarFirestore({ cliente: cliente(), colecciones: COLECCIONES, escritor: escritorNulo, clinicas: ["c1"] });
+    expect(filtrado.clinicasFiltradas).toEqual(["c1"]);
+    const completo = await exportarFirestore({ cliente: cliente(), colecciones: COLECCIONES, escritor: escritorNulo });
+    expect(completo.clinicasFiltradas).toBeNull();
+    const vacio = await exportarFirestore({ cliente: cliente(), colecciones: COLECCIONES, escritor: escritorNulo, clinicas: [] });
+    expect(vacio.clinicasFiltradas).toBeNull();
+    expect(Object.keys(vacio.clinicas).sort()).toEqual(["c1", "cl_demo"]); // [] es «sin filtro», no «ninguna clínica»
+  });
+
   it("--solo-medir cuenta y calcula el SHA-256 sin escribir ningún archivo", async () => {
     const salida = temporal();
     const m = await exportarFirestore({ cliente: clienteFalso(baseDeEjemplo(), { colecciones: coleccionesDeLaBase }), colecciones: COLECCIONES, escritor: escritorNulo });
@@ -150,6 +177,19 @@ describe("informe", () => {
     expect(texto).toContain("Proyección para 30 clínicas");
     expect(texto).toContain("No se migran");
     expect(texto).not.toMatch(/Luis|Eva|Ana/);
+  });
+
+  it("una exportación filtrada con --clinica lo grita arriba del informe; una completa no dice nada", async () => {
+    const cliente = () => clienteFalso(baseDeEjemplo(), { colecciones: coleccionesDeLaBase });
+    const filtrado = armarInforme(await exportarFirestore({ cliente: cliente(), colecciones: COLECCIONES, escritor: escritorNulo, clinicas: ["c1"] }));
+    const lineas = filtrado.split("\n").filter(Boolean);
+    expect(lineas[0]).toBe("# Informe de volumen de Firestore");
+    expect(lineas[1]).toBe("⚠️ Exportación PARCIAL: solo las clínicas c1. No sirve para migrar.");
+    const varias = armarInforme(await exportarFirestore({ cliente: cliente(), colecciones: COLECCIONES, escritor: escritorNulo, clinicas: ["c1", "cl_demo"] }));
+    expect(varias).toContain("⚠️ Exportación PARCIAL: solo las clínicas c1, cl_demo. No sirve para migrar.");
+    const completo = armarInforme(await exportarFirestore({ cliente: cliente(), colecciones: COLECCIONES, escritor: escritorNulo }));
+    expect(completo).not.toContain("PARCIAL");
+    expect(armarInforme({ ...(await manifiesto()), clinicasFiltradas: undefined } as never)).not.toContain("PARCIAL"); // un manifiesto viejo, sin el campo
   });
 
   it("si algo no se pudo leer, el informe lo dice y avisa que la exportación está incompleta", async () => {
