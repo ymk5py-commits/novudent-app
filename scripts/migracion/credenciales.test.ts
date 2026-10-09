@@ -20,7 +20,7 @@ describe("firebase-cli", () => {
 });
 
 describe("servicio", () => {
-  const env = { FIREBASE_WEB_API_KEY: "k", SERVICE_USER_EMAIL: "svc@x.com", SERVICE_USER_PASSWORD: "p" };
+  const env = { FIREBASE_WEB_API_KEY: "k", SERVICE_USER_EMAIL: "svc@x.com", SERVICE_USER_PASSWORD: "clave-secreta-123" };
   it("inicia sesión con el usuario de servicio y devuelve el idToken", async () => {
     const pedir = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ idToken: "ID" }) }) as unknown as Response);
     expect(await tokenDeServicio(env, pedir as unknown as typeof fetch)).toEqual({ token: "ID", cuenta: "svc@x.com" });
@@ -35,7 +35,7 @@ describe("servicio", () => {
     const pedir = async () => ({ ok: false, status: 400, json: async () => ({ error: { message: "INVALID_PASSWORD" } }) }) as unknown as Response;
     const error = await tokenDeServicio(env, pedir as unknown as typeof fetch).catch((e) => e);
     expect(error.message).toContain("INVALID_PASSWORD");
-    expect(error.message).not.toContain(env.SERVICE_USER_PASSWORD + "x");
+    expect(error.message).not.toContain(env.SERVICE_USER_PASSWORD);
   });
 });
 
