@@ -81,8 +81,13 @@ export function armarInforme(manifiesto, { proyecto = "(sin nombre)", credencial
   ];
 
   if (manifiesto.noLeidas.length) {
+    // Un 401 es «token vencido o inválido» (el de firebase-cli dura 1 hora): cambiar de credencial no lo arregla. Solo un 403 u otro permiso negado
+    // puede deberse a la credencial (la que lee todo es firebase-cli); una falla de red o del servidor no tiene que ver con eso.
+    const hay401 = manifiesto.noLeidas.some((n) => n.estado === 401);
+    const hayPermiso = manifiesto.noLeidas.some((n) => n.permiso && n.estado !== 401);
     partes.push(`## ⚠️ Lo que NO se pudo leer`, tabla(["Ruta", "Respuesta", "Por permiso"], manifiesto.noLeidas.map((n) => [`\`${n.ruta}\``, String(n.estado ?? "sin conexión"), n.permiso ? "sí" : "no"])),
-      `La exportación está **incompleta**: no sirve para migrar hasta que esto quede vacío (probá con \`--credencial firebase-cli\`).`);
+      `La exportación está **incompleta**: no sirve para migrar hasta que esto quede vacío${hayPermiso ? " (probá con `--credencial firebase-cli`)" : ""}.`);
+    if (hay401) partes.push(`Un 401 significa que el token venció (dura 1 hora) o no es válido: volvé a correr la exportación.`);
   }
   const desconocidas = [...manifiesto.desconocidas.raiz.map((c) => `\`${c}\` (primer nivel)`), ...Object.entries(manifiesto.desconocidas.clinicas).flatMap(([cid, cs]) => cs.map((c) => `\`clinics/${cid}/${c}\``))];
   if (desconocidas.length) partes.push(`## Colecciones que no están en el manifiesto`, `Se exportaron igual, pero hay que decidir qué hacer con ellas (¿falta sumarlas a \`lib/backend/colecciones.json\`?): ${desconocidas.join(", ")}.`);

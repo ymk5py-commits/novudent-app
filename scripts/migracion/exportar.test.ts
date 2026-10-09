@@ -198,5 +198,36 @@ describe("informe", () => {
     const texto = armarInforme(m);
     expect(texto).toContain("Lo que NO se pudo leer");
     expect(texto).toContain("incompleta");
+    expect(texto).toContain("--credencial firebase-cli"); // un 403 sí puede ser de la credencial: se sugiere la que lee todo
+    expect(texto).not.toContain("Un 401 significa");
+  });
+
+  it("un 401 se explica como token vencido y NO sugiere --credencial firebase-cli (es justo la que vence a la hora)", async () => {
+    const falla = { "clinics/c1/directMessages": new ErrorDeLectura("no autorizado", { estado: 401, ruta: "clinics/c1/directMessages", permiso: true }) };
+    const m = await exportarFirestore({ cliente: clienteFalso(baseDeEjemplo(), { colecciones: { ...coleccionesDeLaBase, "clinics/c1": ["directMessages"] }, falla }), colecciones: COLECCIONES, escritor: escritorNulo });
+    const texto = armarInforme(m);
+    expect(texto).toContain("Un 401 significa que el token venció (dura 1 hora) o no es válido: volvé a correr la exportación");
+    expect(texto).toContain("incompleta");
+    expect(texto).not.toContain("--credencial firebase-cli");
+  });
+
+  it("con un 401 y un 403 a la vez, se dicen las dos cosas", async () => {
+    const falla = {
+      "clinics/c1/directMessages": new ErrorDeLectura("no autorizado", { estado: 401, ruta: "clinics/c1/directMessages", permiso: true }),
+      "clinics/c1/users": new ErrorDeLectura("denegado", { estado: 403, ruta: "clinics/c1/users", permiso: true }),
+    };
+    const m = await exportarFirestore({ cliente: clienteFalso(baseDeEjemplo(), { colecciones: { ...coleccionesDeLaBase, "clinics/c1": ["directMessages", "users"] }, falla }), colecciones: COLECCIONES, escritor: escritorNulo });
+    const texto = armarInforme(m);
+    expect(texto).toContain("Un 401 significa");
+    expect(texto).toContain("--credencial firebase-cli");
+  });
+
+  it("una falla de red o del servidor (sin permiso) tampoco sugiere cambiar de credencial", async () => {
+    const falla = { "clinics/c1/directMessages": new ErrorDeLectura("la base respondió 500", { estado: 500, ruta: "clinics/c1/directMessages", permiso: false }) };
+    const m = await exportarFirestore({ cliente: clienteFalso(baseDeEjemplo(), { colecciones: { ...coleccionesDeLaBase, "clinics/c1": ["directMessages"] }, falla }), colecciones: COLECCIONES, escritor: escritorNulo });
+    const texto = armarInforme(m);
+    expect(texto).toContain("incompleta");
+    expect(texto).not.toContain("--credencial firebase-cli");
+    expect(texto).not.toContain("Un 401 significa");
   });
 });
