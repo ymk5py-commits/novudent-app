@@ -176,6 +176,40 @@ describe("la línea de comandos contra el emulador", () => {
     expect(ayuda.stdout).toContain("Uso:");
   });
 
+  it("no reutiliza una carpeta con archivos: la segunda vez sale con código 1 y no toca lo que había", () => {
+    const salida = salidaNueva();
+    const primera = correr(["--salida", salida]);
+    expect(primera.status, primera.stderr).toBe(0);
+    const antes = (readdirSync(salida, { recursive: true }) as string[]).sort();
+    const manifiestoAntes = readFileSync(join(salida, "manifiesto.json"), "utf8");
+
+    const segunda = correr(["--salida", salida]);
+    expect(segunda.status, segunda.stderr).toBe(1);
+    expect(segunda.stderr).toContain(`La carpeta ya tiene archivos: ${salida}. Usá otra (--salida) o borrala antes: una exportación nueva no se mezcla con una vieja.`);
+    expect((readdirSync(salida, { recursive: true }) as string[]).sort()).toEqual(antes);
+    expect(readFileSync(join(salida, "manifiesto.json"), "utf8")).toBe(manifiestoAntes);
+
+    // ni siquiera con un solo archivo suelto de una exportación vieja
+    const conUnArchivo = salidaNueva();
+    mkdirSync(conUnArchivo);
+    writeFileSync(join(conUnArchivo, "vieja.jsonl"), "{}\n");
+    const tercera = correr(["--salida", conUnArchivo, "--solo-medir"]);
+    expect(tercera.status, tercera.stderr).toBe(1);
+    expect(tercera.stderr).toContain("La carpeta ya tiene archivos");
+    expect(readdirSync(conUnArchivo)).toEqual(["vieja.jsonl"]);
+  });
+
+  it("una carpeta que ya existe pero está vacía se usa, y termina en 700 aunque la hayan creado 755", () => {
+    const salida = salidaNueva();
+    mkdirSync(salida, { mode: 0o755 });
+    chmodSync(salida, 0o755); // sin que la umask de esta máquina decida
+    expect(modo(salida)).toBe(0o755);
+    const r = correr(["--salida", salida]);
+    expect(r.status, r.stderr).toBe(0);
+    expect(modo(salida)).toBe(0o700);
+    expect(modo(join(salida, "manifiesto.json"))).toBe(0o600);
+  });
+
   it("--base a otro servidor con la credencial del CLI de Firebase sale con código 1 SIN pedir ningún token", () => {
     // Un «CLI de Firebase» de mentira en el PATH: si el programa llegara a pedirle el token, `lib/auth.js` deja una marca.
     const tmp = mkdtempSync(join(tmpdir(), "export-sin-token-"));

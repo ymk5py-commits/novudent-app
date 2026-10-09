@@ -7,7 +7,7 @@
  *  Opciones: --salida DIR · --credencial firebase-cli|servicio|entorno · --proyecto ID · --base URL (el emulador) · --clinica ID (repetible)
  *            --solo-medir · --permitir-incompleto · --ayuda
  *  Código de salida: 0 completa · 2 hay colecciones que no se pudieron leer (la exportación NO sirve para migrar) · 1 error. */
-import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,7 +17,7 @@ import { crearEscritorDeArchivos, escritorNulo, exportarFirestore } from "./expo
 import { armarInforme } from "./informe.mjs";
 
 const AYUDA = `Uso: node scripts/migracion/exportar-firestore.mjs [opciones]
-  --salida DIR            carpeta de la exportación (por defecto ~/novudent-export/<fecha>; no puede estar dentro del repositorio)
+  --salida DIR            carpeta de la exportación (por defecto ~/novudent-export/<fecha>; no puede estar dentro del repositorio y tiene que estar vacía o no existir)
   --credencial MODO       ${MODOS.join(" | ")} (por defecto firebase-cli)
   --proyecto ID           proyecto de Firebase (por defecto FIREBASE_PROJECT_ID o novudent-664f3)
   --base URL              API de Firestore alternativa (el emulador). Solo con --credencial entorno, o apuntando a este equipo
@@ -119,11 +119,16 @@ async function principal() {
   if (opciones.ayuda) { console.log(AYUDA); return 0; }
   validarBase(opciones.base, opciones.credencial); // antes de pedir el token: un token real no se manda a cualquier lado
   const carpeta = carpetaDeSalida(opciones.salida);
+  // Una exportación nueva no se mezcla con una vieja: los .jsonl que sobraran quedarían al lado de un manifiesto que no los lista.
+  if (existsSync(carpeta) && readdirSync(carpeta).length > 0) {
+    throw new Error(`La carpeta ya tiene archivos: ${carpeta}. Usá otra (--salida) o borrala antes: una exportación nueva no se mezcla con una vieja.`);
+  }
   const colecciones = JSON.parse(readFileSync(new URL("../../lib/backend/colecciones.json", import.meta.url), "utf8"));
 
   const { token, cuenta } = await resolverToken({ modo: opciones.credencial });
   console.error(`Proyecto ${opciones.proyecto} · credencial ${opciones.credencial} (${cuenta})${opciones.soloMedir ? " · solo medir" : ""}`);
   mkdirSync(carpeta, { recursive: true, mode: 0o700 });
+  chmodSync(carpeta, 0o700); // `mkdir` no cambia el modo de una carpeta que ya existía (vacía): son datos de pacientes
 
   const cliente = crearCliente({ proyecto: opciones.proyecto, token, base: opciones.base ?? undefined });
   const manifiesto = await exportarFirestore({
