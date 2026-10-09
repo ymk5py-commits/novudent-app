@@ -35,8 +35,7 @@ test.describe("Dar cita", () => {
     const cita = await abrirDarCita(page);
     await cita.getByRole("combobox", { name: "Paciente" }).fill("3.456.789");
     await cita.getByRole("option", { name: "3.456.789 | MARÍA GONZÁLEZ" }).click();
-    await cita.getByLabel("Duración: horas").selectOption("1");
-    await cita.getByLabel("Minutos").fill("0");
+    await cita.getByLabel("Duración").selectOption({ label: "1 h" });
     await cita.getByText("Multiconsulta").click();
     const libres = cita.locator("button[aria-pressed='false']:not([disabled])");
     await libres.first().click();

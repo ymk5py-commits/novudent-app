@@ -331,7 +331,7 @@ test.describe("quitar de la lista", () => {
     expect((await fichaGuardada(page, "p9")).seguimiento).toMatchObject({ motivo: "Se mudó a Encarnación", por: "Carlos Admin" });
   });
 
-  test("cancelar (o Escape) no cambia nada", async ({ page }) => {
+  test("cancelar (o la X) no cambia nada, y Escape no cierra la ventana", async ({ page }) => {
     await quitarDe(page, "María González").click();
     await modal(page).getByRole("radio", { name: "No quiere continuar" }).check();
     await modal(page).getByRole("button", { name: "Cancelar" }).click();
@@ -340,9 +340,12 @@ test.describe("quitar de la lista", () => {
     expect((await fichaGuardada(page, "p1")).seguimiento).toBeUndefined();
 
     await quitarDe(page, "María González").click();
-    // El diálogo escucha Escape cuando termina de montarse y se queda con el foco: se espera a eso (una persona no aprieta la tecla en 5 ms).
-    await expect(modal(page).getByRole("button", { name: "Cerrar" })).toBeFocused();
+    // Las ventanas son persistentes (pedido de Croman, 8-oct-2026): Escape no la cierra; la X sí. Se espera a que el foco entre a la
+    // ventana (una persona no aprieta la tecla en 5 ms).
+    await expect(modal(page)).toBeFocused();
     await page.keyboard.press("Escape");
+    await expect(modal(page)).toBeVisible();
+    await modal(page).getByRole("button", { name: "Cerrar" }).click();
     await expect(modal(page)).toHaveCount(0);
     await expect(renglon(page, "María González")).toBeVisible();
     expect((await fichaGuardada(page, "p1")).seguimiento).toBeUndefined();

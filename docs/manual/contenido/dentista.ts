@@ -141,7 +141,7 @@ export const procedimientos: Procedimiento[] = [
       await c.expect(page.getByRole("menuitem")).toHaveText(["Ver"]); // sin «Editar» ni «Eliminar»
       await page.getByRole("menuitem", { name: "Ver" }).click();
       await c.expect(page.getByRole("dialog", { name: "Control post-operatorio" })).toBeVisible();
-      await page.keyboard.press("Escape");
+      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).click(); // las ventanas no se cierran con Escape
       await c.expect(page.getByRole("button", { name: "Dar cita" })).toHaveCount(0);
       await page.locator("label").filter({ hasText: /^Anulado\s*\d+$/ }).getByRole("checkbox").uncheck();
       await c.expect(page.getByRole("link", { name: "María González" })).toHaveCount(0);
@@ -165,7 +165,7 @@ export const procedimientos: Procedimiento[] = [
       await page.getByRole("button", { name: /Resina pieza 16/ }).click();
       const modal = page.getByRole("dialog", { name: "Resina pieza 16" });
       await c.foto("detalle", { resaltar: modal.getByRole("link", { name: "María González" }), recorte: modal, margen: 4 });
-      await page.keyboard.press("Escape");
+      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).click(); // las ventanas no se cierran con Escape
 
       // Las otras vistas que el texto menciona.
       await page.getByRole("button", { name: "Mensual" }).click();
@@ -304,7 +304,7 @@ export const procedimientos: Procedimiento[] = [
       await c.expect(page.getByText("Documento clínico").first()).toBeVisible();
 
       // La asistente de doctores solo puede leerlos.
-      await c.entrar("assistant", "/app/pacientes/p3?tab=documentos");
+      await c.entrar("assistant", "/app/pacientes/p3/documentos");
       await c.expect(page.getByText("Tu rol puede ver los documentos clínicos, pero no crearlos ni editarlos.")).toBeVisible();
       for (const prohibido of ["Nuevo documento clínico", "Editar", "Anular"]) await c.expect(page.getByRole("button", { name: prohibido })).toHaveCount(0);
       await c.expect(page.getByRole("button", { name: "Ver / imprimir" })).toBeVisible();

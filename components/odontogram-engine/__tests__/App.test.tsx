@@ -196,19 +196,20 @@ describe('App.tsx', () => {
       expect(dialog.contains(document.activeElement)).toBe(true);
     });
 
-    it('closes on Escape', () => {
+    // Novudent: persistent windows — neither Escape nor a backdrop click closes it (see NOTICE.md).
+    it('stays open on Escape', () => {
       render(<App language="en" />);
       const dialog = openModal();
       fireEvent.keyDown(dialog, { key: 'Escape' });
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).toBeInTheDocument();
     });
 
-    it('closes on backdrop click', () => {
+    it('stays open on backdrop click', () => {
       render(<App language="en" />);
       openModal();
       const backdrop = document.querySelector('.odon-settings-backdrop') as HTMLElement;
       fireEvent.mouseDown(backdrop);
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).toBeInTheDocument();
     });
 
     it('renders every tab and switches between them', () => {

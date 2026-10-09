@@ -153,7 +153,7 @@ export const procedimientos: Procedimiento[] = [
       // El lápiz edita y el tachito elimina (con pregunta): se comprueba sobre la sucursal nueva.
       await fila.getByRole("button", { name: "Editar" }).click();
       await c.expect(page.getByRole("dialog", { name: "Editar sucursal" })).toBeVisible();
-      await page.keyboard.press("Escape");
+      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).click(); // las ventanas no se cierran con Escape
       await fila.getByRole("button", { name: "Eliminar" }).click();
       await c.expect(fila).toHaveCount(0);
     },
@@ -212,7 +212,7 @@ export const procedimientos: Procedimiento[] = [
       });
       const rol = modal.locator("select");
       await c.foto("rol", { recorte: [rol.locator("xpath=ancestor::label[1]"), modal.getByRole("button", { name: "Crear usuario" })], margen: 10, resaltar: rol });
-      await page.keyboard.press("Escape");
+      await page.getByRole("dialog").last().getByRole("button", { name: "Cerrar" }).click(); // las ventanas no se cierran con Escape
 
       // El alta real necesita una clínica conectada: para la fila de un dentista se muestra la de la Dra. Sofía.
       const sofia = filaDe(page, "Dra. Sofía Benítez");

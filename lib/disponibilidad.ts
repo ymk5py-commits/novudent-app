@@ -75,6 +75,47 @@ export function huecosDelDia(
   return out;
 }
 
+/** Por qué un día no tiene horarios para ofrecer: no atiende, ya pasó (hoy, tarde), la consulta no entra en el horario de atención, está
+ *  todo bloqueado (ni sobreagendando hay lugar) o está todo ocupado. `null` si hay lugar. Así la grilla de «Dar cita» no muestra el
+ *  mismo «Sin lugar» para un domingo que para un día lleno. */
+export type MotivoSinHuecos = "no-atiende" | "ya-paso" | "muy-larga" | "bloqueado" | "completo";
+
+export const TEXTO_SIN_HUECOS: Record<MotivoSinHuecos, string> = {
+  "no-atiende": "No atiende",
+  "ya-paso": "Ya pasó el horario",
+  "muy-larga": "No entra en el horario",
+  bloqueado: "Bloqueado",
+  completo: "Sin lugar",
+};
+
+export function motivoSinHuecos(fecha: Date, duracionMin: number, opts: Parameters<typeof huecosDelDia>[2]): MotivoSinHuecos | null {
+  if (huecosDelDia(fecha, duracionMin, opts).length > 0) return null;
+  const horario = opts.horario ?? HORARIO_POR_DEFECTO;
+  if (!horario.dias.includes(fecha.getDay())) return "no-atiende";
+  const desde = aMin(horario.desde);
+  const hasta = aMin(horario.hasta);
+  if (duracionMin > hasta - desde) return "muy-larga";
+  const base = new Date(fecha); base.setHours(0, 0, 0, 0);
+  // El último inicio en que entraba la consulta ya quedó atrás.
+  const ultimo = desde + Math.floor((hasta - duracionMin - desde) / (opts.paso ?? PASO_MIN)) * (opts.paso ?? PASO_MIN);
+  if (base.getTime() + ultimo * 60_000 < opts.ahora) return "ya-paso";
+  return huecosDelDia(fecha, duracionMin, { ...opts, permitirSuperponer: true }).length === 0 ? "bloqueado" : "completo";
+}
+
+/** Las duraciones que se ofrecen en «Dar cita»: de 15 en 15 minutos, de 15 min a 8 h. La de la cita que se edita, si es otra (20 min,
+ *  10 h), se suma en su lugar para no cambiarla sin querer. */
+export function opcionesDeDuracion(actual: number): number[] {
+  const out = Array.from({ length: 32 }, (_, i) => (i + 1) * 15);
+  if (actual > 0 && !out.includes(actual)) out.push(actual);
+  return out.sort((a, b) => a - b);
+}
+
+/** «15 min», «1 h», «1 h 30 min». */
+export function textoDuracion(min: number): string {
+  const h = Math.floor(min / 60), m = min % 60;
+  return [h > 0 && `${h} h`, (m > 0 || h === 0) && `${m} min`].filter(Boolean).join(" ");
+}
+
 /** Cuántas citas activas del profesional (o del box, si se eligió) pisa una consulta de `duracionMin` que empieza el día `fecha` a la
  *  `hora`. Al sobreagendar, el horario se marca «Ya hay 1 cita»; al guardar, si es más de 0 la cita queda como sobrecupo. */
 export function citasEnElHueco(

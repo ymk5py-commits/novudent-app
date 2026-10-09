@@ -85,19 +85,27 @@ const FOCUSABLE =
   'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 /**
- * Comportamiento accesible de un diálogo modal (WCAG 2.1 AA):
- * cierra con Escape, atrapa el foco mientras está abierto (Tab no se escapa al
- * fondo) y lo devuelve a quien lo abrió al cerrarse — sin esto el usuario de
- * teclado queda "perdido" al principio de la página.
+ * Comportamiento accesible de un diálogo modal (WCAG 2.1 AA): atrapa el foco
+ * mientras está abierto (Tab no se escapa al fondo) y lo devuelve a quien lo
+ * abrió al cerrarse — sin esto el usuario de teclado queda "perdido" al
+ * principio de la página.
+ *
+ * **Las ventanas son persistentes** (pedido de Croman, 8-oct-2026: «que se
+ * cierren con cancelar o con la X de arriba, para evitar que se cierren»): ni
+ * Escape ni un clic afuera las cierran, porque se perdía lo que se estaba
+ * cargando. Se cierran con la X o con el botón «Cancelar» de cada una. Por lo
+ * mismo, al abrir el foco va al panel (que anuncia el título) y no a la X: un
+ * Enter de más ya no la cierra. Si un campo pide `autoFocus`, se lo respeta.
  *
  * Es un hook y no un componente para que cada diálogo conserve su markup (el
  * visor de consentimientos, por ejemplo, tiene estilos de impresión propios).
  *
  * Devuelve los props a esparcir en el panel: `<div {...dialogProps}>`.
  */
-export function useDialogA11y(onClose: () => void) {
+export function useDialogA11y() {
   const panel = useRef<HTMLDivElement>(null);
-  const abridor = useRef<HTMLElement | null>(null);
+  // Quién abrió el diálogo: se lee al renderizar, antes de que un `autoFocus` de adentro se lleve el foco.
+  const abridor = useRef<HTMLElement | null>(typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null));
   const titleId = useId();
 
   const enfocables = useCallback(
@@ -106,30 +114,29 @@ export function useDialogA11y(onClose: () => void) {
   );
 
   useEffect(() => {
-    abridor.current = document.activeElement as HTMLElement | null;
-    // Al abrir, el foco entra al diálogo (si no hay nada enfocable, al panel).
-    (enfocables()[0] ?? panel.current)?.focus();
+    // Al abrir, el foco entra al diálogo: al campo con `autoFocus` si lo hay; si no, al panel.
+    if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
 
     const onKey = (e: KeyboardEvent) => {
       // Con un diálogo abierto encima de otro (p. ej. «Crear paciente» sobre «Dar
-      // cita»), solo responde el de más arriba: si no, Escape cerraba los dos.
+      // cita»), solo responde el de más arriba.
       const abiertos = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
       if (abiertos.length > 1 && abiertos[abiertos.length - 1] !== panel.current) return;
-      if (e.key === "Escape") { e.stopPropagation(); onClose(); return; }
       if (e.key !== "Tab") return;
       const els = enfocables();
       if (els.length === 0) { e.preventDefault(); return; }
       const primero = els[0], ultimo = els[els.length - 1];
-      // Ciclar dentro del diálogo en vez de salir al fondo.
-      if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
+      // Ciclar dentro del diálogo en vez de salir al fondo (también desde el panel, donde arranca el foco).
+      if (e.shiftKey && (document.activeElement === primero || document.activeElement === panel.current)) { e.preventDefault(); ultimo.focus(); }
       else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
     };
     document.addEventListener("keydown", onKey, true);
+    const quien = abridor.current;
     return () => {
       document.removeEventListener("keydown", onKey, true);
-      abridor.current?.focus?.();
+      quien?.focus?.();
     };
-  }, [onClose, enfocables]);
+  }, [enfocables]);
 
   return {
     titleId,
@@ -142,6 +149,42 @@ export function useDialogA11y(onClose: () => void) {
       onClick: (e: React.MouseEvent) => e.stopPropagation(),
     },
   };
+}
+
+/** Un clic en el fondo de una ventana persistente no la cierra: marca la X un momento para que se vea por dónde se cierra.
+ *  Devuelve el handler del fondo y si la X tiene que estar marcada. */
+export function useAvisoDeCierre() {
+  const [aviso, setAviso] = useState(false);
+  useEffect(() => {
+    if (!aviso) return;
+    const t = setTimeout(() => setAviso(false), 2000);
+    return () => clearTimeout(t);
+  }, [aviso]);
+  const alTocarElFondo = (e: React.MouseEvent) => { if (e.target === e.currentTarget) setAviso(true); };
+  return { aviso, alTocarElFondo };
+}
+
+/** La X de arriba de una ventana. `aviso`: se marca (un clic afuera no cierra; ver useAvisoDeCierre). */
+export function BotonCerrar({ onClose, aviso }: { onClose: () => void; aviso?: boolean }) {
+  return (
+    <span className="relative shrink-0">
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Cerrar"
+        title="Cerrar"
+        data-aviso={aviso ? "si" : undefined}
+        className={`grid h-8 w-8 place-items-center rounded-full transition-colors hover:bg-clinic-bg ${aviso ? "bg-azure-50 ring-2 ring-azure-400" : ""}`}
+      >
+        <X className={`h-4 w-4 ${aviso ? "text-azure-700" : "text-clinic-muted"}`} />
+      </button>
+      {aviso && (
+        <span role="status" className="absolute right-0 top-full z-20 mt-1.5 whitespace-nowrap rounded bg-navy-900 px-2.5 py-1.5 text-[12px] font-semibold text-white shadow-pop">
+          Para cerrar, tocá la X o «Cancelar»
+        </span>
+      )}
+    </span>
+  );
 }
 
 /**
@@ -162,18 +205,18 @@ export function Portal({ children }: { children: ReactNode }) {
  *  viviera en Modal, su efecto correría en el primer render —cuando el portal
  *  todavía devuelve null— y el foco nunca entraría al diálogo. */
 function ModalContent({ title, onClose, children, wide, xl }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; xl?: boolean }) {
-  const { titleId, dialogProps } = useDialogA11y(onClose);
+  const { titleId, dialogProps } = useDialogA11y();
+  const { aviso, alTocarElFondo } = useAvisoDeCierre();
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-navy-950/40 p-4" onClick={alTocarElFondo} role="presentation">
       <div
         {...dialogProps}
-        className={`max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded border border-clinic-border bg-white p-5 shadow-pop outline-none ${xl ? "max-w-6xl" : wide ? "max-w-3xl" : "max-w-lg"}`}
+        className={`max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded border border-clinic-border bg-white px-5 pb-5 shadow-pop outline-none ${xl ? "max-w-6xl" : wide ? "max-w-3xl" : "max-w-lg"}`}
       >
-        <div className="mb-4 flex items-center justify-between">
+        {/* El título y la X quedan fijos arriba: con una ventana larga, la X sigue a mano. */}
+        <div className="sticky top-0 z-10 -mx-5 mb-4 flex items-center justify-between gap-3 border-b border-clinic-border bg-white px-5 py-3">
           <h3 id={titleId} className="text-[16px] font-bold text-clinic-text">{title}</h3>
-          <button onClick={onClose} aria-label="Cerrar" className="grid h-8 w-8 place-items-center rounded-full hover:bg-clinic-bg">
-            <X className="h-4 w-4 text-clinic-muted" />
-          </button>
+          <BotonCerrar onClose={onClose} aviso={aviso} />
         </div>
         {children}
       </div>
@@ -181,7 +224,18 @@ function ModalContent({ title, onClose, children, wide, xl }: { title: string; o
   );
 }
 
-/** Diálogo modal accesible. Ver useDialogA11y. */
+/** El pie de una ventana larga (los botones de guardar y cancelar): queda fijo abajo mientras se recorre la ventana. Va al final del
+ *  contenido de un <Modal>. */
+export function ModalPie({ children, className = "", ...rest }: { children: ReactNode; className?: string } & React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div {...rest} className={`sticky -bottom-5 z-10 -mx-5 -mb-5 mt-4 border-t border-clinic-border bg-white px-5 py-3 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/** Diálogo modal accesible y persistente: se cierra con la X o con «Cancelar», nunca con un clic afuera ni con Escape. Ver
+ *  useDialogA11y. */
 export function Modal(props: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; xl?: boolean }) {
   return (
     <Portal>

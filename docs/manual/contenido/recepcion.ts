@@ -49,14 +49,15 @@ export const procedimientos: Procedimiento[] = [
     pasos: [
       { texto: "Entrá a **Agenda** y tocá «Dar cita», arriba a la derecha.", captura: "agenda" },
       { texto: "En **Paciente**, escribí la CI (con o sin puntos) o el nombre y elegí al paciente de la lista, que sale como «CI | NOMBRE». Si no tiene ficha, tocá «Crear nuevo paciente», al final de la lista.", captura: "paciente" },
-      { texto: "Elegí el **Tipo de consulta** (filtra a los profesionales por especialidad), el **Profesional** y la **Duración**; por defecto son 30 minutos. Si hay varias sucursales o boxes, elegí también cuál." },
+      { texto: "Elegí el **Tipo de consulta** (filtra a los profesionales por especialidad), el **Profesional** y la **Duración** (de 15 en 15 minutos; por defecto, 30). Si hay varias sucursales o boxes, elegí también cuál." },
       { texto: "En **Procedimiento a realizar** marcá qué se le va a hacer: tildá las prestaciones pendientes de sus planes de tratamiento, o agregá una del arancel («Agregar otra prestación») u otro motivo escrito a mano. La primera es el título de la cita en la agenda.", captura: "procedimiento" },
-      { texto: "A la derecha, en **Agenda disponible**, tocá el horario que le sirve al paciente. Solo salen los horarios libres donde entra la consulta; con las flechas, «Hoy» o el calendario («Ir a la fecha») cambiás de semana.", captura: "horario" },
+      { texto: "A la derecha, en **Agenda disponible**, tocá el horario que le sirve al paciente. Solo salen los horarios libres donde entra la consulta; un día sin horarios dice por qué («No atiende», «Ya pasó el horario», «Bloqueado» o «Sin lugar»). Con las flechas, «Hoy» o el calendario («Ir a la fecha») cambiás de semana. Abajo de la ventana queda a la vista el horario elegido, junto al botón.", captura: "horario" },
       { texto: "Tocá «Crear cita». La ventana se cierra y la cita aparece en la agenda, en el día elegido, como «No confirmado».", captura: "cita-creada" },
       { texto: "Si el paciente necesita varias citas con los mismos datos (por ejemplo, un control por semana), tildá «Multiconsulta (varias citas)» y tocá un horario por cada cita (también en otras semanas): el botón pasa a decir «Crear 2 citas», «Crear 3 citas»…", captura: "multiconsulta" },
       { texto: "Si ningún horario le sirve, tildá «Agregar a la lista de espera», escribí su **Preferencia horaria** y tocá «Agregar a la lista de espera». Mirá [[usar-la-lista-de-espera]]." },
     ],
     avisos: [
+      { tipo: "tip", texto: "La ventana no se cierra si tocás afuera o apretás Escape, así no perdés lo que estabas cargando: se cierra con «Cancelar» o con la X de arriba. Lo mismo pasa con todas las ventanas del sistema." },
       { tipo: "ojo", texto: "Dar la cita no le manda ningún correo al paciente, y queda «No confirmado» hasta que alguien cambie su estado. Para avisarle, usá «Notificar por mail»: mirá [[cambiar-el-estado-de-una-cita]]." },
       { tipo: "ojo", texto: "Los pacientes deshabilitados no aparecen en la búsqueda. Si no encontrás a alguien, probá con la CI sin puntos o con el apellido." },
       { tipo: "tip", texto: "En la vista **Semanal**, tocar un espacio abre su menú: «Dar cita presencial», «Dar cita por videoconsulta», «Dar múltiples citas», «Sobreagendar en este horario» y «Bloquear espacio». Las cuatro primeras abren «Dar cita» con ese día y esa hora ya elegidos. Mirá [[sobreagendar-una-cita]] y [[bloquear-un-espacio-de-la-agenda]]." },
@@ -102,7 +103,7 @@ export const procedimientos: Procedimiento[] = [
         alto: 1000,
         margen: 8,
         resaltar: nueve,
-        recorte: [modal.getByRole("heading", { name: /^Agenda disponible/ }), modal.getByRole("status")],
+        recorte: [modal.getByRole("heading", { name: /^Agenda disponible/ }), modal.getByTestId("pie-dar-cita")],
       });
 
       await modal.getByRole("button", { name: "Crear cita" }).click();
@@ -631,7 +632,7 @@ export const procedimientos: Procedimiento[] = [
       await c.foto("menu", { resaltar: irDatos, recorte: [fila, acciones] });
       // Este ítem recarga la página (va a la ficha con la pestaña pedida).
       await irDatos.click();
-      await page.waitForURL(/tab=datos/);
+      await page.waitForURL(/\/app\/pacientes\/p5\/datos$/);
       await c.expect(main.getByRole("heading", { name: "Datos requeridos" })).toBeVisible();
 
       const email = main.getByLabel("Email");
