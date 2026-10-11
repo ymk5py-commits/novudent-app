@@ -77,15 +77,19 @@ falta, esa función responde 503 con un mensaje entendible.
 | `RESEND_API_KEY` · `EMAIL_FROM` | Envío de email (presupuestos) |
 
 ### Soporte de Novum (botón «Ayuda» de la barra superior)
-Son **públicas**: Next.js las incrusta en el bundle al compilar, así que las ve cualquiera
-que abra la app (nunca un secreto acá) y cambiarlas pide un nuevo deploy. El panel muestra
-solo los canales bien cargados; sin WhatsApp ni correo dice que el canal de soporte
-todavía no está configurado. Se leen en `lib/soporte.ts`.
+El botón abre un asistente dentro de la app con respuestas guiadas sobre funciones de
+Novudent y enlaces a las secciones correspondientes. No consulta fichas ni envía datos a
+un modelo externo. Si hace falta una persona, prepara un correo a
+`hola@novumholding.lat`; el usuario debe abrir su correo y pulsar Enviar. El correo
+recibe mensajes mediante reenvío. WhatsApp y horario son opcionales.
+
+Las variables siguientes son **públicas**: Next.js las incrusta al compilar y
+cambiarlas pide un nuevo deploy. Se leen en `lib/soporte.ts`.
 
 | Variable | Habilita |
 |---|---|
 | `NEXT_PUBLIC_SOPORTE_WHATSAPP` | Botón «Escribir por WhatsApp» (`wa.me`, con un mensaje que ya dice la clínica y el usuario). Número con código de país, p. ej. `595981123456`; se aceptan `+`, espacios y guiones. Si no es un número (de 8 a 15 dígitos), no se muestra |
-| `NEXT_PUBLIC_SOPORTE_EMAIL` | Botón «Escribir un correo» (`mailto:` con asunto y cuerpo prearmados) |
+| `NEXT_PUBLIC_SOPORTE_EMAIL` | Reemplaza `hola@novumholding.lat` para el correo preparado (`mailto:`) |
 | `NEXT_PUBLIC_SOPORTE_HORARIO` | Texto libre del horario de atención, p. ej. `Lunes a viernes de 8:00 a 18:00`. Solo no alcanza: hace falta WhatsApp o correo |
 
 ---
@@ -116,7 +120,7 @@ prueba falla si el navegador registra una excepción o un `console.error` real.
 | `roles.spec.ts` | matriz RBAC: qué ve y qué no el dentista y la asistente |
 | `planes.spec.ts` | gating del plan Solo y el cambio de contraseña obligatorio |
 | `chat.spec.ts` | chat interno: elegir a una persona y mandarle un directo, que otra persona no lo vea, y la difusión del admin (le llega a cada uno sin ver a quién más) |
-| `ayuda.spec.ts` | el botón «Ayuda» avisa que el canal de soporte no está configurado (la compilación de prueba no trae las `NEXT_PUBLIC_SOPORTE_*`) |
+| `ayuda.spec.ts` | el asistente responde una consulta y prepara el correo con el contexto de la clínica |
 | `publicas-con-token.spec.ts` | reservar, firmar, pagar, encuestas, videoconsulta con tokens inválidos |
 | `api.spec.ts` | rutas del servidor sin credenciales: validaciones, trampa para bots, límite de 5/h, mensajes sin trazas |
 | `visual.spec.ts` | `@visual`: capturas de referencia de la landing y el login (no corren en la CI) |

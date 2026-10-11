@@ -280,7 +280,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               onClick={abrirAyuda}
               aria-haspopup="dialog"
               aria-label="Ayuda"
-              data-tip="Hablá con Novum: WhatsApp, correo y horario"
+              data-tip="Asistente de ayuda y contacto con Novum"
               data-tip-pos="down-left"
               className="hidden h-10 shrink-0 items-center gap-1.5 rounded-[10px] border border-white/20 bg-white/10 px-2.5 text-sm font-bold text-white transition-colors hover:bg-white/20 lg:inline-flex lg:px-3"
             >

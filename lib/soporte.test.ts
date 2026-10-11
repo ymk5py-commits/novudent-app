@@ -34,8 +34,9 @@ describe("canalesDesde (variables NEXT_PUBLIC_SOPORTE_*)", () => {
     expect(haySoporte(canalesDesde({ whatsapp: "595981123456" }))).toBe(true);
   });
 
-  it("en los tests no hay variables cargadas: SOPORTE queda vacío", () => {
-    expect(haySoporte(SOPORTE)).toBe(false);
+  it("el correo público funciona sin variables adicionales", () => {
+    expect(SOPORTE.email).toBe("hola@novumholding.lat");
+    expect(haySoporte(SOPORTE)).toBe(true);
   });
 });
 
@@ -55,5 +56,11 @@ describe("texto prearmado", () => {
     expect(params.get("subject")).toContain("Aura Esthetic Center");
     expect(params.get("body")).toBe(mensajeSoporte(quien));
     expect(link).not.toContain(" "); // todo codificado: un espacio suelto corta el mailto en algunos clientes
+  });
+
+  it("puede incluir la consulta escrita en el correo preparado", () => {
+    const link = linkCorreoSoporte("hola@novumholding.lat", quien, "No veo mi agenda");
+    const params = new URLSearchParams(link.split("?")[1]);
+    expect(params.get("body")).toContain("No veo mi agenda");
   });
 });
