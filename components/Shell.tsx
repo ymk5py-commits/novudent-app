@@ -321,7 +321,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           aria-haspopup="dialog"
           aria-label="Ayuda de Novum"
           title="Ayuda de Novum"
-          className="fixed bottom-5 right-5 z-40 grid h-12 w-12 place-items-center rounded-full bg-azure-600 text-white shadow-[0_4px_14px_rgba(3,105,201,0.4)] transition-colors hover:bg-azure-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-azure-300 print:hidden"
+          className="fixed bottom-[max(1.25rem,var(--cookies-alto,0px))] right-5 z-40 grid h-12 w-12 place-items-center rounded-full bg-azure-600 text-white shadow-[0_4px_14px_rgba(3,105,201,0.4)] transition-colors hover:bg-azure-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-azure-300 print:hidden"
         >
           <Headset className="h-6 w-6" />
         </button>
