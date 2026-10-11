@@ -741,6 +741,9 @@ details.lp-faq[open] .lp-faq-a { animation: sv-rise 0.4s cubic-bezier(0.16, 1, 0
 .lp-nowrap { white-space: nowrap; }
 /* El aviso de cookies y la barra fija del celular ocupan el mismo lugar: primero se decide lo de las cookies. */
 html[data-cookies="pendiente"] .lp-barra-movil { display: none; }
+/* El aviso de cookies es una tarjeta fija abajo: mientras está abierto la página deja ese lugar libre (alto medido en Consentimiento.tsx)
+   para que el final del contenido y sus botones no queden detrás. */
+@media screen { html[data-cookies="pendiente"] body { padding-bottom: var(--cookies-alto, 0px); } }
 
 /* Una sola entrada coreografiada al cargar; después el contenido simplemente está. */
 @keyframes lp-entrada { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

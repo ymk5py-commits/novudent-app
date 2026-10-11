@@ -10,6 +10,11 @@
  *   página, para cambiar de opinión.
  * - Mientras el aviso está abierto, <html data-cookies="pendiente"> esconde la
  *   barra fija del celular para que no se pisen.
+ * - El aviso NO tapa nada (pedido de Croman, 9-oct-2026): queda por debajo de las ventanas
+ *   y del menú del celular (z-25: encima de la página, debajo del encabezado fijo y de todo
+ *   lo que se abre encima), la página reserva su alto abajo (`--cookies-alto`, que usa el
+ *   `padding-bottom` del <body> en globals.css) para poder llegar al final, y el botón de
+ *   ayuda del panel se sube encima.
  */
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -23,6 +28,7 @@ export default function Consentimiento() {
   const [aviso, setAviso] = useState(false);
   const [analitica, setAnalitica] = useState(false);
   const dialogo = useRef<HTMLDialogElement>(null);
+  const tarjeta = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const c = leerConsentimiento();
@@ -38,6 +44,18 @@ export default function Consentimiento() {
     document.documentElement.dataset.cookies = aviso ? "pendiente" : "listo";
   }, [aviso]);
 
+  // Mientras el aviso está abierto, la página reserva su alto abajo (con el margen de la pantalla y un respiro) para que todo se pueda ver.
+  useEffect(() => {
+    const el = tarjeta.current;
+    if (!aviso || !el) return;
+    const raiz = document.documentElement;
+    const medir = () => raiz.style.setProperty("--cookies-alto", `${Math.ceil(el.getBoundingClientRect().height) + 24}px`);
+    medir();
+    const observador = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(medir);
+    observador?.observe(el);
+    return () => { observador?.disconnect(); raiz.style.removeProperty("--cookies-alto"); };
+  }, [aviso]);
+
   const decidir = (a: boolean) => {
     guardarConsentimiento(a);
     setAnalitica(a);
@@ -49,8 +67,9 @@ export default function Consentimiento() {
     <>
       {aviso && (
         <section
+          ref={tarjeta}
           aria-label="Aviso de cookies"
-          className="lp-capa fixed inset-x-3 bottom-3 z-[500] rounded-[var(--lp-radius-card)] border border-lp-rule bg-lp-paper p-5 font-lp text-lp-ink [box-shadow:var(--lp-shadow-float)] sm:left-auto sm:right-4 sm:max-w-md"
+          className="lp-capa fixed inset-x-3 bottom-3 z-[25] rounded-[var(--lp-radius-card)] border border-lp-rule bg-lp-paper p-5 font-lp text-lp-ink [box-shadow:var(--lp-shadow-float)] sm:left-auto sm:right-4 sm:max-w-md"
         >
           <h2 className="text-[17px] font-bold">Cookies</h2>
           <p className="mt-1.5 text-[14px] leading-relaxed text-lp-muted">
