@@ -405,6 +405,37 @@ test("el dentista ve la semanal en solo lectura: los espacios no abren menú, la
   await expect(main(page).getByRole("button", { name: /^Bloqueado/ })).toHaveCount(0);
 });
 
+test("quien ve la agenda en solo lectura lo lee en pantalla, con su rol, en todas las vistas (la grilla muda no explicaba por qué no salía el menú)", async ({ page }) => {
+  await entrarDemo(page, USUARIOS_DEMO.dentista);
+  await page.goto("/app/agenda");
+  const aviso = main(page).getByRole("note").filter({ hasText: "Agenda en solo lectura" });
+  // Vista Diaria (la que abre por defecto), Semanal, Mensual y Reprogramación.
+  await expect(aviso).toContainText("Tu rol (Dentista) puede ver las citas, pero no dar citas ni bloquear espacios");
+  await expect(aviso).toContainText("recepción o al administrador");
+  for (const vista of ["Semanal", "Mensual", "Reprogramación"]) {
+    await main(page).getByRole("button", { name: vista }).click();
+    await expect(aviso).toBeVisible();
+  }
+  await expect(main(page).getByRole("button", { name: "Dar cita" })).toHaveCount(0);
+});
+
+test("la asistente de doctores también lo lee, con el nombre de su rol", async ({ page }) => {
+  await entrarDemo(page, USUARIOS_DEMO.asistente);
+  await page.goto("/app/agenda");
+  await expect(main(page).getByRole("note").filter({ hasText: "Agenda en solo lectura" })).toContainText("Tu rol (Asistente de doctores)");
+});
+
+for (const [rol, usuario] of [["administrador", USUARIOS_DEMO.admin], ["recepcionista", USUARIOS_DEMO.recepcionista], ["comercial", USUARIOS_DEMO.comercial]] as const) {
+  test(`el ${rol} puede dar citas y bloquear: no ve el aviso de solo lectura`, async ({ page }) => {
+    await entrarDemo(page, usuario);
+    await page.goto("/app/agenda");
+    await expect(main(page).getByRole("button", { name: "Dar cita" })).toBeVisible();
+    await expect(main(page).getByText("Agenda en solo lectura")).toHaveCount(0);
+    await main(page).getByRole("button", { name: "Semanal" }).click();
+    await expect(main(page).getByText("Agenda en solo lectura")).toHaveCount(0);
+  });
+}
+
 /* ═══ A6 · Fecha en el calendario al dar cita ═══ */
 
 test("A6 · «Ir a la fecha» lleva la agenda disponible a ese día, y lo elegido en otra semana se conserva", async ({ page }) => {
