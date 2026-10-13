@@ -28,6 +28,8 @@ import { GrillaSemanal, type AccionEspacio } from "@/components/agenda/GrillaSem
 import { BloquearEspacio } from "@/components/agenda/BloquearEspacio";
 import { MenuBloqueo, quienBloquea } from "@/components/agenda/MenuBloqueo";
 import { ComentarioCita } from "@/components/agenda/ComentarioCita";
+import { AvisoSoloLectura } from "@/components/agenda/AvisoSoloLectura";
+import { rolLabel } from "@/lib/rbac";
 import { enviarAvisoCita } from "@/lib/avisoCita";
 import { Card, Btn, Modal, Field, inputCls, StatusBadge, Badge, Empty } from "@/components/ui";
 import { Reveal } from "@/components/motion";
@@ -391,6 +393,9 @@ export default function AgendaPage() {
       {aviso && (
         <p role="status" className={`rounded-xl px-4 py-2.5 text-sm font-semibold print:hidden ${aviso.ok ? "bg-state-okbg text-state-ok" : "bg-state-errbg text-state-err"}`}>{aviso.texto}</p>
       )}
+
+      {/* Quien no puede dar citas ni bloquear espacios ve la agenda en solo lectura: se lo decimos (si no tiene doctores asignados, el aviso de abajo ya explica por qué ve la agenda vacía). */}
+      {!puedeAgendar && !puedeEditar && !alcance.sinDoctores && <AvisoSoloLectura rol={rolLabel(session!.role)} />}
 
       {/* Banner: citas por validar */}
       {(tab === "diaria" || tab === "global") && puedeEditar && porValidar > 0 && (

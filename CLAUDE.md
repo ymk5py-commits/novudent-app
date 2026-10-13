@@ -82,7 +82,10 @@ antes de mergear.
 ## Demo
 
 `cl_demo` (plan Clínica). Login: `/login` → "Ver demo" → si está vacío "Restaurar
-datos de demo" (`seedDemo`) → clic en un usuario (Administrador/Dentista/Asistente).
+datos de demo" (`seedDemo`) → clic en un usuario. Son siete (Administrador, dos Dentistas, Asistente,
+Recepcionista, Caja y Comercial); **solo el administrador, recepción, caja y comercial dan citas y bloquean espacios**: con los demás la agenda es de
+solo lectura (y la pantalla lo dice). Si el selector muestra menos usuarios, la demo guardada es vieja: «Reiniciar demo» (Inicio, como administrador)
+la siembra de nuevo (se hizo el 13-oct-2026).
 
 ## Estado: paridad Dentalink (ver docs/superpowers/ + memorias)
 
@@ -276,7 +279,8 @@ registro (no mueve saldo ni caja: decisión pendiente); los descuentos pasan por
 
 **Pedidos de Camila del 8-oct-2026 (agenda, análisis de estudios, plan y arancel, tareas)** — spec en
 `docs/superpowers/specs/2026-10-08-pedidos-de-camila-agenda-ficha-plan-tareas.md`. **Agenda:** la semanal tiene celdas de 30 min con menú por espacio
-(cita presencial, videoconsulta, múltiples, sobreagendar, bloquear); la geometría es pura (`lib/agendaSemana.ts`, `columnasSuperpuestas`). Los
+(cita presencial, videoconsulta, múltiples, sobreagendar, bloquear); la geometría es pura (`lib/agendaSemana.ts`, `columnasSuperpuestas`). Sin `agenda.create` ni `agenda.edit` (dentista, asistente, un rol propio sin esos permisos) la grilla es de solo lectura, y **`AvisoSoloLectura`
+lo dice arriba de todas las vistas** (antes el clic no hacía nada y parecía un error). Los
 **bloqueos** son la colección `agendaBlocks` (`lib/bloqueos.ts`: un bloqueo por día, `dentistId: "*"` = todos, `boxId` opcional, `serieId` para las
 repeticiones de hasta un año) y **nadie reserva encima**: `huecosDelDia` recibe `bloqueos` (y `permitirSuperponer` para el sobrecupo, que nunca salta
 un bloqueo) y `/api/reservas` los lee con `queryRange` (respaldo: la colección; si no se puede, sigue sin ellos y lo loguea). `Appointment.sobrecupo` y
