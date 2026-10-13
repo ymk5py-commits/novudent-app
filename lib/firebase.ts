@@ -155,22 +155,42 @@ export async function updateCurrentPassword(newPassword: string): Promise<void> 
   await updatePassword(u, newPassword); // puede pedir reautenticación si la sesión es vieja
 }
 
-/* Analytics SOLO con consentimiento (lib/consentimiento.ts). Antes se cargaba siempre y ponía sus
- * cookies apenas entraba alguien. Ahora arranca si la persona ya aceptó, o en el momento en que
- * acepta desde el banner; si rechaza, no se carga nunca. */
+/* Analytics SOLO con consentimiento (lib/consentimiento.ts) y SOLO en el sitio público (`rutaConAnalitica`). Google recibe la URL
+ * entera de cada página que mide: en el panel lleva ids de pacientes y en los enlaces del paciente, su credencial (`/confirmar/…`,
+ * `/firmar/…`). Fuera del sitio público queda prendida `ga-disable-<id>`, la bandera oficial de Google para no enviar nada (la misma
+ * que usa Firebase en `setAnalyticsCollectionEnabled`): así tampoco sale nada cuando se pasa del sitio al panel sin recargar, que es
+ * cuando Analytics, ya cargado, mide solo cada cambio de página. Arranca recién cuando la persona aceptó Y está en una página pública. */
 if (typeof window !== "undefined") {
+  const apagada = `ga-disable-${firebaseConfig.measurementId}`;
+  const ventana = window as unknown as Record<string, unknown>;
+  ventana[apagada] = true; // hasta saber en qué página está
   let analyticsIniciado = false;
-  const iniciarAnalytics = () => {
-    if (analyticsIniciado) return;
+  let consentida = false;
+  let esPublica: (ruta: string) => boolean = () => false;
+  const ajustar = (ruta: string) => {
+    const publica = esPublica(ruta);
+    ventana[apagada] = !publica;
+    if (!consentida || !publica || analyticsIniciado) return;
     analyticsIniciado = true;
     import("firebase/analytics")
       .then(({ getAnalytics, isSupported }) => isSupported().then((ok) => ok && getAnalytics(app)))
       .catch(() => {});
   };
+  // Las navegaciones de Next no recargan la página: se ajusta ANTES de cambiar la URL (lo que mida ese cambio ya ve la bandera) y con «atrás».
+  for (const metodo of ["pushState", "replaceState"] as const) {
+    const original = window.history[metodo];
+    window.history[metodo] = function (this: History, datos: unknown, sinUso: string, url?: string | URL | null) {
+      ajustar(url == null ? window.location.pathname : new URL(String(url), window.location.href).pathname);
+      return original.call(this, datos, sinUso, url);
+    };
+  }
+  window.addEventListener("popstate", () => ajustar(window.location.pathname));
   import("./consentimiento")
-    .then(({ leerConsentimiento, alCambiarConsentimiento }) => {
-      if (leerConsentimiento()?.analitica) iniciarAnalytics();
-      alCambiarConsentimiento((c) => { if (c.analitica) iniciarAnalytics(); });
+    .then(({ leerConsentimiento, alCambiarConsentimiento, rutaConAnalitica }) => {
+      esPublica = rutaConAnalitica;
+      consentida = !!leerConsentimiento()?.analitica;
+      alCambiarConsentimiento((c) => { consentida = c.analitica; ajustar(window.location.pathname); });
+      ajustar(window.location.pathname);
     })
     .catch(() => {});
 }

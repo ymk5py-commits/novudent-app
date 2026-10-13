@@ -8,6 +8,8 @@
  * Se guarda en localStorage (no es una cookie, pero cumple el mismo rol y la ley pide lo mismo:
  * elección libre, igual de fácil aceptar que rechazar, y poder cambiarla después).
  */
+import { PAGINAS_PUBLICAS } from "./seo";
+
 export const CLAVE_CONSENTIMIENTO = "novudent.consentimiento.v1";
 /** Subir si cambian las categorías: vuelve a preguntar. */
 export const VERSION_CONSENTIMIENTO = 1;
@@ -53,3 +55,15 @@ export function alAbrirPreferencias(fn: () => void): () => void {
   window.addEventListener(EVENTO_ABRIR, fn);
   return () => window.removeEventListener(EVENTO_ABRIR, fn);
 }
+
+/** Las únicas páginas que mide Analytics: las del sitio público (las mismas del sitemap). Google recibe la URL entera de cada página
+ *  que mide, y en el panel esa URL lleva ids de pacientes (`/app/pacientes/<id>/planes`) y en los enlaces del paciente, su credencial
+ *  (`/confirmar/<cid>/<token>`, `/firmar/<token>`, `/videoconsulta/<token>`). Por eso es una lista cerrada: una página nueva arranca sin
+ *  analítica hasta que se suma a `PAGINAS_PUBLICAS`. */
+const RUTAS_CON_ANALITICA = new Set(PAGINAS_PUBLICAS.map((p) => p.ruta));
+
+export function rutaConAnalitica(ruta: string): boolean {
+  const camino = ruta.split(/[?#]/)[0];
+  return RUTAS_CON_ANALITICA.has(camino.length > 1 ? camino.replace(/\/+$/, "") : camino);
+}
+
