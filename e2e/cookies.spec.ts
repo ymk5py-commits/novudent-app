@@ -74,3 +74,34 @@ test("la página pública no nombra a la competencia", async ({ page }) => {
     expect(await page.content(), `${ruta} (HTML)`).not.toMatch(/dentalink/i);
   }
 });
+
+/* Google Analytics manda la URL entera: en el panel lleva ids de pacientes y en los enlaces del paciente, su credencial
+   (`/confirmar/<cid>/<token>`). Aunque la persona acepte la analítica, solo se mide el sitio público: en el resto queda prendida
+   la bandera oficial de Google para no enviar nada (`ga-disable-<id>`, la misma que usa Firebase para apagarla). */
+test.describe("Analítica aceptada: solo se mide el sitio público", () => {
+  test.use({ consentimiento: "aceptado" });
+  const apagada = (page: import("@playwright/test").Page) => page.evaluate(() => (window as unknown as Record<string, unknown>)["ga-disable-G-DZWVBDNFEP"]);
+
+  test("en el inicio y en precios mide; en un enlace de confirmación de cita, no", async ({ page }) => {
+    await page.goto("/");
+    await expect.poll(() => apagada(page)).toBe(false);
+    await page.goto("/precios");
+    await expect.poll(() => apagada(page)).toBe(false);
+    await page.goto("/confirmar/cl_demo/token-de-prueba");
+    await expect.poll(() => apagada(page)).toBe(true);
+  });
+
+  test("al pasar del sitio al panel sin recargar la página, se apaga; y al volver, se prende", async ({ page }) => {
+    await page.goto("/login?demo=1");
+    await expect.poll(() => apagada(page)).toBe(true);
+    await page.getByRole("button", { name: "Ver demo" }).click();
+    await page.getByRole("button", { name: /Carlos Admin/ }).click();
+    await page.waitForURL("**/app");
+    await expect.poll(() => apagada(page)).toBe(true);
+    await page.goBack();
+    await page.goBack();
+    await page.goto("/");
+    await expect.poll(() => apagada(page)).toBe(false);
+  });
+});
+
