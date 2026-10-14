@@ -296,6 +296,12 @@ contraseña se rechazan con mensaje) y `analizarCargaDeFilas` (comparte núcleo 
 hasta 3.000 filas). **Tareas:** la bandeja abre en «Todas las pendientes» (`todasLasPendientes`); con `?fecha=` abre «Tareas del día» de esa fecha; Mi
 agenda suma «Todas».
 
+**Diaria global como grilla (13-oct-2026)** — spec en `docs/superpowers/specs/2026-10-13-agenda-diaria-global-grilla-design.md`: la Semanal y la
+Diaria global usan la misma `components/agenda/GrillaAgenda` (antes `GrillaSemanal`), que recibe sus columnas (`lib/agendaGrilla.ts`:
+`columnasDeLaSemana`, `columnasDelDia`, `citaEnColumna`, `bloqueoEnColumna`). En la Diaria global cada columna es un profesional y el menú del
+espacio sale con ese profesional (`accionEspacio(…, dentistId)`). Las horas fuera del horario de atención (`fueraDeHorario`: `User.horario` o
+`HORARIO_POR_DEFECTO`) se pintan en gris y se pueden tocar igual; en la Semanal, solo con un profesional elegido. La Diaria (tabla) no cambió.
+
 **URLs limpias y SEO (8-oct-2026, pedido de Croman)** — spec en `docs/superpowers/specs/2026-10-08-urls-limpias-y-seo.md`. Las secciones del panel son
 rutas reales, sin `#`: `/app/configuracion/permisos`, `/app/reportes/graficos`, `/app/tareas/plazos`, `/app/pacientes/configuracion`,
 `/app/pacientes/<id>/planes`. La tabla nombre-en-la-URL → sección y las funciones están en `lib/rutasPanel.ts` (`rutaDeSeccion`, `seccionDeRuta`,
