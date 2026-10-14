@@ -383,8 +383,10 @@ test.describe("Agenda: el cartel «agendamiento(s) online que deben ser validado
     await expect(main(page).getByRole("link", { name: "Lucía Ferreira" })).toHaveCount(0); // online, pero ya confirmada
 
     await main(page).getByRole("button", { name: "Ver todas las citas" }).click();
-    await expect(main(page).getByRole("link", { name: "Andrés Mejía" })).toBeVisible();
-    await expect(main(page).getByRole("link", { name: "Lucía Ferreira" })).toBeVisible();
+    // `.first()`: los miércoles la demo trae sus propias citas de Andrés Mejía y de Lucía Ferreira; ese día cada uno tiene dos enlaces (el de la
+    // demo y el que arma esta prueba) y un `getByRole` sin `.first()` rompe por «strict mode».
+    await expect(main(page).getByRole("link", { name: "Andrés Mejía" }).first()).toBeVisible();
+    await expect(main(page).getByRole("link", { name: "Lucía Ferreira" }).first()).toBeVisible();
   });
 
   test("si en el día abierto no hay ninguna, «Ver y validar» lleva al primer día que sí tiene", async ({ page }) => {
