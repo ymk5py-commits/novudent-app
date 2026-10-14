@@ -17,9 +17,11 @@ export function celdasDelDia(paso = MINUTOS_CELDA): string[] {
   return Array.from({ length: Math.floor(1440 / paso) }, (_, i) => `${dos(Math.floor((i * paso) / 60))}:${dos((i * paso) % 60)}`);
 }
 
-/** Título del menú de un espacio de la grilla: «Lun 12 oct · 09:30». */
-export function tituloDeEspacio(fecha: Date, hora: string): string {
-  return `${DIAS[fecha.getDay()]} ${fecha.getDate()} ${MESES[fecha.getMonth()]} · ${hora}`;
+/** Título del menú de un espacio de la grilla: «Lun 12 oct · 09:30». En la Diaria global lleva adelante el profesional
+ *  («Dra. Sofía Benítez · Mar 13 oct · 09:30»): así dos columnas a la misma hora no se llaman igual. */
+export function tituloDeEspacio(fecha: Date, hora: string, profesional?: string): string {
+  const espacio = `${DIAS[fecha.getDay()]} ${fecha.getDate()} ${MESES[fecha.getMonth()]} · ${hora}`;
+  return profesional ? `${profesional} · ${espacio}` : espacio;
 }
 
 /** Dónde va una tarjeta en la columna del día: `top` desde la medianoche y `height`, en px. Al menos media celda de alto (una cita de

@@ -114,4 +114,10 @@ describe("celdas y posiciones de la grilla", () => {
     expect(tituloDeEspacio(new Date(2026, 9, 18), "17:00")).toBe("Dom 18 oct · 17:00");
     expect(tituloDeEspacio(new Date(2026, 8, 2), "08:00")).toBe("Mié 2 sep · 08:00");
   });
+
+  it("en la Diaria global lleva adelante el nombre del profesional, así dos columnas a la misma hora no se llaman igual", () => {
+    expect(tituloDeEspacio(new Date(2026, 9, 13), "09:30", "Dra. Sofía Benítez")).toBe("Dra. Sofía Benítez · Mar 13 oct · 09:30");
+    expect(tituloDeEspacio(new Date(2026, 9, 13), "09:30", "Dr. Diego Martínez")).not.toBe(tituloDeEspacio(new Date(2026, 9, 13), "09:30", "Dra. Sofía Benítez"));
+    expect(tituloDeEspacio(new Date(2026, 9, 13), "09:30")).toBe("Mar 13 oct · 09:30");
+  });
 });
