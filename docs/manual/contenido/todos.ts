@@ -215,6 +215,19 @@ export const procedimientos: Procedimiento[] = [
     capturar: async (c) => {
       const { page } = c;
       await c.entrar("receptionist", "/app/tareas");
+      // «Cita sin confirmar» sale de una cita pendiente de los próximos dos días. La de Camila en la demo es el viernes de esta semana: un
+      // lunes, un martes o un fin de semana no había ninguna y la captura fallaba. Se pasa esa cita a mañana en el estado local de la demo
+      // (las capturas corren con Firebase cortado) y se recarga la bandeja.
+      await page.evaluate(() => {
+        const db = JSON.parse(localStorage.getItem("novudent.db.v4") || "null");
+        const cita = db?.appointments.find((a: { patientId: string; status: string }) => a.patientId === "p3" && a.status === "pendiente");
+        if (!cita) return;
+        const inicio = new Date(); inicio.setDate(inicio.getDate() + 1); inicio.setHours(14, 0, 0, 0);
+        const fin = new Date(inicio); fin.setMinutes(30);
+        cita.start = inicio.toISOString(); cita.end = fin.toISOString();
+        localStorage.setItem("novudent.db.v4", JSON.stringify(db));
+      });
+      await c.ir("/app/tareas");
       const todas = page.getByRole("tab", { name: /^Todas las pendientes/ });
       const tareasDelDia = page.getByRole("tab", { name: "Tareas del día" });
       const nuevaTarea = page.getByRole("button", { name: /Nueva tarea personalizada/ });

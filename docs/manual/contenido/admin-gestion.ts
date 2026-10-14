@@ -302,7 +302,7 @@ export const procedimientos: Procedimiento[] = [
       await responsable.click();
       const menu = page.getByRole("menu");
       await c.expect(menu).toBeVisible();
-      await c.foto("responsable", { resaltar: responsable, recorte: [lista, menu], margen: 8 });
+      await c.foto("responsable", { resaltar: responsable, recorte: [lista, menu], margen: 8, ocultar: pieDeSoporte(page) });
 
       await menu.getByRole("menuitem", { name: "Laura Recepción" }).click();
       await c.expect(fila.getByRole("button", { name: /Laura/ })).toBeVisible();
