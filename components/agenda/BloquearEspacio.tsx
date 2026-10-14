@@ -1,5 +1,5 @@
 "use client";
-/** «Bloquear espacio» (pedido de Camila, 8-oct-2026, como Dentalink): se abre desde el menú de un espacio de la semanal, con ese día y esa
+/** «Bloquear espacio» (pedido de Camila, 8-oct-2026, como Dentalink): se abre desde el menú de un espacio de la Semanal o de la Diaria global, con ese día y esa
  *  hora. Profesional (o «Todos los profesionales»), box (si hay dos o más), fecha, desde y hasta (de a 15 minutos), motivo con sugerencias
  *  y repetición (días hábiles o todas las semanas, hasta un año). Las citas que ya hay en ese horario no se tocan: se avisa. Lógica pura en
  *  lib/bloqueos.ts; lo guarda la agenda con `addAgendaBlocks`. */
@@ -33,7 +33,7 @@ function mediaHoraDespues(hora: string): string {
 export function BloquearEspacio({ fecha, hora, dentistId, boxId, onClose, onGuardar }: {
   fecha: Date;
   hora: string;
-  /** El profesional del filtro de la agenda, si hay uno elegido. */
+  /** El profesional de la columna (Diaria global) o el del filtro de la agenda, si hay uno elegido. */
   dentistId?: string;
   /** El box del filtro de la agenda, si hay uno elegido. */
   boxId?: string;
