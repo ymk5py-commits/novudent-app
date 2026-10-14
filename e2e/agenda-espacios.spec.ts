@@ -501,6 +501,39 @@ test.describe("Diaria global como grilla por profesional", () => {
   });
 });
 
+/* ═══ Revisión final (13-oct-2026): dentista dado de baja y color del estado ═══ */
+
+test.describe("Diaria global: profesional dado de baja y estado de la cita", () => {
+  test.beforeEach(async ({ page }) => { await entrarDemo(page, USUARIOS_DEMO.recepcionista); });
+
+  test("un dentista dado de baja sin citas ese día no tiene columna (antes «Dar cita» desde su columna salía con otro profesional)", async ({ page }) => {
+    await conDemo(page, (db: any) => { db.users.find((x: any) => x.id === "u4").active = false; });
+    await diariaGlobal(page, 1);
+    await expect(main(page).getByTitle("Dra. Sofía Benítez", { exact: true })).toBeVisible();
+    await expect(main(page).getByTitle("Dr. Diego Martínez", { exact: true })).toHaveCount(0);
+  });
+
+  test("si el dado de baja tiene citas ese día, su columna se ve con sus citas pero sus espacios no se pueden agendar", async ({ page }) => {
+    await conDemo(page, (db: any) => { db.users.find((x: any) => x.id === "u4").active = false; });
+    await conCitas(page, [{ id: "a_baja", dia: 1, desde: [10, 0], hasta: [10, 30], dentistId: "u4", title: "Cita de baja" }]);
+    await diariaGlobal(page, 1);
+    await expect(main(page).getByTitle("Dr. Diego Martínez", { exact: true })).toContainText("Dado de baja");
+    await expect(main(page).getByRole("button", { name: /Cita de baja/ })).toBeVisible();
+    await expect(main(page).getByRole("button", { name: new RegExp(`^Dr\\. Diego Martínez · `) })).toHaveCount(0);
+    await expect(main(page).getByRole("button", { name: await espacioDe(page, "Dra. Sofía Benítez", 1, "10:00"), exact: true })).toHaveCount(1);
+  });
+
+  test("la tarjeta de la cita lleva el estado configurable: su nombre y el mismo color que la leyenda de Estados", async ({ page }) => {
+    await conCitas(page, [{ id: "a_estado", dia: 1, desde: [11, 0], hasta: [11, 30], dentistId: "u2", title: "Cita con estado" }]);
+    await diariaGlobal(page, 1);
+    const tarjeta = main(page).getByRole("button", { name: /Cita con estado/ });
+    await expect(tarjeta).toHaveAccessibleName(/No confirmado/);
+    const leyenda = await main(page).locator("label", { hasText: "No confirmado" }).locator("span").first().evaluate((el) => getComputedStyle(el).backgroundColor);
+    const borde = await tarjeta.evaluate((el) => getComputedStyle(el).borderLeftColor);
+    expect(borde).toBe(leyenda);
+  });
+});
+
 test("el dentista ve la Diaria global como grilla de solo lectura: sin menú en los espacios", async ({ page }) => {
   await entrarDemo(page, USUARIOS_DEMO.dentista);
   await conCitas(page, [{ id: "a_ro_global", dia: 1, desde: [10, 0], hasta: [10, 30], title: "Cita para mirar" }]);

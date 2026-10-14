@@ -35,6 +35,13 @@ describe("columnasDelDia", () => {
     expect(cols.every((c) => c.fecha.getDate() === 13 && c.fecha.getHours() === 0 && c.esHoy)).toBe(true);
   });
 
+  it("un profesional dado de baja queda marcado como inactivo y lo dice en el subtítulo (su columna no se agenda)", () => {
+    const [col] = columnasDelDia(new Date(2026, 9, 13), [{ ...diego, active: false }]);
+    expect(col.inactivo).toBe(true);
+    expect(col.subtitulo).toBe("Dado de baja");
+    expect(columnasDelDia(new Date(2026, 9, 13), [sofia])[0].inactivo).toBeUndefined();
+  });
+
   it("sin profesionales, sin columnas", () => {
     expect(columnasDelDia(lunes, [])).toEqual([]);
   });

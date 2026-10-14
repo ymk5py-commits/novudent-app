@@ -225,7 +225,8 @@ export default function AgendaPage() {
     [bloqueosVisibles, selKey],
   );
   /* — Diaria global: una columna por profesional del día, con las citas de los filtros de la izquierda — */
-  const profesionalesDelDia = dentists.filter((d) => proFilter === "all" || d.id === proFilter);
+  // Un dentista dado de baja solo tiene columna si ese día tiene citas (para verlas); sus espacios no se agendan.
+  const profesionalesDelDia = dentists.filter((d) => (d.active !== false || dayAll.some((a) => a.dentistId === d.id)) && (proFilter === "all" || d.id === proFilter));
   const columnasDelDiaGlobal = columnasDelDia(day, profesionalesDelDia);
   const citasDelDiaGlobal = dayAll.filter((a) => statusFilter.has(estadoDe(a).id) && (!soloOnline || a.source === "online") && pasaFiltros(a));
   const fueraEnElDia = (col: ColumnaDeAgenda, hora: string) => fueraDeHorario(db.users.find((u) => u.id === col.dentistId)?.horario, col.fecha, hora);

@@ -15,7 +15,9 @@ import { useStore, fmtTime, fullName } from "@/lib/store";
 import { ALTO_HORA, MINUTOS_CELDA, celdasDelDia, columnasSuperpuestas, posicionEnGrilla, tituloDeEspacio } from "@/lib/agendaSemana";
 import { bloqueoEnColumna, citaEnColumna, type ColumnaDeAgenda } from "@/lib/agendaGrilla";
 import { etiquetaDeBloqueo, rangoDeBloqueo } from "@/lib/bloqueos";
-import type { AgendaBlock, Appointment, AppointmentStatus } from "@/lib/types";
+import { estadoDeCita } from "@/lib/estadosCita";
+import { useEstadosCita } from "@/lib/useEstadosCita";
+import type { AgendaBlock, Appointment } from "@/lib/types";
 import { Card } from "@/components/ui";
 import { Desplegable, ItemMenu } from "@/components/Desplegable";
 import { ComentarioCita } from "@/components/agenda/ComentarioCita";
@@ -27,16 +29,6 @@ export type AccionEspacio = "presencial" | "video" | "multiples" | "sobreagendar
 const CELDAS = celdasDelDia();
 /** Una tarjeta se dibuja de al menos media hora de alto: para repartir el ancho cuenta así. */
 const MINIMO_EN_PANTALLA = MINUTOS_CELDA * 60_000;
-
-const STATUS_BG: Record<AppointmentStatus, string> = {
-  confirmada: "bg-state-okbg border-state-ok/30 text-state-ok",
-  en_atencion: "bg-azure-50 border-azure-400/50 text-azure-700",
-  en_sala: "bg-violet-50 border-violet-300/60 text-violet-700",
-  pendiente: "bg-state-warnbg border-state-warn/30 text-state-warn",
-  completada: "bg-state-infobg border-azure-300/40 text-azure-700",
-  cancelada: "bg-state-errbg border-state-err/30 text-state-err line-through",
-  ausente: "bg-state-warnbg border-state-warn/30 text-state-warn",
-};
 
 /** Rayado gris de un espacio bloqueado. */
 const RAYADO = "[background-image:repeating-linear-gradient(135deg,#eceff3_0,#eceff3_6px,#f7f8fa_6px,#f7f8fa_12px)]";
@@ -64,6 +56,8 @@ export function GrillaAgenda({ columnas, citas, bloqueos, gridRef, puedeAgendar,
   onQuitarBloqueos: (ids: string[]) => void;
 }) {
   const { db } = useStore();
+  // El estado de cada cita es el configurable de la clínica (`estadoDeCita`): el mismo nombre y color que la leyenda de Estados.
+  const estados = useEstadosCita();
   const interactivo = puedeAgendar || puedeBloquear;
   /** La columna de las horas y una por día o profesional (sin crecer por el contenido: el encabezado y la grilla quedan alineados). */
   const plantilla = `56px repeat(${Math.max(1, columnas.length)},minmax(0,1fr))`;
@@ -131,12 +125,14 @@ export function GrillaAgenda({ columnas, citas, bloqueos, gridRef, puedeAgendar,
                   return { top, height, left: `calc((100% - var(--canal)) * ${c / cols} + 2px)`, width: `calc((100% - var(--canal)) / ${cols} - 4px)` };
                 };
                 const tinte = !col.dentistId && col.esHoy ? "bg-azure-50/40" : "";
+                // Un profesional dado de baja muestra sus citas, pero sus espacios no se agendan: «Dar cita» ya no lo ofrece.
+                const agendable = interactivo && !col.inactivo;
                 return (
                   <div key={col.clave} className={`relative border-l border-clinic-border [--canal:8px] sm:[--canal:14px] ${tinte}`}>
                     {CELDAS.map((hora, i) => {
                       const borde = i % 2 === 0 ? "border-dashed border-clinic-border/40" : "border-clinic-border/60";
-                      const fuera = fueraDeHorario?.(col, hora) ?? false;
-                      if (!interactivo) return <div key={hora} className={`h-7 border-b ${borde} ${fuera ? FUERA : ""}`} />;
+                      const fuera = (fueraDeHorario?.(col, hora) ?? false) || !!col.inactivo;
+                      if (!agendable) return <div key={hora} className={`h-7 border-b ${borde} ${fuera ? FUERA : ""}`} />;
                       const etiqueta = tituloDeEspacio(col.fecha, hora, col.dentistId ? col.titulo : undefined);
                       const abierto = espacio?.etiqueta === etiqueta;
                       return (
@@ -189,12 +185,15 @@ export function GrillaAgenda({ columnas, citas, bloqueos, gridRef, puedeAgendar,
                       // Lugar para el ícono del comentario, sin que el relleno haga a la tarjeta más ancha que su columna (dos o tres citas en el
                       // mismo horario dejan tarjetas angostas). El «+» va encima del texto: aparece al pasar el mouse y en pantallas táctiles.
                       const relleno = a.notes?.trim() ? "pr-[min(1.5rem,45%)]" : "";
+                      const estado = estadoDeCita(a, estados);
                       return (
                         <div key={a.id} style={lugar(`c:${a.id}`, a.start, a.end)} className="group absolute hover:z-10 focus-within:z-10">
                           <button
                             type="button"
                             onClick={(ev) => { ev.stopPropagation(); onVer(a); }}
-                            className={`flex h-full w-full flex-col justify-start overflow-hidden rounded-lg border px-1 py-1 text-left text-[11px] font-semibold shadow-card transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 hover:-translate-y-px hover:shadow-pop ${STATUS_BG[a.status]} ${relleno}`}
+                            title={estado.label}
+                            style={{ borderLeftColor: estado.color }}
+                            className={`flex h-full w-full flex-col justify-start overflow-hidden rounded-lg border border-l-4 border-clinic-border bg-white px-1 py-1 text-left text-[11px] font-semibold text-clinic-text shadow-card transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 hover:-translate-y-px hover:shadow-pop ${a.status === "cancelada" ? "line-through opacity-70" : ""} ${relleno}`}
                           >
                             <div className="flex items-center gap-1 truncate">
                               {/* En la Diaria global la columna ya dice de quién es la cita: el punto del profesional sobra. */}
@@ -203,6 +202,7 @@ export function GrillaAgenda({ columnas, citas, bloqueos, gridRef, puedeAgendar,
                               <span className="truncate">{fmtTime(a.start)} · {a.title || "Cita"}</span>
                             </div>
                             {p && <div className="truncate font-normal opacity-80">{fullName(p)}</div>}
+                            <span className="sr-only"> · {estado.label}</span>
                           </button>
                           {/* Los íconos no se salen de su tarjeta (con citas superpuestas la tarjeta es angosta): lo que no entra se recorta por
                               la izquierda. La barra deja pasar los toques a la tarjeta; solo los íconos los toman. */}

@@ -20,6 +20,8 @@ export interface ColumnaDeAgenda {
   dentistId?: string;
   /** El color de agenda del profesional (el punto del encabezado). */
   color?: string;
+  /** Profesional dado de baja: su columna sale solo si tiene citas ese día, y sus espacios no se agendan (en «Dar cita» ya no está). */
+  inactivo?: boolean;
   esHoy: boolean;
 }
 
@@ -39,11 +41,12 @@ export function columnasDeLaSemana(lunes: Date, hoy: Date = new Date()): Columna
   });
 }
 
-/** Una columna por profesional para el día `fecha`, en el orden en que llegan. */
-export function columnasDelDia(fecha: Date, profesionales: readonly Pick<User, "id" | "name" | "color" | "specialty">[], hoy: Date = new Date()): ColumnaDeAgenda[] {
+/** Una columna por profesional para el día `fecha`, en el orden en que llegan. Un dado de baja queda marcado (`inactivo`). */
+export function columnasDelDia(fecha: Date, profesionales: readonly (Pick<User, "id" | "name" | "color" | "specialty"> & Partial<Pick<User, "active">>)[], hoy: Date = new Date()): ColumnaDeAgenda[] {
   const dia = medianoche(fecha);
   return profesionales.map((p) => ({
-    clave: `p:${p.id}`, titulo: p.name, subtitulo: p.specialty || undefined, fecha: dia, dentistId: p.id, color: p.color, esHoy: mismoDia(dia, hoy),
+    clave: `p:${p.id}`, titulo: p.name, subtitulo: p.active === false ? "Dado de baja" : p.specialty || undefined, fecha: dia, dentistId: p.id, color: p.color,
+    ...(p.active === false ? { inactivo: true } : {}), esHoy: mismoDia(dia, hoy),
   }));
 }
 
