@@ -9,7 +9,7 @@
  *
  *  En el celular las columnas no entran: la grilla tiene un ancho mínimo y se recorre de costado, con la fila de los títulos fija arriba y las
  *  horas fijas a la izquierda. Todo vive en un solo contenedor con scroll (`gridRef`). */
-import { useCallback, useRef, useState, type RefObject } from "react";
+import { useCallback, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { CalendarCheck, CalendarPlus, CalendarRange, Lock, Plus, Video } from "lucide-react";
 import { useStore, fmtTime, fullName } from "@/lib/store";
 import { ALTO_HORA, MINUTOS_CELDA, celdasDelDia, columnasSuperpuestas, posicionEnGrilla, tituloDeEspacio } from "@/lib/agendaSemana";
@@ -32,8 +32,9 @@ const MINIMO_EN_PANTALLA = MINUTOS_CELDA * 60_000;
 
 /** Rayado gris de un espacio bloqueado. */
 const RAYADO = "[background-image:repeating-linear-gradient(135deg,#eceff3_0,#eceff3_6px,#f7f8fa_6px,#f7f8fa_12px)]";
-/** Gris liso de una celda fuera del horario de atención (distinto del rayado de un bloqueo). */
-const FUERA = "bg-clinic-bg";
+/** Gris liso de una celda fuera del horario de atención: distinto del rayado de un bloqueo y del fondo de la página (`clinic-bg`), que es casi
+ *  blanco y no se distinguía. */
+const FUERA = "bg-slate-200/70";
 
 export function GrillaAgenda({ columnas, citas, bloqueos, gridRef, puedeAgendar, puedeBloquear, fueraDeHorario, anchoMinimoColumna, onVer, onAccion, onSobreagendar, onQuitarBloqueos }: {
   columnas: ColumnaDeAgenda[];
@@ -64,7 +65,8 @@ export function GrillaAgenda({ columnas, citas, bloqueos, gridRef, puedeAgendar,
 
   // Un solo menú de espacio y uno de bloqueo para toda la grilla, anclados a lo que se tocó.
   const anclaEspacio = useRef<HTMLElement | null>(null);
-  const [espacio, setEspacio] = useState<{ fecha: Date; hora: string; etiqueta: string; dentistId?: string } | null>(null);
+  // `clave` = columna + hora: dos profesionales con el mismo nombre tienen la misma etiqueta, pero no el mismo casillero.
+  const [espacio, setEspacio] = useState<{ clave: string; fecha: Date; hora: string; etiqueta: string; dentistId?: string } | null>(null);
   const cerrarEspacio = useCallback(() => setEspacio(null), []);
   const anclaBloqueo = useRef<HTMLElement | null>(null);
   const [bloqueoAbierto, setBloqueoAbierto] = useState<AgendaBlock | null>(null);
@@ -79,10 +81,12 @@ export function GrillaAgenda({ columnas, citas, bloqueos, gridRef, puedeAgendar,
   return (
     <>
       <Card className="overflow-hidden">
-        <div ref={gridRef} className="relative max-h-[560px] overflow-auto overscroll-x-contain print:max-h-none print:overflow-visible">
+        <div ref={gridRef} data-testid="grilla-agenda" className="relative max-h-[560px] overflow-auto overscroll-x-contain print:max-h-none print:overflow-visible">
           <div
-            className={anchoMinimoColumna ? "print:min-w-0" : "min-w-[840px] md:min-w-[680px] print:min-w-0"}
-            style={anchoMinimoColumna ? { minWidth: 56 + columnas.length * anchoMinimoColumna } : undefined}
+            // El ancho mínimo va por variable CSS y no en `style`: un `minWidth` en línea le ganaba a `print:min-w-0` y al imprimir con muchos
+            // profesionales se cortaban las columnas de la derecha.
+            className={anchoMinimoColumna ? "min-w-[var(--ancho-grilla)] print:min-w-0" : "min-w-[840px] md:min-w-[680px] print:min-w-0"}
+            style={anchoMinimoColumna ? ({ "--ancho-grilla": `${56 + columnas.length * anchoMinimoColumna}px` } as CSSProperties) : undefined}
           >
             <div className="sticky top-0 z-30 grid border-b border-clinic-border bg-white print:static" style={{ gridTemplateColumns: plantilla }}>
               <div className="sticky left-0 z-10 bg-white print:static" />
@@ -96,7 +100,7 @@ export function GrillaAgenda({ columnas, citas, bloqueos, gridRef, puedeAgendar,
                     {col.subtitulo && <div className="truncate text-[11px] text-clinic-muted">{col.subtitulo}</div>}
                   </div>
                 ) : (
-                  <div key={col.clave} className={`border-l border-clinic-border px-2 py-2.5 text-center ${col.esHoy ? "bg-azure-50" : "bg-white"}`}>
+                  <div key={col.clave} aria-current={col.esHoy ? "date" : undefined} className={`border-l border-clinic-border px-2 py-2.5 text-center ${col.esHoy ? "bg-azure-50" : "bg-white"}`}>
                     <div className="text-[13px] font-semibold text-clinic-muted">{col.titulo}</div>
                     <div className={`text-lg font-bold ${col.esHoy ? "text-azure-600" : "text-clinic-text"}`}>{col.subtitulo}</div>
                   </div>
@@ -134,7 +138,8 @@ export function GrillaAgenda({ columnas, citas, bloqueos, gridRef, puedeAgendar,
                       const fuera = (fueraDeHorario?.(col, hora) ?? false) || !!col.inactivo;
                       if (!agendable) return <div key={hora} className={`h-7 border-b ${borde} ${fuera ? FUERA : ""}`} />;
                       const etiqueta = tituloDeEspacio(col.fecha, hora, col.dentistId ? col.titulo : undefined);
-                      const abierto = espacio?.etiqueta === etiqueta;
+                      const clave = `${col.clave}|${hora}`;
+                      const abierto = espacio?.clave === clave;
                       return (
                         <button
                           key={hora}
@@ -142,7 +147,7 @@ export function GrillaAgenda({ columnas, citas, bloqueos, gridRef, puedeAgendar,
                           aria-label={fuera ? `${etiqueta} · fuera de horario` : etiqueta}
                           aria-haspopup="menu"
                           aria-expanded={abierto}
-                          onClick={(ev) => { anclaEspacio.current = ev.currentTarget; setEspacio({ fecha: col.fecha, hora, etiqueta, dentistId: col.dentistId }); }}
+                          onClick={(ev) => { anclaEspacio.current = ev.currentTarget; setEspacio({ clave, fecha: col.fecha, hora, etiqueta, dentistId: col.dentistId }); }}
                           className={`block h-7 w-full border-b ${borde} transition-colors hover:bg-azure-50 focus-visible:bg-azure-50 ${abierto ? "bg-azure-100" : fuera ? FUERA : ""}`}
                         />
                       );
@@ -155,6 +160,8 @@ export function GrillaAgenda({ columnas, citas, bloqueos, gridRef, puedeAgendar,
                         <>
                           <span className="flex items-center gap-1 truncate font-semibold text-clinic-text"><Lock aria-hidden className="h-3 w-3 shrink-0" />{b.reason || "Bloqueado"}</span>
                           <span className="block truncate tabular-nums">{rangoDeBloqueo(b)}</span>
+                          {/* Un bloqueo de un box: sin el nombre a la vista, uno de «Todos» con box parecía cerrar la agenda de todos. */}
+                          {box && <span className="block truncate">{box}</span>}
                         </>
                       );
                       // flex en columna: un <button> centra su contenido en vertical, y en un bloqueo de varias horas el motivo quedaba en el medio.
@@ -202,6 +209,8 @@ export function GrillaAgenda({ columnas, citas, bloqueos, gridRef, puedeAgendar,
                               <span className="truncate">{fmtTime(a.start)} · {a.title || "Cita"}</span>
                             </div>
                             {p && <div className="truncate font-normal opacity-80">{fullName(p)}</div>}
+                            {/* En la Diaria global la columna dice de quién es la cita; el lector de pantalla también lo tiene que oír. */}
+                            {col.dentistId && <span className="sr-only"> · {col.titulo}</span>}
                             <span className="sr-only"> · {estado.label}</span>
                           </button>
                           {/* Los íconos no se salen de su tarjeta (con citas superpuestas la tarjeta es angosta): lo que no entra se recorta por

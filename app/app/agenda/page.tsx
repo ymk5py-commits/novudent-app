@@ -149,7 +149,7 @@ export default function AgendaPage() {
   const [preseleccion, setPreseleccion] = useState<{ fecha: Date; hora: string } | undefined>(undefined);
   // Cómo se abre «Dar cita» desde el menú de un espacio, el «+» de una cita o el ⋮ de la Diaria.
   const [abrirCon, setAbrirCon] = useState<{ sobreagendar?: boolean; multiconsulta?: boolean }>({});
-  // «Bloquear espacio» (desde el menú de un espacio de la semanal) y el menú de un bloqueo en la Diaria y la Diaria global.
+  // «Bloquear espacio» (desde el menú de un espacio de la Semanal o de la Diaria global) y el menú de un bloqueo en la Diaria (las grillas tienen el suyo).
   const [bloqueando, setBloqueando] = useState<{ fecha: Date; hora: string; dentistId?: string } | null>(null);
   const anclaBloqueo = useRef<HTMLElement | null>(null);
   const [bloqueoAbierto, setBloqueoAbierto] = useState<AgendaBlock | null>(null);
@@ -172,8 +172,10 @@ export default function AgendaPage() {
   const gridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (!db.onboarding.tourDone) setOnboarding("tourDone", true); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Al entrar a una grilla (Semanal o Diaria global) o cambiar de semana o de día, arranca a las 08:00.
-  useEffect(() => { if (tab === "semanal" || tab === "global") gridRef.current?.scrollTo({ top: 8 * 56 - 8 }); }, [tab, weekStart, day]);
+  // Cada grilla arranca a las 08:00 al entrar y al cambiar lo que muestra: la Semanal, de semana; la Diaria global, de día. Separados: en la
+  // Semanal, elegir otra fecha con «Fecha» cambia `day` y no tiene por qué mover la grilla.
+  useEffect(() => { if (tab === "semanal") gridRef.current?.scrollTo({ top: 8 * 56 - 8 }); }, [tab, weekStart]);
+  useEffect(() => { if (tab === "global") gridRef.current?.scrollTo({ top: 8 * 56 - 8 }); }, [tab, day]);
 
   const dentists = db.users.filter((u) => u.role === "dentist" && alcance.veDoctor(u.id));
   const today = new Date();
@@ -233,7 +235,8 @@ export default function AgendaPage() {
 
   /* — Semanal — */
   const weekEnd = addDays(weekStart, 7);
-  const columnasSemana = useMemo(() => columnasDeLaSemana(weekStart), [weekStart]);
+  // `todayKey` también: con la agenda abierta de un día para otro, el resaltado de «hoy» pasa al día nuevo en el próximo dibujo.
+  const columnasSemana = useMemo(() => columnasDeLaSemana(weekStart), [weekStart, todayKey]);
   /** Con un profesional elegido, la Semanal pinta en gris lo que queda fuera de su horario (con «Todos», cada uno tiene el suyo). */
   const fueraEnLaSemana = useMemo(() => {
     const pro = proFilter !== "all" ? db.users.find((u) => u.id === proFilter) : undefined;
@@ -284,7 +287,6 @@ export default function AgendaPage() {
     setAbrirCon({});
     setEditing(citaBase());
   }
-  /** Lo que se eligió en el menú de un espacio de la semanal. */
   /** Una opción del menú de un espacio de la grilla. En la Diaria global trae el profesional de la columna; si no, vale el del filtro. */
   function accionEspacio(accion: AccionEspacio, fecha: Date, hora: string, dentistId?: string) {
     if (accion === "bloquear") { setBloqueando({ fecha, hora, dentistId }); return; }
@@ -308,7 +310,7 @@ export default function AgendaPage() {
   };
   const cerrarDarCita = useCallback(() => { setEditing(null); setFromWaitlist(null); setPreseleccion(undefined); setAbrirCon({}); }, []);
   const cerrarBloquear = useCallback(() => setBloqueando(null), []);
-  /** Abre el menú de un bloqueo (Diaria y Diaria global). */
+  /** Abre el menú de un bloqueo de la Diaria (las grillas tienen el suyo). */
   const abrirMenuBloqueo = (b: AgendaBlock, ancla: HTMLElement) => { anclaBloqueo.current = ancla; setBloqueoAbierto(b); };
   const quitarBloqueos = (ids: string[]) => {
     deleteAgendaBlocks(ids);
@@ -556,7 +558,7 @@ export default function AgendaPage() {
           <div className="min-w-0 flex-1 space-y-3">
             {tab === "global" ? (
               columnasDelDiaGlobal.length === 0 ? (
-                <Empty title="No hay profesionales para mostrar con estos filtros." desc="Elegí «Todos los profesionales» arriba a la izquierda." />
+                <Empty title="No hay profesionales para mostrar con estos filtros." desc={proFilter !== "all" ? "Elegí «Todos los profesionales» en el filtro de profesional." : "Los profesionales se cargan en Administración › Usuarios y profesionales."} />
               ) : (
                 <GrillaAgenda
                   columnas={columnasDelDiaGlobal}

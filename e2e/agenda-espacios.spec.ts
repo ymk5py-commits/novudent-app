@@ -534,6 +534,97 @@ test.describe("Diaria global: profesional dado de baja y estado de la cita", () 
   });
 });
 
+/* ═══ Detalles de la grilla (menores de la revisión final, 13-oct-2026) ═══ */
+
+/** Suma dentistas activos a la demo guardada (para probar muchas columnas o nombres repetidos). */
+async function conDentistas(page: Page, nuevos: { id: string; name: string }[]) {
+  await conDemo(page, (db: any, lista: { id: string; name: string }[]) => {
+    for (const d of lista) db.users.push({ id: d.id, clinicId: db.clinics[0].id, name: d.name, email: `${d.id}@novudent.app`, role: "dentist", color: "#64748B", active: true });
+  }, nuevos);
+}
+
+test.describe("Detalles de la grilla de la agenda", () => {
+  test.beforeEach(async ({ page }) => { await entrarDemo(page, USUARIOS_DEMO.recepcionista); });
+
+  test("al imprimir la Diaria global con muchos profesionales, la grilla no queda más ancha que la hoja", async ({ page }) => {
+    await conDentistas(page, Array.from({ length: 8 }, (_, i) => ({ id: `dx${i}`, name: `Dra. Prueba ${i + 1}` })));
+    await diariaGlobal(page, 1);
+    const ancho = () => main(page).getByTestId("grilla-agenda").evaluate((el) => getComputedStyle(el.firstElementChild as Element).minWidth);
+    expect(await ancho()).toBe(`${56 + 10 * 150}px`);
+    await page.emulateMedia({ media: "print" });
+    expect(await ancho()).toBe("0px");
+  });
+
+  test("en la Semanal, elegir una fecha no vuelve la grilla a las 08:00", async ({ page }) => {
+    await page.goto("/app/agenda");
+    await main(page).getByRole("button", { name: "Semanal" }).click();
+    const grilla = main(page).getByTestId("grilla-agenda");
+    await grilla.evaluate((el) => { el.scrollTop = 200; });
+    await page.getByLabel("Elegir fecha").fill(await fechaEnSemana(page, 2));
+    await page.waitForTimeout(300);
+    expect(await grilla.evaluate((el) => el.scrollTop)).toBe(200);
+  });
+
+  test("sin profesionales para mostrar: si hay uno filtrado sugiere «Todos los profesionales»; si no, dónde se cargan", async ({ page }) => {
+    await conDemo(page, (db: any) => { db.users.find((x: any) => x.id === "u4").active = false; });
+    await diariaGlobal(page, 6);
+    await main(page).getByLabel("Filtrar por profesional").selectOption("u4");
+    await expect(main(page).getByText("No hay profesionales para mostrar con estos filtros.")).toBeVisible();
+    await expect(main(page).getByText("Elegí «Todos los profesionales» en el filtro de profesional.")).toBeVisible();
+
+    await conDemo(page, (db: any) => { for (const u of db.users) if (u.role === "dentist") u.active = false; });
+    await diariaGlobal(page, 6);
+    await expect(main(page).getByText("No hay profesionales para mostrar con estos filtros.")).toBeVisible();
+    await expect(main(page).getByText(/Elegí «Todos los profesionales»/)).toHaveCount(0);
+    await expect(main(page).getByText(/Usuarios y profesionales/)).toBeVisible();
+  });
+
+  test("si la agenda queda abierta de un día para otro, la Semanal resalta el día nuevo", async ({ page }) => {
+    await page.clock.setFixedTime(new Date(2026, 9, 12, 23, 58));
+    await page.goto("/app/agenda");
+    await main(page).getByRole("button", { name: "Semanal" }).click();
+    const hoy = main(page).locator("[aria-current='date']");
+    await expect(hoy).toContainText("12");
+    await page.clock.setFixedTime(new Date(2026, 9, 13, 0, 2));
+    await main(page).getByLabel("Filtrar por profesional").selectOption("u2"); // cualquier cambio vuelve a dibujar
+    await expect(hoy).toContainText("13");
+  });
+
+  test("un bloqueo de un box muestra el nombre del box en la tarjeta, no solo en la ayuda", async ({ page }) => {
+    const ini = await enSemana(page, 3, 13);
+    const fin = await enSemana(page, 3, 14);
+    await conDemo(page, (db: any, a: { ini: string; fin: string }) => {
+      db.agendaBlocks.push({ id: "bl_box", clinicId: db.clinics[0].id, dentistId: "*", boxId: "box2", start: a.ini, end: a.fin, reason: "Mantenimiento", createdAt: a.ini, createdBy: "Laura Recepción" });
+    }, { ini, fin });
+    await diariaGlobal(page, 3);
+    await expect(main(page).getByRole("button", { name: /^Bloqueado 13:00–14:00 · Mantenimiento/ }).first()).toContainText("Box 2");
+  });
+
+  test("la celda fuera de horario se distingue del fondo de la página", async ({ page }) => {
+    await conDemo(page, (db: any) => { db.users.find((x: any) => x.id === "u4").horario = { dias: [1, 2, 3, 4, 5], desde: "09:00", hasta: "13:00" }; });
+    await diariaGlobal(page, 1);
+    const celda = main(page).getByRole("button", { name: `${await espacioDe(page, "Dr. Diego Martínez", 1, "08:30")} · fuera de horario`, exact: true });
+    const fondo = await celda.evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(fondo).not.toBe("rgb(243, 246, 251)"); // el fondo de la página (clinic-bg)
+    expect(fondo).not.toBe("rgba(0, 0, 0, 0)");
+    expect(fondo).not.toBe("rgb(255, 255, 255)");
+  });
+
+  test("dos profesionales con el mismo nombre: abrir un espacio resalta solo ese casillero", async ({ page }) => {
+    await conDentistas(page, [{ id: "dx_doble", name: "Dra. Sofía Benítez" }]);
+    await diariaGlobal(page, 1);
+    const nombre = await espacioDe(page, "Dra. Sofía Benítez", 1, "10:00");
+    await main(page).getByRole("button", { name: nombre, exact: true }).first().click();
+    await expect(main(page).locator("button[aria-expanded='true']")).toHaveCount(1);
+  });
+
+  test("en la Diaria global la tarjeta de la cita nombra a su profesional para el lector de pantalla", async ({ page }) => {
+    await conCitas(page, [{ id: "a_nombre", dia: 1, desde: [11, 0], hasta: [11, 30], dentistId: "u4", title: "Cita nombrada" }]);
+    await diariaGlobal(page, 1);
+    await expect(main(page).getByRole("button", { name: /Cita nombrada/ })).toHaveAccessibleName(/Dr\. Diego Martínez/);
+  });
+});
+
 test("el dentista ve la Diaria global como grilla de solo lectura: sin menú en los espacios", async ({ page }) => {
   await entrarDemo(page, USUARIOS_DEMO.dentista);
   await conCitas(page, [{ id: "a_ro_global", dia: 1, desde: [10, 0], hasta: [10, 30], title: "Cita para mirar" }]);
