@@ -25,7 +25,7 @@ import type { AgendaBlock, Appointment, Patient } from "@/lib/types";
 import { DarCita } from "@/components/DarCita";
 import { Desplegable, ItemMenu } from "@/components/Desplegable";
 import { GrillaAgenda, type AccionEspacio } from "@/components/agenda/GrillaAgenda";
-import { columnasDeLaSemana, fueraDeHorario, type ColumnaDeAgenda } from "@/lib/agendaGrilla";
+import { columnasDeLaSemana, columnasDelDia, fueraDeHorario, type ColumnaDeAgenda } from "@/lib/agendaGrilla";
 import { BloquearEspacio } from "@/components/agenda/BloquearEspacio";
 import { MenuBloqueo, quienBloquea } from "@/components/agenda/MenuBloqueo";
 import { ComentarioCita } from "@/components/agenda/ComentarioCita";
@@ -55,8 +55,6 @@ const RAYADO = "[background-image:repeating-linear-gradient(135deg,#eceff3_0,#ec
 /* Estados de cita (nombres, orden y colores en lib/estadosCita.ts) */
 
 type Tab = "diaria" | "global" | "semanal" | "mensual" | "reprog";
-/** Lo que va en la columna de un profesional en la Diaria global: una cita o un espacio bloqueado, en orden de hora. */
-type ItemGlobal = { start: string; cita: Appointment; bloqueo?: undefined } | { start: string; bloqueo: AgendaBlock; cita?: undefined };
 
 /* ===== Vista MENSUAL (calendario del mes) ===== */
 function MonthView({ day, setDay, setTab, appointments }: { day: Date; setDay: (d: Date) => void; setTab: (t: Tab) => void; appointments: Appointment[] }) {
@@ -152,7 +150,7 @@ export default function AgendaPage() {
   // Cómo se abre «Dar cita» desde el menú de un espacio, el «+» de una cita o el ⋮ de la Diaria.
   const [abrirCon, setAbrirCon] = useState<{ sobreagendar?: boolean; multiconsulta?: boolean }>({});
   // «Bloquear espacio» (desde el menú de un espacio de la semanal) y el menú de un bloqueo en la Diaria y la Diaria global.
-  const [bloqueando, setBloqueando] = useState<{ fecha: Date; hora: string } | null>(null);
+  const [bloqueando, setBloqueando] = useState<{ fecha: Date; hora: string; dentistId?: string } | null>(null);
   const anclaBloqueo = useRef<HTMLElement | null>(null);
   const [bloqueoAbierto, setBloqueoAbierto] = useState<AgendaBlock | null>(null);
   const cerrarMenuBloqueo = useCallback(() => setBloqueoAbierto(null), []);
@@ -174,7 +172,8 @@ export default function AgendaPage() {
   const gridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (!db.onboarding.tourDone) setOnboarding("tourDone", true); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (tab === "semanal") gridRef.current?.scrollTo({ top: 8 * 56 - 8 }); }, [tab, weekStart]);
+  // Al entrar a una grilla (Semanal o Diaria global) o cambiar de semana o de día, arranca a las 08:00.
+  useEffect(() => { if (tab === "semanal" || tab === "global") gridRef.current?.scrollTo({ top: 8 * 56 - 8 }); }, [tab, weekStart, day]);
 
   const dentists = db.users.filter((u) => u.role === "dentist" && alcance.veDoctor(u.id));
   const today = new Date();
@@ -225,6 +224,11 @@ export default function AgendaPage() {
     () => bloqueosVisibles.filter((b) => dayKeyOf(b.start) === selKey).sort((a, b) => a.start.localeCompare(b.start)),
     [bloqueosVisibles, selKey],
   );
+  /* — Diaria global: una columna por profesional del día, con las citas de los filtros de la izquierda — */
+  const profesionalesDelDia = dentists.filter((d) => proFilter === "all" || d.id === proFilter);
+  const columnasDelDiaGlobal = columnasDelDia(day, profesionalesDelDia);
+  const citasDelDiaGlobal = dayAll.filter((a) => statusFilter.has(estadoDe(a).id) && (!soloOnline || a.source === "online") && pasaFiltros(a));
+  const fueraEnElDia = (col: ColumnaDeAgenda, hora: string) => fueraDeHorario(db.users.find((u) => u.id === col.dentistId)?.horario, col.fecha, hora);
 
   /* — Semanal — */
   const weekEnd = addDays(weekStart, 7);
@@ -280,11 +284,12 @@ export default function AgendaPage() {
     setEditing(citaBase());
   }
   /** Lo que se eligió en el menú de un espacio de la semanal. */
-  function accionEspacio(accion: AccionEspacio, fecha: Date, hora: string) {
-    if (accion === "bloquear") { setBloqueando({ fecha, hora }); return; }
+  /** Una opción del menú de un espacio de la grilla. En la Diaria global trae el profesional de la columna; si no, vale el del filtro. */
+  function accionEspacio(accion: AccionEspacio, fecha: Date, hora: string, dentistId?: string) {
+    if (accion === "bloquear") { setBloqueando({ fecha, hora, dentistId }); return; }
     setPreseleccion({ fecha, hora });
     setAbrirCon({ sobreagendar: accion === "sobreagendar", multiconsulta: accion === "multiples" });
-    setEditing(citaBase(accion === "video" ? { telemed: true } : {}));
+    setEditing(citaBase({ ...(dentistId ? { dentistId } : {}), ...(accion === "video" ? { telemed: true } : {}) }));
   }
   /** «Sobreagendar en este horario» desde una cita (el «+» de la tarjeta, el ⋮ de la Diaria o «Ver»): mismo día, hora, profesional y box. */
   function sobreagendarDesde(a: Appointment) {
@@ -549,59 +554,24 @@ export default function AgendaPage() {
           {/* Tabla del día */}
           <div className="min-w-0 flex-1 space-y-3">
             {tab === "global" ? (
-              <div className="overflow-x-auto pb-1">
-                <div className="flex gap-3" style={{ minWidth: Math.max(1, dentists.filter((d) => proFilter === "all" || d.id === proFilter).length) * 210 }}>
-                  {dentists.filter((d) => proFilter === "all" || d.id === proFilter).map((d) => {
-                    const list = dayAll.filter((a) => a.dentistId === d.id && statusFilter.has(estadoDe(a).id) && (!soloOnline || a.source === "online") && pasaFiltros(a)).sort((a, b) => a.start.localeCompare(b.start));
-                    const bloqueos = bloqueosDelDia.filter((b) => b.dentistId === TODOS_LOS_PROFESIONALES || b.dentistId === d.id);
-                    const items: ItemGlobal[] = [...list.map((a) => ({ start: a.start, cita: a })), ...bloqueos.map((b) => ({ start: b.start, bloqueo: b }))].sort((x, y) => x.start.localeCompare(y.start));
-                    return (
-                      <div key={d.id} className="min-w-[200px] flex-1">
-                        <div className="mb-2 flex items-center gap-2 rounded-xl bg-clinic-bg px-3 py-2">
-                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: d.color }} />
-                          <span className="truncate text-sm font-bold text-clinic-text">{d.name}</span>
-                          <span className="ml-auto tabular-nums text-xs text-clinic-muted">{list.length}</span>
-                        </div>
-                        <div className="space-y-2">
-                          {items.length === 0 ? <p className="py-4 text-center text-xs text-clinic-muted">Sin citas</p> : items.map((item) => {
-                            if (item.bloqueo) {
-                              const b = item.bloqueo;
-                              const contenido = (
-                                <>
-                                  <div className="tabular-nums text-[11px] font-bold text-clinic-text">{rangoDeBloqueo(b)}</div>
-                                  <div className="flex items-center gap-1 truncate text-sm font-semibold text-clinic-muted"><Lock aria-hidden className="h-3.5 w-3.5 shrink-0" /> {b.reason || "Bloqueado"}</div>
-                                  <div className="text-[11px] text-clinic-muted">Espacio bloqueado{b.boxId ? ` · ${nombreDeBox(b.boxId) ?? ""}` : ""}</div>
-                                </>
-                              );
-                              const cls = `block w-full rounded-xl border border-clinic-border p-2.5 text-left ${RAYADO}`;
-                              return puedeEditar ? (
-                                <button key={`b_${b.id}`} type="button" aria-haspopup="menu" aria-label={etiquetaBloqueo(b)} title={etiquetaBloqueo(b)} onClick={(ev) => abrirMenuBloqueo(b, ev.currentTarget)} className={`${cls} transition-colors hover:border-clinic-muted`}>{contenido}</button>
-                              ) : (
-                                <div key={`b_${b.id}`} title={etiquetaBloqueo(b)} className={cls}>{contenido}</div>
-                              );
-                            }
-                            const a = item.cita;
-                            const p = db.patients.find((x) => x.id === a.patientId);
-                            return (
-                              <div key={a.id} className="relative">
-                                <button onClick={() => setViewing(a)} className="block w-full rounded-xl border border-clinic-border border-l-4 bg-white p-2.5 text-left shadow-card transition-shadow hover:shadow-pop" style={{ borderLeftColor: estadoDe(a).color }}>
-                                  <div className="tabular-nums text-[11px] font-bold text-clinic-text">{fmtTime(a.start)}–{fmtTime(a.end)}</div>
-                                  <div className="truncate pr-6 text-sm font-semibold text-clinic-text">{p ? fullName(p) : "—"}</div>
-                                  <div className="flex items-center gap-1.5 truncate text-[11px] font-semibold" style={{ color: estadoDe(a).color }}>
-                                    {estadoDe(a).label}
-                                    {a.sobrecupo && <span className="rounded bg-amber-100 px-1 text-[10px] font-bold text-amber-800">Sobrecupo</span>}
-                                  </div>
-                                </button>
-                                <ComentarioCita texto={a.notes} className="absolute right-1.5 top-1.5 print:hidden" />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              columnasDelDiaGlobal.length === 0 ? (
+                <Empty title="No hay profesionales para mostrar con estos filtros." desc="Elegí «Todos los profesionales» arriba a la izquierda." />
+              ) : (
+                <GrillaAgenda
+                  columnas={columnasDelDiaGlobal}
+                  citas={citasDelDiaGlobal}
+                  bloqueos={bloqueosDelDia}
+                  gridRef={gridRef}
+                  puedeAgendar={puedeAgendar}
+                  puedeBloquear={puedeEditar}
+                  fueraDeHorario={fueraEnElDia}
+                  anchoMinimoColumna={150}
+                  onVer={setViewing}
+                  onAccion={accionEspacio}
+                  onSobreagendar={sobreagendarDesde}
+                  onQuitarBloqueos={quitarBloqueos}
+                />
+              )
             ) : (<>
             {bloqueosDelDia.length > 0 && (
               <section aria-label="Espacios bloqueados" className="flex flex-wrap items-center gap-2 rounded-xl border border-clinic-border bg-white px-3 py-2 text-sm">
@@ -809,12 +779,12 @@ export default function AgendaPage() {
         />
       )}
 
-      {/* Modal BLOQUEAR ESPACIO (desde el menú de un espacio de la semanal) */}
+      {/* Modal BLOQUEAR ESPACIO (desde el menú de un espacio de la Semanal o de la Diaria global) */}
       {bloqueando && (
         <BloquearEspacio
           fecha={bloqueando.fecha}
           hora={bloqueando.hora}
-          dentistId={proFilter !== "all" ? proFilter : undefined}
+          dentistId={bloqueando.dentistId ?? (proFilter !== "all" ? proFilter : undefined)}
           boxId={variosBoxes && boxFilter !== "all" ? boxFilter : undefined}
           onClose={cerrarBloquear}
           onGuardar={(bs) => {
@@ -824,7 +794,7 @@ export default function AgendaPage() {
           }}
         />
       )}
-      {/* Menú de un bloqueo en la Diaria y la Diaria global (la semanal tiene el suyo) */}
+      {/* Menú de un bloqueo en la Diaria (las grillas tienen el suyo) */}
       <MenuBloqueo bloqueo={bloqueoAbierto} ancla={anclaBloqueo} onCerrar={cerrarMenuBloqueo} onQuitar={quitarBloqueos} />
     </div>
   );

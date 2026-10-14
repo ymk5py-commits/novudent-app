@@ -82,6 +82,16 @@ async function menuDeEspacio(page: Page, dia: number, hora: string): Promise<Loc
 
 const dialogo = (page: Page, nombre: string) => page.getByRole("dialog", { name: nombre });
 
+/** Abre la Diaria global en el día `dia` (0 = lunes) de la semana que viene. */
+async function diariaGlobal(page: Page, dia: number) {
+  await page.goto("/app/agenda");
+  await main(page).getByRole("button", { name: "Diaria global" }).click();
+  await page.getByLabel("Elegir fecha").fill(await fechaEnSemana(page, dia));
+}
+
+/** El nombre de un espacio de la Diaria global: «Dr. Diego Martínez · Mar 13 oct · 10:00». */
+const espacioDe = async (page: Page, profesional: string, dia: number, hora: string) => `${profesional} · ${await etiquetaEspacio(page, dia, hora)}`;
+
 /* ═══ A1 · El menú de cada espacio de la semanal ═══ */
 
 test.describe("A1 · menú de cada espacio de la semanal", () => {
@@ -410,6 +420,94 @@ test("con un profesional elegido, la Semanal pinta en gris lo que queda fuera de
   await expect(menu.getByRole("menuitem")).toHaveText([
     "Dar cita presencial", "Dar cita por videoconsulta", "Dar múltiples citas", "Sobreagendar en este horario", "Bloquear espacio",
   ]);
+});
+
+/* ═══ Diaria global como grilla (13-oct-2026) ═══ */
+
+test.describe("Diaria global como grilla por profesional", () => {
+  test.beforeEach(async ({ page }) => { await entrarDemo(page, USUARIOS_DEMO.recepcionista); });
+
+  test("una columna por profesional; tocar un espacio abre el menú y «Dar cita presencial» sale con ese profesional y esa hora", async ({ page }) => {
+    await diariaGlobal(page, 1);
+    await expect(main(page).getByTitle("Dra. Sofía Benítez", { exact: true })).toBeVisible();
+    await expect(main(page).getByTitle("Dr. Diego Martínez", { exact: true })).toBeVisible();
+    const nombre = await espacioDe(page, "Dr. Diego Martínez", 1, "10:00");
+    await main(page).getByRole("button", { name: nombre, exact: true }).click();
+    const menu = page.getByRole("menu", { name: nombre });
+    await expect(menu.getByRole("menuitem")).toHaveText([
+      "Dar cita presencial", "Dar cita por videoconsulta", "Dar múltiples citas", "Sobreagendar en este horario", "Bloquear espacio",
+    ]);
+    await menu.getByRole("menuitem", { name: "Dar cita presencial" }).click();
+    const cita = dialogo(page, "Dar cita");
+    await expect(cita.getByLabel("Profesional")).toHaveValue("u4");
+    await expect(cita.getByRole("status")).toContainText("10:00");
+    await sinScrollHorizontal(page);
+  });
+
+  test("«Bloquear espacio» desde la columna de un profesional sale con ese profesional y el bloqueo queda solo en su columna", async ({ page }) => {
+    await diariaGlobal(page, 2);
+    const nombre = await espacioDe(page, "Dra. Sofía Benítez", 2, "12:00");
+    await main(page).getByRole("button", { name: nombre, exact: true }).click();
+    await page.getByRole("menu", { name: nombre }).getByRole("menuitem", { name: "Bloquear espacio" }).click();
+    const modal = dialogo(page, "Bloquear espacio");
+    await expect(modal.getByLabel("Profesional")).toHaveValue("u2");
+    await modal.getByLabel("Hasta", { exact: true }).selectOption("13:00");
+    await modal.getByRole("button", { name: "Almuerzo", exact: true }).click();
+    await modal.getByRole("button", { name: "Bloquear", exact: true }).click();
+    await expect(modal).toHaveCount(0);
+    const bloqueos = (await leerDB(page)).agendaBlocks;
+    expect(bloqueos).toHaveLength(1);
+    expect(bloqueos[0].dentistId).toBe("u2");
+    await expect(main(page).getByRole("button", { name: /^Bloqueado 12:00–13:00 · Almuerzo/ })).toHaveCount(1);
+  });
+
+  test("un bloqueo de «Todos los profesionales» aparece en todas las columnas", async ({ page }) => {
+    const ini = await enSemana(page, 3, 13);
+    const fin = await enSemana(page, 3, 14);
+    await conDemo(page, (db: any, a: { ini: string; fin: string }) => {
+      db.agendaBlocks.push({ id: "bl_todos", clinicId: db.clinics[0].id, dentistId: "*", start: a.ini, end: a.fin, reason: "Reunión", createdAt: a.ini, createdBy: "Laura Recepción" });
+    }, { ini, fin });
+    await diariaGlobal(page, 3);
+    const columnas = await page.evaluate(() => JSON.parse(localStorage.getItem("novudent.db.v4")!).users.filter((u: any) => u.role === "dentist").length);
+    await expect(main(page).getByRole("button", { name: /^Bloqueado 13:00–14:00 · Reunión/ })).toHaveCount(columnas);
+  });
+
+  test("fuera de horario: gris por profesional, y el espacio abre el menú igual; un domingo, toda la columna", async ({ page }) => {
+    await conDemo(page, (db: any) => {
+      const u = db.users.find((x: any) => x.id === "u4");
+      u.horario = { dias: [1, 2, 3, 4, 5], desde: "09:00", hasta: "13:00" };
+    });
+    await diariaGlobal(page, 1);
+    const diego0830 = await espacioDe(page, "Dr. Diego Martínez", 1, "08:30");
+    await expect(main(page).getByRole("button", { name: `${diego0830} · fuera de horario`, exact: true })).toHaveCount(1);
+    // La Dra. Sofía tiene el horario de siempre (08 a 18): a las 08:30 atiende.
+    await expect(main(page).getByRole("button", { name: await espacioDe(page, "Dra. Sofía Benítez", 1, "08:30"), exact: true })).toHaveCount(1);
+    await main(page).getByRole("button", { name: `${diego0830} · fuera de horario`, exact: true }).click();
+    await expect(page.getByRole("menu", { name: diego0830 }).getByRole("menuitem", { name: "Dar cita presencial" })).toBeVisible();
+    await page.keyboard.press("Escape"); // los menús (no las ventanas) se cierran con Escape
+
+    await page.getByLabel("Elegir fecha").fill(await fechaEnSemana(page, 6)); // domingo
+    await expect(main(page).getByRole("button", { name: `${await espacioDe(page, "Dra. Sofía Benítez", 6, "10:00")} · fuera de horario`, exact: true })).toHaveCount(1);
+  });
+
+  test("la cita se ve en la columna de su profesional y su «+» sobreagenda con ese profesional", async ({ page }) => {
+    await conCitas(page, [{ id: "a_global", dia: 1, desde: [11, 0], hasta: [11, 30], dentistId: "u4", title: "Control global" }]);
+    await diariaGlobal(page, 1);
+    const tarjeta = main(page).getByRole("button", { name: /Control global/ });
+    await expect(tarjeta).toBeVisible();
+    await tarjeta.hover();
+    await tarjeta.locator("..").getByRole("button", { name: "Sobreagendar en este horario" }).click();
+    await expect(dialogo(page, "Dar cita").getByLabel("Profesional")).toHaveValue("u4");
+  });
+});
+
+test("el dentista ve la Diaria global como grilla de solo lectura: sin menú en los espacios", async ({ page }) => {
+  await entrarDemo(page, USUARIOS_DEMO.dentista);
+  await conCitas(page, [{ id: "a_ro_global", dia: 1, desde: [10, 0], hasta: [10, 30], title: "Cita para mirar" }]);
+  await diariaGlobal(page, 1);
+  await expect(main(page).getByRole("button", { name: /Cita para mirar/ })).toBeVisible();
+  await expect(main(page).getByRole("button", { name: await espacioDe(page, "Dra. Sofía Benítez", 1, "09:00"), exact: true })).toHaveCount(0);
+  await expect(main(page).getByRole("note").filter({ hasText: "Agenda en solo lectura" })).toBeVisible();
 });
 
 /* ═══ Solo lectura ═══ */
