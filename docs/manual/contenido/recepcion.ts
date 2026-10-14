@@ -207,7 +207,7 @@ export const procedimientos: Procedimiento[] = [
       { texto: "En **Agenda**, vista **Semanal**, tocá el espacio donde empieza el bloqueo y elegí «Bloquear espacio».", captura: "menu" },
       { texto: "Elegí el **Profesional** (o «Todos los profesionales»), el **Box** si hay que bloquear uno solo, y revisá la **Fecha**, **Desde** y **Hasta** (van de a 15 minutos; «Hasta 24:00» es hasta el final del día). Escribí el **Motivo** o tocá una de las sugerencias: Almuerzo, Reunión, Capacitación, Vacaciones o Feriado." },
       { texto: "Si se repite, en **Repetir** elegí «Todos los días hábiles (lunes a sábado)» o «Todas las semanas», y en **Repetir hasta**, hasta qué día (como mucho, un año). Abajo dice cuántos bloqueos se van a crear.", captura: "formulario" },
-      { texto: "Tocá «Bloquear». El espacio queda rayado en gris con el motivo; en la **Diaria** sale arriba de la tabla, en «Espacios bloqueados», y en la **Diaria global**, como una tarjeta gris.", captura: "bloqueado" },
+      { texto: "Tocá «Bloquear». El espacio queda rayado en gris con el motivo; en la **Diaria** sale arriba de la tabla, en «Espacios bloqueados», y en la **Diaria global**, rayado en la columna del profesional.", captura: "bloqueado" },
       { texto: "Para quitarlo, tocalo en la **Semanal** (o «Quitar» en la Diaria) y elegí «Quitar este bloqueo». Si se repetía, «Quitar toda la serie» saca todos los días juntos (pide confirmación).", captura: "quitar" },
     ],
     avisos: [
@@ -473,7 +473,7 @@ export const procedimientos: Procedimiento[] = [
       { texto: "Filtrá lo que ves: **profesional**, **sucursal** y **box** (si la clínica tiene más de uno) arriba a la izquierda, los **Estados** (tildá o destildá cada uno; «Marcar todos» los vuelve a prender) y, sobre la tabla, el buscador por nombre de paciente.", captura: "filtros" },
       { texto: "En **Semanal** ves la semana en una grilla de media hora. Tocá una cita para abrirla, o un espacio para abrir su menú: dar cita, sobreagendar o bloquear el espacio. Las citas que comparten horario se ven una al lado de la otra, y los espacios bloqueados, rayados en gris.", captura: "semanal" },
       { texto: "En **Mensual** ves el mes entero, con hasta tres citas por día y «+N más». Tocá un día para abrirlo en la vista **Diaria**.", captura: "mensual" },
-      { texto: "En **Diaria global** ves el día con una columna por profesional, para comparar las agendas de un vistazo.", captura: "global" },
+      { texto: "En **Diaria global** ves el día en una grilla de media hora con una columna por profesional, para ver de un vistazo quién tiene hueco. Tocá un espacio libre para dar cita, sobreagendar o bloquear con ese profesional ya elegido. En gris quedan las horas en que ese profesional no atiende (igual se pueden tocar).", captura: "global" },
       { texto: "Tocá «Imprimir» para sacar en papel lo que estás mirando, con el nombre de la clínica, la fecha y los filtros que elegiste.", captura: "imprimir" },
     ],
     avisos: [
