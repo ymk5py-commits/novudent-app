@@ -387,6 +387,31 @@ test.describe("A5 · bloquear espacio", () => {
   });
 });
 
+/* ═══ Fuera de horario (13-oct-2026) ═══ */
+
+test("con un profesional elegido, la Semanal pinta en gris lo que queda fuera de su horario, y ese espacio abre el menú igual", async ({ page }) => {
+  await entrarDemo(page, USUARIOS_DEMO.recepcionista);
+  await conDemo(page, (db: any) => {
+    const u = db.users.find((x: any) => x.id === "u4");
+    u.horario = { dias: [1, 2, 3, 4, 5], desde: "09:00", hasta: "13:00" };
+  });
+  await semanaQueViene(page);
+  // Con «Todos los profesionales» no se pinta nada: cada uno tiene su horario.
+  await expect(main(page).getByRole("button", { name: /· fuera de horario$/ })).toHaveCount(0);
+
+  await main(page).getByLabel("Filtrar por profesional").selectOption("u4");
+  const lunes0830 = await etiquetaEspacio(page, 0, "08:30");
+  await expect(main(page).getByRole("button", { name: `${lunes0830} · fuera de horario`, exact: true })).toHaveCount(1);
+  await expect(main(page).getByRole("button", { name: await etiquetaEspacio(page, 0, "09:00"), exact: true })).toHaveCount(1);
+  await expect(main(page).getByRole("button", { name: `${await etiquetaEspacio(page, 5, "10:00")} · fuera de horario`, exact: true })).toHaveCount(1); // sábado
+
+  await main(page).getByRole("button", { name: `${lunes0830} · fuera de horario`, exact: true }).click();
+  const menu = page.getByRole("menu", { name: lunes0830 });
+  await expect(menu.getByRole("menuitem")).toHaveText([
+    "Dar cita presencial", "Dar cita por videoconsulta", "Dar múltiples citas", "Sobreagendar en este horario", "Bloquear espacio",
+  ]);
+});
+
 /* ═══ Solo lectura ═══ */
 
 test("el dentista ve la semanal en solo lectura: los espacios no abren menú, las citas no tienen «+» y los bloqueos se ven", async ({ page }) => {

@@ -2,7 +2,7 @@
 import Link from "next/link";
 /** Módulo de Agenda estilo Dentalink: vista Diaria (sidebar fecha + profesional +
  *  leyenda de estados; tabla Hora/Paciente/Doctor/Estado/Situación) · Diaria global ·
- *  Semanal (grilla de 30 min con menú por espacio, components/agenda/GrillaSemanal) · Reprogramación.
+ *  Semanal (grilla de 30 min con menú por espacio, components/agenda/GrillaAgenda) · Reprogramación.
  *  Modales VER/Lista de espera/Crear-editar/Bloquear espacio. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -24,7 +24,8 @@ import { textoPrestacion } from "@/lib/prestacionesCita";
 import type { AgendaBlock, Appointment, Patient } from "@/lib/types";
 import { DarCita } from "@/components/DarCita";
 import { Desplegable, ItemMenu } from "@/components/Desplegable";
-import { GrillaSemanal, type AccionEspacio } from "@/components/agenda/GrillaSemanal";
+import { GrillaAgenda, type AccionEspacio } from "@/components/agenda/GrillaAgenda";
+import { columnasDeLaSemana, fueraDeHorario, type ColumnaDeAgenda } from "@/lib/agendaGrilla";
 import { BloquearEspacio } from "@/components/agenda/BloquearEspacio";
 import { MenuBloqueo, quienBloquea } from "@/components/agenda/MenuBloqueo";
 import { ComentarioCita } from "@/components/agenda/ComentarioCita";
@@ -227,6 +228,12 @@ export default function AgendaPage() {
 
   /* — Semanal — */
   const weekEnd = addDays(weekStart, 7);
+  const columnasSemana = useMemo(() => columnasDeLaSemana(weekStart), [weekStart]);
+  /** Con un profesional elegido, la Semanal pinta en gris lo que queda fuera de su horario (con «Todos», cada uno tiene el suyo). */
+  const fueraEnLaSemana = useMemo(() => {
+    const pro = proFilter !== "all" ? db.users.find((u) => u.id === proFilter) : undefined;
+    return pro ? (col: ColumnaDeAgenda, hora: string) => fueraDeHorario(pro.horario, col.fecha, hora) : undefined;
+  }, [proFilter, db.users]);
   const weekAppointments = useMemo(
     () => citas.filter((a) => { const t = new Date(a.start); return t >= weekStart && t < weekEnd && pasaFiltros(a); }).sort((a, b) => a.start.localeCompare(b.start)),
     [citas, weekStart, weekEnd, proFilter, branchFilter, boxFilter, mainBranchId] // eslint-disable-line react-hooks/exhaustive-deps
@@ -439,7 +446,7 @@ export default function AgendaPage() {
       </div>
 
       {tab === "semanal" ? (
-        /* ===== SEMANAL (grilla de 30 minutos, components/agenda/GrillaSemanal) ===== */
+        /* ===== SEMANAL (grilla de 30 minutos, components/agenda/GrillaAgenda) ===== */
         <Reveal>
           <div className="mb-2 flex items-center gap-2 print:hidden">
             <button onClick={() => setWeekStart(addDays(weekStart, -7))} className="grid h-9 w-9 place-items-center rounded-xl border border-clinic-border bg-white hover:bg-clinic-bg" aria-label="Semana anterior"><ChevronLeft className="h-4 w-4" /></button>
@@ -447,13 +454,14 @@ export default function AgendaPage() {
             <button onClick={() => setWeekStart(addDays(weekStart, 7))} className="grid h-9 w-9 place-items-center rounded-xl border border-clinic-border bg-white hover:bg-clinic-bg" aria-label="Semana siguiente"><ChevronRight className="h-4 w-4" /></button>
             <span className="ml-1 text-sm text-clinic-muted">Semana del {weekStart.toLocaleDateString("es-PY", { day: "numeric", month: "long" })}</span>
           </div>
-          <GrillaSemanal
-            weekStart={weekStart}
+          <GrillaAgenda
+            columnas={columnasSemana}
             citas={weekAppointments}
             bloqueos={weekBlocks}
             gridRef={gridRef}
             puedeAgendar={puedeAgendar}
             puedeBloquear={puedeEditar}
+            fueraDeHorario={fueraEnLaSemana}
             onVer={setViewing}
             onAccion={accionEspacio}
             onSobreagendar={sobreagendarDesde}
