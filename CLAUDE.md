@@ -348,6 +348,16 @@ bytes y SHA-256). La credencial por defecto es la sesión del CLI de Firebase (`
 exportación tiene datos de pacientes: va fuera del repo (`~/novudent-export`), y `scripts/migracion/exportar-firestore.mjs` se niega a escribir adentro
 del repositorio** (compara las rutas reales, también por un enlace simbólico). Código de salida 2 = quedó algo sin leer.
 
+**Servidor propio: Coolify + túnel de Cloudflare (17-oct-2026, fase A)** — spec en `docs/superpowers/specs/2026-10-17-plataforma-coolify-tunel-design.md`
+(actualiza el del 9-oct en lo que cambió al existir el servidor: el GMKtec de Croman, sin puertos abiertos). `Dockerfile` en tres etapas sobre `output: "standalone"`
+(usuario `node`, `HOSTNAME=0.0.0.0`, `HEALTHCHECK` contra `GET /api/health`, pública y sin datos); las `NEXT_PUBLIC_*` se hornean en el build, el resto se lee al arrancar
+(`docs/servidor/variables.md`). El túnel `novum-gmktec` (`~/.cloudflared/config.yml` del servidor, se edita sin `sudo`) apunta al **Traefik de Coolify**
+(`http://localhost:80`), que enruta por `Host`: un recurso nuevo en Coolify se publica con su dominio (escrito con `http://`, el HTTPS lo pone Cloudflare) y
+solo necesita un CNAME. **Los dominios son de UN solo nivel** (`api-novudent.novumholding.lat`, no `api.novudent…`): el certificado gratuito de Cloudflare no
+cubre el segundo. **IP del cliente:** con `IP_CLIENTE_HEADER=cf-connecting-ip` (solo en el servidor propio, nunca en Vercel) `clientIp()` confía únicamente en ese
+header; detrás de Traefik `x-forwarded-for` trae siempre la IP del túnel y todos compartirían el mismo límite de uso. Para leer la IP usá siempre `clientIp(req)`,
+nunca el header a mano.
+
 ## Diferenciadores (cross-repo con Botika)
 
 Monitor post-op + Negociación de presupuestos: contrato outbox con Botika
