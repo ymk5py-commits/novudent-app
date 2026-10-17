@@ -25,7 +25,7 @@ espera() { # espera "descripción" esperado comando...   (compara el código HTT
   if [ "$r" = "$e" ]; then ok "$d (HTTP $r)"; else mal "$d: esperaba HTTP $e y llegó '$r'"; fi
 }
 
-cp -r "$AQUI/docker-compose.yml" "$AQUI/volumes" "$TMP/"
+cp "$AQUI/docker-compose.yml" "$TMP/"
 printf 'services:\n  kong:\n    ports:\n      - "127.0.0.1:%s:8000"\n' "$PUERTO" > "$TMP/override.yml"
 
 # Secretos y JWT descartables (HS256), con los mismos nombres que las variables mágicas de Coolify.

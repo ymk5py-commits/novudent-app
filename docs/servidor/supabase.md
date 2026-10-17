@@ -6,18 +6,19 @@ superficie más. No publica ningún puerto al host; la única entrada es Kong, y
 
 | Archivo | Para qué |
 |---|---|
-| `infra/supabase/docker-compose.yml` | Los cinco servicios, sin secretos (solo nombres de variables) |
-| `infra/supabase/volumes/api/kong.yml` | Rutas `/auth/v1`, `/rest/v1` y `/realtime/v1`; todo lo demás da 404. Exige la cabecera `apikey` |
-| `infra/supabase/volumes/api/kong-entrypoint.sh` | Pone las dos claves en `kong.yml` al arrancar (Kong 3.9 arranca con `/entrypoint.sh`; escribe en `/tmp`) |
-| `infra/supabase/volumes/db/*.sql` | Inicialización de la base: esquema `_realtime`, contraseñas de `authenticator` y `supabase_auth_admin`, expiración del JWT |
+| `infra/supabase/docker-compose.yml` | Los cinco servicios y, en `configs` con contenido en línea, todo lo que antes eran archivos: el `kong.yml` (rutas `/auth/v1`, `/rest/v1` y `/realtime/v1`; todo lo demás da 404; exige `apikey`) y los tres SQL de inicialización de la base (esquema `_realtime`, contraseñas de `authenticator` y `supabase_auth_admin`, expiración del JWT). Sin secretos, solo nombres de variables |
 | `infra/supabase/probar-local.sh` | Prueba de humo con secretos descartables (18 comprobaciones) |
+
+**Por qué los archivos van dentro del compose (no como `./volumes/**`).** Coolify reescribe los bind mounts relativos a `/data/coolify/applications/<uuid>/volumes/**` (sin la carpeta base `infra/supabase`),
+no encuentra los archivos y Docker crea **directorios vacíos** en su lugar: los scripts de la base no corren, las contraseñas de los roles quedan sin fijar y GoTrue, PostgREST y Realtime no pueden entrar
+(se vio el 17-oct). Con `configs` no hay rutas del host de por medio. Dentro de un `content`, compose interpola variables: un «$» literal se escribe «$$».
 
 ## Probarlo (siempre antes de tocar versiones o configuración)
 
 La Mac no tiene Docker: se corre en el servidor. Levanta un stack aparte (`nvsb-test-…`, solo en `127.0.0.1`), prueba y lo destruye con sus datos.
 
 ```bash
-tar -C infra/supabase -cf - . | ssh gmktec 'mkdir -p ~/build-tests/supabase && tar -x -C ~/build-tests/supabase && cd ~/build-tests/supabase && ./probar-local.sh'
+tar --no-xattrs -C infra/supabase -cf - . | ssh gmktec 'mkdir -p ~/build-tests/supabase && tar -x -C ~/build-tests/supabase && cd ~/build-tests/supabase && ./probar-local.sh'
 ```
 
 Comprueba: los cinco servicios sanos; `auth/health` con clave 200 y sin clave 401; una clave inventada 401; que `/storage`, el dashboard y lo demás den 404; crear una

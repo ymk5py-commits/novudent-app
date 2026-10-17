@@ -18,10 +18,14 @@ services:
       - db-data:/var/lib/postgresql/data
       # La clave de pgsodium se guarda acá: sin este volumen, un reinicio la regenera y lo cifrado deja de poder leerse.
       - db-config:/etc/postgresql-custom
-      - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:ro
+    configs:
+      - source: db_realtime_sql
+        target: /docker-entrypoint-initdb.d/migrations/99-realtime.sql
       # Deben correr como superusuario (reasignan roles reservados).
-      - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
-      - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:ro
+      - source: db_roles_sql
+        target: /docker-entrypoint-initdb.d/init-scripts/99-roles.sql
+      - source: db_jwt_sql
+        target: /docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
       interval: 5s
@@ -161,7 +165,6 @@ services:
         condition: service_healthy
       realtime:
         condition: service_healthy
-    entrypoint: ["/bin/bash", "/home/kong/kong-entrypoint.sh"]
     healthcheck:
       test: ["CMD", "kong", "health"]
       interval: 5s
@@ -169,7 +172,7 @@ services:
       retries: 5
     environment:
       KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /tmp/kong.yml
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
       # https://github.com/supabase/cli/issues/14
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_DNS_NOT_FOUND_TTL: 1
@@ -177,12 +180,171 @@ services:
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
       KONG_PROXY_ACCESS_LOG: /dev/stdout combined
-      SUPABASE_ANON_KEY: ${SERVICE_SUPABASEANON_KEY}
-      SUPABASE_SERVICE_KEY: ${SERVICE_SUPABASESERVICE_KEY}
-    volumes:
-      - ./volumes/api/kong.yml:/home/kong/temp.yml:ro
-      - ./volumes/api/kong-entrypoint.sh:/home/kong/kong-entrypoint.sh:ro
+    configs:
+      - source: kong_yml
+        target: /home/kong/kong.yml
 
 volumes:
   db-data:
   db-config:
+
+# Archivos que antes eran bind mounts de ./volumes/**: Coolify reescribe esas rutas a /data/coolify/applications/<uuid>/volumes/** (sin la carpeta
+# base), no las encuentra y Docker crea DIRECTORIOS vacíos en su lugar (los scripts de la base no corren y las contraseñas de los roles quedan sin fijar).
+# Como `configs` con contenido en línea no depende de ninguna ruta del host, funciona igual en Coolify y con `docker compose` a secas.
+# Ojo: dentro de un `content` compose interpola variables; un «$» literal se escribe «$$».
+configs:
+  db_realtime_sql:
+    content: |
+      \set pguser `echo "$$POSTGRES_USER"`
+
+      create schema if not exists _realtime;
+      alter schema _realtime owner to :pguser;
+
+  db_roles_sql:
+    content: |
+      -- Contraseña de los roles que usan los servicios que SÍ corren (GoTrue y PostgREST); la de supabase_admin la fija la propia imagen.
+      -- La versión oficial también toca pgbouncer, supabase_functions_admin y supabase_storage_admin: acá no se usan (y supabase_functions_admin
+      -- ni siquiera existe sin webhooks.sql, así que la inicialización fallaba).
+      \set pgpass `echo "$$POSTGRES_PASSWORD"`
+
+      ALTER USER authenticator WITH PASSWORD :'pgpass';
+      ALTER USER supabase_auth_admin WITH PASSWORD :'pgpass';
+
+  db_jwt_sql:
+    content: |
+      \set jwt_exp `echo "$$JWT_EXP"`
+
+      ALTER DATABASE postgres SET "app.settings.jwt_exp" TO :'jwt_exp';
+
+  kong_yml:
+    content: |
+      # Puerta de entrada de Novudent: solo auth, rest y realtime. Sin dashboard, storage, funciones ni analytics.
+      # Cada ruta (salvo las abiertas de auth) exige la cabecera «apikey» con la clave anónima o la de servicio.
+      # Compose interpola ${SERVICE_SUPABASEANON_KEY} y ${SERVICE_SUPABASESERVICE_KEY} al crear esta config.
+      _format_version: '2.1'
+      _transform: true
+
+      consumers:
+        - username: anon
+          keyauth_credentials:
+            - key: ${SERVICE_SUPABASEANON_KEY}
+        - username: service_role
+          keyauth_credentials:
+            - key: ${SERVICE_SUPABASESERVICE_KEY}
+
+      acls:
+        - consumer: anon
+          group: anon
+        - consumer: service_role
+          group: admin
+
+      services:
+        # --- Auth: enlaces de los correos y callbacks (sin clave) ---
+        - name: auth-v1-open
+          url: http://auth:9999/verify
+          routes:
+            - name: auth-v1-open
+              strip_path: true
+              paths:
+                - /auth/v1/verify
+          plugins:
+            - name: cors
+        - name: auth-v1-open-callback
+          url: http://auth:9999/callback
+          routes:
+            - name: auth-v1-open-callback
+              strip_path: true
+              paths:
+                - /auth/v1/callback
+          plugins:
+            - name: cors
+        - name: auth-v1-open-authorize
+          url: http://auth:9999/authorize
+          routes:
+            - name: auth-v1-open-authorize
+              strip_path: true
+              paths:
+                - /auth/v1/authorize
+          plugins:
+            - name: cors
+
+        # --- Auth: el resto, con clave ---
+        - name: auth-v1
+          url: http://auth:9999/
+          routes:
+            - name: auth-v1-all
+              strip_path: true
+              paths:
+                - /auth/v1/
+          plugins:
+            - name: cors
+            - name: key-auth
+              config:
+                hide_credentials: false
+            - name: acl
+              config:
+                hide_groups_header: true
+                allow:
+                  - admin
+                  - anon
+
+        # --- API de datos (PostgREST) ---
+        - name: rest-v1
+          url: http://rest:3000/
+          routes:
+            - name: rest-v1-all
+              strip_path: true
+              paths:
+                - /rest/v1/
+          plugins:
+            - name: cors
+            - name: key-auth
+              config:
+                hide_credentials: true
+            - name: acl
+              config:
+                hide_groups_header: true
+                allow:
+                  - admin
+                  - anon
+
+        # --- Tiempo real: WebSocket y API de Realtime. Se habla con el nombre realtime-dev.supabase-realtime (alias de red) porque Realtime
+        #     saca el «tenant» del primer tramo del host. La ruta más larga (/realtime/v1/api) gana sobre /realtime/v1/ ---
+        - name: realtime-v1-ws
+          url: http://realtime-dev.supabase-realtime:4000/socket
+          protocol: ws
+          routes:
+            - name: realtime-v1-ws
+              strip_path: true
+              paths:
+                - /realtime/v1/
+          plugins:
+            - name: cors
+            - name: key-auth
+              config:
+                hide_credentials: false
+            - name: acl
+              config:
+                hide_groups_header: true
+                allow:
+                  - admin
+                  - anon
+        - name: realtime-v1-rest
+          url: http://realtime-dev.supabase-realtime:4000/api
+          protocol: http
+          routes:
+            - name: realtime-v1-rest
+              strip_path: true
+              paths:
+                - /realtime/v1/api
+          plugins:
+            - name: cors
+            - name: key-auth
+              config:
+                hide_credentials: false
+            - name: acl
+              config:
+                hide_groups_header: true
+                allow:
+                  - admin
+                  - anon
