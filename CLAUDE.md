@@ -357,6 +357,13 @@ solo necesita un CNAME. **Los dominios son de UN solo nivel** (`api-novudent.nov
 cubre el segundo. **IP del cliente:** con `IP_CLIENTE_HEADER=cf-connecting-ip` (solo en el servidor propio, nunca en Vercel) `clientIp()` confía únicamente en ese
 header; detrás de Traefik `x-forwarded-for` trae siempre la IP del túnel y todos compartirían el mismo límite de uso. Para leer la IP usá siempre `clientIp(req)`,
 nunca el header a mano.
+**Supabase en Coolify (17-oct-2026):** `infra/supabase/docker-compose.yml` (Postgres 17, GoTrue, PostgREST, Realtime y Kong con versiones fijadas; sin Studio) corre como app `supabase-prueba`
+en `https://api-novudent-prueba.novumholding.lat`; probarlo y actualizarlo: `infra/supabase/probar-local.sh` (docker, en el servidor), explicado en `docs/servidor/supabase.md`.
+Tres lecciones de Coolify que cuestan horas: (1) **no uses bind mounts relativos** (`./volumes/…`): Coolify los reescribe a `/data/coolify/applications/<uuid>/volumes/…` sin la carpeta base y
+Docker crea directorios vacíos; los archivos van como `configs` con `content:` en línea (y un `$` literal se escribe `$$`); (2) un servicio que no declara `networks` queda solo en la red propia de
+la app: si depende de un alias de la red `default`, declaráselo; (3) los dominios de un compose se agregan en «Domains» eligiendo el servicio y el puerto, y un dominio no puede estar en dos recursos
+a la vez (falla en silencio). El registro de GoTrue queda abierto a propósito (con `DISABLE_SIGNUP=true` también se rechaza la sesión anónima de la demo). Respaldos y corte: `docs/servidor/respaldos.md`
+y `docs/servidor/corte.md`.
 
 ## Diferenciadores (cross-repo con Botika)
 
