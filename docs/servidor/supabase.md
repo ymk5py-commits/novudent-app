@@ -7,7 +7,7 @@ superficie más. No publica ningún puerto al host; la única entrada es Kong, y
 | Archivo | Para qué |
 |---|---|
 | `infra/supabase/docker-compose.yml` | Los cinco servicios y, en `configs` con contenido en línea, todo lo que antes eran archivos: el `kong.yml` (rutas `/auth/v1`, `/rest/v1` y `/realtime/v1`; todo lo demás da 404; exige `apikey`) y los tres SQL de inicialización de la base (esquema `_realtime`, contraseñas de `authenticator` y `supabase_auth_admin`, expiración del JWT). Sin secretos, solo nombres de variables |
-| `infra/supabase/probar-local.sh` | Prueba de humo con secretos descartables (18 comprobaciones) |
+| `infra/supabase/probar-local.sh` | Prueba de humo con secretos descartables (17 comprobaciones) |
 
 **Por qué los archivos van dentro del compose (no como `./volumes/**`).** Coolify reescribe los bind mounts relativos a `/data/coolify/applications/<uuid>/volumes/**` (sin la carpeta base `infra/supabase`),
 no encuentra los archivos y Docker crea **directorios vacíos** en su lugar: los scripts de la base no corren, las contraseñas de los roles quedan sin fijar y GoTrue, PostgREST y Realtime no pueden entrar

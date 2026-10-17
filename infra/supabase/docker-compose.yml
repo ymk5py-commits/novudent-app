@@ -183,6 +183,10 @@ services:
     configs:
       - source: kong_yml
         target: /home/kong/kong.yml
+    # Explícito a propósito: Coolify conecta cada servicio a su red propia y, solo a los que declaran `networks`, también a «default». El alias
+    # realtime-dev.supabase-realtime vive en «default»; sin esto Kong no lo resuelve (503 en el WebSocket de Realtime, visto el 17-oct).
+    networks:
+      - default
 
 volumes:
   db-data:
