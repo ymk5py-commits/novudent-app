@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
+import { clientIp, rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 import { setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
 
 /**
@@ -37,7 +37,7 @@ const esc = (s: string) =>
 export async function POST(req: NextRequest) {
   /* Limita por IP: no hay sesión con la cual limitar. Cinco por hora alcanza de
      sobra para alguien que pide acceso de verdad y corta el envío masivo. */
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "desconocida";
+  const ip = clientIp(req);
   const rl = await rateLimit(`contacto:${ip}`, { limit: 5, windowMs: 3_600_000 });
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 

@@ -1,0 +1,27 @@
+# Lo que no entra a la imagen: se regenera, es de pruebas o es de desarrollo.
+.git
+.claude
+node_modules
+.next
+out
+.DS_Store
+
+# Secretos: jamás dentro de una imagen (las variables se pasan en tiempo de ejecución)
+.env
+.env.*
+
+# Pruebas, manual y material de apoyo
+e2e
+test
+test-results
+playwright-report
+blob-report
+docs
+qa-visual.mjs
+playwright.config.ts
+vitest.config.ts
+vitest.emulador.config.ts
+*-debug.log
+*.tsbuildinfo
+WhatsApp Image*
+WhatsApp Video*

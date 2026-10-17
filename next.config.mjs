@@ -32,6 +32,8 @@ const DOMINIO_PROPIO = (process.env.NEXT_PUBLIC_SITE_URL || "https://novudent.no
 
 const nextConfig = {
   reactStrictMode: true,
+  // Servidor propio (Coolify): el build deja `.next/standalone` con solo lo necesario para correr, sin `node_modules` completos. Ver el Dockerfile.
+  output: "standalone",
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

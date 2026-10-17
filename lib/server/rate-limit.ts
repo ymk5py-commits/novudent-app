@@ -150,8 +150,17 @@ export async function rateLimit(
   }
 }
 
-/** IP del cliente desde los headers de Vercel/proxy (best-effort). */
+/** IP del cliente (best-effort).
+ *
+ *  Con `IP_CLIENTE_HEADER` (servidor propio detrás de Cloudflare: `cf-connecting-ip`) se confía SOLO en ese header: lo pone el borde y
+ *  el cliente no puede falsearlo mientras el servidor solo sea alcanzable por el túnel. `x-forwarded-for` no sirve ahí: Traefik lo
+ *  reescribe con la IP del túnel (todos compartirían un balde) y Cloudflare le suma lo que mande el cliente. Si la variable está y el
+ *  header falta, alguien llegó sin pasar por el borde: todos esos pedidos caen en un único balde `sin-proxy`.
+ *
+ *  Sin la variable (Vercel) se conserva lo de siempre: la plataforma reescribe `x-forwarded-for`, así que su primer valor es la IP real. */
 export function clientIp(req: Request): string {
+  const confiable = process.env.IP_CLIENTE_HEADER?.trim().toLowerCase();
+  if (confiable) return req.headers.get(confiable)?.trim() || "sin-proxy";
   const xff = req.headers.get("x-forwarded-for");
   if (xff) return xff.split(",")[0].trim();
   return req.headers.get("x-real-ip") || "unknown";
