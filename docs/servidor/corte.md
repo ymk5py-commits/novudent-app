@@ -8,7 +8,7 @@ pública**: cambia de dónde lee y escribe la app. Eso lo hace un redeploy con o
 - [ ] Fases B, C y D terminadas y mergeadas: esquema y RLS con las 144 pruebas, adaptador Supabase, cargador con verificación.
 - [ ] **Simulacro completo, dos veces**, contra una copia exportada y un stack descartable, cronometrado. Criterio: carga repetible sin diferencias y SHA-256 igual en todos los documentos.
 - [ ] Respaldos a R2 corriendo y **una restauración de prueba hecha** (`docs/servidor/respaldos.md`).
-- [ ] **Botika** resuelto (ver abajo): hoy lee y escribe `clinics/{id}/outbox` en Firestore con `firebase-admin`; si no se cambia, deja de funcionar el día que Firestore pase a solo lectura.
+- [ ] Integración externa por *outbox* (`docs/INTEGRACION-BOTIKA.md`): **fuera del alcance de este proyecto** (Novum y Novudent). Hoy lee y escribe `clinics/{id}/outbox` en Firestore; cuando Firestore pase a solo lectura (y más aún al apagarlo) esa integración deja de funcionar hasta que quien la mantenga la cambie. Tenerlo presente al decidir la fecha de apagado de Firebase.
 - [ ] Confirmar que **ningún otro sistema** lee o escribe el Firestore de Novudent (el código de las otras carpetas de Croman no lo usa; falta confirmarlo con él).
 - [ ] Aviso a las clínicas con 7 días: cada usuario real recibe un correo para **elegir contraseña nueva** (no se importan los hashes de Firebase). Hoy son 4 clínicas dadas de alta con 1 usuario cada una, y la demo.
 - [ ] Un dominio público definitivo para Supabase: `api-novudent.novumholding.lat` (un solo nivel; ver §3 del diseño de la fase A) o promover el de prueba. Es un CNAME más y una ruta en el túnel (una edición, un reinicio).
@@ -21,17 +21,10 @@ pública**: cambia de dónde lee y escribe la app. Eso lo hace un redeploy con o
 4. **Respaldo inmediato** de la base ya cargada (`respaldo.sh`).
 5. **Pruebas de humo** (login, abrir ficha, dar cita, cobrar, chat en tiempo real, reserva online, webhook de pago de prueba, `/api/health` con la base).
 6. **Cambiar la app** en Coolify (`novudent-app`, hoy de la sesión SERVIDOR GMKTEC): variables de build `NEXT_PUBLIC_BACKEND=supabase`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`; de ejecución `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`; redeploy. Lemon Squeezy y las demás URL **no cambian** (mismo dominio).
-7. **Botika** al mismo tiempo (misma ventana).
-8. Avisar que volvió y mirar los registros las primeras horas.
+7. Avisar que volvió y mirar los registros las primeras horas.
 
 ## Después
 
 - Firestore queda **solo lectura 14 días**; después se archiva y se apaga Firebase (Firestore, Auth y App Check) y se borran las variables `FIREBASE_*` y `SERVICE_USER_*` de Coolify.
 - **Vercel:** los proyectos están pausados; se borran pasados esos 14 días. El dominio ya no apunta ahí.
 - **Marcha atrás:** limpia solo *dentro de la ventana* (nada se escribió todavía en Supabase): se republican las reglas viejas de Firestore y se vuelve a desplegar la app con `NEXT_PUBLIC_BACKEND=firestore`. Pasada la ventana no hay retorno automático; el riesgo se cubre con los simulacros.
-
-## Botika (decisión de Croman)
-
-Botika es otro repositorio y hoy no está en esta Mac (el contrato está en `docs/INTEGRACION-BOTIKA.md`). Pasa de `firebase-admin` + `onSnapshot` a leer y escribir la tabla `outbox` de Supabase
-con la clave de servicio (y escuchar por Realtime o consultar cada pocos segundos). **El contrato no cambia** (campos y estados `pendiente → enviado → respondido | error`); se publica una v2 con el acceso nuevo.
-Si Botika es de la empresa (Santa Rosa), el cambio lo hace quien lo mantiene, con la guía de la v2; este repositorio no mezcla lo personal con lo de la empresa.
