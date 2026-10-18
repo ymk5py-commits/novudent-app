@@ -7,7 +7,7 @@ superficie más. No publica ningún puerto al host; la única entrada es Kong, y
 | Archivo | Para qué |
 |---|---|
 | `infra/supabase/docker-compose.yml` | Los cinco servicios y, en `configs` con contenido en línea, todo lo que antes eran archivos: el `kong.yml` (rutas `/auth/v1`, `/rest/v1` y `/realtime/v1`; todo lo demás da 404; exige `apikey`) y los tres SQL de inicialización de la base (esquema `_realtime`, contraseñas de `authenticator` y `supabase_auth_admin`, expiración del JWT). Sin secretos, solo nombres de variables |
-| `infra/supabase/probar-local.sh` | Prueba de humo con secretos descartables (17 comprobaciones) |
+| `infra/supabase/probar-local.sh` | Prueba de humo con secretos descartables (18 comprobaciones) |
 
 **Por qué los archivos van dentro del compose (no como `./volumes/**`).** Coolify reescribe los bind mounts relativos a `/data/coolify/applications/<uuid>/volumes/**` (sin la carpeta base `infra/supabase`),
 no encuentra los archivos y Docker crea **directorios vacíos** en su lugar: los scripts de la base no corren, las contraseñas de los roles quedan sin fijar y GoTrue, PostgREST y Realtime no pueden entrar
@@ -23,7 +23,7 @@ tar --no-xattrs -C infra/supabase -cf - . | ssh gmktec 'mkdir -p ~/build-tests/s
 
 Comprueba: los cinco servicios sanos; `auth/health` con clave 200 y sin clave 401; una clave inventada 401; que `/storage`, el dashboard y lo demás den 404; crear una
 persona con la clave de servicio (y que la clave pública **no** pueda); iniciar sesión; la sesión anónima de la demo; que un alta por email sin confirmar no pueda entrar;
-el WebSocket de Realtime (101); los roles y esquemas de la base; y que ningún puerto quede publicado fuera de `127.0.0.1`.
+el WebSocket de Realtime (101); los roles y esquemas de la base; y que ningún puerto quede publicado fuera de `127.0.0.1` y que un cuerpo de 9 MB sea rechazado (tope de 8 MB en Kong).
 
 ## Desplegarlo en Coolify
 

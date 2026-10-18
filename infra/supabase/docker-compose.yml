@@ -179,6 +179,9 @@ services:
       KONG_PLUGINS: cors,key-auth,acl
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      # Tope de lo que entra por la API: un documento de Novudent pesa menos de 1 MB (imágenes en base64 ya redimensionadas). Sin tope, cualquiera
+      # con la clave pública (también la sesión anónima de la demo) podría mandar cuerpos enormes hasta el límite de Cloudflare (100 MB).
+      KONG_NGINX_PROXY_CLIENT_MAX_BODY_SIZE: 8m
       KONG_PROXY_ACCESS_LOG: /dev/stdout combined
     configs:
       - source: kong_yml

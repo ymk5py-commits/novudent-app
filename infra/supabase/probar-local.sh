@@ -69,6 +69,9 @@ espera "clave inventada" 401 curl_codigo -H "apikey: clave-inventada" "$URL/auth
 espera "rest/v1 con clave anónima" 200 curl_codigo -H "apikey: $ANON" -H "Authorization: Bearer $ANON" "$URL/rest/v1/"
 espera "rest/v1 sin clave" 401 curl_codigo "$URL/rest/v1/"
 espera "ruta que no existe (dashboard/storage/funciones)" 404 curl_codigo -H "apikey: $ANON" "$URL/storage/v1/bucket"
+GRANDE="$TMP/grande.json"; { printf '{"x":"'; head -c 9000000 /dev/zero | tr '\0' a; printf '"}'; } > "$GRANDE"
+espera "cuerpo de 9 MB rechazado (tope de 8 MB)" 413 curl_codigo -X POST -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H 'Content-Type: application/json' --data-binary "@$GRANDE" "$URL/rest/v1/rpc/lote"
+rm -f "$GRANDE"
 
 echo "== Login =="
 EMAIL="prueba-$RANDOM@novudent.test"; CLAVE="Clave-$(openssl rand -hex 6)"
