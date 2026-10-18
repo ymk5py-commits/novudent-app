@@ -23,11 +23,24 @@ describe("las migraciones están al día", () => {
     expect(salida).toContain("Migraciones al día");
   });
 
-  it("se aplican en orden alfabético: tablas, funciones de datos, funciones de permisos…", () => {
-    expect(migraciones[0]).toMatch(/_tablas\.sql$/);
-    expect(migraciones[1]).toMatch(/_funciones_datos\.sql$/);
-    expect(migraciones[2]).toMatch(/_rls_funciones\.sql$/);
+  it("se aplican en orden alfabético: tablas, funciones de datos, funciones de permisos, políticas y disparadores", () => {
+    expect(migraciones.map((f) => f.replace(/^\d+_/, "").replace(/\.sql$/, ""))).toEqual(["tablas", "funciones_datos", "rls_funciones", "rls_politicas", "rls_disparadores"]);
     expect(migraciones).toEqual([...migraciones].sort());
+  });
+
+  it("toda colección del manifiesto tiene su tabla; directory y serviceAccounts no", () => {
+    const m = JSON.parse(readFileSync(new URL("lib/backend/colecciones.json", raiz), "utf8")) as { porClinica: string[]; raiz: string[]; noSeMigra: string[] };
+    const sql = readFileSync(new URL(migraciones.find((f) => f.endsWith("_tablas.sql"))!, carpeta), "utf8");
+    const creadas = [...sql.matchAll(/create table public\."([A-Za-z]+)"/g)].map((x) => x[1]).sort();
+    const esperadas = [...m.porClinica, ...m.raiz.filter((t) => t !== "directory" && !m.noSeMigra.includes(t))].sort();
+    expect(creadas).toEqual(esperadas);
+  });
+
+  it("cada tabla tiene políticas o está en la lista de las que solo toca el servidor; nunca una tabla sin decidir", () => {
+    const pol = readFileSync(new URL(migraciones.find((f) => f.endsWith("_rls_politicas.sql"))!, carpeta), "utf8");
+    const conPolitica = new Set([...pol.matchAll(/create policy "([A-Za-z]+)_(?:leer|crear|actualizar|borrar)"/g)].map((x) => x[1]));
+    for (const t of ["webhookEvents", "leads", "checkoutTokens"]) expect(conPolitica.has(t), t).toBe(false);
+    for (const t of ["users", "patients", "clinics", "subscriptions", "directMessages", "payments", "expenses"]) expect(conPolitica.has(t), t).toBe(true);
   });
 
   it("ninguna migración trae secretos ni contraseñas", () => {

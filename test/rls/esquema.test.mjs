@@ -149,6 +149,11 @@ describe("seguridad por defecto", () => {
     }
   });
 
+  test("lo único `security definer` que queda expuesto en `public` es mi_directorio (el resto corre con los permisos de quien llama)", async () => {
+    const definer = await admin(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prosecdef order by 1`);
+    assert.deepEqual(definer.map((f) => f.proname), ["mi_directorio"]);
+  });
+
   test("PostgREST solo ve `public`: las funciones auxiliares viven en `interno`", async () => {
     const [{ n }] = await admin(`select count(*)::int as n from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname in ('isMember', 'isAdmin', 'tienePermiso', 'isCaja')`);
     assert.equal(n, 0);

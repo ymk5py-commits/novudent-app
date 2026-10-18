@@ -201,6 +201,183 @@ function migracionRlsFunciones() {
     plantilla("rls_funciones.sql");
 }
 
+
+// ───────────────────────────── 0004 · políticas (RLS) ─────────────────────────────
+//
+// Cada colección con sus reglas, traducidas de firestore.rules (el comentario de cada una dice de qué bloque `match` sale). Las funciones son las
+// de la migración 0003, con los nombres de las reglas. Denegar por defecto: lo que no figura acá no se puede ni leer ni escribir; y un
+// comando sin política (p. ej. `delete` de `payments`… sí tiene; `delete` de subscriptions no) queda denegado.
+//
+// `isService()` no aparece: la clave service_role salta RLS. `isDemo` es lectura de la demo sin sesión (el rol `anon` también la ve);
+// `isDemoRW` es escribir en la demo y exige sesión (la anónima de GoTrue es el rol authenticated).
+// Lo que depende de qué cambió dentro del documento (old contra new) no se puede expresar en una política: vive en 0005 (disparadores).
+
+const M = (c) => `interno."isMember"(${c})`;
+const A = (c) => `interno."isAdmin"(${c})`;
+const D = (c) => `interno."isDemo"(${c})`;
+const DRW = (c) => `interno."isDemoRW"(${c})`;
+const SA = (c) => `interno."subActive"(${c})`;
+const CW = (c) => `interno."canWrite"(${c})`;
+const CWP = (c, planes) => `interno."canWritePremium"(${c}, array[${lista(planes)}])`;
+const PLANES_CLINICA = ["clinica", "cadena"];
+const CLINICOS = ["emr", "odontogram", "prescriptions", "ortho", "perio"]; // patientClinicalFields() de firestore.rules
+
+/** Colecciones SIN política: las lee y escribe solo el servidor (service_role). Son las que en firestore.rules dicen `allow read, write: if isService()`. */
+const SOLO_SERVIDOR = ["webhookEvents", "leads", "checkoutTokens"];
+
+function reglasDe(c) {
+  const lectura = `${M(c)} or ${D(c)}`;
+  const operativa = { leer: lectura, escribir: CW(c) };
+  return {
+    // clinics/{cid}: el admin edita la config pero no `plan` (disparador 0005). Alta y baja de clínicas: solo el servidor (y la demo).
+    clinics: { c: "id", leer: `${M("id")} or ${D("id")}`, crear: DRW("id"), actualizar: `${A("id")} or ${DRW("id")}`, borrar: DRW("id") },
+    // subscriptions/{cid}: la fuente de verdad del plan; la escribe SOLO el servidor.
+    subscriptions: { c: "id", leer: `${M("id")} or ${D("id")}` },
+    // Equipo: solo el admin crea y borra usuarios. Un usuario edita SU documento, solo name y color (disparador 0005).
+    users: { leer: lectura, crear: `${A(c)} or ${DRW(c)}`, actualizar: `${A(c)} or ${DRW(c)} or id = interno.mi_usuario(${c})`, borrar: `${A(c)} or ${DRW(c)}` },
+    // Paciente: lee todo miembro, aunque la suscripción esté vencida (historia clínica). El alta no trae campos clínicos si no se es rol clínico;
+    // el update, lo mismo pero sobre lo que cambió (disparador 0005). Borrar: solo el admin.
+    patients: {
+      leer: lectura,
+      crear: `${DRW(c)} or (${M(c)} and ${SA(c)} and (interno."isClinical"(${c}) or not (data ?| array[${lista(CLINICOS)}])))`,
+      actualizar: `${DRW(c)} or (${M(c)} and ${SA(c)})`,
+      borrar: `${DRW(c)} or (${A(c)} and ${SA(c)})`,
+    },
+    appointments: operativa,
+    agendaBlocks: operativa,
+    billing: operativa,
+    budgets: operativa,
+    waitlist: operativa,
+    slotLocks: operativa,
+    recoveryMonitors: operativa,
+    patientNotes: operativa,
+    sterilizationCycles: operativa,
+    teamMessages: operativa,
+    surveys: operativa,
+    mgmtTasks: operativa,
+    environmentalLogs: operativa,
+    eduVideos: operativa,
+    branches: operativa,
+    // practice.config = solo admin: el precio del catálogo define lo que se le cobra al paciente.
+    procedures: { leer: lectura, escribir: `(${A(c)} and ${SA(c)}) or ${DRW(c)}` },
+    // Dinero: el dentista NO maneja dinero.
+    payments: { leer: lectura, escribir: `(interno."isCaja"(${c}) and ${SA(c)}) or ${DRW(c)}` },
+    // Gastos = costos del negocio: también la LECTURA es de quien tiene expenses.manage (la demo, solo con sesión).
+    expenses: { leer: `interno."puedeGastos"(${c}) or ${DRW(c)}`, escribir: `(interno."puedeGastos"(${c}) and ${SA(c)}) or ${DRW(c)}` },
+    // stock se LEE con isDemoRW (no isDemo): sin sesión no se ve el inventario de la demo.
+    stock: { leer: `${M(c)} or ${DRW(c)}`, escribir: CWP(c, PLANES_CLINICA) },
+    stockMoves: { leer: lectura, escribir: CWP(c, PLANES_CLINICA) },
+    outbox: { leer: lectura, escribir: CWP(c, PLANES_CLINICA) },
+    // Radiografía = ficha clínica: además del plan, emr.write.
+    radiographs: { leer: lectura, escribir: `${CWP(c, PLANES_CLINICA)} and (interno."isClinical"(${c}) or ${DRW(c)})` },
+    // Una firma emitida es prueba legal: se crea y se edita (recepción), nunca se borra desde el cliente.
+    signatures: {
+      leer: lectura,
+      crear: `${CWP(c, PLANES_CLINICA)} and (interno."isRecepcion"(${c}) or ${DRW(c)})`,
+      actualizar: `${CWP(c, PLANES_CLINICA)} and (interno."isRecepcion"(${c}) or ${DRW(c)})`,
+      borrar: DRW(c),
+    },
+    // Documentos clínicos: los edita engagement.forms o emr.write; nunca se borran (se anulan).
+    clinicalDocs: {
+      leer: lectura,
+      crear: `${DRW(c)} or (${SA(c)} and (interno."isRecepcion"(${c}) or interno."isClinical"(${c})))`,
+      actualizar: `${DRW(c)} or (${SA(c)} and (interno."isRecepcion"(${c}) or interno."isClinical"(${c})))`,
+      borrar: DRW(c),
+    },
+    // Rutina del administrador: solo el admin tilda y destilda.
+    routineChecks: { leer: lectura, escribir: `${DRW(c)} or (${A(c)} and ${SA(c)})` },
+    crmCards: { leer: lectura, escribir: CWP(c, ["cadena"]) },
+    campaigns: { leer: lectura, escribir: CWP(c, ["cadena"]) },
+    labOrders: { leer: lectura, escribir: CWP(c, PLANES_CLINICA) },
+    // Liquidaciones = cuánto gana cada profesional (dato salarial).
+    settlements: {
+      leer: `interno."puedeLiquidaciones"(${c}) or ${D(c)}`,
+      escribir: `(interno."puedeLiquidaciones"(${c}) and ${CWP(c, PLANES_CLINICA)}) or ${DRW(c)}`,
+    },
+    boxes: { leer: lectura, escribir: CWP(c, PLANES_CLINICA) },
+    // Documentos fiscales: los emite la caja; se anulan, y el borrado es del admin.
+    fiscalDocs: {
+      leer: lectura,
+      crear: `(interno."isCaja"(${c}) and ${SA(c)}) or ${DRW(c)}`,
+      actualizar: `(interno."isCaja"(${c}) and ${SA(c)}) or ${DRW(c)}`,
+      borrar: `${A(c)} or ${DRW(c)}`,
+    },
+    // Caja: además de rol, el plan (`caja` es de Clínica+).
+    cashSessions: { leer: lectura, escribir: `(interno."isCaja"(${c}) and ${SA(c)} and interno."effectivePlan"(${c}) = any (array[${lista(PLANES_CLINICA)}])) or ${DRW(c)}` },
+    // Mensajes directos: de sus dos participantes y del admin. El alta se valida en un disparador (directoValido), y marcar leído
+    // (solo el destinatario, solo readAt) también. Un mensaje no se borra, ni el admin; la demo sí, para reiniciarla.
+    directMessages: {
+      leer: `${D(c)} or (${M(c)} and ((data -> 'participants') ? interno.mi_usuario(${c}) or ${A(c)}))`,
+      crear: `${DRW(c)} or (${M(c)} and ${SA(c)})`,
+      actualizar: `${DRW(c)} or (${M(c)} and interno.mi_usuario(${c}) = (data ->> 'toId'))`,
+      borrar: DRW(c),
+    },
+    // Respuestas de encuestas: el alta pública entra por una ruta del servidor.
+    surveyResponses: { leer: lectura, escribir: DRW(c) },
+  };
+}
+
+function sqlPoliticasDe(t, esDeClinica) {
+  const r = reglasDe("clinic_id")[t];
+  if (!r) return null;
+  const c = r.c ?? "clinic_id";
+  const crear = r.crear ?? r.escribir;
+  const actualizar = r.actualizar ?? r.escribir;
+  const borrar = r.borrar ?? r.escribir;
+  const q = (cmd) => `${t}_${cmd}`;
+  const partes = [];
+  const anon = r.leer && r.leer.includes('"isDemo"(');
+  const grants = [];
+  if (r.leer) {
+    partes.push(`create policy ${qq(q("leer"))} on public.${qq(t)} for select to ${anon ? "anon, authenticated" : "authenticated"}\n  using (${r.leer});`);
+    grants.push(`grant select on table public.${qq(t)} to ${anon ? "anon, authenticated" : "authenticated"};`);
+  }
+  if (crear) partes.push(`create policy ${qq(q("crear"))} on public.${qq(t)} for insert to authenticated\n  with check (${crear});`);
+  if (actualizar) partes.push(`create policy ${qq(q("actualizar"))} on public.${qq(t)} for update to authenticated\n  using (${actualizar})\n  with check (${actualizar});`);
+  if (borrar) partes.push(`create policy ${qq(q("borrar"))} on public.${qq(t)} for delete to authenticated\n  using (${borrar});`);
+  const dml = [crear && "insert", actualizar && "update", borrar && "delete"].filter(Boolean);
+  if (dml.length) grants.push(`grant ${dml.join(", ")} on table public.${qq(t)} to authenticated;`);
+  return { sql: partes.join("\n"), grants: grants.join("\n"), esDeClinica };
+}
+const qq = (s) => `"${s}"`;
+
+function migracionPoliticas({ clinica, raiz }) {
+  const todas = [...clinica, ...raiz];
+  for (const t of todas) {
+    if (!SOLO_SERVIDOR.includes(t) && !reglasDe("clinic_id")[t]) throw new Error(`La colección ${t} no tiene reglas en generar-esquema.mjs: decidí quién la lee y quién la escribe (o ponela en SOLO_SERVIDOR)`);
+  }
+  for (const t of Object.keys(reglasDe("clinic_id"))) if (!todas.includes(t)) throw new Error(`reglasDe() trae ${t}, que no está en el manifiesto`);
+  const partes = [cabecera("Políticas de RLS, una por comando, traducidas de firestore.rules. Denegar por defecto: lo que no figura acá no se lee ni se escribe.")];
+  partes.push(`-- Se borran TODAS las políticas del esquema public y se vuelven a crear en esta misma transacción: el resultado es exactamente lo de abajo,
+-- aunque antes hubiera otra cosa, y no queda ninguna abierta por olvido.
+do $$
+declare
+  r record;
+begin
+  for r in select policyname, tablename from pg_policies where schemaname = 'public' loop
+    execute format('drop policy %I on public.%I', r.policyname, r.tablename);
+  end loop;
+end $$;
+`);
+  for (const t of todas) {
+    if (SOLO_SERVIDOR.includes(t)) {
+      partes.push(`-- ${t}: solo el servidor (service_role). Sin políticas y sin permisos para anon ni authenticated.\nrevoke all on table public.${qq(t)} from anon, authenticated;\n`);
+      continue;
+    }
+    const p = sqlPoliticasDe(t, clinica.includes(t));
+    // Los permisos de tabla se ajustan a lo que las políticas abren: nada de más.
+    partes.push(`-- ${t}\nrevoke all on table public.${qq(t)} from anon, authenticated;\n${p.grants}\n${p.sql}\n`);
+  }
+  return partes.join("\n");
+}
+
+// ───────────────────────────── 0005 · disparadores de campos ─────────────────────────────
+
+function migracionDisparadores() {
+  return cabecera("Las 5 reglas por campo de firestore.rules (spec del 9-oct §6.2): lo que una política no puede expresar porque depende de qué cambió dentro del documento.") +
+    plantilla("rls_disparadores.sql", { CLINICOS_SQL: lista(CLINICOS) });
+}
+
 // ───────────────────────────── armado ─────────────────────────────
 
 export function generar() {
@@ -209,6 +386,8 @@ export function generar() {
     { archivo: "20261017000100_tablas.sql", sql: migracionTablas(m) },
     { archivo: "20261017000200_funciones_datos.sql", sql: migracionFuncionesDeDatos(m) },
     { archivo: "20261017000300_rls_funciones.sql", sql: migracionRlsFunciones() },
+    { archivo: "20261017000400_rls_politicas.sql", sql: migracionPoliticas(m) },
+    { archivo: "20261017000500_rls_disparadores.sql", sql: migracionDisparadores() },
   ];
 }
 

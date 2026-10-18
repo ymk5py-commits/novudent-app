@@ -133,10 +133,23 @@ export async function limpiarBase() {
     end $$;`);
 }
 
-/** Base limpia + todas las migraciones. */
+/** Base limpia + todas las migraciones. Con `RLS_MUTACION` (la ruta de un .sql) se aplica además ESE archivo, ya como dueño de los objetos:
+ *  sirve para las pruebas de mutación (romper a propósito una regla y comprobar que alguna prueba falla). */
 export async function prepararBase() {
   await limpiarBase();
-  return aplicarMigraciones();
+  const archivos = await aplicarMigraciones();
+  if (process.env.RLS_MUTACION) {
+    const c = await pool.connect();
+    try {
+      await c.query("begin");
+      await c.query("set local role postgres");
+      await c.query(readFileSync(process.env.RLS_MUTACION, "utf8"));
+      await c.query("commit");
+    } finally {
+      c.release();
+    }
+  }
+  return archivos;
 }
 
 /** Siembra un documento saltando RLS y las reglas por campo (para armar el estado de partida de una prueba). */

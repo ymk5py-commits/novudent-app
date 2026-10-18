@@ -11,6 +11,7 @@ Las migraciones de `supabase/migrations/` **se generan, no se escriben a mano**:
 | Regenerar las migraciones (después de tocar el manifiesto o una plantilla) | `node scripts/supabase/generar-esquema.mjs` |
 | Aplicarlas a un Postgres de Supabase en un contenedor (el `db-…` de Coolify) | `scripts/supabase/aplicar-esquema.sh db-<uuid> --ssh gmktec` (`--simular` solo muestra qué haría) |
 | Probar todo contra un Postgres **descartable** en el servidor | `scripts/supabase/probar-rls.sh` (levanta `nvsb-test-esquema-*`, abre el túnel, corre `test/rls/*.test.mjs` y lo borra todo) |
+| Un solo archivo o caso de las pruebas | `scripts/supabase/probar-rls.sh -- reglas.test.mjs` (lo que va después de `--` es de `node --test`) |
 | Pruebas que no necesitan Postgres (migraciones al día, roles de fábrica atados a `lib/rbac.ts`) | `npx vitest run test/rls` |
 
 Las migraciones son **idempotentes**: se pueden aplicar otra vez sin romper nada. `aplicar-esquema.sh` las aplica todas, en orden, como `postgres`, cada archivo en una transacción.
@@ -53,6 +54,23 @@ Errores: `42501` = permiso denegado (o el documento no existe y no se puede crea
 ### Funciones de permisos (`interno`, no expuestas por la API)
 
 `uid`, `isDemo`, `isDemoRW`, `isMember`, `isAdmin`, `mi_usuario`, `tienePermiso`, `isCaja`, `isRecepcion`, `isClinical`, `puedeGastos`, `puedeLiquidaciones`, `subActive`, `effectivePlan`, `canWrite`, `canWritePremium`: las de `firestore.rules`, con los mismos nombres (entre comillas, por las mayúsculas). **`interno.uid()` lee `request.jwt.claims`** (lo que deja PostgREST con `PGRST_DB_USE_LEGACY_GUCS=false`) y el viejo `request.jwt.claim.sub`; el `auth.uid()` de la imagen de Supabase solo mira el segundo.
+
+### Permisos (RLS)
+
+Denegar por defecto: todas las tablas tienen RLS activado (sin `force`) y, **sin una política, `anon` y `authenticated` no tienen ni los permisos de tabla**. Las políticas (`20261017000400_rls_politicas.sql`) son las de `firestore.rules`, una por comando y por tabla, con las mismas funciones (`interno."isMember"`, `"canWrite"`, `"canWritePremium"`…). `leads`, `webhookEvents` y `checkoutTokens` no tienen políticas: solo el servidor.
+
+Las **5 reglas por campo** (`20261017000500_rls_disparadores.sql`, disparadores `before`; no valen para `service_role` ni `postgres`, que se saltan RLS):
+1. `clinics`: el admin cambia la configuración pero no `plan`.
+2. `users`: un usuario edita su documento solo en `name` y `color`.
+3. `patients`: quien no tiene `emr.write` no cambia `emr`, `odontogram`, `prescriptions`, `ortho` ni `perio` (el alta con esos campos la rechaza la política).
+4. `directMessages` (alta): remitente = quien escribe, destinatario activo de la clínica, `participants` exactos, 1–2000 caracteres, `difusionId` solo del admin, lista cerrada de claves.
+5. `directMessages` (update): el destinatario cambia solo `readAt`.
+
+**Diferencias con Firestore que el adaptador tiene que conocer** (las revisadas caso por caso están en `test/rls/CASOS.md`):
+- Una consulta con filas no permitidas **no falla: devuelve solo lo permitido**. `directMessages` se puede pedir completa.
+- Un `update`/`delete` directo bloqueado por la política **afecta 0 filas, sin error**. `guardar`/`quitar`/`fijar_campo`/`lote` sí avisan (`42501`).
+- `service_role` puede todo (incluso lo que en Firestore ni el usuario de servicio podía, como borrar un mensaje directo): es la llave de confianza del servidor.
+- El ruteo uid → clínica ya no es una colección que alguien escribe: sale del documento de usuario. Un `authUid` es de una sola clínica real.
 
 ### Quién puede qué (lo que importa para el adaptador)
 
