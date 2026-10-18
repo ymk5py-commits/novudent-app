@@ -130,6 +130,19 @@ describe("recuperar la contraseña con el enlace del correo", () => {
     expect(await sesion.hayEnlaceDeRecuperacion!()).toBe(false); // ya se usó
   });
 
+  it("el aviso de supabase-js llega DESPUÉS de getSession(): el enlace se reconoce igual por la URL de la carga", async () => {
+    const f = clienteFalso({ sesion: { user: { id: "u" }, access_token: "t" } });
+    const { sesion } = crearSesionSupabase(f.cliente, true); // sin emitir PASSWORD_RECOVERY
+    expect(await sesion.hayEnlaceDeRecuperacion!()).toBe(true);
+    await sesion.fijarClaveNueva!("Nueva-12345");
+    expect(f.auth.updateUser).toHaveBeenCalledWith({ password: "Nueva-12345" });
+  });
+
+  it("…pero si el enlace no produjo una sesión válida (vencido), no hay recuperación", async () => {
+    const f = clienteFalso();
+    expect(await crearSesionSupabase(f.cliente, true).sesion.hayEnlaceDeRecuperacion!()).toBe(false);
+  });
+
   it("una carga normal (aunque haya sesión) no es una recuperación", async () => {
     const f = clienteFalso({ sesion: { user: { id: "u" }, access_token: "t" } });
     expect(await crearSesionSupabase(f.cliente).sesion.hayEnlaceDeRecuperacion!()).toBe(false);

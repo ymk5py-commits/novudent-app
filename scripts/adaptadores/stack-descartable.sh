@@ -70,7 +70,8 @@ lineas = {
     "SERVICE_SUPABASEANON_KEY": jwt("anon"),
     "SERVICE_SUPABASESERVICE_KEY": jwt("service_role"),
     "API_EXTERNAL_URL": f"http://127.0.0.1:{puerto}",
-    "SITE_URL": "http://127.0.0.1:3100",
+    "SITE_URL": "http://localhost:3110",
+    "ADDITIONAL_REDIRECT_URLS": "http://localhost:3110/**",
 }
 open(".env", "w").write("".join(f"{k}={v}\n" for k, v in lineas.items()))
 PY

@@ -326,10 +326,14 @@ export function crearDatosSupabase(
 /* ------------------------------------------------------------------ sesión */
 
 /** La sesión sobre GoTrue. `resolverUsuario` es la caché de `usuarioActual` (uid de login → id del documento de usuario). */
-export function crearSesionSupabase(cliente: SupabaseClient) {
+const traeEnlaceDeRecuperacionEnLaUrl = () =>
+  typeof window !== "undefined" && /access_token=/.test(window.location.hash) && /(^|[#&])type=recovery(&|$)/.test(window.location.hash);
+
+export function crearSesionSupabase(cliente: SupabaseClient, traeEnlaceDeRecuperacion: boolean = traeEnlaceDeRecuperacionEnLaUrl()) {
   let conocido: { uid: string; usuarioId: string } | null = null;
-  /* El correo de recuperación vuelve a la app con la sesión en la URL; supabase-js la toma al arrancar y avisa con PASSWORD_RECOVERY. Se escucha
-   * desde el principio (el aviso llega apenas termina de iniciar). */
+  /* El correo de recuperación vuelve a la app con la sesión en la URL (`#access_token=…&type=recovery`); supabase-js la toma al arrancar, borra el hash y
+   * avisa con PASSWORD_RECOVERY, pero ese aviso llega DESPUÉS de que `getSession()` ya resolvió (va en un setTimeout). Por eso, además de escuchar el aviso, se
+   * mira la URL en el momento de crear el cliente (el hash todavía está): enlace de recuperación + sesión válida = recuperación. */
   let enRecuperacion = false;
   cliente.auth.onAuthStateChange((evento) => { if (evento === "PASSWORD_RECOVERY") enRecuperacion = true; });
 
@@ -409,7 +413,8 @@ export function crearSesionSupabase(cliente: SupabaseClient) {
     },
 
     async hayEnlaceDeRecuperacion() {
-      await uidDeLogin(); // espera a que termine de iniciar: ahí se procesa la URL y llega PASSWORD_RECOVERY
+      const uid = await uidDeLogin(); // espera a que termine de iniciar: ahí se procesa la URL
+      if (traeEnlaceDeRecuperacion && uid) enRecuperacion = true;
       return enRecuperacion;
     },
 
@@ -446,8 +451,9 @@ function cliente(): SupabaseClient {
 
 let _backend: BackendDeDatos | null = null;
 function armar(): BackendDeDatos {
+  const traeEnlace = traeEnlaceDeRecuperacionEnLaUrl(); // antes de crear el cliente: él borra el hash al procesarlo
   const c = cliente();
-  const { sesion, uidDeLogin } = crearSesionSupabase(c);
+  const { sesion, uidDeLogin } = crearSesionSupabase(c, traeEnlace);
   return { ...crearDatosSupabase(c, sesion.usuarioActual, uidDeLogin), ...sesion };
 }
 /** Cada método arma el backend la primera vez que se llama (así importar este módulo en el servidor, al compilar, no necesita variables). */
@@ -461,4 +467,5 @@ export const backendSupabase: BackendDeDatos = {
   escucharSuscripcion: diferido("escucharSuscripcion"), escucharClinica: diferido("escucharClinica"), escucharColeccion: diferido("escucharColeccion"),
   esperarSesion: diferido("esperarSesion"), iniciarSesion: diferido("iniciarSesion"), iniciarSesionDeDemo: diferido("iniciarSesionDeDemo"),
   cerrarSesion: diferido("cerrarSesion"), usuarioActual: diferido("usuarioActual"), token: diferido("token"), enviarRecuperacion: diferido("enviarRecuperacion"),
+  hayEnlaceDeRecuperacion: diferido("hayEnlaceDeRecuperacion"), fijarClaveNueva: diferido("fijarClaveNueva"),
 };

@@ -2,6 +2,7 @@
  *  sesión y armar clínicas con la clave de servicio. Solo `fetch`, sin SDK. NO se importa desde código de la app: son ayudas de prueba.
  *  El stack lo levanta `scripts/adaptadores/stack-descartable.sh` y las variables las carga `scripts/adaptadores/correr.sh`. */
 import { randomBytes } from "node:crypto";
+import { TABLAS_DE_CLINICA } from "../backend/supabase-esquema";
 
 export interface Stack { url: string; anon: string; servicio: string; secreto: string }
 
@@ -111,7 +112,6 @@ export async function armarClinica(opciones: { cid?: string; plan?: string; susc
 
 /** Borra lo que armó una prueba (clínicas por id y cuentas por uid). */
 export async function limpiar(opciones: { clinicas?: string[]; cuentas?: string[]; emailsDeCuentas?: string[] }): Promise<void> {
-  const { TABLAS_DE_CLINICA } = await import("../backend/supabase-esquema");
   for (const cid of opciones.clinicas ?? []) {
     for (const t of TABLAS_DE_CLINICA) await rest(t, "DELETE", { clinic_id: `eq.${cid}` }).catch(() => {});
     await rest("subscriptions", "DELETE", { id: `eq.${cid}` }).catch(() => {});
