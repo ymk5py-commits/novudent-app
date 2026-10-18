@@ -49,7 +49,8 @@ export interface DatosDeBackend {
 
   /** Lee la clínica y todas sus colecciones. `null` si la clínica no existe. Una colección que el rol no puede leer da `[]` (no rompe la carga). */
   leerClinica(cid: string, opciones: OpcionesDeLectura): Promise<LecturaDeClinica | null>;
-  /** A qué clínica pertenece un usuario (enrutamiento del login multi-clínica); `null` si no figura. Rechaza si no se pudo leer. */
+  /** A qué clínica pertenece un uid de LOGIN (el que devuelve `iniciarSesion`; enrutamiento del login multi-clínica); `null` si no figura. Rechaza si no
+   *  se pudo leer. En Firestore sale de `directory/{uid}`; en Supabase, de `users.authUid`. */
   clinicaDelUsuario(uid: string): Promise<string | null>;
 
   /* Las escrituras (`guardar`, `quitar`, `fijarCampo`, `mezclarClinica`, `lote`) devuelven una promesa y TODA falla llega como un rechazo: un id mal
@@ -76,13 +77,16 @@ export interface DatosDeBackend {
 export interface SesionDeBackend {
   /** Espera a que se termine de restaurar la sesión guardada (sin esto, una carga en frío ve «sin sesión» aunque la haya). No rechaza. */
   esperarSesion(): Promise<void>;
-  /** Entra con email y contraseña; devuelve el id del usuario. Rechaza con `code` de Firebase Auth (`auth/invalid-credential`…): el
-   *  adaptador de Supabase los traduce a esos mismos códigos, que son los que entiende `friendlyAuthError` en el login. */
+  /** Entra con email y contraseña; devuelve el uid de LOGIN (el que guarda `User.authUid`). Rechaza con `code` de Firebase Auth
+   *  (`auth/invalid-credential`…): el adaptador de Supabase los traduce a esos mismos códigos, que son los que entiende `friendlyAuthError`
+   *  en el login. */
   iniciarSesion(email: string, clave: string): Promise<string>;
   /** Abre la sesión anónima de la demo si no hay ninguna. Devuelve `true` si hay sesión. */
   iniciarSesionDeDemo(): Promise<boolean>;
   cerrarSesion(): Promise<void>;
-  /** Id del usuario con sesión, o `null`. Espera a que se restaure la sesión guardada. */
+  /** Id del DOCUMENTO de usuario de la sesión (`User.id`, el que guarda la sesión de la tienda), o `null` si no hay sesión. Espera a que se
+   *  restaure la sesión guardada. Coincide con el uid de login salvo en los usuarios migrados a Supabase, que conservan su id viejo. Si la
+   *  sesión no tiene ficha en ninguna clínica (la anónima de la demo), devuelve el uid de login. */
   usuarioActual(): Promise<string | null>;
   /** Credencial para las rutas `/api/*` (`Authorization: Bearer …`); `null` si no hay sesión. */
   token(): Promise<string | null>;

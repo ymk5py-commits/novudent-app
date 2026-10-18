@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.mjs\"",
     "test:backend": "firebase emulators:exec --only firestore \"vitest run -c vitest.emulador.config.ts\"",
+    "test:supabase": "scripts/adaptadores/correr.sh vitest run -c vitest.supabase.config.ts",
     "migracion:exportar": "node scripts/migracion/exportar-firestore.mjs",
     "verificar:cobro": "node scripts/verificar-cobro.mjs",
     "indexnow": "node scripts/indexnow.mjs",
@@ -20,6 +21,7 @@
     "manual:pdf": "playwright test -c docs/manual/playwright.manual.config.ts generar"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "fflate": "^0.8.3",
     "firebase": "^12.14.0",
     "framer-motion": "^12.43.0",

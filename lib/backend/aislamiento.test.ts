@@ -2,11 +2,11 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { describe, it, expect } from "vitest";
 
-/** Solo `lib/backend/firestore.ts` habla con Firebase. El resto de la app (pantallas, componentes, la tienda) usa `lib/backend` (la interfaz),
- *  así el día que la base sea otra (Supabase) no hay que tocar nada de eso y, con `NEXT_PUBLIC_BACKEND=supabase`, ninguna pantalla le pide
- *  nada a Firebase.
+/** Solo `lib/backend/firestore.ts` habla con Firebase y solo `lib/backend/supabase.ts` habla con Supabase. El resto de la app (pantallas,
+ *  componentes, la tienda) usa `lib/backend` (la interfaz), así cambiar de base no toca nada de eso y, con `NEXT_PUBLIC_BACKEND=supabase`,
+ *  ninguna pantalla le pide nada a Firebase.
  *
- *  Hay tres formas de hablar con Firebase y las tres se vigilan:
+ *  Hay tres formas de hablar con Firebase y las tres se vigilan (con Supabase pasa lo mismo, ver más abajo):
  *   A. Importar el SDK (`firebase/…`, `@firebase/…`). Lo permiten `lib/firebase.ts` (que lo inicializa), `lib/backend/firestore.ts` y las
  *      pruebas con el emulador (arman una instancia de Firestore para probar la implementación).
  *   B. Importar el envoltorio `lib/firebase.ts` (`@/lib/firebase`, `./firebase`, `../firebase`…). Solo lo permite `lib/backend/firestore.ts`.
@@ -21,6 +21,15 @@ const RAIZ = join(__dirname, "..", "..");
 const ENVOLTORIO = join(RAIZ, "lib", "firebase");
 const BACKEND_FIRESTORE = join(RAIZ, "lib", "backend", "firestore");
 const CARPETAS = ["app", "components", "lib"];
+
+/** Supabase: el SDK (`@supabase/…`) lo importa solo `lib/backend/supabase.ts` (y las pruebas con un stack de verdad, `lib/backend/*.supabase.test.ts`), y ese
+ *  módulo solo lo elige `lib/backend/index.ts` según `NEXT_PUBLIC_BACKEND` (y esas mismas pruebas). Las rutas `/api` (`lib/server`) hablan con Postgres y
+ *  con GoTrue por HTTP: tampoco importan el SDK. */
+const PERMITIDOS_SDK_SUPABASE = new Set(["lib/backend/supabase.ts"]);
+const PERMITIDOS_BACKEND_SUPABASE = new Set(["lib/backend/index.ts"]);
+const esPruebaConSupabase = (ruta: string) => ruta.startsWith("lib/backend/") && ruta.endsWith(".supabase.test.ts");
+const ES_SDK_SUPABASE = /^@supabase(\/|$)/;
+const BACKEND_SUPABASE = join(RAIZ, "lib", "backend", "supabase");
 
 /** Todo lo que se importa: `from "x"`, `import "x"`, `import("x")` y `require("x")`, con comillas simples o dobles. */
 const ESPECIFICADOR = /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)(["'])([^"'\n]+)\1/g;
@@ -48,6 +57,7 @@ function apuntaA(especificador: string, rutaAbsoluta: string, destino: string): 
 }
 const apuntaAlEnvoltorio = (especificador: string, rutaAbsoluta: string) => apuntaA(especificador, rutaAbsoluta, ENVOLTORIO);
 const apuntaAlBackendFirestore = (especificador: string, rutaAbsoluta: string) => apuntaA(especificador, rutaAbsoluta, BACKEND_FIRESTORE);
+const apuntaAlBackendSupabase = (especificador: string, rutaAbsoluta: string) => apuntaA(especificador, rutaAbsoluta, BACKEND_SUPABASE);
 
 const TODOS = CARPETAS.flatMap((c) => archivos(join(RAIZ, c))).map((absoluta) => ({
   absoluta,
@@ -77,8 +87,22 @@ describe("aislamiento de Firebase", () => {
     expect(infractores).toEqual([]);
   });
 
+  it("solo lib/backend/supabase.ts (y sus pruebas con un stack) importan el SDK de Supabase", () => {
+    const infractores = TODOS
+      .filter(({ ruta }) => !PERMITIDOS_SDK_SUPABASE.has(ruta) && !esPruebaConSupabase(ruta))
+      .flatMap(({ ruta, imports }) => imports.filter((e) => ES_SDK_SUPABASE.test(e)).map((e) => `${ruta} importa el SDK «${e}»`));
+    expect(infractores).toEqual([]);
+  });
+
+  it("solo lib/backend/index.ts (y las lib/backend/*.supabase.test.ts) importan lib/backend/supabase: el resto pasa por el selector NEXT_PUBLIC_BACKEND", () => {
+    const infractores = TODOS
+      .filter(({ ruta }) => !PERMITIDOS_BACKEND_SUPABASE.has(ruta) && !esPruebaConSupabase(ruta))
+      .flatMap(({ ruta, absoluta, imports }) => imports.filter((e) => apuntaAlBackendSupabase(e, absoluta)).map((e) => `${ruta} importa el backend de Supabase «${e}» sin pasar por lib/backend/index.ts`));
+    expect(infractores).toEqual([]);
+  });
+
   it("la lista de permitidos existe (si se renombra un archivo, este test lo avisa)", () => {
-    for (const ruta of new Set([...PERMITIDOS_SDK, ...PERMITIDOS_ENVOLTORIO, ...PERMITIDOS_BACKEND_FIRESTORE])) expect(() => statSync(join(RAIZ, ruta))).not.toThrow();
+    for (const ruta of new Set([...PERMITIDOS_SDK, ...PERMITIDOS_ENVOLTORIO, ...PERMITIDOS_BACKEND_FIRESTORE, ...PERMITIDOS_SDK_SUPABASE, ...PERMITIDOS_BACKEND_SUPABASE])) expect(() => statSync(join(RAIZ, ruta))).not.toThrow();
   });
 
   it("el lector de imports entiende las formas que se usan (y no se confunde con texto)", () => {
@@ -110,5 +134,13 @@ describe("aislamiento de Firebase", () => {
     expect(apuntaAlBackendFirestore("@/lib/backend/index", desdeUnComponente)).toBe(false);
     expect(apuntaAlBackendFirestore("./firestore.contrato.emulador.test", desdeIndex)).toBe(false);
     expect(apuntaAlBackendFirestore("./firestore", desdeLib)).toBe(false); // lib/firestore no existe: no es el backend
+    // y lo mismo para Supabase
+    expect(ES_SDK_SUPABASE.test("@supabase/supabase-js")).toBe(true);
+    expect(ES_SDK_SUPABASE.test("@supabase/realtime-js")).toBe(true);
+    expect(ES_SDK_SUPABASE.test("@supabase-otro/x")).toBe(false);
+    expect(apuntaAlBackendSupabase("@/lib/backend/supabase", desdeUnComponente)).toBe(true);
+    expect(apuntaAlBackendSupabase("./supabase.ts", desdeIndex)).toBe(true);
+    expect(apuntaAlBackendSupabase("./supabase-esquema", desdeIndex)).toBe(false); // otro módulo: los nombres del esquema se pueden importar desde cualquier lado
+    expect(apuntaAlBackendSupabase("@/lib/backend", desdeUnComponente)).toBe(false);
   });
 });

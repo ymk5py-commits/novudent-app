@@ -3,7 +3,7 @@
  * Analytics: nada que no sea estrictamente necesario se carga antes de que la persona elija.
  *
  * - Necesarias: sesión, preferencias y este mismo consentimiento. Siempre activas.
- * - Analítica: Google Analytics (Firebase). Solo con consentimiento explícito.
+ * - Analítica: Google Analytics (gtag.js, ver lib/analitica.ts). Solo con consentimiento explícito.
  *
  * Se guarda en localStorage (no es una cookie, pero cumple el mismo rol y la ley pide lo mismo:
  * elección libre, igual de fácil aceptar que rechazar, y poder cambiarla después).
