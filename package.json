@@ -9,6 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:rules": "firebase emulators:exec --only firestore \"node --test test/firestore-rules.test.mjs\"",
+    "supabase:esquema": "node scripts/supabase/generar-esquema.mjs",
+    "test:rls": "scripts/supabase/probar-rls.sh",
     "test:backend": "firebase emulators:exec --only firestore \"vitest run -c vitest.emulador.config.ts\"",
     "test:supabase": "scripts/adaptadores/correr.sh vitest run -c vitest.supabase.config.ts",
     "migracion:exportar": "node scripts/migracion/exportar-firestore.mjs",
