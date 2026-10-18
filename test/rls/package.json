@@ -1,0 +1,9 @@
+{
+  "name": "novudent-pruebas-rls",
+  "private": true,
+  "type": "module",
+  "description": "Pruebas de esquema, funciones y RLS contra un Postgres real (stack de Supabase). Se corren con scripts/supabase/probar-rls.sh; ver test/rls/README.md.",
+  "dependencies": {
+    "pg": "^8.13.0"
+  }
+}
