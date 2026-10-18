@@ -92,6 +92,12 @@ export interface SesionDeBackend {
   token(): Promise<string | null>;
   /** Manda el correo de «olvidé mi contraseña». */
   enviarRecuperacion(email: string): Promise<void>;
+  /** Solo Supabase. Firebase resuelve «elegir contraseña nueva» en su propia página; con GoTrue el correo vuelve a `/login` con una sesión de
+   *  recuperación, y la pantalla de ingreso muestra entonces el formulario de contraseña nueva. Dice si ESTA carga viene de ese enlace. */
+  hayEnlaceDeRecuperacion?(): Promise<boolean>;
+  /** Solo Supabase. Guarda la contraseña elegida y cierra la sesión de recuperación (para entrar hay que ingresar con la nueva). Rechaza si la carga
+   *  no viene de un enlace de recuperación. */
+  fijarClaveNueva?(nueva: string): Promise<void>;
 }
 
 export type BackendDeDatos = DatosDeBackend & SesionDeBackend;

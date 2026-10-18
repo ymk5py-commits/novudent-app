@@ -328,6 +328,10 @@ export function crearDatosSupabase(
 /** La sesión sobre GoTrue. `resolverUsuario` es la caché de `usuarioActual` (uid de login → id del documento de usuario). */
 export function crearSesionSupabase(cliente: SupabaseClient) {
   let conocido: { uid: string; usuarioId: string } | null = null;
+  /* El correo de recuperación vuelve a la app con la sesión en la URL; supabase-js la toma al arrancar y avisa con PASSWORD_RECOVERY. Se escucha
+   * desde el principio (el aviso llega apenas termina de iniciar). */
+  let enRecuperacion = false;
+  cliente.auth.onAuthStateChange((evento) => { if (evento === "PASSWORD_RECOVERY") enRecuperacion = true; });
 
   async function uidDeLogin(): Promise<string | null> {
     try {
@@ -402,6 +406,20 @@ export function crearSesionSupabase(cliente: SupabaseClient) {
       // A propósito NO distingue «email inexistente» de «correo enviado» (GoTrue ya contesta igual): ver app/login/page.tsx.
       const { error } = await cliente.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` });
       if (error) throw traducirErrorDeIngreso(error);
+    },
+
+    async hayEnlaceDeRecuperacion() {
+      await uidDeLogin(); // espera a que termine de iniciar: ahí se procesa la URL y llega PASSWORD_RECOVERY
+      return enRecuperacion;
+    },
+
+    async fijarClaveNueva(nueva) {
+      if (!enRecuperacion) throw new ErrorDeBase("Esta carga no viene de un enlace de recuperación de contraseña.", "auth/invalid-action-code");
+      const { error } = await cliente.auth.updateUser({ password: nueva });
+      if (error) throw traducirErrorDeIngreso(error);
+      enRecuperacion = false;
+      conocido = null;
+      await cliente.auth.signOut({ scope: "local" });
     },
   };
   return { sesion, uidDeLogin };
