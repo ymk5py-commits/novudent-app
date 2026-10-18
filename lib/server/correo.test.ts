@@ -61,3 +61,52 @@ describe("correo propio", () => {
     expect(smtp.createTransport).not.toHaveBeenCalled();
   });
 });
+
+describe("remitentes (hola, info, no-reply)", () => {
+  beforeEach(() => {
+    for (const s of ["HOLA", "INFO", "NO_REPLY"]) for (const k of ["EMAIL_FROM", "SMTP_USER", "SMTP_PASSWORD"]) vi.stubEnv(`${k}_${s}`, "");
+    vi.stubEnv("EMAIL_FROM_HOLA", "Novum <hola@example.com>");
+    vi.stubEnv("EMAIL_FROM_NO_REPLY", "Novudent <no-reply@example.com>");
+  });
+  it("cada remitente sale con su propia dirección y comparte la cuenta SMTP", async () => {
+    activarSmtp();
+    await enviarCorreo({ ...mensaje, remitente: "hola" });
+    await enviarCorreo({ ...mensaje, remitente: "no-reply" });
+    expect(smtp.sendMail).toHaveBeenNthCalledWith(1, expect.objectContaining({ from: "Novum <hola@example.com>" }));
+    expect(smtp.sendMail).toHaveBeenNthCalledWith(2, expect.objectContaining({ from: "Novudent <no-reply@example.com>" }));
+    expect(smtp.createTransport).toHaveBeenCalledWith(expect.objectContaining({ auth: { user: "avisos@example.com", pass: "contraseña-secreta" } }));
+  });
+  it("un remitente sin dirección propia usa EMAIL_FROM; sin remitente, también", async () => {
+    activarSmtp();
+    await enviarCorreo({ ...mensaje, remitente: "info" });
+    await enviarCorreo(mensaje);
+    expect(smtp.sendMail).toHaveBeenNthCalledWith(1, expect.objectContaining({ from: "Novudent <avisos@example.com>" }));
+    expect(smtp.sendMail).toHaveBeenNthCalledWith(2, expect.objectContaining({ from: "Novudent <avisos@example.com>" }));
+  });
+  it("un remitente puede tener su propio usuario y contraseña SMTP", async () => {
+    activarSmtp(); vi.stubEnv("SMTP_USER_INFO", "info@example.com"); vi.stubEnv("SMTP_PASSWORD_INFO", "otra-clave"); vi.stubEnv("EMAIL_FROM_INFO", "Novum <info@example.com>");
+    await enviarCorreo({ ...mensaje, remitente: "info" });
+    expect(smtp.createTransport).toHaveBeenCalledWith(expect.objectContaining({ auth: { user: "info@example.com", pass: "otra-clave" } }));
+    expect(smtp.sendMail).toHaveBeenCalledWith(expect.objectContaining({ from: "Novum <info@example.com>" }));
+  });
+  it("credenciales propias a medias no se completan con las de otro remitente", async () => {
+    activarSmtp(); vi.stubEnv("SMTP_USER_INFO", "info@example.com");
+    expect(correoConfigurado("info")).toBe(false);
+    expect(correoConfigurado("hola")).toBe(true);
+    await expect(enviarCorreo({ ...mensaje, remitente: "info" })).rejects.toMatchObject({ codigo: "configuracion" });
+    expect(smtp.createTransport).not.toHaveBeenCalled();
+  });
+  it("un remitente que no existe se rechaza antes de contactar SMTP", async () => {
+    activarSmtp();
+    await expect(enviarCorreo({ ...mensaje, remitente: "ventas" as never })).rejects.toMatchObject({ codigo: "mensaje" });
+    expect(smtp.createTransport).not.toHaveBeenCalled();
+  });
+  it("con Resend usa la dirección del remitente y no le manda campos que no conoce", async () => {
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "re_2" }), { status: 200 })); vi.stubGlobal("fetch", f);
+    await enviarCorreo({ ...mensaje, remitente: "no-reply", reply_to: "clinica@example.com" });
+    expect(JSON.parse(f.mock.calls[0][1].body)).toEqual({
+      from: "Novudent <no-reply@example.com>", to: mensaje.to, subject: mensaje.subject, text: mensaje.text, reply_to: "clinica@example.com",
+    });
+  });
+});

@@ -15,6 +15,7 @@ cambian con un reinicio. **Ningún valor va al repositorio ni al chat**; los sec
 | `GEMINI_API_KEY` | IA (voz, visión, texto) | Secreta. Google AI Studio |
 | `GEMINI_TEXT_MODEL`, `GEMINI_AUDIO_MODEL`, `GEMINI_VISION_MODEL`, `GEMINI_IMAGE_MODEL` | Modelo de cada tipo de uso | Opcionales: tienen valor por defecto en el código |
 | `CORREO_PROVEEDOR`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM` | Correo SMTP propio para avisos de cita y contacto | `CORREO_PROVEEDOR=smtp`, puerto 465 o 587 y remitente autorizado. Ver `correo-propio.md`. Secretos solo en ejecución |
+| `EMAIL_FROM_HOLA`, `EMAIL_FROM_INFO`, `EMAIL_FROM_NO_REPLY` | Dirección de cada remitente (`hola`, `info`, `no-reply`) | Opcionales: sin ellas sale por `EMAIL_FROM`. `SMTP_USER_<ID>` + `SMTP_PASSWORD_<ID>` (las dos) dan a un remitente su propia cuenta. Ver `correo-propio.md` |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Compatibilidad con instalaciones que ya usan Resend | Se conserva si no se selecciona SMTP; nunca como respaldo automático de una configuración SMTP incompleta |
 | `LEADS_EMAIL` | Destino de los pedidos del formulario de contacto | |
 | `LEMONSQUEEZY_WEBHOOK_SECRET` | Firma del webhook de pagos | La URL del webhook en Lemon Squeezy es la del dominio de producción: no cambia con el corte |

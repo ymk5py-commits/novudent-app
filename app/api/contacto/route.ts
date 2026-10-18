@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
   /* 2) Avisar por correo. Es la notificación, ya no el registro. */
   let enviado = false;
   const to = process.env.LEADS_EMAIL;
-  if (!correoConfigurado() || !to) {
+  if (!correoConfigurado("hola") || !to) {
     console.error("[Contacto] cuenta de correo o destino de ventas sin configurar");
   } else {
     const filas: [string, string][] = [
@@ -108,6 +108,7 @@ export async function POST(req: NextRequest) {
     ];
     try {
       await enviarCorreo({
+          remitente: "hola",
           to: [to],
           reply_to: email, // responder desde la bandeja le contesta a quien pidió
           subject: `Pedido de acceso — ${nombre}${clinica ? ` (${clinica})` : ""}`.slice(0, 200),

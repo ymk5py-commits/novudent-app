@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   const rlIp = await rateLimit(`correo-cita-ip:${clientIp(req)}`, { limit: 60, windowMs: 60_000 });
   if (!rlIp.ok) return tooManyRequests(rlIp.retryAfterSec);
 
-  if (!correoConfigurado() || !isServerFirestoreConfigured()) {
+  if (!correoConfigurado("no-reply") || !isServerFirestoreConfigured()) {
     return NextResponse.json({ ok: false, error: "El envío de correos todavía no está configurado." }, { status: 503 });
   }
 
@@ -99,8 +99,10 @@ export async function POST(req: NextRequest) {
       zonaHoraria: config.timezone,
       linkConfirmacion,
     });
+    // Aviso automático: sale de no-reply y, si la clínica tiene correo propio, las respuestas del paciente van a la clínica
+    // (nunca a Novum: son datos de salud de esa clínica).
     await enviarCorreo({
-      to: [email], subject: correo.asunto, text: correo.texto, html: correo.html,
+      to: [email], subject: correo.asunto, text: correo.texto, html: correo.html, remitente: "no-reply",
       ...(config.email ? { reply_to: config.email } : {}),
     });
     return NextResponse.json({ ok: true });

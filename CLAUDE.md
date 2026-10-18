@@ -380,6 +380,9 @@ Docker crea directorios vacíos; los archivos van como `configs` con `content:` 
 la app: si depende de un alias de la red `default`, declaráselo; (3) los dominios de un compose se agregan en «Domains» eligiendo el servicio y el puerto, y un dominio no puede estar en dos recursos
 a la vez (falla en silencio). El registro de GoTrue queda habilitado solo por la sesión anónima de la demo (con `DISABLE_SIGNUP=true` también se rechaza esa): un hook `before-user-created` (`public.hook_antes_de_crear_usuario`) rechaza con 403 todo registro por correo, y las cuentas reales las crea el servidor con la API de administración. Respaldos y corte: `docs/servidor/respaldos.md`
 y `docs/servidor/corte.md`.
+**Correo (18-oct-2026):** toda salida pasa por `lib/server/correo.ts` (SMTP propio; Resend solo como compatibilidad). El remitente se elige con `enviarCorreo({ …, remitente })` entre los de `REMITENTES`
+(`hola`: conversación, `info`: comercial, `no-reply`: avisos automáticos); la dirección de cada uno es `EMAIL_FROM_<ID>` en Coolify y, sin ella, sale `EMAIL_FROM`. Un aviso automático
+nunca lleva respuestas a Novum: `no-reply` + `Reply-To` de la clínica. Esquema, plan de ImprovMX, DKIM pendiente y cómo sumar una dirección: `docs/servidor/correo-propio.md`.
 
 ## Diferenciadores (cross-repo con Botika)
 
