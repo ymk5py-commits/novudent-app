@@ -16,9 +16,14 @@ export function stack(): Stack {
 }
 
 export const sufijo = () => randomBytes(4).toString("hex");
+const clienteDelArchivo = `2001:db8::${sufijo().slice(0, 4)}`;
 
 /** `fetch` con un reintento si la conexión se cortó: el túnel SSH a veces cierra una conexión inactiva que `fetch` quería reutilizar («fetch failed»). Solo para pruebas. */
 async function pedir(url: string, init?: RequestInit): Promise<Response> {
+  // En el túnel local no hay Cloudflare que distinga clientes: cada archivo de pruebas usa su propia identidad.
+  const headers = new Headers(init?.headers);
+  headers.set("cf-connecting-ip", clienteDelArchivo);
+  init = { ...init, headers };
   for (let intento = 0; ; intento++) {
     try { return await fetch(url, init); } catch (e) { if (intento >= 2) throw e; await new Promise((r) => setTimeout(r, 150 * (intento + 1))); }
   }
