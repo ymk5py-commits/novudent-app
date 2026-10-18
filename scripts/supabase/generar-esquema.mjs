@@ -383,9 +383,12 @@ end $$;
 
 // ───────────────────────────── 0005 · disparadores de campos ─────────────────────────────
 
-function migracionDisparadores() {
-  return cabecera("Las 5 reglas por campo de firestore.rules (spec del 9-oct §6.2): lo que una política no puede expresar porque depende de qué cambió dentro del documento.") +
-    plantilla("rls_disparadores.sql", { CLINICOS_SQL: lista(CLINICOS) });
+function migracionDisparadores({ clinica }) {
+  const topes = clinica
+    .map((t) => `create or replace trigger ${qq(`${t}_tope_demo`)} before insert on public.${qq(t)}\n  for each row execute function interno.tope_demo();`)
+    .join("\n");
+  return cabecera("Las 5 reglas por campo de firestore.rules (spec del 9-oct §6.2): lo que una política no puede expresar porque depende de qué cambió dentro del documento. Y el tope de filas de la demo.") +
+    plantilla("rls_disparadores.sql", { CLINICOS_SQL: lista(CLINICOS), TRIGGERS_TOPE_DEMO: topes });
 }
 
 // ───────────────────────────── armado ─────────────────────────────
@@ -397,7 +400,7 @@ export function generar() {
     { archivo: "20261017000200_funciones_datos.sql", sql: migracionFuncionesDeDatos(m) },
     { archivo: "20261017000300_rls_funciones.sql", sql: migracionRlsFunciones() },
     { archivo: "20261017000400_rls_politicas.sql", sql: migracionPoliticas(m) },
-    { archivo: "20261017000500_rls_disparadores.sql", sql: migracionDisparadores() },
+    { archivo: "20261017000500_rls_disparadores.sql", sql: migracionDisparadores(m) },
   ];
 }
 

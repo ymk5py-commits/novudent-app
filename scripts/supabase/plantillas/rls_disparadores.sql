@@ -196,5 +196,31 @@ end $$;
 create or replace trigger "directMessages_regla_leido" before update on public."directMessages"
   for each row execute function interno.regla_directos_leido();
 
+-- 6 · Tope de filas de la demo: cl_demo la escribe cualquiera con una sesión anónima (es el sandbox de ventas), y un documento tiene
+--     tope de tamaño pero no hay tope de cantidad. Ninguna colección de la demo pasa de 5000 documentos: la demo legítima siembra ~125 en
+--     total, así que sobra. Se rechaza el alta con 53400 (configuration_limit_exceeded). Un reemplazo (`guardar` sobre un documento
+--     que ya existe) no es un alta, y «Restaurar datos de demo» que borra y vuelve a crear en una misma transacción ve sus propios borrados.
+--     Es un tope blando: dos altas simultáneas justo en el borde pueden pasarse por una. No vale para el servidor ni el cargador.
+create or replace function interno.tope_demo()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  tope constant integer := 5000;
+  filas integer;
+begin
+  if new.clinic_id <> 'cl_demo' or interno.salta_reglas() then
+    return new;
+  end if;
+  execute format('select count(*) from (select 1 from %I.%I where clinic_id = ''cl_demo'' limit %s) t', tg_table_schema, tg_table_name, tope) into filas;
+  if filas >= tope then
+    raise exception 'la demo no admite más de % documentos en %', tope, tg_table_name using errcode = '53400';
+  end if;
+  return new;
+end $$;
+
+{{TRIGGERS_TOPE_DEMO}}
+
 revoke all on all functions in schema interno from public;
 grant execute on all functions in schema interno to anon, authenticated, service_role;

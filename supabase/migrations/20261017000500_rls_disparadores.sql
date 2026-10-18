@@ -1,6 +1,6 @@
 -- GENERADO por scripts/supabase/generar-esquema.mjs a partir de lib/backend/colecciones.json. NO editar a mano:
 -- se cambia el generador (o scripts/supabase/plantillas/) y se vuelve a generar con `node scripts/supabase/generar-esquema.mjs`.
--- Las 5 reglas por campo de firestore.rules (spec del 9-oct §6.2): lo que una política no puede expresar porque depende de qué cambió dentro del documento.
+-- Las 5 reglas por campo de firestore.rules (spec del 9-oct §6.2): lo que una política no puede expresar porque depende de qué cambió dentro del documento. Y el tope de filas de la demo.
 -- Las 5 reglas por campo de firestore.rules. PostgreSQL no restringe por columna dentro de un jsonb, y una política no ve el documento
 -- anterior: estas reglas dependen de QUÉ CAMBIÓ (old.data contra new.data), así que viven en disparadores `before`. Cada una rechaza con
 -- el código 42501 (el mismo de «permiso denegado»).
@@ -198,6 +198,103 @@ end $$;
 
 create or replace trigger "directMessages_regla_leido" before update on public."directMessages"
   for each row execute function interno.regla_directos_leido();
+
+-- 6 · Tope de filas de la demo: cl_demo la escribe cualquiera con una sesión anónima (es el sandbox de ventas), y un documento tiene
+--     tope de tamaño pero no hay tope de cantidad. Ninguna colección de la demo pasa de 5000 documentos: la demo legítima siembra ~125 en
+--     total, así que sobra. Se rechaza el alta con 53400 (configuration_limit_exceeded). Un reemplazo (`guardar` sobre un documento
+--     que ya existe) no es un alta, y «Restaurar datos de demo» que borra y vuelve a crear en una misma transacción ve sus propios borrados.
+--     Es un tope blando: dos altas simultáneas justo en el borde pueden pasarse por una. No vale para el servidor ni el cargador.
+create or replace function interno.tope_demo()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  tope constant integer := 5000;
+  filas integer;
+begin
+  if new.clinic_id <> 'cl_demo' or interno.salta_reglas() then
+    return new;
+  end if;
+  execute format('select count(*) from (select 1 from %I.%I where clinic_id = ''cl_demo'' limit %s) t', tg_table_schema, tg_table_name, tope) into filas;
+  if filas >= tope then
+    raise exception 'la demo no admite más de % documentos en %', tope, tg_table_name using errcode = '53400';
+  end if;
+  return new;
+end $$;
+
+create or replace trigger "users_tope_demo" before insert on public."users"
+  for each row execute function interno.tope_demo();
+create or replace trigger "patients_tope_demo" before insert on public."patients"
+  for each row execute function interno.tope_demo();
+create or replace trigger "appointments_tope_demo" before insert on public."appointments"
+  for each row execute function interno.tope_demo();
+create or replace trigger "billing_tope_demo" before insert on public."billing"
+  for each row execute function interno.tope_demo();
+create or replace trigger "procedures_tope_demo" before insert on public."procedures"
+  for each row execute function interno.tope_demo();
+create or replace trigger "budgets_tope_demo" before insert on public."budgets"
+  for each row execute function interno.tope_demo();
+create or replace trigger "payments_tope_demo" before insert on public."payments"
+  for each row execute function interno.tope_demo();
+create or replace trigger "expenses_tope_demo" before insert on public."expenses"
+  for each row execute function interno.tope_demo();
+create or replace trigger "stock_tope_demo" before insert on public."stock"
+  for each row execute function interno.tope_demo();
+create or replace trigger "stockMoves_tope_demo" before insert on public."stockMoves"
+  for each row execute function interno.tope_demo();
+create or replace trigger "waitlist_tope_demo" before insert on public."waitlist"
+  for each row execute function interno.tope_demo();
+create or replace trigger "outbox_tope_demo" before insert on public."outbox"
+  for each row execute function interno.tope_demo();
+create or replace trigger "slotLocks_tope_demo" before insert on public."slotLocks"
+  for each row execute function interno.tope_demo();
+create or replace trigger "recoveryMonitors_tope_demo" before insert on public."recoveryMonitors"
+  for each row execute function interno.tope_demo();
+create or replace trigger "radiographs_tope_demo" before insert on public."radiographs"
+  for each row execute function interno.tope_demo();
+create or replace trigger "signatures_tope_demo" before insert on public."signatures"
+  for each row execute function interno.tope_demo();
+create or replace trigger "crmCards_tope_demo" before insert on public."crmCards"
+  for each row execute function interno.tope_demo();
+create or replace trigger "campaigns_tope_demo" before insert on public."campaigns"
+  for each row execute function interno.tope_demo();
+create or replace trigger "labOrders_tope_demo" before insert on public."labOrders"
+  for each row execute function interno.tope_demo();
+create or replace trigger "settlements_tope_demo" before insert on public."settlements"
+  for each row execute function interno.tope_demo();
+create or replace trigger "boxes_tope_demo" before insert on public."boxes"
+  for each row execute function interno.tope_demo();
+create or replace trigger "patientNotes_tope_demo" before insert on public."patientNotes"
+  for each row execute function interno.tope_demo();
+create or replace trigger "fiscalDocs_tope_demo" before insert on public."fiscalDocs"
+  for each row execute function interno.tope_demo();
+create or replace trigger "cashSessions_tope_demo" before insert on public."cashSessions"
+  for each row execute function interno.tope_demo();
+create or replace trigger "sterilizationCycles_tope_demo" before insert on public."sterilizationCycles"
+  for each row execute function interno.tope_demo();
+create or replace trigger "teamMessages_tope_demo" before insert on public."teamMessages"
+  for each row execute function interno.tope_demo();
+create or replace trigger "surveys_tope_demo" before insert on public."surveys"
+  for each row execute function interno.tope_demo();
+create or replace trigger "surveyResponses_tope_demo" before insert on public."surveyResponses"
+  for each row execute function interno.tope_demo();
+create or replace trigger "mgmtTasks_tope_demo" before insert on public."mgmtTasks"
+  for each row execute function interno.tope_demo();
+create or replace trigger "environmentalLogs_tope_demo" before insert on public."environmentalLogs"
+  for each row execute function interno.tope_demo();
+create or replace trigger "eduVideos_tope_demo" before insert on public."eduVideos"
+  for each row execute function interno.tope_demo();
+create or replace trigger "branches_tope_demo" before insert on public."branches"
+  for each row execute function interno.tope_demo();
+create or replace trigger "directMessages_tope_demo" before insert on public."directMessages"
+  for each row execute function interno.tope_demo();
+create or replace trigger "clinicalDocs_tope_demo" before insert on public."clinicalDocs"
+  for each row execute function interno.tope_demo();
+create or replace trigger "routineChecks_tope_demo" before insert on public."routineChecks"
+  for each row execute function interno.tope_demo();
+create or replace trigger "agendaBlocks_tope_demo" before insert on public."agendaBlocks"
+  for each row execute function interno.tope_demo();
 
 revoke all on all functions in schema interno from public;
 grant execute on all functions in schema interno to anon, authenticated, service_role;

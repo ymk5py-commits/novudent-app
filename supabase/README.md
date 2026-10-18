@@ -41,7 +41,7 @@ colecciones raíz (5):          id text, data jsonb, updated_at timestamptz     
 ```
 
 `directory` y `serviceAccounts` **no existen**: el enrutamiento uid → clínica sale de `users.data->>'authUid'` (`public.mi_directorio()`), y la «cuenta de servicio» es la clave `service_role`.
-`updated_at` lo mantiene un disparador; la clave de un documento (clínica e id) no se puede cambiar con un update. Un documento no pasa de **2 MiB** (`23514`): la demo la escribe cualquiera con una sesión anónima.
+`updated_at` lo mantiene un disparador; la clave de un documento (clínica e id) no se puede cambiar con un update. Un documento no pasa de **2 MiB** (`23514`) y la demo no pasa de **5000 documentos por colección** (`53400`): la escribe cualquiera con una sesión anónima.
 
 Índices: `users` por `authUid` (único entre clínicas reales: **una persona pertenece a una sola clínica**; la demo queda afuera), `appointments`/`agendaBlocks` por `start`, `appointments` por `confirmToken`, `signatures` por `token`, `patients` por `document`, `outbox` por `status`, `directMessages` por `participants` (GIN).
 
@@ -93,6 +93,6 @@ Las **5 reglas por campo** (`20261017000500_rls_disparadores.sql`, disparadores 
 
 ## Qué falta decidir o hacer (no es de esta fase)
 
-- **La demo es escribible por cualquiera con una sesión anónima** (a propósito: es el sandbox de ventas). Cada documento tiene tope, pero no hay tope de cantidad: hace falta limitación de tasa en la entrada (Cloudflare/Kong) y una limpieza periódica de `cl_demo` (y de las cuentas anónimas viejas de GoTrue, spec §8).
+- **La demo es escribible por cualquiera con una sesión anónima** (a propósito: es el sandbox de ventas). Adentro de la base ya hay dos topes: **2 MiB por documento** (`23514`) y **5000 documentos por colección en `cl_demo`** (`53400`, disparador `tope_demo`; la demo legítima siembra ~125 en total; reemplazar un documento no es un alta, y «Restaurar datos de demo» que borra y recrea en una misma transacción ve sus propios borrados; es un tope blando; no vale para `service_role` ni `postgres`). Lo que se resuelve afuera —límite de tasa por IP, tope del cuerpo de la petición, limpieza de las cuentas anónimas viejas— está en la configuración de Kong y `pg_cron` de `infra/supabase`.
 - **Rendimiento de las políticas:** cada fila llama a `isMember` (una búsqueda por índice): medido con 20.000 filas en una clínica, ~10 µs por fila (≈200 ms la lectura entera). Si hiciera falta, se puede calcular una vez por consulta (`clinic_id in (select …)`); medir antes con la prueba de carga del spec §13.
 - **Aplicar el esquema al stack real** (Coolify): `scripts/supabase/aplicar-esquema.sh db-<uuid> --ssh gmktec --simular` primero; no se corrió contra `supabase-prueba`.

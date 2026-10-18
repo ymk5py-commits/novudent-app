@@ -114,3 +114,49 @@ describe("fecha: «ahora» para el vencimiento es la del servidor", () => {
     assert.equal((await guardar(U("adminE"), "appointments", "clE", "a2", { id: "a2" })).ok, false);
   });
 });
+
+describe("la demo tiene tope de filas por colección (5000, 53400)", () => {
+  const TOPE = 5000;
+  const llenarDemo = (tabla, cuantas, prefijo = "relleno") => admin(
+    `insert into public."${tabla}" (clinic_id, id, data) select 'cl_demo', $1 || g, jsonb_build_object('id', $1 || g) from generate_series(1, $2::int) g`, [prefijo, cuantas]);
+  const V = sesiones.visitante("visitanteTope");
+
+  test("justo en el borde: con 4999 filas entra una más, con 5000 ya no; el reemplazo de una existente sí", async () => {
+    await llenarDemo("patients", TOPE - 1);
+    assert.equal((await guardar(V, "patients", "cl_demo", "la5000", { id: "la5000" })).ok, true);
+    const rechazada = await guardar(V, "patients", "cl_demo", "la5001", { id: "la5001" });
+    assert.equal(rechazada.ok, false);
+    assert.equal(rechazada.codigo, "53400");
+    assert.equal((await guardar(V, "patients", "cl_demo", "la5000", { id: "la5000", firstName: "reemplazo" })).ok, true, "reemplazar no es un alta");
+    assert.equal((await fijar(V, "patients", "cl_demo", "la5000", "phone", "0981")).ok, true);
+  });
+
+  test("«Restaurar datos de demo» (borrar y volver a crear en una misma transacción) anda aunque la colección esté llena", async () => {
+    const r = await intentar(V, "select public.lote($1::jsonb)", [JSON.stringify([
+      { op: "quitar", tabla: "patients", clinic_id: "cl_demo", id: "relleno1" },
+      { op: "guardar", tabla: "patients", clinic_id: "cl_demo", id: "restaurado", data: { id: "restaurado" } },
+    ])]);
+    assert.equal(r.ok, true, r.error);
+    const sinBorrar = await intentar(V, "select public.lote($1::jsonb)", [JSON.stringify([
+      { op: "guardar", tabla: "patients", clinic_id: "cl_demo", id: "otro1", data: { id: "otro1" } },
+    ])]);
+    assert.equal(sinBorrar.ok, false);
+    assert.equal(sinBorrar.codigo, "53400");
+  });
+
+  test("las otras clínicas, el servidor y el cargador no tienen tope aunque la demo esté llena", async () => {
+    await sembrar("subscriptions", null, "clE", { plan: "clinica", status: "active" }); // (el caso anterior la dejó vencida)
+    assert.equal((await guardar(U("adminE"), "patients", "clE", "ok1", { id: "ok1" })).ok, true);
+    assert.equal((await guardar(sesiones.servicio, "patients", "cl_demo", "delServidor", { id: "delServidor" })).ok, true);
+    await admin(`insert into public.patients (clinic_id, id, data) values ('cl_demo', 'delCargador', '{"id":"delCargador"}')`);
+  });
+
+  test("el tope vale en las 36 colecciones de cada clínica", async () => {
+    for (const t of TABLAS_CLINICA.filter((c) => c !== "patients")) {
+      await llenarDemo(t, TOPE);
+      const r = await guardar(V, t, "cl_demo", "uno-de-mas", { id: "uno-de-mas" });
+      assert.equal(r.ok, false, `${t}: dejó pasar el alta número ${TOPE + 1}`);
+      assert.equal(r.codigo, "53400", `${t}: ${r.error}`);
+    }
+  });
+});
