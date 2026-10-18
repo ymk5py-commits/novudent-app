@@ -1,6 +1,6 @@
 import type { Browser, Page } from "@playwright/test";
 import { test, expect, ingresar } from "./soporte";
-import { escribirDoc, leerDoc, rest } from "../lib/server/stack-de-prueba";
+import { escribirDoc, leerDoc, rest, sufijo } from "../lib/server/stack-de-prueba";
 
 /* Los flujos del día a día con NEXT_PUBLIC_BACKEND=supabase. Cada uno comprueba DOS cosas: lo que muestra la pantalla y lo que quedó de verdad en
  * Postgres (se mira con la clave de servicio, no con el caché del navegador). Después de escribir se borra el caché local y se recarga, para probar que lo
@@ -10,7 +10,7 @@ const campo = (page: Page, etiqueta: RegExp, control = "input, select, textarea"
   page.getByRole("dialog").locator("label").filter({ hasText: etiqueta }).locator(control).first();
 /** Otro navegador (contexto nuevo, sin caché ni sesión) que entra con esa cuenta: lo que ve viene de la base, no de lo que quedó en el primero. */
 async function otroNavegador(browser: Browser, persona: { email: string; password: string }): Promise<{ page: Page; cerrar: () => Promise<void> }> {
-  const ctx = await browser.newContext({ locale: "es-PY" });
+  const ctx = await browser.newContext({ locale: "es-PY", extraHTTPHeaders: { "cf-connecting-ip": `2001:db8::${sufijo().slice(0, 4)}` } });
   const page = await ctx.newPage();
   await page.addInitScript(() => localStorage.setItem("novudent.consentimiento.v1", JSON.stringify({ version: 1, analitica: false, fecha: new Date().toISOString() })));
   await ingresar(page, persona.email, persona.password);

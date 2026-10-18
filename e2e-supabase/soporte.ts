@@ -1,6 +1,6 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { armarClinica, limpiar, stack, type ClinicaArmada } from "../lib/server/stack-de-prueba";
+import { armarClinica, limpiar, stack, sufijo, type ClinicaArmada } from "../lib/server/stack-de-prueba";
 import { cargarDB } from "../lib/backend/carga";
 import { crearDatosSupabase } from "../lib/backend/supabase";
 
@@ -36,6 +36,8 @@ export const test = base.extend<Fixtures, { mundo: Mundo }>({
   }, { scope: "worker" }],
 
   page: async ({ page }, use) => {
+    // El stack local no pasa por Cloudflare: representa un cliente distinto por prueba para que sus límites no se acumulen entre casos.
+    await page.context().setExtraHTTPHeaders({ "cf-connecting-ip": `2001:db8::${sufijo().slice(0, 4)}` });
     for (const d of BLOQUEADOS) await page.route(`**${d}**`, (r) => r.abort());
     await page.addInitScript(() => {
       try { localStorage.setItem("novudent.consentimiento.v1", JSON.stringify({ version: 1, analitica: false, fecha: new Date().toISOString() })); } catch { /* marco sin almacenamiento */ }

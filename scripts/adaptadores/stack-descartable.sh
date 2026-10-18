@@ -52,9 +52,10 @@ services:
       - "127.0.0.1:$PUERTO:8000"
 YML
   # Secretos y JWT descartables (HS256) generados EN EL SERVIDOR, con los nombres de las variables mágicas de Coolify.
-  remoto "cd ~/$REMOTO && umask 077 && python3 - $PUERTO" <<'PY'
+  remoto "cd ~/$REMOTO && umask 077 && python3 - $PUERTO ${E2E_SUPABASE_PORT:-3110}" <<'PY'
 import base64, hashlib, hmac, json, secrets, sys, time
 puerto = sys.argv[1]
+puerto_app = sys.argv[2]
 b64 = lambda b: base64.urlsafe_b64encode(b).rstrip(b"=").decode()
 jwt_secret = secrets.token_hex(16)
 def jwt(rol):
@@ -70,8 +71,8 @@ lineas = {
     "SERVICE_SUPABASEANON_KEY": jwt("anon"),
     "SERVICE_SUPABASESERVICE_KEY": jwt("service_role"),
     "API_EXTERNAL_URL": f"http://127.0.0.1:{puerto}",
-    "SITE_URL": "http://localhost:3110",
-    "ADDITIONAL_REDIRECT_URLS": "http://localhost:3110/**",
+    "SITE_URL": f"http://localhost:{puerto_app}",
+    "ADDITIONAL_REDIRECT_URLS": f"http://localhost:{puerto_app}/**",
 }
 open(".env", "w").write("".join(f"{k}={v}\n" for k, v in lineas.items()))
 PY

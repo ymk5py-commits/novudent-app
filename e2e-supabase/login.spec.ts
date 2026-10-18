@@ -77,11 +77,11 @@ test.describe("ingreso con email y contraseña (GoTrue)", () => {
 });
 
 test.describe("olvidé mi contraseña (enlace del correo → contraseña nueva)", () => {
-  test("el enlace trae la sesión de recuperación, se elige la contraseña nueva y se entra con ella", async ({ page, mundo }) => {
+  test("el enlace trae la sesión de recuperación, se elige la contraseña nueva y se entra con ella", async ({ page, mundo, baseURL }) => {
     const rita = mundo.clinica.personas.recep;
     const s = stack();
     // El stack de prueba no tiene correo: se pide el mismo enlace que iría en el mensaje con la API de administración.
-    const r = await fetch(`${s.url}/auth/v1/admin/generate_link`, { method: "POST", headers: { apikey: s.servicio, Authorization: `Bearer ${s.servicio}`, "Content-Type": "application/json" }, body: JSON.stringify({ type: "recovery", email: rita.email, redirect_to: `http://localhost:3110/login` }) });
+    const r = await fetch(`${s.url}/auth/v1/admin/generate_link`, { method: "POST", headers: { apikey: s.servicio, Authorization: `Bearer ${s.servicio}`, "Content-Type": "application/json" }, body: JSON.stringify({ type: "recovery", email: rita.email, redirect_to: `${baseURL}/login` }) });
     const enlace = (await r.json()).action_link as string;
     expect(enlace, "action_link").toContain("/auth/v1/verify");
     await page.goto(enlace);
