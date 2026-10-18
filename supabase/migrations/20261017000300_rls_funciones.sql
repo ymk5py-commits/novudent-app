@@ -18,6 +18,7 @@ create or replace function interno.uid()
 returns uuid
 language sql
 stable
+set search_path = ''
 as $$
   select coalesce(
     nullif(current_setting('request.jwt.claim.sub', true), ''),

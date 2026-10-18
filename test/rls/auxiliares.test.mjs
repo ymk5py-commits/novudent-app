@@ -271,10 +271,10 @@ describe("ejecución", () => {
     assert.equal(r.ok, true);
     assert.equal(r.filas[0].r, false, "la clave de servicio no tiene sub: no es miembro de nadie (salta RLS, no las funciones)");
   });
-  test("todas las funciones security definer fijan el search_path", async () => {
+  test("TODAS las funciones de public e interno (no solo las security definer) fijan el search_path", async () => {
     const sin = await admin(`
       select p.oid::regprocedure::text as f from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-      where n.nspname in ('public', 'interno') and p.prosecdef and not coalesce(p.proconfig, '{}') @> array['search_path=""']`);
+      where n.nspname in ('public', 'interno') and not coalesce(p.proconfig, '{}') @> array['search_path=""']`);
     assert.deepEqual(sin, []);
   });
 });

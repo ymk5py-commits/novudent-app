@@ -10,6 +10,7 @@ grant usage on schema interno to anon, authenticated, service_role;
 create or replace function interno.al_actualizar_clinica()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if new.clinic_id is distinct from old.clinic_id or new.id is distinct from old.id then
@@ -22,6 +23,7 @@ end $$;
 create or replace function interno.al_actualizar_raiz()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if new.id is distinct from old.id then
@@ -46,6 +48,14 @@ begin
     revoke all on table public."users" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."users"'::regclass and conname = 'users_data_tamano') then
+    alter table public."users" add constraint "users_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."users" enable row level security;
 grant all on table public."users" to service_role;
 create or replace trigger "users_al_actualizar" before update on public."users"
@@ -63,6 +73,14 @@ begin
   constraint "patients_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."patients" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."patients"'::regclass and conname = 'patients_data_tamano') then
+    alter table public."patients" add constraint "patients_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."patients" enable row level security;
@@ -84,6 +102,14 @@ begin
     revoke all on table public."appointments" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."appointments"'::regclass and conname = 'appointments_data_tamano') then
+    alter table public."appointments" add constraint "appointments_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."appointments" enable row level security;
 grant all on table public."appointments" to service_role;
 create or replace trigger "appointments_al_actualizar" before update on public."appointments"
@@ -101,6 +127,14 @@ begin
   constraint "billing_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."billing" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."billing"'::regclass and conname = 'billing_data_tamano') then
+    alter table public."billing" add constraint "billing_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."billing" enable row level security;
@@ -122,6 +156,14 @@ begin
     revoke all on table public."procedures" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."procedures"'::regclass and conname = 'procedures_data_tamano') then
+    alter table public."procedures" add constraint "procedures_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."procedures" enable row level security;
 grant all on table public."procedures" to service_role;
 create or replace trigger "procedures_al_actualizar" before update on public."procedures"
@@ -139,6 +181,14 @@ begin
   constraint "budgets_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."budgets" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."budgets"'::regclass and conname = 'budgets_data_tamano') then
+    alter table public."budgets" add constraint "budgets_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."budgets" enable row level security;
@@ -160,6 +210,14 @@ begin
     revoke all on table public."payments" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."payments"'::regclass and conname = 'payments_data_tamano') then
+    alter table public."payments" add constraint "payments_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."payments" enable row level security;
 grant all on table public."payments" to service_role;
 create or replace trigger "payments_al_actualizar" before update on public."payments"
@@ -177,6 +235,14 @@ begin
   constraint "expenses_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."expenses" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."expenses"'::regclass and conname = 'expenses_data_tamano') then
+    alter table public."expenses" add constraint "expenses_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."expenses" enable row level security;
@@ -198,6 +264,14 @@ begin
     revoke all on table public."stock" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."stock"'::regclass and conname = 'stock_data_tamano') then
+    alter table public."stock" add constraint "stock_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."stock" enable row level security;
 grant all on table public."stock" to service_role;
 create or replace trigger "stock_al_actualizar" before update on public."stock"
@@ -215,6 +289,14 @@ begin
   constraint "stockMoves_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."stockMoves" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."stockMoves"'::regclass and conname = 'stockMoves_data_tamano') then
+    alter table public."stockMoves" add constraint "stockMoves_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."stockMoves" enable row level security;
@@ -236,6 +318,14 @@ begin
     revoke all on table public."waitlist" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."waitlist"'::regclass and conname = 'waitlist_data_tamano') then
+    alter table public."waitlist" add constraint "waitlist_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."waitlist" enable row level security;
 grant all on table public."waitlist" to service_role;
 create or replace trigger "waitlist_al_actualizar" before update on public."waitlist"
@@ -253,6 +343,14 @@ begin
   constraint "outbox_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."outbox" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."outbox"'::regclass and conname = 'outbox_data_tamano') then
+    alter table public."outbox" add constraint "outbox_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."outbox" enable row level security;
@@ -274,6 +372,14 @@ begin
     revoke all on table public."slotLocks" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."slotLocks"'::regclass and conname = 'slotLocks_data_tamano') then
+    alter table public."slotLocks" add constraint "slotLocks_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."slotLocks" enable row level security;
 grant all on table public."slotLocks" to service_role;
 create or replace trigger "slotLocks_al_actualizar" before update on public."slotLocks"
@@ -291,6 +397,14 @@ begin
   constraint "recoveryMonitors_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."recoveryMonitors" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."recoveryMonitors"'::regclass and conname = 'recoveryMonitors_data_tamano') then
+    alter table public."recoveryMonitors" add constraint "recoveryMonitors_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."recoveryMonitors" enable row level security;
@@ -312,6 +426,14 @@ begin
     revoke all on table public."radiographs" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."radiographs"'::regclass and conname = 'radiographs_data_tamano') then
+    alter table public."radiographs" add constraint "radiographs_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."radiographs" enable row level security;
 grant all on table public."radiographs" to service_role;
 create or replace trigger "radiographs_al_actualizar" before update on public."radiographs"
@@ -329,6 +451,14 @@ begin
   constraint "signatures_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."signatures" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."signatures"'::regclass and conname = 'signatures_data_tamano') then
+    alter table public."signatures" add constraint "signatures_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."signatures" enable row level security;
@@ -350,6 +480,14 @@ begin
     revoke all on table public."crmCards" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."crmCards"'::regclass and conname = 'crmCards_data_tamano') then
+    alter table public."crmCards" add constraint "crmCards_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."crmCards" enable row level security;
 grant all on table public."crmCards" to service_role;
 create or replace trigger "crmCards_al_actualizar" before update on public."crmCards"
@@ -367,6 +505,14 @@ begin
   constraint "campaigns_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."campaigns" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."campaigns"'::regclass and conname = 'campaigns_data_tamano') then
+    alter table public."campaigns" add constraint "campaigns_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."campaigns" enable row level security;
@@ -388,6 +534,14 @@ begin
     revoke all on table public."labOrders" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."labOrders"'::regclass and conname = 'labOrders_data_tamano') then
+    alter table public."labOrders" add constraint "labOrders_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."labOrders" enable row level security;
 grant all on table public."labOrders" to service_role;
 create or replace trigger "labOrders_al_actualizar" before update on public."labOrders"
@@ -405,6 +559,14 @@ begin
   constraint "settlements_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."settlements" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."settlements"'::regclass and conname = 'settlements_data_tamano') then
+    alter table public."settlements" add constraint "settlements_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."settlements" enable row level security;
@@ -426,6 +588,14 @@ begin
     revoke all on table public."boxes" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."boxes"'::regclass and conname = 'boxes_data_tamano') then
+    alter table public."boxes" add constraint "boxes_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."boxes" enable row level security;
 grant all on table public."boxes" to service_role;
 create or replace trigger "boxes_al_actualizar" before update on public."boxes"
@@ -443,6 +613,14 @@ begin
   constraint "patientNotes_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."patientNotes" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."patientNotes"'::regclass and conname = 'patientNotes_data_tamano') then
+    alter table public."patientNotes" add constraint "patientNotes_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."patientNotes" enable row level security;
@@ -464,6 +642,14 @@ begin
     revoke all on table public."fiscalDocs" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."fiscalDocs"'::regclass and conname = 'fiscalDocs_data_tamano') then
+    alter table public."fiscalDocs" add constraint "fiscalDocs_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."fiscalDocs" enable row level security;
 grant all on table public."fiscalDocs" to service_role;
 create or replace trigger "fiscalDocs_al_actualizar" before update on public."fiscalDocs"
@@ -481,6 +667,14 @@ begin
   constraint "cashSessions_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."cashSessions" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."cashSessions"'::regclass and conname = 'cashSessions_data_tamano') then
+    alter table public."cashSessions" add constraint "cashSessions_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."cashSessions" enable row level security;
@@ -502,6 +696,14 @@ begin
     revoke all on table public."sterilizationCycles" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."sterilizationCycles"'::regclass and conname = 'sterilizationCycles_data_tamano') then
+    alter table public."sterilizationCycles" add constraint "sterilizationCycles_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."sterilizationCycles" enable row level security;
 grant all on table public."sterilizationCycles" to service_role;
 create or replace trigger "sterilizationCycles_al_actualizar" before update on public."sterilizationCycles"
@@ -519,6 +721,14 @@ begin
   constraint "teamMessages_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."teamMessages" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."teamMessages"'::regclass and conname = 'teamMessages_data_tamano') then
+    alter table public."teamMessages" add constraint "teamMessages_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."teamMessages" enable row level security;
@@ -540,6 +750,14 @@ begin
     revoke all on table public."surveys" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."surveys"'::regclass and conname = 'surveys_data_tamano') then
+    alter table public."surveys" add constraint "surveys_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."surveys" enable row level security;
 grant all on table public."surveys" to service_role;
 create or replace trigger "surveys_al_actualizar" before update on public."surveys"
@@ -557,6 +775,14 @@ begin
   constraint "surveyResponses_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."surveyResponses" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."surveyResponses"'::regclass and conname = 'surveyResponses_data_tamano') then
+    alter table public."surveyResponses" add constraint "surveyResponses_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."surveyResponses" enable row level security;
@@ -578,6 +804,14 @@ begin
     revoke all on table public."mgmtTasks" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."mgmtTasks"'::regclass and conname = 'mgmtTasks_data_tamano') then
+    alter table public."mgmtTasks" add constraint "mgmtTasks_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."mgmtTasks" enable row level security;
 grant all on table public."mgmtTasks" to service_role;
 create or replace trigger "mgmtTasks_al_actualizar" before update on public."mgmtTasks"
@@ -595,6 +829,14 @@ begin
   constraint "environmentalLogs_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."environmentalLogs" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."environmentalLogs"'::regclass and conname = 'environmentalLogs_data_tamano') then
+    alter table public."environmentalLogs" add constraint "environmentalLogs_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."environmentalLogs" enable row level security;
@@ -616,6 +858,14 @@ begin
     revoke all on table public."eduVideos" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."eduVideos"'::regclass and conname = 'eduVideos_data_tamano') then
+    alter table public."eduVideos" add constraint "eduVideos_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."eduVideos" enable row level security;
 grant all on table public."eduVideos" to service_role;
 create or replace trigger "eduVideos_al_actualizar" before update on public."eduVideos"
@@ -633,6 +883,14 @@ begin
   constraint "branches_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."branches" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."branches"'::regclass and conname = 'branches_data_tamano') then
+    alter table public."branches" add constraint "branches_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."branches" enable row level security;
@@ -654,6 +912,14 @@ begin
     revoke all on table public."directMessages" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."directMessages"'::regclass and conname = 'directMessages_data_tamano') then
+    alter table public."directMessages" add constraint "directMessages_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."directMessages" enable row level security;
 grant all on table public."directMessages" to service_role;
 create or replace trigger "directMessages_al_actualizar" before update on public."directMessages"
@@ -671,6 +937,14 @@ begin
   constraint "clinicalDocs_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."clinicalDocs" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."clinicalDocs"'::regclass and conname = 'clinicalDocs_data_tamano') then
+    alter table public."clinicalDocs" add constraint "clinicalDocs_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."clinicalDocs" enable row level security;
@@ -692,6 +966,14 @@ begin
     revoke all on table public."routineChecks" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."routineChecks"'::regclass and conname = 'routineChecks_data_tamano') then
+    alter table public."routineChecks" add constraint "routineChecks_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."routineChecks" enable row level security;
 grant all on table public."routineChecks" to service_role;
 create or replace trigger "routineChecks_al_actualizar" before update on public."routineChecks"
@@ -709,6 +991,14 @@ begin
   constraint "agendaBlocks_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."agendaBlocks" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."agendaBlocks"'::regclass and conname = 'agendaBlocks_data_tamano') then
+    alter table public."agendaBlocks" add constraint "agendaBlocks_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."agendaBlocks" enable row level security;
@@ -730,6 +1020,14 @@ begin
     revoke all on table public."clinics" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."clinics"'::regclass and conname = 'clinics_data_tamano') then
+    alter table public."clinics" add constraint "clinics_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."clinics" enable row level security;
 grant all on table public."clinics" to service_role;
 create or replace trigger "clinics_al_actualizar" before update on public."clinics"
@@ -746,6 +1044,14 @@ begin
   constraint "subscriptions_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."subscriptions" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."subscriptions"'::regclass and conname = 'subscriptions_data_tamano') then
+    alter table public."subscriptions" add constraint "subscriptions_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."subscriptions" enable row level security;
@@ -766,6 +1072,14 @@ begin
     revoke all on table public."webhookEvents" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."webhookEvents"'::regclass and conname = 'webhookEvents_data_tamano') then
+    alter table public."webhookEvents" add constraint "webhookEvents_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."webhookEvents" enable row level security;
 grant all on table public."webhookEvents" to service_role;
 create or replace trigger "webhookEvents_al_actualizar" before update on public."webhookEvents"
@@ -784,6 +1098,14 @@ begin
     revoke all on table public."leads" from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."leads"'::regclass and conname = 'leads_data_tamano') then
+    alter table public."leads" add constraint "leads_data_tamano" check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public."leads" enable row level security;
 grant all on table public."leads" to service_role;
 create or replace trigger "leads_al_actualizar" before update on public."leads"
@@ -800,6 +1122,14 @@ begin
   constraint "checkoutTokens_data_objeto" check (jsonb_typeof(data) = 'object')
     );
     revoke all on table public."checkoutTokens" from anon, authenticated;
+  end if;
+end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public."checkoutTokens"'::regclass and conname = 'checkoutTokens_data_tamano') then
+    alter table public."checkoutTokens" add constraint "checkoutTokens_data_tamano" check (pg_column_size(data) <= 2097152);
   end if;
 end $$;
 alter table public."checkoutTokens" enable row level security;

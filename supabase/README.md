@@ -4,6 +4,17 @@ Fase B del traspaso a un servidor propio. Diseño: `docs/superpowers/specs/2026-
 
 Las migraciones de `supabase/migrations/` **se generan, no se escriben a mano**: `node scripts/supabase/generar-esquema.mjs` las arma a partir de `lib/backend/colecciones.json` y de las plantillas de `scripts/supabase/plantillas/`. `npx vitest run` falla si lo que está en el repositorio no coincide con lo que genera el generador.
 
+## Estado de la fase B (17-oct-2026)
+
+| Hito | Qué | Commit | Terminó |
+|---|---|---|---|
+| 1 | Generador, tablas, funciones de datos (`guardar`, `quitar`, `fijar_campo`, `mezclar_clinica`, `lote`), funciones de permisos, `aplicar-esquema.sh` | `f564d1a` | 17-oct-2026 20:57 (-03) |
+| 2 | Políticas RLS y las 5 reglas por campo | `ac8d830` | 17-oct-2026 |
+| 3 | Las 143 pruebas de reglas transcriptas + `CASOS.md`, sin membresía, extras | `81343bd` | 17-oct-2026 |
+| + | Prueba de punta a punta en el stack completo (PostgREST, GoTrue, Realtime) y tope de 2 MiB por documento | `6804d8e` | 17-oct-2026 |
+
+Las fases C y D se apoyan en el hito 1 (mergear desde `f564d1a` o más nuevo). Verde al cierre: 254 pruebas contra `supabase/postgres:17.6.1.136` real (`probar-rls.sh`), 12 de punta a punta (`probar-stack.sh`), 8 de vitest sin base (`npx vitest run test/rls`).
+
 ## Cómo se usan
 
 | Qué | Comando |
@@ -11,6 +22,7 @@ Las migraciones de `supabase/migrations/` **se generan, no se escriben a mano**:
 | Regenerar las migraciones (después de tocar el manifiesto o una plantilla) | `node scripts/supabase/generar-esquema.mjs` |
 | Aplicarlas a un Postgres de Supabase en un contenedor (el `db-…` de Coolify) | `scripts/supabase/aplicar-esquema.sh db-<uuid> --ssh gmktec` (`--simular` solo muestra qué haría) |
 | Probar todo contra un Postgres **descartable** en el servidor | `scripts/supabase/probar-rls.sh` (levanta `nvsb-test-esquema-*`, abre el túnel, corre `test/rls/*.test.mjs` y lo borra todo) |
+| Probar de punta a punta en el stack COMPLETO (Kong, PostgREST, GoTrue, Realtime) descartable | `scripts/supabase/probar-stack.sh` (las mismas imágenes fijadas de `infra/supabase`; aplica las migraciones y corre `test/rls/stack.test.mjs`: JWT real, rpc por HTTP, Realtime con RLS) |
 | Un solo archivo o caso de las pruebas | `scripts/supabase/probar-rls.sh -- reglas.test.mjs` (lo que va después de `--` es de `node --test`) |
 | Pruebas que no necesitan Postgres (migraciones al día, roles de fábrica atados a `lib/rbac.ts`) | `npx vitest run test/rls` |
 
@@ -29,7 +41,7 @@ colecciones raíz (5):          id text, data jsonb, updated_at timestamptz     
 ```
 
 `directory` y `serviceAccounts` **no existen**: el enrutamiento uid → clínica sale de `users.data->>'authUid'` (`public.mi_directorio()`), y la «cuenta de servicio» es la clave `service_role`.
-`updated_at` lo mantiene un disparador; la clave de un documento (clínica e id) no se puede cambiar con un update.
+`updated_at` lo mantiene un disparador; la clave de un documento (clínica e id) no se puede cambiar con un update. Un documento no pasa de **2 MiB** (`23514`): la demo la escribe cualquiera con una sesión anónima.
 
 Índices: `users` por `authUid` (único entre clínicas reales: **una persona pertenece a una sola clínica**; la demo queda afuera), `appointments`/`agendaBlocks` por `start`, `appointments` por `confirmToken`, `signatures` por `token`, `patients` por `document`, `outbox` por `status`, `directMessages` por `participants` (GIN).
 
@@ -42,7 +54,7 @@ Realtime: están en la publicación `supabase_realtime` con `replica identity fu
 | `guardar(tabla, clinic_id, id, data)` | `setDoc` sin merge | alta o reemplazo del documento entero. Tablas raíz: `clinic_id = null` |
 | `quitar(tabla, clinic_id, id) → integer` | `deleteDoc` | devuelve cuántos borró; si no existe, 0 y sin error |
 | `fijar_campo(tabla, clinic_id, id, campo, valor jsonb default null, quitar boolean default false)` | `updateDoc` de un campo / `deleteField` | `valor = null` **guarda null**; la clave se quita solo con `quitar = true`; `campo` vacío o con punto se rechaza; si el documento no existe: error |
-| `mezclar_clinica(cid, parche)` | `setDoc(clinics/{cid}, parche, {merge:true})` | fusión profunda (objetos se mezclan, arreglos se reemplazan, `null` se guarda); crea la clínica si no existe |
+| `mezclar_clinica(cid, parche)` | `setDoc(clinics/{cid}, parche, {merge:true})` | fusión profunda (los objetos se mezclan, los arreglos se reemplazan, `null` se guarda, un objeto VACÍO en el parche reemplaza el campo; como `mezclarProfundo`); crea la clínica si no existe |
 | `lote(operaciones jsonb) → integer` | `writeBatch` | una sola transacción. `[{op:'guardar', tabla, clinic_id, id, data} \| {op:'quitar', tabla, clinic_id, id} \| {op:'fijar_campo', tabla, clinic_id, id, campo, valor, quitar} \| {op:'mezclar_clinica', cid, parche}]`, hasta 1000 |
 | `mi_directorio() → (clinic_id, user_id)` | `directory/{uid}` + `currentUserId()` | la clínica real de la sesión y el **id del documento** de usuario (no el uid de login). Cero filas = sin clínica. Nunca devuelve la demo |
 | `mi_usuario(cid) → text` | | el id del documento de usuario en esa clínica (para la demo, donde `mi_directorio` no sirve) |
@@ -78,3 +90,9 @@ Las **5 reglas por campo** (`20261017000500_rls_disparadores.sql`, disparadores 
 - `authenticated` (GoTrue: email y contraseña, o la sesión anónima de la demo) pasa por RLS. **Sin membresía en una clínica no se lee ni se escribe nada fuera de `cl_demo`.** La demo se escribe con cualquier sesión.
 - `service_role` salta RLS y las reglas por campo. Es la llave del servidor: nunca va al navegador.
 - Usuarios: `users.data.authUid` = el uuid de GoTrue; `users.id` = el id del documento (para usuarios migrados es el id viejo; para los nuevos, el mismo uuid). Todo lo que dice «mi id» (`participants`, `fromId`, `toId`, `dentistId`…) es el **id del documento**, no el uid.
+
+## Qué falta decidir o hacer (no es de esta fase)
+
+- **La demo es escribible por cualquiera con una sesión anónima** (a propósito: es el sandbox de ventas). Cada documento tiene tope, pero no hay tope de cantidad: hace falta limitación de tasa en la entrada (Cloudflare/Kong) y una limpieza periódica de `cl_demo` (y de las cuentas anónimas viejas de GoTrue, spec §8).
+- **Rendimiento de las políticas:** cada fila llama a `isMember` (una búsqueda por índice): medido con 20.000 filas en una clínica, ~10 µs por fila (≈200 ms la lectura entera). Si hiciera falta, se puede calcular una vez por consulta (`clinic_id in (select …)`); medir antes con la prueba de carga del spec §13.
+- **Aplicar el esquema al stack real** (Coolify): `scripts/supabase/aplicar-esquema.sh db-<uuid> --ssh gmktec --simular` primero; no se corrió contra `supabase-prueba`.
