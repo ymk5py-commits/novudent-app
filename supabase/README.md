@@ -54,7 +54,7 @@ Realtime: están en la publicación `supabase_realtime` con `replica identity fu
 | `guardar(tabla, clinic_id, id, data)` | `setDoc` sin merge | alta o reemplazo del documento entero. Tablas raíz: `clinic_id = null` |
 | `quitar(tabla, clinic_id, id) → integer` | `deleteDoc` | devuelve cuántos borró; si no existe, 0 y sin error |
 | `fijar_campo(tabla, clinic_id, id, campo, valor jsonb default null, quitar boolean default false)` | `updateDoc` de un campo / `deleteField` | `valor = null` **guarda null**; la clave se quita solo con `quitar = true`; `campo` vacío o con punto se rechaza; si el documento no existe: error |
-| `mezclar_clinica(cid, parche)` | `setDoc(clinics/{cid}, parche, {merge:true})` | fusión profunda (objetos se mezclan, arreglos se reemplazan, `null` se guarda); crea la clínica si no existe |
+| `mezclar_clinica(cid, parche)` | `setDoc(clinics/{cid}, parche, {merge:true})` | fusión profunda (los objetos se mezclan, los arreglos se reemplazan, `null` se guarda, un objeto VACÍO en el parche reemplaza el campo; como `mezclarProfundo`); crea la clínica si no existe |
 | `lote(operaciones jsonb) → integer` | `writeBatch` | una sola transacción. `[{op:'guardar', tabla, clinic_id, id, data} \| {op:'quitar', tabla, clinic_id, id} \| {op:'fijar_campo', tabla, clinic_id, id, campo, valor, quitar} \| {op:'mezclar_clinica', cid, parche}]`, hasta 1000 |
 | `mi_directorio() → (clinic_id, user_id)` | `directory/{uid}` + `currentUserId()` | la clínica real de la sesión y el **id del documento** de usuario (no el uid de login). Cero filas = sin clínica. Nunca devuelve la demo |
 | `mi_usuario(cid) → text` | | el id del documento de usuario en esa clínica (para la demo, donde `mi_directorio` no sirve) |
