@@ -7,7 +7,7 @@ superficie más. No publica ningún puerto al host; la única entrada es Kong, y
 | Archivo | Para qué |
 |---|---|
 | `infra/supabase/docker-compose.yml` | Los cinco servicios y, en `configs` con contenido en línea, todo lo que antes eran archivos: el `kong.yml` (rutas `/auth/v1`, `/rest/v1` y `/realtime/v1`; todo lo demás da 404; exige `apikey`) y los tres SQL de inicialización de la base (esquema `_realtime`, contraseñas de `authenticator` y `supabase_auth_admin`, expiración del JWT). Sin secretos, solo nombres de variables |
-| `infra/supabase/probar-local.sh` | Prueba de humo con secretos descartables (18 comprobaciones) |
+| `infra/supabase/probar-local.sh` | Prueba de humo con secretos descartables (19 comprobaciones) |
 
 **Por qué los archivos van dentro del compose (no como `./volumes/**`).** Coolify reescribe los bind mounts relativos a `/data/coolify/applications/<uuid>/volumes/**` (sin la carpeta base `infra/supabase`),
 no encuentra los archivos y Docker crea **directorios vacíos** en su lugar: los scripts de la base no corren, las contraseñas de los roles quedan sin fijar y GoTrue, PostgREST y Realtime no pueden entrar
@@ -41,9 +41,13 @@ Nuevo recurso › **Docker Compose** desde un repositorio Git (público) › ram
 
 ## Decisiones y límites
 
-- **Registro abierto, a propósito.** Con `GOTRUE_DISABLE_SIGNUP=true` GoTrue también rechaza la sesión **anónima** (422) y la demo pública la necesita. Compensan: el correo sin
-  confirmar no puede iniciar sesión (`ENABLE_EMAIL_AUTOCONFIRM=false`, probado), y sin membresía en una clínica las reglas de datos (fase B) no dejan leer ni escribir nada fuera de
-  `cl_demo`. Pendiente para la fase C: purgar las cuentas anónimas viejas (spec §8) y evaluar una sesión de demo fija o un hook `before-user-created`.
+- **Solo la sesión anónima queda abierta.** Con `GOTRUE_DISABLE_SIGNUP=true` GoTrue también rechaza la sesión **anónima** (422) y la demo pública la necesita, así que el registro tiene que
+  quedar habilitado. Para que eso no abra la puerta a nadie más hay un **hook `before-user-created`** (función `public.hook_antes_de_crear_usuario`, creada con la base): deja pasar solo a las
+  sesiones anónimas y a las cuentas que ya nacen confirmadas (las crea el servidor con la API de administración) y rechaza con 403 cualquier registro por correo o teléfono. Sin el hook se
+  podían **reservar correos ajenos** (cuentas sin confirmar) y trabar el alta de una clínica real con ese correo. Probado en `probar-local.sh` (403 y ninguna cuenta creada). Pendiente para la
+  fase C: purgar las cuentas anónimas viejas (spec §8).
+  **Para aplicarlo a una base que ya existe** (los scripts de inicialización solo corren al crear la base): ejecutar el SQL de la config `db_hook_sql` del compose con `psql` como `supabase_admin` en el
+  contenedor `db-…`, y recién después redesplegar el compose con las variables del hook en `auth`. Si el compose se despliega primero, **ninguna** sesión puede crearse (GoTrue llama a una función que no existe).
 - **`REALTIME_DB_ENC_KEY`** queda con el valor por defecto de Supabase (16 caracteres): solo cifra la copia del secreto JWT que Realtime guarda en su propia base, que ya está en
   el entorno del contenedor. Si se quiere, se cambia por otro de exactamente 16 caracteres antes de la primera carga de datos.
 - **Sin Studio:** para mirar la base, `docker exec -it <contenedor-db> psql -U supabase_admin -d postgres` desde el servidor (o un túnel SSH). Nada de Postgres en la red.

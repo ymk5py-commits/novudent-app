@@ -82,10 +82,11 @@ if [ -n "$TOKEN" ]; then ok "iniciar sesión con email y contraseña"; else mal 
 espera "rest/v1 con el token de esa persona" 200 curl_codigo -H "apikey: $ANON" -H "Authorization: Bearer $TOKEN" "$URL/rest/v1/"
 cod="$(curl_codigo -X POST -H "apikey: $ANON" -H 'Content-Type: application/json' -d '{}' "$URL/auth/v1/signup")"
 if [ "$cod" = "200" ]; then ok "sesión anónima de la demo (HTTP 200)"; else mal "sesión anónima de la demo: HTTP $cod (la demo pública la necesita)"; fi
-# Alguien de afuera se registra con la clave pública: aunque el registro esté abierto, no debe poder entrar sin confirmar el correo.
-curl -s -o /dev/null -m 15 -X POST -H "apikey: $ANON" -H 'Content-Type: application/json' -d '{"email":"intruso2@novudent.test","password":"x12345678"}' "$URL/auth/v1/signup" || true
-cod="$(curl_codigo -X POST -H "apikey: $ANON" -H 'Content-Type: application/json' -d '{"email":"intruso2@novudent.test","password":"x12345678"}' "$URL/auth/v1/token?grant_type=password")"
-if [ "$cod" != "200" ]; then ok "alta por email sin confirmar no puede iniciar sesión (HTTP $cod)"; else mal "un alta por email SIN confirmar pudo iniciar sesión"; fi
+# Alguien de afuera intenta registrarse con la clave pública: el hook lo rechaza (403) y NO deja ninguna cuenta (no puede «reservar» un correo ajeno).
+cod="$(curl_codigo -X POST -H "apikey: $ANON" -H 'Content-Type: application/json' -d '{"email":"intruso2@novudent.test","password":"x12345678"}' "$URL/auth/v1/signup")"
+if [ "$cod" = "403" ] || [ "$cod" = "422" ]; then ok "registro abierto por correo rechazado (HTTP $cod)"; else mal "registro abierto por correo: HTTP $cod (se esperaba 403)"; fi
+cuantas="$(dc exec -T db psql -U supabase_admin -d postgres -At -c "select count(*) from auth.users where email = 'intruso2@novudent.test'" 2>/dev/null || true)"
+if [ "$cuantas" = "0" ]; then ok "el intento no dejó ninguna cuenta"; else mal "el intento dejó $cuantas cuenta(s) en auth.users"; fi
 
 echo "== Tiempo real =="
 ws="$(curl -s -i -m 5 --http1.1 -N -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==' "$URL/realtime/v1/websocket?apikey=$ANON&vsn=1.0.0" 2>/dev/null | head -n 1 | tr -d '\r' || true)"

@@ -362,7 +362,7 @@ en `https://api-novudent-prueba.novumholding.lat`; probarlo y actualizarlo: `inf
 Tres lecciones de Coolify que cuestan horas: (1) **no uses bind mounts relativos** (`./volumes/…`): Coolify los reescribe a `/data/coolify/applications/<uuid>/volumes/…` sin la carpeta base y
 Docker crea directorios vacíos; los archivos van como `configs` con `content:` en línea (y un `$` literal se escribe `$$`); (2) un servicio que no declara `networks` queda solo en la red propia de
 la app: si depende de un alias de la red `default`, declaráselo; (3) los dominios de un compose se agregan en «Domains» eligiendo el servicio y el puerto, y un dominio no puede estar en dos recursos
-a la vez (falla en silencio). El registro de GoTrue queda abierto a propósito (con `DISABLE_SIGNUP=true` también se rechaza la sesión anónima de la demo). Respaldos y corte: `docs/servidor/respaldos.md`
+a la vez (falla en silencio). El registro de GoTrue queda habilitado solo por la sesión anónima de la demo (con `DISABLE_SIGNUP=true` también se rechaza esa): un hook `before-user-created` (`public.hook_antes_de_crear_usuario`) rechaza con 403 todo registro por correo, y las cuentas reales las crea el servidor con la API de administración. Respaldos y corte: `docs/servidor/respaldos.md`
 y `docs/servidor/corte.md`.
 
 ## Diferenciadores (cross-repo con Botika)

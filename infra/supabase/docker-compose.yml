@@ -26,6 +26,8 @@ services:
         target: /docker-entrypoint-initdb.d/init-scripts/99-roles.sql
       - source: db_jwt_sql
         target: /docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
+      - source: db_hook_sql
+        target: /docker-entrypoint-initdb.d/init-scripts/99-zz-hook.sql
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
       interval: 5s
@@ -92,6 +94,11 @@ services:
       GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
       GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      # Hook «antes de crear un usuario»: solo pasan las sesiones anónimas (la demo) y las cuentas ya confirmadas (las crea el servidor con la API de
+      # administración). Sin esto, con el registro abierto cualquiera con la clave pública podría reservar correos ajenos (cuentas sin confirmar) y
+      # trabar el alta de una clínica real con ese correo. La función vive en db_hook_sql (se crea al inicializar la base).
+      GOTRUE_HOOK_BEFORE_USER_CREATED_ENABLED: "true"
+      GOTRUE_HOOK_BEFORE_USER_CREATED_URI: pg-functions://postgres/public/hook_antes_de_crear_usuario
 
   rest:
     image: postgrest/postgrest:v14.18
@@ -222,6 +229,28 @@ configs:
       \set jwt_exp `echo "$$JWT_EXP"`
 
       ALTER DATABASE postgres SET "app.settings.jwt_exp" TO :'jwt_exp';
+
+  db_hook_sql:
+    content: |
+      -- Hook de GoTrue «before-user-created». Deja pasar (devuelve {}) solo a la sesión anónima y a las cuentas que ya nacen confirmadas (API de
+      -- administración); rechaza con 403 el registro abierto por correo o teléfono. Solo GoTrue (supabase_auth_admin) puede ejecutarla: nunca por la API.
+      create or replace function public.hook_antes_de_crear_usuario(event jsonb)
+      returns jsonb
+      language plpgsql
+      stable
+      set search_path = ''
+      as $$$$
+      begin
+        if coalesce((event -> 'user' ->> 'is_anonymous')::boolean, false)
+           or (event -> 'user' ->> 'email_confirmed_at') is not null then
+          return '{}'::jsonb;
+        end if;
+        return jsonb_build_object('error', jsonb_build_object(
+          'http_code', 403,
+          'message', 'Las cuentas se crean desde Novudent: el registro abierto está cerrado.'));
+      end $$$$;
+      revoke execute on function public.hook_antes_de_crear_usuario(jsonb) from public, anon, authenticated;
+      grant execute on function public.hook_antes_de_crear_usuario(jsonb) to supabase_auth_admin;
 
   kong_yml:
     content: |
