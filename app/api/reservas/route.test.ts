@@ -34,7 +34,7 @@ type Fila = { id: string; data: Record<string, unknown> };
 const queryRange = vi.fn(async (..._a: unknown[]): Promise<Fila[]> => []);
 const queryIn = vi.fn(async (..._a: unknown[]): Promise<Fila[]> => []);
 
-vi.mock("@/lib/server/firestore-rest", () => ({
+vi.mock("@/lib/server/datos", () => ({
   getDocument: (...a: unknown[]) => getDocument(...(a as [string])),
   listCollection: (...a: unknown[]) => listCollection(...(a as [string, string])),
   setDocument: (...a: unknown[]) => setDocument(...(a as [])),
