@@ -88,6 +88,18 @@ if [ "$cod" = "403" ] || [ "$cod" = "422" ]; then ok "registro abierto por corre
 cuantas="$(dc exec -T db psql -U supabase_admin -d postgres -At -c "select count(*) from auth.users where email = 'intruso2@novudent.test'" 2>/dev/null || true)"
 if [ "$cuantas" = "0" ]; then ok "el intento no dejó ninguna cuenta"; else mal "el intento dejó $cuantas cuenta(s) en auth.users"; fi
 
+# Límites por cliente (cf-connecting-ip): el alta de sesiones admite 60 por hora; la 61 recibe 429 y otra IP sigue pasando.
+for i in $(seq 1 60); do curl -s -o /dev/null -m 15 -X POST -H "apikey: $ANON" -H "cf-connecting-ip: 198.51.100.7" -H 'Content-Type: application/json' -d '{}' "$URL/auth/v1/signup" || true; done
+espera "alta de sesiones: la 61.ª de la misma IP recibe 429" 429 curl_codigo -X POST -H "apikey: $ANON" -H "cf-connecting-ip: 198.51.100.7" -H 'Content-Type: application/json' -d '{}' "$URL/auth/v1/signup"
+espera "alta de sesiones: otra IP sigue pasando" 200 curl_codigo -X POST -H "apikey: $ANON" -H "cf-connecting-ip: 198.51.100.8" -H 'Content-Type: application/json' -d '{}' "$URL/auth/v1/signup"
+
+echo "== Limpieza de sesiones anónimas (pg_cron) =="
+psqlx() { dc exec -T db psql -U supabase_admin -d postgres -At -c "$1"; }
+[ "$(psqlx "select count(*) from cron.job where jobname = 'limpiar-sesiones-anonimas'" 2>/dev/null || true)" = "1" ] && ok "tarea diaria programada en pg_cron" || mal "no está programada la limpieza de sesiones anónimas"
+psqlx "update auth.users set created_at = now() - interval '40 days' where is_anonymous" >/dev/null 2>&1 || true
+psqlx "$(psqlx "select command from cron.job where jobname = 'limpiar-sesiones-anonimas'" 2>/dev/null)" >/dev/null 2>&1 || true
+[ "$(psqlx "select count(*) from auth.users where is_anonymous" 2>/dev/null || true)" = "0" ] && ok "la limpieza borra las sesiones anónimas de más de 30 días" || mal "la limpieza no borró las sesiones anónimas viejas"
+
 echo "== Tiempo real =="
 ws="$(curl -s -i -m 5 --http1.1 -N -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==' "$URL/realtime/v1/websocket?apikey=$ANON&vsn=1.0.0" 2>/dev/null | head -n 1 | tr -d '\r' || true)"
 case "$ws" in *101*) ok "WebSocket de Realtime ($ws)";; *) mal "WebSocket de Realtime: '$ws'";; esac

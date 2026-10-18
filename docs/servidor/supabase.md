@@ -7,7 +7,7 @@ superficie más. No publica ningún puerto al host; la única entrada es Kong, y
 | Archivo | Para qué |
 |---|---|
 | `infra/supabase/docker-compose.yml` | Los cinco servicios y, en `configs` con contenido en línea, todo lo que antes eran archivos: el `kong.yml` (rutas `/auth/v1`, `/rest/v1` y `/realtime/v1`; todo lo demás da 404; exige `apikey`) y los tres SQL de inicialización de la base (esquema `_realtime`, contraseñas de `authenticator` y `supabase_auth_admin`, expiración del JWT). Sin secretos, solo nombres de variables |
-| `infra/supabase/probar-local.sh` | Prueba de humo con secretos descartables (19 comprobaciones) |
+| `infra/supabase/probar-local.sh` | Prueba de humo con secretos descartables (23 comprobaciones) |
 
 **Por qué los archivos van dentro del compose (no como `./volumes/**`).** Coolify reescribe los bind mounts relativos a `/data/coolify/applications/<uuid>/volumes/**` (sin la carpeta base `infra/supabase`),
 no encuentra los archivos y Docker crea **directorios vacíos** en su lugar: los scripts de la base no corren, las contraseñas de los roles quedan sin fijar y GoTrue, PostgREST y Realtime no pueden entrar
@@ -23,7 +23,7 @@ tar --no-xattrs -C infra/supabase -cf - . | ssh gmktec 'mkdir -p ~/build-tests/s
 
 Comprueba: los cinco servicios sanos; `auth/health` con clave 200 y sin clave 401; una clave inventada 401; que `/storage`, el dashboard y lo demás den 404; crear una
 persona con la clave de servicio (y que la clave pública **no** pueda); iniciar sesión; la sesión anónima de la demo; que un alta por email sin confirmar no pueda entrar;
-el WebSocket de Realtime (101); los roles y esquemas de la base; y que ningún puerto quede publicado fuera de `127.0.0.1` y que un cuerpo de 9 MB sea rechazado (tope de 8 MB en Kong).
+el WebSocket de Realtime (101); los roles y esquemas de la base; que ningún puerto quede publicado fuera de `127.0.0.1`, que un cuerpo de 9 MB sea rechazado (tope de 8 MB en Kong), que el alta de sesiones tenga límite por cliente (429 a la 61.ª por hora) y que la limpieza de sesiones anónimas viejas funcione.
 
 ## Desplegarlo en Coolify
 
@@ -44,10 +44,14 @@ Nuevo recurso › **Docker Compose** desde un repositorio Git (público) › ram
 - **Solo la sesión anónima queda abierta.** Con `GOTRUE_DISABLE_SIGNUP=true` GoTrue también rechaza la sesión **anónima** (422) y la demo pública la necesita, así que el registro tiene que
   quedar habilitado. Para que eso no abra la puerta a nadie más hay un **hook `before-user-created`** (función `public.hook_antes_de_crear_usuario`, creada con la base): deja pasar solo a las
   sesiones anónimas y a las cuentas que ya nacen confirmadas (las crea el servidor con la API de administración) y rechaza con 403 cualquier registro por correo o teléfono. Sin el hook se
-  podían **reservar correos ajenos** (cuentas sin confirmar) y trabar el alta de una clínica real con ese correo. Probado en `probar-local.sh` (403 y ninguna cuenta creada). Pendiente para la
-  fase C: purgar las cuentas anónimas viejas (spec §8).
+  podían **reservar correos ajenos** (cuentas sin confirmar) y trabar el alta de una clínica real con ese correo. Probado en `probar-local.sh` (403 y ninguna cuenta creada). Las sesiones anónimas de más
+  de 30 días las borra una tarea diaria de `pg_cron` (03:17, dentro de la propia base).
   **Para aplicarlo a una base que ya existe** (los scripts de inicialización solo corren al crear la base): ejecutar el SQL de la config `db_hook_sql` del compose con `psql` como `supabase_admin` en el
   contenedor `db-…`, y recién después redesplegar el compose con las variables del hook en `auth`. Si el compose se despliega primero, **ninguna** sesión puede crearse (GoTrue llama a una función que no existe).
+- **Límites por cliente en Kong** (plugin `rate-limiting`, por la IP real que pone Cloudflare en `cf-connecting-ip`; sin ese header cae en la IP de origen): alta de sesiones **60 por hora**, resto de `/auth/v1`
+  120 por minuto, rutas abiertas de correos 60 por minuto, `/rest/v1` 600 por minuto, WebSocket de Realtime 120 y API de Realtime 600 por minuto. Con el tope de 8 MB por petición y 2 MiB por documento acotan, pero **no
+  eliminan**, el abuso de la demo desde una sola IP; una botnet con muchas IP necesita además una regla de límite de tasa en Cloudflare (WAF › Rate limiting, en tu panel) y un tope de filas de `cl_demo` en la base.
+  Si una clínica con muchas personas detrás de una misma IP llegara a tocar un límite, se sube el número en la config `kong_yml` del compose (un redeploy).
 - **`REALTIME_DB_ENC_KEY`** queda con el valor por defecto de Supabase (16 caracteres): solo cifra la copia del secreto JWT que Realtime guarda en su propia base, que ya está en
   el entorno del contenedor. Si se quiere, se cambia por otro de exactamente 16 caracteres antes de la primera carga de datos.
 - **Sin Studio:** para mirar la base, `docker exec -it <contenedor-db> psql -U supabase_admin -d postgres` desde el servidor (o un túnel SSH). Nada de Postgres en la red.

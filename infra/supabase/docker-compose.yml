@@ -28,6 +28,8 @@ services:
         target: /docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
       - source: db_hook_sql
         target: /docker-entrypoint-initdb.d/init-scripts/99-zz-hook.sql
+      - source: db_limpieza_sql
+        target: /docker-entrypoint-initdb.d/init-scripts/99-zzz-limpieza.sql
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
       interval: 5s
@@ -183,7 +185,7 @@ services:
       # https://github.com/supabase/cli/issues/14
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_DNS_NOT_FOUND_TTL: 1
-      KONG_PLUGINS: cors,key-auth,acl
+      KONG_PLUGINS: cors,key-auth,acl,rate-limiting
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
       # Tope de lo que entra por la API: un documento de Novudent pesa menos de 1 MB (imágenes en base64 ya redimensionadas). Sin tope, cualquiera
@@ -252,6 +254,14 @@ configs:
       revoke execute on function public.hook_antes_de_crear_usuario(jsonb) from public, anon, authenticated;
       grant execute on function public.hook_antes_de_crear_usuario(jsonb) to supabase_auth_admin;
 
+  db_limpieza_sql:
+    content: |
+      -- Limpieza diaria (03:17) de las sesiones anónimas de la demo con más de 30 días (spec §8): sin esto se acumulan para siempre. El borrado en
+      -- cascada se lleva sus identidades y sesiones. pg_cron corre dentro de la propia base: no hay nada más que mantener.
+      create extension if not exists pg_cron;
+      select cron.schedule('limpiar-sesiones-anonimas', '17 3 * * *',
+        $$$$delete from auth.users where is_anonymous and created_at < now() - interval '30 days'$$$$);
+
   kong_yml:
     content: |
       # Puerta de entrada de Novudent: solo auth, rest y realtime. Sin dashboard, storage, funciones ni analytics.
@@ -285,6 +295,14 @@ configs:
                 - /auth/v1/verify
           plugins:
             - name: cors
+            - name: rate-limiting
+              config:
+                minute: 60
+                limit_by: header
+                header_name: cf-connecting-ip
+                policy: local
+                fault_tolerant: true
+                hide_client_headers: true
         - name: auth-v1-open-callback
           url: http://auth:9999/callback
           routes:
@@ -294,6 +312,14 @@ configs:
                 - /auth/v1/callback
           plugins:
             - name: cors
+            - name: rate-limiting
+              config:
+                minute: 60
+                limit_by: header
+                header_name: cf-connecting-ip
+                policy: local
+                fault_tolerant: true
+                hide_client_headers: true
         - name: auth-v1-open-authorize
           url: http://auth:9999/authorize
           routes:
@@ -305,6 +331,43 @@ configs:
             - name: cors
 
         # --- Auth: el resto, con clave ---
+        # --- Alta de sesiones (registro/sesión anónima de la demo): el límite más estricto, por IP real del cliente (cf-connecting-ip).
+        #     La ruta más larga (/auth/v1/signup) gana sobre /auth/v1/ ---
+            - name: rate-limiting
+              config:
+                minute: 60
+                limit_by: header
+                header_name: cf-connecting-ip
+                policy: local
+                fault_tolerant: true
+                hide_client_headers: true
+        - name: auth-v1-signup
+          url: http://auth:9999/signup
+          routes:
+            - name: auth-v1-signup
+              strip_path: true
+              paths:
+                - /auth/v1/signup
+          plugins:
+            - name: cors
+            - name: key-auth
+              config:
+                hide_credentials: false
+            - name: acl
+              config:
+                hide_groups_header: true
+                allow:
+                  - admin
+                  - anon
+            - name: rate-limiting
+              config:
+                hour: 60
+                limit_by: header
+                header_name: cf-connecting-ip
+                policy: local
+                fault_tolerant: true
+                hide_client_headers: true
+
         - name: auth-v1
           url: http://auth:9999/
           routes:
@@ -325,6 +388,14 @@ configs:
                   - anon
 
         # --- API de datos (PostgREST) ---
+            - name: rate-limiting
+              config:
+                minute: 120
+                limit_by: header
+                header_name: cf-connecting-ip
+                policy: local
+                fault_tolerant: true
+                hide_client_headers: true
         - name: rest-v1
           url: http://rest:3000/
           routes:
@@ -346,6 +417,14 @@ configs:
 
         # --- Tiempo real: WebSocket y API de Realtime. Se habla con el nombre realtime-dev.supabase-realtime (alias de red) porque Realtime
         #     saca el «tenant» del primer tramo del host. La ruta más larga (/realtime/v1/api) gana sobre /realtime/v1/ ---
+            - name: rate-limiting
+              config:
+                minute: 600
+                limit_by: header
+                header_name: cf-connecting-ip
+                policy: local
+                fault_tolerant: true
+                hide_client_headers: true
         - name: realtime-v1-ws
           url: http://realtime-dev.supabase-realtime:4000/socket
           protocol: ws
@@ -365,6 +444,14 @@ configs:
                 allow:
                   - admin
                   - anon
+            - name: rate-limiting
+              config:
+                minute: 120
+                limit_by: header
+                header_name: cf-connecting-ip
+                policy: local
+                fault_tolerant: true
+                hide_client_headers: true
         - name: realtime-v1-rest
           url: http://realtime-dev.supabase-realtime:4000/api
           protocol: http
@@ -384,3 +471,11 @@ configs:
                 allow:
                   - admin
                   - anon
+            - name: rate-limiting
+              config:
+                minute: 600
+                limit_by: header
+                header_name: cf-connecting-ip
+                policy: local
+                fault_tolerant: true
+                hide_client_headers: true
