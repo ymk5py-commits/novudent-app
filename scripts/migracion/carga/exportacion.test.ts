@@ -182,3 +182,26 @@ describe("leerDocumentos", () => {
     await expect(juntar(leerDocumentos(carpeta, entrada))).rejects.toThrow(/repetido/);
   });
 });
+
+describe("leerDocumentos con documentos grandes", () => {
+  it("lee bien una línea que abarca muchos trozos del archivo (un documento de ~1 MB) y un último documento sin salto de línea", async () => {
+    const datos = baseSintetica();
+    datos["clinics/c1/patients"] = [
+      { id: "grande", data: { texto: "ñandú ✓ ".repeat(120_000) } }, // ~1,2 MB, con caracteres de varios bytes que pueden quedar cortados entre trozos
+      { id: "chico", data: { n: 1 } },
+    ];
+    const { carpeta } = await exportacion({ base: datos });
+    const entrada = planDeCarga(leerManifiesto(carpeta), COLECCIONES).entradas.find((e: { clinica: string | null; coleccion: string }) => e.coleccion === "patients" && e.clinica === "c1");
+    const docs = [];
+    for await (const d of leerDocumentos(carpeta, entrada)) docs.push(d);
+    expect(docs.map((d) => d.id)).toEqual(["grande", "chico"]);
+    expect((docs[0].data as { texto: string }).texto).toBe("ñandú ✓ ".repeat(120_000));
+    expect(docs[0].bytes).toBeGreaterThan(1_000_000);
+    // y sin el salto final: se lee igual (aunque la verificación del archivo ya la habría rechazado)
+    const ruta = join(carpeta, "clinicas/c1/patients.jsonl");
+    writeFileSync(ruta, readFileSync(ruta, "utf8").trimEnd());
+    const otra = [];
+    for await (const d of leerDocumentos(carpeta, entrada)) otra.push(d.id);
+    expect(otra).toEqual(["grande", "chico"]);
+  });
+});

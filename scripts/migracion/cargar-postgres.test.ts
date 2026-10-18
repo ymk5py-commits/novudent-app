@@ -25,6 +25,10 @@ describe("leerArgumentos", () => {
   it("la clave de servicio solo se lee del entorno (no hay opción para ponerla en la línea de comandos)", () => {
     expect(() => leerArgumentos(["--clave-servicio", "x"], {})).toThrow(/Opción desconocida/);
   });
+  it("--sobrescribir se lee como opción", () => {
+    expect(leerArgumentos(["--sobrescribir"], {}).sobrescribir).toBe(true);
+    expect(leerArgumentos([], {}).sobrescribir).toBe(false);
+  });
   it("--dry-run y --solo-verificar no se combinan; las opciones desconocidas y los valores que faltan fallan", () => {
     expect(() => leerArgumentos(["--dry-run", "--solo-verificar"], {})).toThrow(/no se combinan/);
     expect(() => leerArgumentos(["--rara"], {})).toThrow(/Opción desconocida/);
@@ -96,6 +100,17 @@ describe("principal", () => {
     const r = await correr(completo, { carpeta, almacen });
     expect(r.codigo).toBe(2);
     expect(r.salida).toMatch(/HAY DIFERENCIAS/);
+  });
+
+  it("se niega a pisar documentos distintos de la base y sale con 1; con --sobrescribir lo hace", async () => {
+    const carpeta = carpetaTemporal();
+    await escribirExportacion(carpeta);
+    const almacen = crearAlmacenEnMemoria({ colecciones: [...COLECCIONES.porClinica, ...COLECCIONES.raiz] });
+    await almacen.upsertar({ coleccion: "leads", clinica: null, filas: [{ id: "l1", data: { cambiado: true } }] });
+    const bloqueada = await correr(completo, { carpeta, almacen });
+    expect(bloqueada.codigo).toBe(1);
+    expect(bloqueada.errores).toMatch(/--sobrescribir/);
+    expect((await correr([...completo, "--sobrescribir"], { carpeta, almacen })).codigo).toBe(0);
   });
 
   it("--solo-verificar abre la base en solo lectura y no crea nada", async () => {

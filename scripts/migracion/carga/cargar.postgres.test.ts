@@ -118,7 +118,8 @@ describe.skipIf(!hay)("cargar-postgres contra Postgres y GoTrue reales", () => {
     expect(verificado.colecciones.find((f: any) => f.coleccion === "leads")!.sobran).toEqual(["intruso"]);
     expect(verificado.diferencias).toBe(3);
 
-    const recargado = await correr(carpeta, "cargar");
+    await expect(correr(carpeta, "cargar")).rejects.toThrow(/sobrescribir/); // hay un documento distinto en la base: no lo pisa sin permiso
+    const recargado = await correr(carpeta, "cargar", { sobrescribir: true });
     expect(recargado.totales.cargados).toMatchObject({ insertados: 1, actualizados: 1 });
     expect(recargado.diferencias).toBe(1); // el cargador NUNCA borra: el sobrante se informa y lo limpia una persona
     await base.consultar(`delete from "${base.esquema}"."leads" where id = 'intruso'`);

@@ -30,6 +30,8 @@ const AYUDA = `Uso: node scripts/migracion/cargar-postgres.mjs [opciones]
   --solo-verificar        no escribe nada: compara la base con la exportación, documento por documento (SHA-256)
   --permitir-incompleto   acepta una exportación parcial o con colecciones sin leer (para pruebas)
   --ignorar-desconocidas  sigue aunque la exportación traiga colecciones que no están en lib/backend/colecciones.json (esos datos NO se cargan)
+  --sobrescribir          permite cargar aunque la base ya tenga documentos DISTINTOS a los de la exportación (los pisa). Sin esto, la carga se niega: esos
+                          documentos pueden ser ediciones más nuevas que la exportación. Mirá antes con --dry-run
   --lote N                documentos por consulta (por defecto 200)
   --informe RUTA          dónde guardar el informe (por defecto <exportación>/informe-de-carga-<fecha>.md; con --dry-run no se guarda salvo que lo pidas)
   --ayuda                 esta ayuda
@@ -42,7 +44,7 @@ export function leerArgumentos(argv, env = process.env) {
     urlBase: env.NOVUDENT_CARGA_DB_URL || null,
     urlGotrue: env.NOVUDENT_CARGA_GOTRUE_URL || null,
     claveServicio: env.NOVUDENT_CARGA_SERVICE_KEY || null,
-    dryRun: false, soloVerificar: false, permitirIncompleto: false, ignorarDesconocidas: false,
+    dryRun: false, soloVerificar: false, permitirIncompleto: false, ignorarDesconocidas: false, sobrescribir: false,
     tamanoDeLote: 200, informe: null, ayuda: false,
   };
   const valor = (i, nombre) => {
@@ -63,6 +65,7 @@ export function leerArgumentos(argv, env = process.env) {
     else if (a === "--solo-verificar") o.soloVerificar = true;
     else if (a === "--permitir-incompleto") o.permitirIncompleto = true;
     else if (a === "--ignorar-desconocidas") o.ignorarDesconocidas = true;
+    else if (a === "--sobrescribir") o.sobrescribir = true;
     else if (a === "--ayuda" || a === "-h") o.ayuda = true;
     else throw new Error(`Opción desconocida: ${a}\n${AYUDA}`);
   }
@@ -91,10 +94,10 @@ export function validarDestino(o) {
 const dos = (n) => String(n).padStart(2, "0");
 const marcaDeTiempo = (d = new Date()) => `${d.getFullYear()}${dos(d.getMonth() + 1)}${dos(d.getDate())}-${dos(d.getHours())}${dos(d.getMinutes())}${dos(d.getSeconds())}`;
 
-/** Tapa con *** las claves que pudieran haber quedado en un mensaje. */
+/** Tapa con *** las claves que pudieran haber quedado en un mensaje (las muy cortas no: taparían letras sueltas de cualquier texto). */
 function taparSecretos(texto, secretos) {
   let t = String(texto);
-  for (const s of secretos) if (s) t = t.split(s).join("***");
+  for (const s of secretos) if (s && s.length >= 6) t = t.split(s).join("***");
   return t;
 }
 
@@ -140,7 +143,7 @@ export async function principal(argv, { env = process.env, colecciones, crearAlm
 
     const informe = await ejecutarCarga({
       carpeta, colecciones: colecciones ?? COLECCIONES(), almacen, gotrue, modo,
-      permitirIncompleto: o.permitirIncompleto, ignorarDesconocidas: o.ignorarDesconocidas, tamanoDeLote: o.tamanoDeLote,
+      permitirIncompleto: o.permitirIncompleto, ignorarDesconocidas: o.ignorarDesconocidas, sobrescribir: o.sobrescribir, tamanoDeLote: o.tamanoDeLote,
       alAvanzar: (m) => avisarSeguro(m),
     });
     const texto = armarInforme(informe);

@@ -44,9 +44,10 @@ describe("cargar", () => {
   it("no carga `directory` ni `serviceAccounts`", async () => {
     const { carpeta } = await preparar();
     const almacen = nuevoAlmacen();
-    await correr(carpeta, almacen);
+    const gotrue = gotrueFalso();
+    await correr(carpeta, almacen, { gotrue });
     expect(await leerTodo(almacen, "directory", null)).toEqual([]);
-    expect(informe_sin(await correr(carpeta, almacen), "directory")).toBe(true);
+    expect(informe_sin(await correr(carpeta, almacen, { gotrue }), "directory")).toBe(true);
   });
 
   it("dos cargas seguidas: la segunda no inserta ni actualiza nada, no duplica y no crea cuentas nuevas", async () => {
@@ -121,12 +122,8 @@ describe("verificación completa (la diferencia más chica hace fallar)", () => 
     expect(informe.diferencias).toBe(1);
   });
 
-  it("detecta un documento que falta, uno que sobra y una clínica entera que no estaba en la exportación", async () => {
+  it("detecta un documento que sobra y una clínica entera que no estaba en la exportación (el cargador no borra: lo informa)", async () => {
     const { almacen, verificar } = await cargado();
-    const base = baseSintetica();
-    // falta: se vacía un documento escribiendo la colección sin él
-    const sinP1 = nuevoAlmacen();
-    expect(sinP1).toBeDefined();
     await almacen.upsertar({ coleccion: "leads", clinica: null, filas: [{ id: "extra", data: { x: 1 } }] }); // sobra en la raíz
     await almacen.upsertar({ coleccion: "appointments", clinica: "otra_clinica", filas: [{ id: "z", data: {} }, { id: "w", data: {} }] }); // clínica ajena
     const informe = await verificar();
@@ -134,7 +131,6 @@ describe("verificación completa (la diferencia más chica hace fallar)", () => 
     expect(filaDe(informe, "leads").sobran).toEqual(["extra"]);
     expect(informe.sobrantesDeClinicas).toEqual([{ coleccion: "appointments", clinica: "otra_clinica", docs: 2 }]);
     expect(informe.diferencias).toBe(3);
-    expect(base).toBeDefined();
   });
 
   it("detecta un documento faltante", async () => {
@@ -173,6 +169,39 @@ describe("verificación completa (la diferencia más chica hace fallar)", () => 
     expect(informe.ok).toBe(false); // está todo vacío: faltan todos los documentos
     expect(informe.totales.faltan).toBeGreaterThan(0);
     expect(informe.usuarios).toMatchObject({ porCrear: 2 });
+  });
+});
+
+describe("no pisar datos más nuevos sin permiso", () => {
+  it("si la base ya tiene documentos DISTINTOS a los de la exportación, cargar se niega (sin crear cuentas ni escribir) salvo con sobrescribir", async () => {
+    const { carpeta } = await preparar();
+    const almacen = nuevoAlmacen();
+    await almacen.upsertar({ coleccion: "patients", clinica: "c1", filas: [{ id: "p1", data: { nombre: "Edición hecha DESPUÉS de exportar" } }] });
+    const antes = JSON.stringify(almacen._volcado());
+    const gotrue = gotrueFalso();
+    const error = await correr(carpeta, almacen, { gotrue }).catch((e) => e);
+    expect(error).toBeInstanceOf(ErrorDeCarga);
+    expect(error.message).toMatch(/sobrescribir/);
+    expect(error.message).toMatch(/clinics\/c1\/patients/);
+    expect(error.message).not.toMatch(/DESPUÉS/);
+    expect(JSON.stringify(almacen._volcado())).toBe(antes);
+    expect(gotrue.creados).toEqual([]);
+
+    const informe = await correr(carpeta, almacen, { gotrue, sobrescribir: true });
+    expect(informe.ok).toBe(true);
+    expect(informe.totales.cargados.actualizados).toBe(1);
+  });
+
+  it("no estorba a una segunda carga igual, ni a una base con documentos de más (eso no se pisa, solo se informa)", async () => {
+    const { carpeta } = await preparar();
+    const almacen = nuevoAlmacen();
+    const gotrue = gotrueFalso();
+    await correr(carpeta, almacen, { gotrue });
+    expect((await correr(carpeta, almacen, { gotrue })).ok).toBe(true);
+    await almacen.upsertar({ coleccion: "leads", clinica: null, filas: [{ id: "nuevo-en-vivo", data: {} }] });
+    const informe = await correr(carpeta, almacen, { gotrue });
+    expect(informe.totales.sobran).toBe(1);
+    expect(informe.ok).toBe(false);
   });
 });
 

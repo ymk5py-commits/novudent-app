@@ -172,18 +172,21 @@ const rutaDe = (carpeta, entrada) => join(carpeta, entrada.archivo);
 
 /** Lee el archivo completo, en streaming, y entrega cada línea (sin el salto) y su largo en bytes. */
 async function* lineasDe(ruta) {
-  let resto = Buffer.alloc(0);
+  let partes = []; // los trozos de la línea que todavía no terminó (una línea puede abarcar varios trozos del archivo)
+  let largo = 0;
   for await (const trozo of createReadStream(ruta)) {
     let desde = 0;
     for (let i = trozo.indexOf(10, desde); i !== -1; i = trozo.indexOf(10, desde)) {
-      const linea = resto.length ? Buffer.concat([resto, trozo.subarray(desde, i)]) : trozo.subarray(desde, i);
-      resto = Buffer.alloc(0);
-      yield { texto: linea.toString("utf8"), bytes: linea.length + 1 };
+      partes.push(trozo.subarray(desde, i));
+      const linea = partes.length === 1 ? partes[0] : Buffer.concat(partes);
+      yield { texto: linea.toString("utf8"), bytes: largo + (i - desde) + 1 };
+      partes = [];
+      largo = 0;
       desde = i + 1;
     }
-    if (desde < trozo.length) resto = Buffer.concat([resto, trozo.subarray(desde)]);
+    if (desde < trozo.length) { partes.push(trozo.subarray(desde)); largo += trozo.length - desde; }
   }
-  if (resto.length) yield { texto: resto.toString("utf8"), bytes: resto.length, sinSalto: true };
+  if (largo > 0) yield { texto: Buffer.concat(partes).toString("utf8"), bytes: largo };
 }
 
 /** Recorre cada archivo una vez y compara su SHA-256, su tamaño y su cantidad de documentos con lo que dice el manifiesto. Devuelve los problemas

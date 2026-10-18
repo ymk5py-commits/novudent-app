@@ -64,8 +64,8 @@ export function crearAlmacenEnMemoria({ colecciones, soloLectura = false }) {
 }
 
 const ident = (nombre) => `"${String(nombre).replaceAll('"', '""')}"`;
-/** Una sola vez por base: evita que dos cargas corran a la vez contra la misma. */
-const CLAVE_DE_BLOQUEO = 7270000101;
+/** Un bloqueo de aviso por esquema de destino: evita que dos cargas corran a la vez contra las mismas tablas. */
+const claveDeBloqueo = (esquema) => `novudent-cargador:${esquema}`;
 /** Errores de datos de UN documento (clases 22, 23 y los `raise` de un disparador, P0): se aíslan fila por fila. Cualquier otro (conexión, permisos, tabla
  *  que no existe, base de solo lectura…) afecta a todo y corta la carga. */
 const esErrorDeUnDocumento = (e) => typeof e?.code === "string" && (e.code.startsWith("22") || e.code.startsWith("23") || e.code.startsWith("P0"));
@@ -99,7 +99,7 @@ export async function crearAlmacenPostgres({ url, soloLectura = false, esquema =
   try {
     if (soloLectura) await consultar("set default_transaction_read_only = on");
     else {
-      const { rows } = await consultar("select pg_try_advisory_lock($1) as ok", [CLAVE_DE_BLOQUEO]);
+      const { rows } = await consultar("select pg_try_advisory_lock(hashtext($1)) as ok", [claveDeBloqueo(esquema)]);
       if (!rows[0].ok) throw new Error("Hay otra carga corriendo contra esta misma base (bloqueo de aviso tomado). Esperá a que termine.");
     }
   } catch (e) {
