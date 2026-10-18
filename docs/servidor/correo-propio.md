@@ -31,3 +31,21 @@ Este módulo es la salida SMTP inicial, no una plataforma completa como Resend. 
 ## Estado de activación
 
 Código preparado y pruebas automatizadas; pendiente elegir cuenta, cargar credenciales y comprobar un envío real. La aplicación pública no se cambió por este trabajo.
+
+### Remitente elegido: hola@novumholding.lat
+
+El propietario eligió `hola@novumholding.lat`. Los MX del dominio apuntan a ImprovMX y el SPF incluye `spf.improvmx.com`; eso confirma el proveedor de recepción, pero no acredita que la cuenta tenga envío SMTP contratado ni credenciales disponibles.
+
+Configuración prevista si el panel confirma SMTP habilitado:
+
+```dotenv
+CORREO_PROVEEDOR=smtp
+SMTP_HOST=smtp.improvmx.com
+SMTP_PORT=587
+SMTP_USER=hola@novumholding.lat
+EMAIL_FROM=Novum <hola@novumholding.lat>
+SMTP_ADMIN_EMAIL=hola@novumholding.lat
+SMTP_SENDER_NAME=Novum
+```
+
+Falta `SMTP_PASSWORD`, obtenida de las credenciales SMTP de esa cuenta (no necesariamente la contraseña para entrar al panel). ImprovMX requiere un plan con envío; revisar el plan existente antes de plantear un cambio de pago. Verificar también los registros DKIM que indique el panel y realizar un envío de prueba antes de activar en producción.
