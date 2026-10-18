@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { crearSesionSupabase, traducirError, traducirErrorDeIngreso } from "./supabase";
 
-type Evento = (evento: string) => void;
+type Evento = (evento: string, sesion?: { user: { id: string } } | null) => void;
 
 function clienteFalso(opciones: { sesion?: { user: { id: string }; access_token: string } | null; rpc?: Record<string, unknown>; errorIngreso?: unknown } = {}) {
   let oyente: Evento | null = null;
@@ -18,8 +18,13 @@ function clienteFalso(opciones: { sesion?: { user: { id: string }; access_token:
     updateUser: vi.fn(async () => ({ error: null })),
     onAuthStateChange: vi.fn((fn: Evento) => { oyente = fn; return { data: { subscription: { unsubscribe() {} } } }; }),
   };
-  const rpc = vi.fn(async (nombre: string) => { llamadas.push(nombre); return { data: opciones.rpc?.[nombre] ?? null, error: null }; });
-  return { cliente: { auth, rpc } as unknown as SupabaseClient, auth, rpc, llamadas, emitir: (e: string) => oyente?.(e) };
+  const rpc = vi.fn(async (nombre: string) => {
+    llamadas.push(nombre);
+    const r = opciones.rpc?.[nombre];
+    if (r instanceof Error) return { data: null, error: { message: r.message, code: "" } };
+    return { data: r ?? null, error: null };
+  });
+  return { cliente: { auth, rpc } as unknown as SupabaseClient, auth, rpc, llamadas, emitir: (e: string, uid?: string) => oyente?.(e, uid ? { user: { id: uid } } : null) };
 }
 
 describe("traducirErrorDeIngreso (GoTrue → códigos de Firebase Auth que ya entiende la pantalla)", () => {
@@ -81,28 +86,54 @@ describe("la sesión", () => {
     expect(sin.auth.signInAnonymously).toHaveBeenCalledTimes(1);
   });
 
+  it("dos entradas a la demo a la vez crean UNA sola cuenta anónima", async () => {
+    const f = clienteFalso();
+    const { sesion } = crearSesionSupabase(f.cliente);
+    await Promise.all([sesion.iniciarSesionDeDemo(), sesion.iniciarSesionDeDemo(), sesion.iniciarSesionDeDemo()]);
+    expect(f.auth.signInAnonymously).toHaveBeenCalledTimes(1);
+  });
+
   it("token: el del servidor de sesión, o null sin sesión", async () => {
     expect(await crearSesionSupabase(clienteFalso({ sesion: { user: { id: "u" }, access_token: "jwt" } }).cliente).sesion.token()).toBe("jwt");
     expect(await crearSesionSupabase(clienteFalso().cliente).sesion.token()).toBeNull();
   });
 
-  it("usuarioActual devuelve el id del DOCUMENTO (mi_clinica + mi_usuario) y lo recuerda mientras sea la misma sesión", async () => {
-    const f = clienteFalso({ sesion: { user: { id: "uid-login" }, access_token: "t" }, rpc: { mi_clinica: "cl_a", mi_usuario: "u_documento" } });
+  it("usuarioActual devuelve el id del DOCUMENTO (mi_directorio) y lo recuerda mientras sea la misma sesión", async () => {
+    const f = clienteFalso({ sesion: { user: { id: "uid-login" }, access_token: "t" }, rpc: { mi_directorio: [{ clinic_id: "cl_a", user_id: "u_documento" }] } });
     const { sesion } = crearSesionSupabase(f.cliente);
     expect(await sesion.usuarioActual()).toBe("u_documento");
     expect(await sesion.usuarioActual()).toBe("u_documento");
-    expect(f.llamadas).toEqual(["mi_clinica", "mi_usuario"]); // la segunda vez no vuelve a preguntar
+    expect(f.llamadas).toEqual(["mi_directorio"]); // la segunda vez no vuelve a preguntar
     await sesion.cerrarSesion();
     await sesion.usuarioActual();
-    expect(f.llamadas).toEqual(["mi_clinica", "mi_usuario", "mi_clinica", "mi_usuario"]); // al cerrar sesión se olvida
+    expect(f.llamadas).toEqual(["mi_directorio", "mi_directorio"]); // al cerrar sesión se olvida
   });
 
   it("usuarioActual sin ficha en ninguna clínica (la anónima de la demo) devuelve el uid de login, sin recordarlo", async () => {
-    const f = clienteFalso({ sesion: { user: { id: "uid-anonimo" }, access_token: "t" }, rpc: { mi_clinica: null } });
+    const f = clienteFalso({ sesion: { user: { id: "uid-anonimo" }, access_token: "t" }, rpc: { mi_directorio: [] } });
     const { sesion } = crearSesionSupabase(f.cliente);
     expect(await sesion.usuarioActual()).toBe("uid-anonimo");
     await sesion.usuarioActual();
-    expect(f.llamadas).toEqual(["mi_clinica", "mi_clinica"]);
+    expect(f.llamadas).toEqual(["mi_directorio", "mi_directorio"]);
+  });
+
+  it("si la base no contesta: devuelve el último id conocido de ESTA sesión; sin uno, rechaza (devolver el uid cerraría la sesión de los usuarios migrados)", async () => {
+    const memoria = new Map<string, string>();
+    vi.stubGlobal("localStorage", { getItem: (k: string) => memoria.get(k) ?? null, setItem: (k: string, v: string) => { memoria.set(k, v); }, removeItem: (k: string) => { memoria.delete(k); } });
+    try {
+      const sesionViva = { user: { id: "uid-login" }, access_token: "t" };
+      const bien = clienteFalso({ sesion: sesionViva, rpc: { mi_directorio: [{ clinic_id: "cl_a", user_id: "u_documento" }] } });
+      expect(await crearSesionSupabase(bien.cliente).sesion.usuarioActual()).toBe("u_documento");
+      // Otra carga de la página (sin la memoria del módulo) con el servidor caído:
+      const caido = clienteFalso({ sesion: sesionViva, rpc: { mi_directorio: new Error("Failed to fetch") } });
+      expect(await crearSesionSupabase(caido.cliente).sesion.usuarioActual()).toBe("u_documento");
+      // …pero el recuerdo es de ese uid: otra sesión con el servidor caído no hereda el id de otra persona.
+      const otra = clienteFalso({ sesion: { user: { id: "otro-uid" }, access_token: "t" }, rpc: { mi_directorio: new Error("Failed to fetch") } });
+      await expect(crearSesionSupabase(otra.cliente).sesion.usuarioActual()).rejects.toMatchObject({ code: "unavailable" });
+      // iniciar sesión de nuevo lo borra
+      await crearSesionSupabase(bien.cliente).sesion.iniciarSesion("a@b.c", "x");
+      await expect(crearSesionSupabase(caido.cliente).sesion.usuarioActual()).rejects.toBeTruthy();
+    } finally { vi.unstubAllGlobals(); }
   });
 
   it("usuarioActual sin sesión es null y no llama a la base", async () => {
@@ -119,10 +150,12 @@ describe("la sesión", () => {
 });
 
 describe("recuperar la contraseña con el enlace del correo", () => {
-  it("el enlace trae una sesión de recuperación: se detecta, se fija la contraseña nueva y se cierra esa sesión", async () => {
-    const f = clienteFalso({ sesion: { user: { id: "u" }, access_token: "t" } });
+  const conSesion = { sesion: { user: { id: "u" }, access_token: "t" } };
+
+  it("el enlace trae la sesión de recuperación: se detecta, se fija la contraseña nueva y se cierra esa sesión", async () => {
+    const f = clienteFalso(conSesion);
     const { sesion } = crearSesionSupabase(f.cliente);
-    f.emitir("PASSWORD_RECOVERY");
+    f.emitir("PASSWORD_RECOVERY", "u");
     expect(await sesion.hayEnlaceDeRecuperacion!()).toBe(true);
     await sesion.fijarClaveNueva!("Nueva-12345");
     expect(f.auth.updateUser).toHaveBeenCalledWith({ password: "Nueva-12345" });
@@ -130,28 +163,47 @@ describe("recuperar la contraseña con el enlace del correo", () => {
     expect(await sesion.hayEnlaceDeRecuperacion!()).toBe(false); // ya se usó
   });
 
-  it("el aviso de supabase-js llega DESPUÉS de getSession(): el enlace se reconoce igual por la URL de la carga", async () => {
-    const f = clienteFalso({ sesion: { user: { id: "u" }, access_token: "t" } });
-    const { sesion } = crearSesionSupabase(f.cliente, true); // sin emitir PASSWORD_RECOVERY
+  it("el aviso de supabase-js sale DESPUÉS de que getSession() resuelve (en un setTimeout): se espera ese turno antes de mirar", async () => {
+    const f = clienteFalso(conSesion);
+    const { sesion } = crearSesionSupabase(f.cliente);
+    setTimeout(() => f.emitir("PASSWORD_RECOVERY", "u"), 0);
     expect(await sesion.hayEnlaceDeRecuperacion!()).toBe(true);
-    await sesion.fijarClaveNueva!("Nueva-12345");
-    expect(f.auth.updateUser).toHaveBeenCalledWith({ password: "Nueva-12345" });
   });
 
-  it("…pero si el enlace no produjo una sesión válida (vencido), no hay recuperación", async () => {
-    const f = clienteFalso();
-    expect(await crearSesionSupabase(f.cliente, true).sesion.hayEnlaceDeRecuperacion!()).toBe(false);
+  it("una URL armada a mano (#access_token=x&type=recovery) sobre una sesión normal NO habilita cambiar la contraseña: sin el aviso de recuperación no hay nada", async () => {
+    vi.stubGlobal("window", { location: { hash: "#access_token=x&type=recovery", origin: "https://novudent.test" } });
+    try {
+      const f = clienteFalso(conSesion);
+      const { sesion } = crearSesionSupabase(f.cliente);
+      expect(await sesion.hayEnlaceDeRecuperacion!()).toBe(false);
+      await expect(sesion.fijarClaveNueva!("Nueva-12345")).rejects.toThrow();
+      expect(f.auth.updateUser).not.toHaveBeenCalled();
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it("la recuperación vale solo para la sesión que la trajo: si después entra otra persona, o se cierra la sesión, ya no se puede", async () => {
+    const f = clienteFalso(conSesion);
+    const { sesion } = crearSesionSupabase(f.cliente);
+    f.emitir("PASSWORD_RECOVERY", "otra-persona"); // el aviso fue de una sesión que no es la actual
+    expect(await sesion.hayEnlaceDeRecuperacion!()).toBe(false);
+    await expect(sesion.fijarClaveNueva!("Nueva-12345")).rejects.toThrow();
+
+    const g = clienteFalso(conSesion);
+    const s2 = crearSesionSupabase(g.cliente).sesion;
+    g.emitir("PASSWORD_RECOVERY", "u");
+    g.emitir("SIGNED_OUT");
+    expect(await s2.hayEnlaceDeRecuperacion!()).toBe(false);
+
+    const h = clienteFalso(conSesion);
+    const s3 = crearSesionSupabase(h.cliente).sesion;
+    h.emitir("PASSWORD_RECOVERY", "u");
+    await s3.iniciarSesion("a@b.c", "x"); // iniciar sesión con otra cuenta la apaga
+    expect(await s3.hayEnlaceDeRecuperacion!()).toBe(false);
   });
 
   it("una carga normal (aunque haya sesión) no es una recuperación", async () => {
-    const f = clienteFalso({ sesion: { user: { id: "u" }, access_token: "t" } });
+    const f = clienteFalso(conSesion);
     expect(await crearSesionSupabase(f.cliente).sesion.hayEnlaceDeRecuperacion!()).toBe(false);
-  });
-
-  it("fijarClaveNueva sin enlace de recuperación se rechaza (nadie cambia la contraseña de una sesión normal por acá)", async () => {
-    const f = clienteFalso({ sesion: { user: { id: "u" }, access_token: "t" } });
-    await expect(crearSesionSupabase(f.cliente).sesion.fijarClaveNueva!("Nueva-12345")).rejects.toThrow();
-    expect(f.auth.updateUser).not.toHaveBeenCalled();
   });
 
   it("enviarRecuperacion pide el correo con redirección a /login", async () => {

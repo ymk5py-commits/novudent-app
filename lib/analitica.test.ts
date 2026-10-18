@@ -24,7 +24,7 @@ function entorno(ruta: string, consentida: boolean) {
     rutaConAnalitica: (r: string) => r === "/" || r === "/precios",
   };
   conectarAnalitica({ ventana: ventana as never, documento: documento as never, consentimiento: consentimiento as never });
-  return { ventana, scripts, consentir: () => oyente!({ analitica: true }) };
+  return { ventana, scripts, consentir: () => oyente!({ analitica: true }), revocar: () => oyente!({ analitica: false }) };
 }
 
 describe("conectarAnalitica", () => {
@@ -36,8 +36,17 @@ describe("conectarAnalitica", () => {
     }
   });
 
-  it("fuera del sitio público la bandera de Google queda prendida aunque no haya consentimiento", () => {
-    expect(entorno("/app", false).ventana[BANDERA]).toBe(true);
+  it("sin consentimiento la bandera de Google queda prendida en cualquier página", () => {
+    for (const ruta of ["/", "/precios", "/app"]) expect(entorno(ruta, false).ventana[BANDERA], ruta).toBe(true);
+  });
+
+  it("revocar el consentimiento con Analytics ya cargado apaga la medición (la bandera vuelve a prenderse)", () => {
+    const e = entorno("/precios", true);
+    expect(e.ventana[BANDERA]).toBe(false);
+    e.revocar();
+    expect(e.ventana[BANDERA]).toBe(true);
+    e.consentir();
+    expect(e.ventana[BANDERA]).toBe(false);
   });
 
   it("con consentimiento, en una página pública: baja la bandera y carga gtag.js con el ID de medición", () => {

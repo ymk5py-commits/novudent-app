@@ -40,7 +40,8 @@ export function conectarAnalitica({ ventana, documento, consentimiento }: { vent
 
   const ajustar = (ruta: string) => {
     const publica = consentimiento.rutaConAnalitica(ruta);
-    ventana[apagada] = !publica;
+    // Fuera del sitio público, o sin consentimiento (también si se revocó con Analytics ya cargado), queda prendida la bandera oficial para no enviar nada.
+    ventana[apagada] = !publica || !consentida;
     if (!consentida || !publica || iniciado) return;
     iniciado = true;
     cargarGtag();

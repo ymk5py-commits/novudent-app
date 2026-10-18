@@ -25,8 +25,7 @@ export const RPC = {
   fijarCampo: "fijar_campo",
   mezclarClinica: "mezclar_clinica",
   lote: "lote",
-  /** La clínica de la sesión (nunca la demo ni una cuenta dada de baja). Reemplaza al `directory` de Firestore. */
-  miClinica: "mi_clinica",
-  /** El id de MI documento de usuario en esa clínica. */
-  miUsuario: "mi_usuario",
+  /** La clínica real de la sesión y el id de MI documento de usuario: `(clinic_id, user_id)`, o ninguna fila si no tiene clínica (nunca la demo ni una cuenta dada de
+   *  baja). Reemplaza al `directory` de Firestore y a `currentUserId()`. */
+  miDirectorio: "mi_directorio",
 } as const;

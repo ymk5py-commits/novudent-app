@@ -27,8 +27,8 @@ const CARPETAS = ["app", "components", "lib"];
  *  con GoTrue por HTTP: tampoco importan el SDK. */
 const PERMITIDOS_SDK_SUPABASE = new Set(["lib/backend/supabase.ts"]);
 const PERMITIDOS_BACKEND_SUPABASE = new Set(["lib/backend/index.ts"]);
-/** Las pruebas con un stack de verdad (`*.supabase.test.ts`) y la de la sesión con un cliente falso (`supabase.sesion.test.ts`, corre con `npm test`). */
-const esPruebaConSupabase = (ruta: string) => ruta.startsWith("lib/backend/") && (ruta.endsWith(".supabase.test.ts") || ruta === "lib/backend/supabase.sesion.test.ts");
+/** Las pruebas con un stack de verdad (`*.supabase.test.ts`) y las del adaptador con un cliente falso (`supabase.<tema>.test.ts`, corren con `npm test`). */
+const esPruebaConSupabase = (ruta: string) => /^lib\/backend\/(supabase\.[a-z-]+|[a-z.-]+\.supabase)\.test\.ts$/.test(ruta);
 const ES_SDK_SUPABASE = /^@supabase(\/|$)/;
 const BACKEND_SUPABASE = join(RAIZ, "lib", "backend", "supabase");
 
