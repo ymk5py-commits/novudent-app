@@ -36,8 +36,10 @@ describe("fusion_profunda", () => {
     assert.deepEqual(await fusionar({ a: "texto" }, { a: { b: 1 } }), { a: { b: 1 } });
   });
 
-  test("un objeto vacío en el parche no borra nada", async () => {
-    assert.deepEqual(await fusionar({ a: { b: 1 } }, { a: {} }), { a: { b: 1 } });
+  test("un objeto vacío en el parche REEMPLAZA el campo (como Firestore y mezclarProfundo), y conserva a los hermanos", async () => {
+    assert.deepEqual(await fusionar({ a: { b: 1 }, c: { d: 2 } }, { a: {} }), { a: {}, c: { d: 2 } });
+    assert.deepEqual(await fusionar({ config: { a: { x: 1 }, b: { y: 2 }, lista: [1] } }, { config: { a: {}, lista: [] } }), { config: { a: {}, b: { y: 2 }, lista: [] } });
+    assert.deepEqual(await fusionar({ a: { b: 1 } }, {}), { a: { b: 1 } }, "un parche vacío entero no cambia nada");
   });
 
   test("claves con caracteres raros (puntos, comillas, números) se tratan como una clave", async () => {

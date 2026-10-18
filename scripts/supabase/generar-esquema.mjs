@@ -142,6 +142,7 @@ grant usage on schema interno to anon, authenticated, service_role;
 create or replace function interno.al_actualizar_clinica()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if new.clinic_id is distinct from old.clinic_id or new.id is distinct from old.id then
@@ -154,6 +155,7 @@ end $$;
 create or replace function interno.al_actualizar_raiz()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if new.id is distinct from old.id then

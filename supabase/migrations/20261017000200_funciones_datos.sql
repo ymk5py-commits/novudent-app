@@ -27,8 +27,9 @@ declare
   k text;
   v jsonb;
 begin
-  -- Fusión profunda de objetos como la de Firestore: los objetos se mezclan clave por clave; todo lo demás (arreglos, textos, números,
-  -- null) reemplaza. `null` se guarda como null: no borra la clave.
+  -- Fusión profunda de objetos como la de Firestore (y como mezclarProfundo() de lib/backend/documentos.ts): los objetos se mezclan clave por
+  -- clave; todo lo demás (arreglos, textos, números, null) reemplaza. `null` se guarda como null: no borra la clave. Un objeto VACÍO en el
+  -- parche REEMPLAZA el campo («dejalo vacío»), no lo deja como estaba.
   if jsonb_typeof(a) is distinct from 'object' or jsonb_typeof(b) is distinct from 'object' then
     return b;
   end if;
@@ -36,7 +37,7 @@ begin
   for k, v in select key, value from jsonb_each(b) loop
     r := jsonb_set(
       r, array[k],
-      case when jsonb_typeof(r -> k) = 'object' and jsonb_typeof(v) = 'object' then interno.fusion_profunda(r -> k, v) else v end,
+      case when jsonb_typeof(r -> k) = 'object' and jsonb_typeof(v) = 'object' and v <> '{}'::jsonb then interno.fusion_profunda(r -> k, v) else v end,
       true);
   end loop;
   return r;

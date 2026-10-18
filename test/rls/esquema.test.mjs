@@ -5,6 +5,7 @@
  */
 import { before, after, describe, test } from "node:test";
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import {
   MANIFIESTO, SIN_TABLA, TABLAS_CLINICA, TABLAS_RAIZ, TODAS_LAS_TABLAS, TABLAS_ESCUCHADAS,
   admin, aplicarMigraciones, cerrar, prepararBase, sembrar, leerComoAdmin,
@@ -50,11 +51,26 @@ describe("tablas", () => {
     }
   });
 
-  test("un documento no pasa de 2 MiB (la demo la escribe cualquiera)", async () => {
-    const casiDos = "x".repeat(1_900_000);
-    await admin(`insert into public.patients (clinic_id, id, data) values ('clBig', 'justo', jsonb_build_object('foto', $1::text))`, [casiDos]);
-    await assert.rejects(admin(`insert into public.patients (clinic_id, id, data) values ('clBig', 'enorme', jsonb_build_object('foto', $1::text))`, [casiDos + casiDos]), (e) => e.code === "23514");
-    await assert.rejects(admin(`insert into public.subscriptions (id, data) values ('enorme', jsonb_build_object('foto', $1::text))`, [casiDos + casiDos]), (e) => e.code === "23514");
+  test("un documento no pasa de 2 MiB (la demo la escribe cualquiera): el límite es exacto", async () => {
+    const TOPE = 2 * 1024 * 1024;
+    const tam = async (l) => (await admin(`select pg_column_size(jsonb_build_object('foto', repeat('x', $1::int))) as n`, [l]))[0].n;
+    const base = await tam(0);
+    const llena = TOPE - base; // el texto más largo que entra: el documento mide exactamente el tope
+    assert.equal(await tam(llena), TOPE);
+    await admin(`insert into public.patients (clinic_id, id, data) values ('clBig', 'justo', jsonb_build_object('foto', repeat('x', $1::int)))`, [llena]);
+    await assert.rejects(admin(`insert into public.patients (clinic_id, id, data) values ('clBig', 'un-byte-mas', jsonb_build_object('foto', repeat('x', $1::int)))`, [llena + 1]), (e) => e.code === "23514");
+    await assert.rejects(admin(`insert into public.subscriptions (id, data) values ('enorme', jsonb_build_object('foto', repeat('x', $1::int)))`, [llena + 1]), (e) => e.code === "23514");
+    // y al actualizar también
+    await assert.rejects(admin(`update public.patients set data = jsonb_build_object('foto', repeat('x', $1::int)) where clinic_id = 'clBig' and id = 'justo'`, [llena + 1]), (e) => e.code === "23514");
+  });
+
+  test("un documento con imágenes en base64 de ~900 KB (lo que guarda la app: radiografías, firmas, foto del paciente) entra", async () => {
+    const base64 = randomBytes(675_000).toString("base64"); // ~900 KB de texto base64 (al azar: una foto real no se comprime)
+    assert.ok(base64.length > 890_000 && base64.length < 910_000);
+    await sembrar("radiographs", "clBig", "rx", { id: "rx", image: `data:image/jpeg;base64,${base64}`, findings: ["caries 26"] });
+    await sembrar("signatures", "clBig", "firma", { id: "firma", signature: `data:image/png;base64,${base64}`, status: "firmado" });
+    const [{ n }] = await admin(`select octet_length(data::text) as n from public.radiographs where clinic_id = 'clBig' and id = 'rx'`);
+    assert.ok(n > 890_000 && n < 1_048_576, `mide ${n} bytes`);
   });
 
   test("`data` tiene que ser un objeto JSON", async () => {
