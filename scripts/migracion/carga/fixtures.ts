@@ -103,8 +103,8 @@ export async function escribirExportacion(carpeta: string, { base = baseSintetic
 }
 
 /** Un GoTrue falso con memoria (la API de `gotrue.mjs`): cada cuenta nueva recibe `uuid-1`, `uuid-2`… */
-export function gotrueFalso(inicial: Array<{ id: string; email: string; esAnonimo?: boolean }> = [], { falla = {} as Record<string, Error> } = {}) {
-  const usuarios = inicial.map((u) => ({ esAnonimo: false, ...u }));
+export function gotrueFalso(inicial: Array<{ id: string; email: string; esAnonimo?: boolean; creadaPorElCargador?: boolean }> = [], { falla = {} as Record<string, Error> } = {}) {
+  const usuarios = inicial.map((u) => ({ esAnonimo: false, creadaPorElCargador: true, ...u }));
   const creados: Array<{ email: string; nombre: string; firebaseUid: string }> = [];
   let n = 0;
   return {
@@ -114,7 +114,7 @@ export function gotrueFalso(inicial: Array<{ id: string; email: string; esAnonim
       if (falla[email]) throw falla[email];
       if (usuarios.some((u) => u.email === email)) throw new ErrorDeGoTrue("ya existe", { estado: 422, codigo: "email_exists" });
       const id = `uuid-${++n}`;
-      usuarios.push({ id, email, esAnonimo: false });
+      usuarios.push({ id, email, esAnonimo: false, creadaPorElCargador: true });
       creados.push({ email, nombre, firebaseUid });
       return { id, email };
     },

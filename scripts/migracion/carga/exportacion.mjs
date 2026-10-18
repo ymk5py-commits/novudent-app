@@ -53,8 +53,19 @@ export function exigirFueraDelRepo(ruta, { raizDelRepo = RAIZ_DEL_REPO, que = "L
 
 const tieneManifiesto = (carpeta) => existsSync(join(carpeta, "manifiesto.json"));
 
-/** La carpeta de la exportación. `dir` null = `~/novudent-export`; si ahí no está el manifiesto, se toma la subcarpeta más nueva (por nombre, que es la
- *  fecha) que sí lo tenga: una exportación que no terminó no deja `manifiesto.json`. */
+/** Cuándo se generó una exportación (la fecha del manifiesto), o `null` si no se puede leer. */
+function generadoDe(carpeta) {
+  try {
+    const t = Date.parse(JSON.parse(readFileSync(join(carpeta, "manifiesto.json"), "utf8")).generado);
+    return Number.isNaN(t) ? null : t;
+  } catch {
+    return null;
+  }
+}
+
+/** La carpeta de la exportación. `dir` null = `~/novudent-export`; si ahí no está el manifiesto, se toma la subcarpeta que se GENERÓ más tarde (la fecha del
+ *  manifiesto, no el orden del nombre: una carpeta llamada `hoy` ordena después de `2026-10-17`) entre las que sí lo tienen: una exportación que no terminó no
+ *  deja `manifiesto.json`. */
 export function ubicarExportacion(dir, { casa = homedir(), directorioActual = process.cwd(), raizDelRepo = RAIZ_DEL_REPO } = {}) {
   const base = resolve(directorioActual, dir ?? join(casa, "novudent-export"));
   exigirFueraDelRepo(base, { raizDelRepo });
@@ -63,11 +74,10 @@ export function ubicarExportacion(dir, { casa = homedir(), directorioActual = pr
   else if (existsSync(base) && statSync(base).isDirectory()) {
     const candidatas = readdirSync(base, { withFileTypes: true })
       .filter((d) => d.isDirectory() || d.isSymbolicLink())
-      .map((d) => d.name)
-      .sort()
-      .reverse();
-    const elegida = candidatas.find((nombre) => tieneManifiesto(join(base, nombre)));
-    if (elegida) carpeta = join(base, elegida);
+      .map((d) => ({ nombre: d.name, generado: generadoDe(join(base, d.name)) }))
+      .filter((c) => tieneManifiesto(join(base, c.nombre)))
+      .sort((a, b) => (b.generado ?? -Infinity) - (a.generado ?? -Infinity) || (a.nombre < b.nombre ? 1 : -1));
+    if (candidatas.length) carpeta = join(base, candidatas[0].nombre);
   }
   if (!carpeta) throw new Error(`No encuentro una exportación en ${base} (falta manifiesto.json). Corré antes: npm run migracion:exportar`);
   exigirFueraDelRepo(carpeta, { raizDelRepo }); // una subcarpeta puede ser un enlace que sale (o entra) por otro lado
@@ -116,6 +126,19 @@ export function planDeCarga(manifiesto, colecciones, { permitirIncompleto = fals
     const m = `la exportación está incompleta: ${manifiesto.noLeidas.length} colección(es) no se pudieron leer (${manifiesto.noLeidas.slice(0, 5).map((n) => n.ruta).join(", ")})`;
     if (!permitirIncompleto) throw new ErrorDeExportacion(`${m[0].toUpperCase()}${m.slice(1)}. Volvé a exportar (o usá --permitir-incompleto para una prueba).`);
     advertencias.push(`⚠️ ${m}.`);
+  }
+
+  // Valores que no son JSON puro: el exportador los dejó como texto (o como null si no los reconoció).
+  const hallazgos = Object.entries(manifiesto.hallazgos ?? {}).filter(([, n]) => Number.isFinite(n) && n > 0);
+  if (hallazgos.length) {
+    const lista = hallazgos.map(([tipo, n]) => `${tipo}: ${n}`).join(", ");
+    if ((manifiesto.hallazgos.desconocido ?? 0) > 0) {
+      const m = `la exportación tiene valores de un tipo desconocido que se guardaron como null (se perdieron: ${lista})`;
+      if (!permitirIncompleto) throw new ErrorDeExportacion(`${m[0].toUpperCase()}${m.slice(1)}. Revisá el informe de la exportación (o usá --permitir-incompleto para una prueba).`);
+      advertencias.push(`⚠️ ${m}.`);
+    } else {
+      advertencias.push(`Hay valores que no son JSON puro y quedaron como texto (${lista}); la app guarda las fechas como texto ISO, así que lo esperado es que no haya ninguno.`);
+    }
   }
 
   const noSeCarga = new Set([...NO_SE_CARGA, ...(colecciones.noSeMigra ?? [])]);

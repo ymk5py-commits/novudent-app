@@ -6,6 +6,9 @@
  *  salvo `authUid`, que pasa a ser el uuid nuevo. Es idempotente: la cuenta se busca por correo antes de crearla. */
 import { ErrorDeGoTrue } from "./gotrue.mjs";
 
+/** La clínica de la demo pública: sus usuarios no tienen cuenta (se eligen en la pantalla de la demo). */
+export const CLINICA_DEMO = "cl_demo";
+
 /** Lo que se escribe en `authUid` mientras la cuenta no existe (simulacro): nunca se deja el uid viejo de Firebase, que apunta a nada. */
 export const PENDIENTE = "(cuenta por crear en GoTrue)";
 
@@ -23,17 +26,17 @@ export function esUsuarioReal(data) {
 export function recolectarUsuarios(documentos) {
   const reales = [];
   const sinCorreo = [];
-  let deLaDemo = 0;
+  const sinAuthUid = [];
   for (const { clinica, id, data } of documentos) {
     if (esUsuarioReal(data)) {
       reales.push({ clinica, id, email: claveDeEmail(data.email), nombre: typeof data.name === "string" ? data.name : "", firebaseUid: data.authUid });
     } else if (typeof data?.authUid === "string" && data.authUid !== "") {
       sinCorreo.push({ clinica, id }); // tiene cuenta en Firebase pero el documento no trae un correo usable: no hay con qué crearla
     } else {
-      deLaDemo++;
+      sinAuthUid.push({ clinica, id });
     }
   }
-  return { reales, sinCorreo, deLaDemo };
+  return { reales, sinCorreo, sinAuthUid };
 }
 
 /** El documento de usuario con `authUid` cambiado por el uuid de GoTrue. No muta el original. Los que no son reales vuelven tal cual.
@@ -48,7 +51,7 @@ export function reescribirUsuario(data, uuidPorEmail) {
  *
  * @param {{
  *   reales: Array<{ clinica: string, id: string, email: string, nombre: string, firebaseUid: string }>,
- *   gotrue: { listarUsuarios(): Promise<Array<{ id: string, email: string, esAnonimo: boolean }>>, crearUsuario(u: { email: string, nombre: string, firebaseUid: string }): Promise<{ id: string }> } | null,
+ *   gotrue: { listarUsuarios(): Promise<Array<{ id: string, email: string, esAnonimo: boolean, creadaPorElCargador?: boolean }>>, crearUsuario(u: { email: string, nombre: string, firebaseUid: string }): Promise<{ id: string }> } | null,
  *   crear: boolean,
  *   alAvanzar?: (mensaje: string) => void,
  * }} opciones
@@ -56,7 +59,7 @@ export function reescribirUsuario(data, uuidPorEmail) {
 export async function asegurarUsuarios({ reales, gotrue, crear, alAvanzar = () => {} }) {
   /** @type {Map<string, string>} */
   const uuidPorEmail = new Map();
-  const resultado = { uuidPorEmail, creados: 0, existentes: 0, porCrear: 0, repetidos: [], consultado: gotrue !== null };
+  const resultado = { uuidPorEmail, creados: 0, existentes: 0, adoptadas: 0, porCrear: 0, repetidos: [], consultado: gotrue !== null };
 
   const porCorreo = new Map();
   for (const u of reales) {
@@ -68,15 +71,16 @@ export async function asegurarUsuarios({ reales, gotrue, crear, alAvanzar = () =
   const enGoTrue = new Map();
   const leer = async () => {
     enGoTrue.clear();
-    for (const u of await gotrue.listarUsuarios()) if (!u.esAnonimo && u.email) enGoTrue.set(claveDeEmail(u.email), u.id);
+    for (const u of await gotrue.listarUsuarios()) if (!u.esAnonimo && u.email) enGoTrue.set(claveDeEmail(u.email), u);
   };
   if (gotrue) await leer();
 
   for (const u of porCorreo.values()) {
     const previo = enGoTrue.get(u.email);
     if (previo) {
-      uuidPorEmail.set(u.email, previo);
+      uuidPorEmail.set(u.email, previo.id);
       resultado.existentes++;
+      if (previo.creadaPorElCargador === false) resultado.adoptadas++; // ya estaba, y no la creó el cargador: se la adopta pero se avisa
       continue;
     }
     if (!crear || !gotrue) {
@@ -92,9 +96,9 @@ export async function asegurarUsuarios({ reales, gotrue, crear, alAvanzar = () =
       // Alguien la creó entre medio (o un reintento después de un corte de red): se la busca en vez de fallar.
       if (!(e instanceof ErrorDeGoTrue) || e.codigo !== "email_exists") throw e;
       await leer();
-      const id = enGoTrue.get(u.email);
-      if (!id) throw e;
-      uuidPorEmail.set(u.email, id);
+      const ya = enGoTrue.get(u.email);
+      if (!ya) throw e;
+      uuidPorEmail.set(u.email, ya.id);
       resultado.existentes++;
     }
   }

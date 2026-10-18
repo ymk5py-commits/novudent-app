@@ -59,4 +59,16 @@ describe("armarInforme", () => {
     expect(texto).toMatch(/no se pudo cargar|NO se pudieron cargar/i);
     expect(texto).toMatch(/directory/); // advertencia: se exportó y no se carga
   });
+
+  it("no muestra los ids de checkoutTokens (el id ES el token secreto del pago) ni en el simulacro ni en las diferencias", async () => {
+    const base = baseSintetica() as any;
+    base.checkoutTokens = [{ id: "tok_SECRETO_123", data: { clinicId: "c1" } }, { id: "tok_SECRETO_456", data: { clinicId: "c1" } }];
+    const carpeta = carpetaTemporal();
+    await escribirExportacion(carpeta, { base, colecciones: { "": ["clinics", "checkoutTokens"], "clinics/c1": ["users"] } });
+    const informe = await ejecutarCarga({ carpeta, colecciones: COLECCIONES, almacen: crearAlmacenEnMemoria({ colecciones: [...COLECCIONES.porClinica, ...COLECCIONES.raiz] }), gotrue: gotrueFalso(), modo: "simulacro" });
+    const texto = armarInforme(informe);
+    expect(texto).not.toContain("tok_SECRETO");
+    expect(texto).toMatch(/checkoutTokens/);
+    expect(texto).toMatch(/2 ids ocultos/);
+  });
 });

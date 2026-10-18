@@ -36,7 +36,7 @@ export function crearAlmacenEnMemoria({ colecciones, soloLectura = false }) {
     async preparar(lista) {
       return { problemas: lista.filter((c) => !conocidas.has(c)).map((c) => `No existe la tabla de la colección «${c}».`) };
     },
-    async upsertar({ coleccion, clinica, filas }) {
+    async upsertar({ coleccion, clinica, filas, sobrescribir = true }) {
       if (soloLectura) throw new Error(SOLO_LECTURA);
       const t = tabla(coleccion, clinica);
       const r = { insertados: 0, actualizados: 0, iguales: 0, fallidos: [] };
@@ -44,10 +44,13 @@ export function crearAlmacenEnMemoria({ colecciones, soloLectura = false }) {
         if (tieneNul(data) || tieneNul(id)) { r.fallidos.push({ id, codigo: "22P05", mensaje: "unsupported Unicode escape sequence" }); continue; }
         const nuevo = JSON.parse(JSON.stringify(data));
         if (!t.has(id)) { t.set(id, nuevo); r.insertados++; }
-        else if (canonizar(t.get(id)) === canonizar(nuevo)) r.iguales++;
+        else if (!sobrescribir || canonizar(t.get(id)) === canonizar(nuevo)) r.iguales++; // sin sobrescribir lo que ya está no se toca
         else { t.set(id, nuevo); r.actualizados++; }
       }
       return r;
+    },
+    async contar({ coleccion, clinica }) {
+      return leer(coleccion, clinica).size;
     },
     async leerPagina({ coleccion, clinica, despuesDe, limite }) {
       const t = leer(coleccion, clinica);
@@ -126,6 +129,11 @@ export async function crearAlmacenPostgres({ url, soloLectura = false, esquema =
 
     /** Resuelve las tablas de las colecciones y revisa sus columnas. */
     async preparar(colecciones) {
+      // Con RLS activado en las tablas, un rol común vería solo algunas filas (o ninguna): la carga y sobre todo la verificación saldrían mal sin avisar.
+      const { rows: roles } = await consultar("select current_user as rol, (rolsuper or rolbypassrls) as salta from pg_roles where rolname = current_user");
+      if (!roles[0]?.salta) {
+        return { problemas: [`El rol «${roles[0]?.rol ?? "?"}» de la conexión no es superusuario ni tiene BYPASSRLS: las reglas de seguridad por fila le ocultarían documentos y la verificación no sería completa. Conectate como postgres/supabase_admin (o con el rol de la clave service_role).`] };
+      }
       const { rows: filas } = await consultar(
         "select c.table_name, c.column_name from information_schema.columns c join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name where c.table_schema = $1 and t.table_type = 'BASE TABLE'",
         [esquema],
@@ -145,12 +153,17 @@ export async function crearAlmacenPostgres({ url, soloLectura = false, esquema =
       return { problemas };
     },
 
-    async upsertar({ coleccion, clinica, filas }) {
+    async upsertar({ coleccion, clinica, filas, sobrescribir = true }) {
       if (soloLectura) throw new Error(SOLO_LECTURA);
       const t = exigir(coleccion, clinica);
+      // Con sobrescribir, `do update … where distinct` (una fila igual no se toca). Sin sobrescribir, `do nothing`: la propia base impide pisar un documento que
+      // alguien cambió después de la revisión previa; lo que quede distinto lo muestra la verificación final.
+      const alConflicto = (claves) => (sobrescribir
+        ? `on conflict (${claves}) do update set data = excluded.data where t.data is distinct from excluded.data returning (xmax = 0) as insertado`
+        : `on conflict (${claves}) do nothing returning true as insertado`);
       const sql = clinica === null
-        ? `insert into ${t} as t (id, data) select r.id, r.data from jsonb_to_recordset($1::jsonb) as r(id text, data jsonb) on conflict (id) do update set data = excluded.data where t.data is distinct from excluded.data returning (xmax = 0) as insertado`
-        : `insert into ${t} as t (clinic_id, id, data) select $1::text, r.id, r.data from jsonb_to_recordset($2::jsonb) as r(id text, data jsonb) on conflict (clinic_id, id) do update set data = excluded.data where t.data is distinct from excluded.data returning (xmax = 0) as insertado`;
+        ? `insert into ${t} as t (id, data) select r.id, r.data from jsonb_to_recordset($1::jsonb) as r(id text, data jsonb) ${alConflicto("id")}`
+        : `insert into ${t} as t (clinic_id, id, data) select $1::text, r.id, r.data from jsonb_to_recordset($2::jsonb) as r(id text, data jsonb) ${alConflicto("clinic_id, id")}`;
       const lote = async (lista) => {
         const json = JSON.stringify(lista);
         const { rows } = await consultar(sql, clinica === null ? [json] : [clinica, json]);
@@ -182,6 +195,12 @@ export async function crearAlmacenPostgres({ url, soloLectura = false, esquema =
         ? await consultar(`select id, data from ${t} where ($1::text is null or id > $1) order by id limit $2`, [despuesDe, limite])
         : await consultar(`select id, data from ${t} where clinic_id = $1 and ($2::text is null or id > $2) order by id limit $3`, [clinica, despuesDe, limite]);
       return rows.map((r) => ({ id: r.id, data: r.data }));
+    },
+
+    async contar({ coleccion, clinica }) {
+      const t = exigir(coleccion, clinica);
+      const { rows } = clinica === null ? await consultar(`select count(*)::int as n from ${t}`) : await consultar(`select count(*)::int as n from ${t} where clinic_id = $1`, [clinica]);
+      return rows[0].n;
     },
 
     async clinicasEn(coleccion) {

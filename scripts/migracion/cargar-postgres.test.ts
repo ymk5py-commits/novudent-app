@@ -22,6 +22,19 @@ describe("leerArgumentos", () => {
     const e = leerArgumentos([], { NOVUDENT_CARGA_DB_URL: "postgres://u:p@h/db", NOVUDENT_CARGA_GOTRUE_URL: "http://h/auth/v1", NOVUDENT_CARGA_SERVICE_KEY: "k" });
     expect(e).toMatchObject({ urlBase: "postgres://u:p@h/db", urlGotrue: "http://h/auth/v1", claveServicio: "k" });
   });
+  it("una opción desconocida o un argumento suelto no se repiten en el mensaje (podrían ser una URL con la clave)", () => {
+    for (const mal of ["--url-base=postgres://u:SECRETO@h/db", "postgres://u:SECRETO@h/db", "--clave=SECRETO"]) {
+      let mensaje = "";
+      try { leerArgumentos([mal], {}); } catch (e) { mensaje = (e as Error).message; }
+      expect(mensaje).toMatch(/Opción desconocida|Argumento inesperado/);
+      expect(mensaje).not.toContain("SECRETO");
+    }
+    expect(() => leerArgumentos(["--url-base=x"], {})).toThrow(/--url-base=/); // pero dice cuál opción es y que el valor va separado
+  });
+  it("--aceptar-sin-correo se lee como opción", () => {
+    expect(leerArgumentos(["--aceptar-sin-correo"], {}).aceptarSinCorreo).toBe(true);
+    expect(leerArgumentos([], {}).aceptarSinCorreo).toBe(false);
+  });
   it("la clave de servicio solo se lee del entorno (no hay opción para ponerla en la línea de comandos)", () => {
     expect(() => leerArgumentos(["--clave-servicio", "x"], {})).toThrow(/Opción desconocida/);
   });
@@ -52,6 +65,13 @@ describe("validarDestino", () => {
     expect(() => validarDestino(vacio)).not.toThrow();
     expect(() => validarDestino({ ...vacio, urlGotrue: "http://h/auth/v1" })).toThrow(/NOVUDENT_CARGA_SERVICE_KEY/);
     expect(() => validarDestino({ ...vacio, claveServicio: "k" })).toThrow(/--url-gotrue/);
+  });
+  it("GoTrue por http:// solo si es este equipo, una red privada o un nombre interno; a cualquier otro servidor hace falta https:// (la clave de servicio viaja en cada pedido)", () => {
+    const base = { dryRun: false, soloVerificar: false, urlBase: URL_BASE, claveServicio: CLAVE };
+    const bien = ["https://api-novudent.novumholding.lat/auth/v1", "http://127.0.0.1:18100/auth/v1", "http://localhost:8000/auth/v1", "http://[::1]:8000/auth/v1", "http://10.0.6.3:9999", "http://172.16.0.5:9999", "http://172.31.255.1:9999", "http://192.168.1.20:8000/auth/v1", "http://auth:9999"];
+    const mal = ["http://api-novudent.novumholding.lat/auth/v1", "http://203.0.113.5:8000/auth/v1", "http://172.32.0.1/auth/v1", "http://172.15.0.1/auth/v1", "http://8.8.8.8/auth/v1"];
+    for (const url of bien) expect(() => validarDestino({ ...base, urlGotrue: url }), url).not.toThrow();
+    for (const url of mal) expect(() => validarDestino({ ...base, urlGotrue: url }), url).toThrow(/https/);
   });
   it("la URL de la base tiene que ser postgres:// y la de GoTrue http(s)://, sin repetir la clave en el mensaje", () => {
     expect(() => validarDestino({ ...base, urlBase: "mysql://u:CLAVEDELABASE@h/db" })).toThrow(/postgres/);

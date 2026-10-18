@@ -6,7 +6,10 @@ const tabla = (cabecera, filas) => [fila(...cabecera), fila(...cabecera.map(() =
 const TOPE_DE_IDS = 20;
 
 const nombreDe = (clinica, coleccion) => (clinica ? `clinics/${clinica}/${coleccion}` : coleccion);
-const ids = (lista) => {
+/** Colecciones cuyo id es una credencial: `checkoutTokens/{token}` ata un pago a una clínica. Sus ids nunca se muestran, solo cuántos son. */
+const CON_ID_SECRETO = new Set(["checkoutTokens"]);
+const ids = (lista, coleccion) => {
+  if (CON_ID_SECRETO.has(coleccion)) return `${lista.length} ids ocultos (son credenciales)`;
   const vistos = lista.slice(0, TOPE_DE_IDS).map((id) => `\`${id}\``).join(", ");
   return lista.length > TOPE_DE_IDS ? `${vistos} … y ${lista.length - TOPE_DE_IDS} más` : vistos;
 };
@@ -68,10 +71,10 @@ export function armarInforme(informe) {
     const lineas = [];
     for (const f of conDiferencias) {
       const n = nombreDe(f.clinica, f.coleccion);
-      if (f.carga?.fallidos.length) lineas.push(`- **${n}** — no se pudo cargar: ${f.carga.fallidos.slice(0, TOPE_DE_IDS).map((x) => `\`${x.id}\` (${x.codigo ?? "error"}: ${x.mensaje})`).join(", ")}`);
-      if (f.faltan.length) lineas.push(`- **${n}** — ${simulacro ? "se insertarían" : "faltan en la base"}: ${ids(f.faltan)}`);
-      if (f.distintos.length) lineas.push(`- **${n}** — ${simulacro ? "se actualizarían" : "distintos a la exportación"}: ${ids(f.distintos)}`);
-      if (f.sobran.length) lineas.push(`- **${n}** — sobran en la base: ${ids(f.sobran)}`);
+      if (f.carga?.fallidos.length) lineas.push(`- **${n}** — no se pudo cargar: ${f.carga.fallidos.slice(0, TOPE_DE_IDS).map((x) => (CON_ID_SECRETO.has(f.coleccion) ? `(id oculto) (${x.codigo ?? "error"}: ${x.mensaje})` : `\`${x.id}\` (${x.codigo ?? "error"}: ${x.mensaje})`)).join(", ")}`);
+      if (f.faltan.length) lineas.push(`- **${n}** — ${simulacro ? "se insertarían" : "faltan en la base"}: ${ids(f.faltan, f.coleccion)}`);
+      if (f.distintos.length) lineas.push(`- **${n}** — ${simulacro ? "se actualizarían" : "distintos a la exportación"}: ${ids(f.distintos, f.coleccion)}`);
+      if (f.sobran.length) lineas.push(`- **${n}** — sobran en la base: ${ids(f.sobran, f.coleccion)}`);
     }
     partes.push(["## Detalle", ...lineas].join("\n"));
   }

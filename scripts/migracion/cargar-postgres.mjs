@@ -32,6 +32,7 @@ const AYUDA = `Uso: node scripts/migracion/cargar-postgres.mjs [opciones]
   --ignorar-desconocidas  sigue aunque la exportación traiga colecciones que no están en lib/backend/colecciones.json (esos datos NO se cargan)
   --sobrescribir          permite cargar aunque la base ya tenga documentos DISTINTOS a los de la exportación (los pisa). Sin esto, la carga se niega: esos
                           documentos pueden ser ediciones más nuevas que la exportación. Mirá antes con --dry-run
+  --aceptar-sin-correo    no cuenta como diferencia un usuario con authUid pero sin correo usable (no se le puede crear cuenta y no podrá entrar)
   --lote N                documentos por consulta (por defecto 200)
   --informe RUTA          dónde guardar el informe (por defecto <exportación>/informe-de-carga-<fecha>.md; con --dry-run no se guarda salvo que lo pidas)
   --ayuda                 esta ayuda
@@ -44,7 +45,7 @@ export function leerArgumentos(argv, env = process.env) {
     urlBase: env.NOVUDENT_CARGA_DB_URL || null,
     urlGotrue: env.NOVUDENT_CARGA_GOTRUE_URL || null,
     claveServicio: env.NOVUDENT_CARGA_SERVICE_KEY || null,
-    dryRun: false, soloVerificar: false, permitirIncompleto: false, ignorarDesconocidas: false, sobrescribir: false,
+    dryRun: false, soloVerificar: false, permitirIncompleto: false, ignorarDesconocidas: false, sobrescribir: false, aceptarSinCorreo: false,
     tamanoDeLote: 200, informe: null, ayuda: false,
   };
   const valor = (i, nombre) => {
@@ -66,11 +67,28 @@ export function leerArgumentos(argv, env = process.env) {
     else if (a === "--permitir-incompleto") o.permitirIncompleto = true;
     else if (a === "--ignorar-desconocidas") o.ignorarDesconocidas = true;
     else if (a === "--sobrescribir") o.sobrescribir = true;
+    else if (a === "--aceptar-sin-correo") o.aceptarSinCorreo = true;
     else if (a === "--ayuda" || a === "-h") o.ayuda = true;
-    else throw new Error(`Opción desconocida: ${a}\n${AYUDA}`);
+    // Nunca se repite el valor: podría ser una URL con la clave (`--url-base=postgres://u:clave@…`). Los valores van separados: `--url-base URL`.
+    else if (a.startsWith("--")) throw new Error(`Opción desconocida: ${a.split("=")[0]}${a.includes("=") ? "= (los valores van separados por un espacio: --opción valor)" : ""}\n${AYUDA}`);
+    else throw new Error(`Argumento inesperado (no se muestra por si lleva una clave). Las opciones empiezan con --; mirá el uso:\n${AYUDA}`);
   }
   if (o.dryRun && o.soloVerificar) throw new Error("--dry-run y --solo-verificar no se combinan: uno simula la carga y el otro compara lo que ya hay.");
   return o;
+}
+
+/** ¿Es un servidor al que se puede hablar sin cifrar (la clave de servicio viaja en cada pedido)? Este equipo, una red privada o un nombre interno de Docker/Coolify
+ *  (sin puntos, como `auth`); cualquier otro necesita https. */
+function esDeLaRedInterna(url) {
+  const h = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (h === "localhost" || h === "::1" || h.endsWith(".localhost")) return true;
+  const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  }
+  if (h.includes(":")) return /^f[cd]/.test(h); // IPv6 privada (fc00::/7)
+  return !h.includes("."); // un nombre de servicio de Docker
 }
 
 /** Lo que hace falta para cada modo. Nunca repite una URL ni una clave en el mensaje. */
@@ -87,6 +105,7 @@ export function validarDestino(o) {
     let u = null;
     try { u = new URL(o.urlGotrue); } catch { /* se informa abajo */ }
     if (!u || (u.protocol !== "http:" && u.protocol !== "https:")) throw new Error("La URL de GoTrue tiene que empezar con http:// o https://.");
+    if (u.protocol === "http:" && !esDeLaRedInterna(u)) throw new Error("La URL de GoTrue tiene que ser https:// salvo que sea de este equipo o de una red privada: la clave de servicio viajaría sin cifrar.");
     if (!o.claveServicio) throw new Error("Falta la clave de servicio (service_role) de GoTrue: ponela en la variable de entorno NOVUDENT_CARGA_SERVICE_KEY (no se acepta por la línea de comandos).");
   }
 }
@@ -143,7 +162,7 @@ export async function principal(argv, { env = process.env, colecciones, crearAlm
 
     const informe = await ejecutarCarga({
       carpeta, colecciones: colecciones ?? COLECCIONES(), almacen, gotrue, modo,
-      permitirIncompleto: o.permitirIncompleto, ignorarDesconocidas: o.ignorarDesconocidas, sobrescribir: o.sobrescribir, tamanoDeLote: o.tamanoDeLote,
+      permitirIncompleto: o.permitirIncompleto, ignorarDesconocidas: o.ignorarDesconocidas, sobrescribir: o.sobrescribir, aceptarSinCorreo: o.aceptarSinCorreo, tamanoDeLote: o.tamanoDeLote,
       alAvanzar: (m) => avisarSeguro(m),
     });
     const texto = armarInforme(informe);

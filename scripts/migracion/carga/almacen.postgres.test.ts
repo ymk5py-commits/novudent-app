@@ -59,4 +59,25 @@ describe.skipIf(!URL_DE_PRUEBA)("almacén de Postgres", () => {
       await base.borrar();
     }
   });
+
+  it("se niega a trabajar con un rol sujeto a RLS (la verificación no vería todas las filas)", async () => {
+    const base = await crearEsquemaDePrueba(COLECCIONES);
+    const rol = `rol_t_${Math.random().toString(36).slice(2, 10)}`;
+    const clave = `c${Math.random().toString(36).slice(2, 12)}`;
+    await base.consultar(`create role ${rol} login password '${clave}'`);
+    try {
+      const u = new URL(URL_DE_PRUEBA!);
+      u.username = rol;
+      u.password = clave;
+      const almacen = await crearAlmacenPostgres({ url: u.toString(), soloLectura: true, esquema: base.esquema });
+      const { problemas } = await almacen.preparar(["patients"]);
+      expect(problemas).toHaveLength(1);
+      expect(problemas[0]).toMatch(/BYPASSRLS/);
+      expect(problemas[0]).toContain(rol);
+      await almacen.cerrar();
+    } finally {
+      await base.consultar(`drop role ${rol}`);
+      await base.borrar();
+    }
+  });
 });

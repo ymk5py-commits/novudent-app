@@ -6,14 +6,19 @@ comparación SHA-256 documento por documento. Spec: `docs/superpowers/specs/2026
 ## Qué hace
 
 1. **Valida la exportación antes de tocar nada**: cada archivo contra el manifiesto (SHA-256, tamaño y cantidad de documentos), que no sea una medición (`--solo-medir`), parcial
-   (`--clinica`) ni incompleta, y que no traiga colecciones fuera de `lib/backend/colecciones.json` (esas no tienen tabla y se perderían). Los datos se leen de una carpeta **fuera del
-   repositorio** (por defecto `~/novudent-export`, la más nueva); el programa se niega a leer o escribir adentro del repo.
-2. **Revisa la base**: que existan las tablas de **todas** las colecciones del manifiesto (con `id` y `data`). Las tablas son las de la fase B (`supabase/migrations/`).
+   (`--clinica`) ni incompleta, que no traiga valores de un tipo desconocido perdidos como `null`, y que no traiga colecciones fuera de `lib/backend/colecciones.json` (esas no tienen tabla y
+   se perderían). Los datos se leen de una carpeta **fuera del repositorio** (por defecto `~/novudent-export`; si ahí hay carpetas por fecha, la que se **generó** más tarde según su
+   manifiesto, y el programa dice cuál y cuándo); se niega a leer o escribir adentro del repo.
+2. **Revisa la base**: que existan las tablas de **todas** las colecciones del manifiesto (con `id` y `data`; las de la fase B, `supabase/migrations/`) y que el rol de la conexión
+   sea superusuario o tenga `BYPASSRLS` (`postgres`, `supabase_admin` o `service_role`): con RLS un rol común vería solo algunas filas y la verificación no sería completa.
 3. **Cuentas de GoTrue**: un usuario es *real* si su documento tiene `authUid` y un correo (los de la demo traen correo pero no `authUid`; las cuentas anónimas de Firebase no tienen
    documento). A cada uno se le crea una cuenta con la API de administración —**sin contraseña**, correo confirmado, y el uid viejo de Firebase en `app_metadata.firebase_uid`—;
-   la persona elige su contraseña por correo. Se busca por correo antes de crear: repetir no duplica. **El documento conserva todo, también el `id`; solo `data.authUid` pasa a ser el uuid
+   la persona elige su contraseña por correo. Se busca por correo antes de crear: repetir no duplica. Se crean también para los usuarios dados de baja (`active: false`): sin membresía
+   activa no ven nada. Un usuario con `authUid` pero **sin correo usable** no se puede migrar (no podría entrar): cuenta como diferencia (`--aceptar-sin-correo` para aceptarlo). Si una cuenta
+   con ese correo ya existía y no la creó el cargador, se la adopta pero se avisa (el registro de GoTrue está abierto). **El documento conserva todo, también el `id`; solo `data.authUid` pasa a ser el uuid
    nuevo**, así que ninguna referencia (`dentistId`, `participants`…) se reescribe.
-4. **Carga por upsert**: `insert … on conflict do update … where data is distinct from excluded.data`. Una segunda carga igual no toca ni una fila (tampoco su `updated_at`).
+4. **Carga por upsert**: `insert … on conflict do update … where data is distinct from excluded.data` (con `--sobrescribir`) o `on conflict do nothing` (sin él: la base impide pisar un
+   documento que alguien editó después de la revisión previa). Una segunda carga igual no toca ni una fila (tampoco su `updated_at`).
    Parámetros siempre ligados; los nombres de tabla salen de la lista blanca y se hallan en el catálogo de la base. `directory` y `serviceAccounts` **no** se cargan.
 5. **Verifica TODO**: SHA-256 de la forma canónica `{id, data}` de cada documento del archivo contra el leído de la base (Postgres reordena las claves de `jsonb`, por eso no es el hash de
    la línea cruda), en los dos sentidos: faltan, distintos y **sobran** (incluso clínicas enteras que no están en la exportación). **El cargador nunca borra.**
@@ -32,7 +37,8 @@ npm run migracion:cargar                       # carga y verifica
 npm run migracion:cargar -- --solo-verificar   # solo compara (la sesión de Postgres se abre en solo lectura)
 ```
 
-Opciones: `--exportacion DIR`, `--url-base`, `--url-gotrue`, `--sobrescribir`, `--permitir-incompleto`, `--ignorar-desconocidas`, `--lote N`, `--informe RUTA`, `--ayuda`.
+Opciones: `--exportacion DIR`, `--url-base`, `--url-gotrue`, `--sobrescribir`, `--aceptar-sin-correo`, `--permitir-incompleto`, `--ignorar-desconocidas`, `--lote N`, `--informe RUTA`, `--ayuda`
+(los valores van separados por un espacio, no con `=`).
 Sin `--url-base` ni `--url-gotrue`, `--dry-run` solo valida la exportación.
 
 **Código de salida:** `0` todo bien · `2` hay diferencias (o documentos que no se pudieron cargar) · `1` error (la exportación no sirve, falta algo, la base no está lista…).
@@ -42,6 +48,10 @@ El informe (Markdown, solo ids y números, nunca el contenido de un documento ni
 
 - **No pisa ediciones más nuevas.** Si la base ya tiene documentos *distintos* a los de la exportación, la carga se niega (sin crear cuentas) y lista las colecciones; hay que repetir con
   `--sobrescribir`. Un segundo simulacro con una exportación nueva sí lo necesita; cargar la misma exportación otra vez, no. Mirá antes con `--dry-run`.
+- **Lo que NO cubre la guarda:** un documento *borrado* en la base después de cargar reaparece si se vuelve a cargar (la guarda solo ve documentos distintos). Este cargador es para la
+  ventana de migración: **no lo corras sobre una base que ya se usó**.
+- Los ids de `checkoutTokens` (que son credenciales de pago) nunca salen en el informe; solo cuántos son.
+- GoTrue por `http://` solo si es de este equipo, de una red privada o un nombre interno (`auth:9999`); a cualquier otro servidor, `https://`. No sigue redirecciones.
 - Un bloqueo de aviso de Postgres (por esquema) impide que dos cargas corran a la vez.
 - Un documento que Postgres no acepta (por ejemplo un texto con el carácter NUL) se informa por su id —sin su contenido—, el resto se carga y el resultado sale con código 2.
 - Si el mismo correo está en dos clínicas, comparten una sola cuenta de GoTrue, pero el esquema (fase B) admite **una sola clínica real por persona**: el segundo documento no se carga y se informa.

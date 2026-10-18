@@ -287,12 +287,113 @@ describe("documentos que la base no acepta", () => {
 });
 
 describe("usuarios sin cuenta posible", () => {
-  it("un usuario con authUid pero sin correo usable se advierte, no se crea y no frena la carga", async () => {
+  async function conUsuarioSinCorreo() {
     const base = baseSintetica();
     base["clinics/c1/users"].push({ id: "u9", data: { id: "u9", authUid: "fbRaro", name: "Sin correo" } });
-    const { carpeta } = await preparar({ base });
+    return preparar({ base });
+  }
+
+  it("un usuario real (con authUid) sin correo usable no se puede migrar: se informa y la corrida NO sale ok (esa persona no podría entrar)", async () => {
+    const { carpeta } = await conUsuarioSinCorreo();
     const informe = await correr(carpeta, nuevoAlmacen());
     expect(informe.usuarios.sinCorreo).toEqual([{ clinica: "c1", id: "u9" }]);
     expect(informe.advertencias.join(" ")).toMatch(/ningún correo usable/);
+    expect(informe.ok).toBe(false);
+    expect(informe.diferencias).toBe(1);
+  });
+
+  it("con aceptarSinCorreo se acepta (la persona decide qué hacer con ese usuario) y todo lo demás se carga", async () => {
+    const { carpeta } = await conUsuarioSinCorreo();
+    const almacen = nuevoAlmacen();
+    const informe = await correr(carpeta, almacen, { aceptarSinCorreo: true });
+    expect(informe.ok).toBe(true);
+    expect(informe.diferencias).toBe(0);
+    expect((await leerTodo(almacen, "users", "c1")).map((u) => u.id)).toContain("u9");
+  });
+});
+
+describe("usuarios sin authUid", () => {
+  it("los de la demo se cuentan aparte; los de una clínica real sin authUid se advierten", async () => {
+    const base = baseSintetica();
+    base["clinics/c1/users"].push({ id: "u8", data: { id: "u8", name: "Sin authUid", email: "x@example.com" } });
+    const { carpeta } = await preparar({ base });
+    const informe = await correr(carpeta, nuevoAlmacen());
+    expect(informe.usuarios.deLaDemo).toBe(1);
+    expect(informe.usuarios.sinAuthUidFueraDeLaDemo).toEqual([{ clinica: "c1", id: "u8" }]);
+    expect(informe.advertencias.join(" ")).toMatch(/no tienen authUid/);
+  });
+});
+
+describe("cuentas de GoTrue que ya existían", () => {
+  it("se adoptan pero se avisa de las que no creó el cargador", async () => {
+    const { carpeta } = await preparar();
+    const gotrue = gotrueFalso([{ id: "uuid-ajeno", email: "ana@example.com", creadaPorElCargador: false }]);
+    const informe = await correr(carpeta, nuevoAlmacen(), { gotrue });
+    expect(informe.usuarios.adoptadas).toBe(1);
+    expect(informe.advertencias.join(" ")).toMatch(/no las creó el cargador|no la creó el cargador/);
+    expect(informe.ok).toBe(true);
+  });
+});
+
+describe("la base cambia mientras se carga", () => {
+  it("sin sobrescribir, lo que alguien edita entre la revisión y el upsert NO se pisa (la base lo impide) y la verificación final lo marca", async () => {
+    const { carpeta } = await preparar();
+    const almacen = nuevoAlmacen();
+    const gotrue = gotrueFalso();
+    await correr(carpeta, almacen, { gotrue });
+    // La base queda igual a la exportación; justo antes del primer upsert de la siguiente carga, alguien edita un paciente.
+    const original = almacen.upsertar.bind(almacen);
+    let editado = false;
+    almacen.upsertar = (async (lote: any) => {
+      if (!editado) { editado = true; await original({ coleccion: "patients", clinica: "c1", filas: [{ id: "p1", data: { nombre: "EDICIÓN CONCURRENTE" } }] }); }
+      return original(lote);
+    }) as typeof almacen.upsertar;
+    const informe = await correr(carpeta, almacen, { gotrue });
+    expect((await leerTodo(almacen, "patients", "c1")).find((p) => p.id === "p1")!.data.nombre).toBe("EDICIÓN CONCURRENTE");
+    expect(informe.ok).toBe(false);
+    expect(filaDe(informe, "patients", "c1").distintos).toEqual(["p1"]);
+  });
+
+  it("sin sobrescribir, la carga pasa al almacén sobrescribir: false; con --sobrescribir, true", async () => {
+    const { carpeta } = await preparar();
+    const almacen = nuevoAlmacen();
+    const original = almacen.upsertar.bind(almacen);
+    const vistos: unknown[] = [];
+    almacen.upsertar = (async (lote: any) => { vistos.push(lote.sobrescribir); return original(lote); }) as typeof almacen.upsertar;
+    await correr(carpeta, almacen);
+    expect(new Set(vistos)).toEqual(new Set([false]));
+    vistos.length = 0;
+    await correr(carpeta, almacen, { sobrescribir: true, gotrue: gotrueFalso([{ id: "uuid-1", email: "ana@example.com" }, { id: "uuid-2", email: "luis@example.com" }]) });
+    expect(new Set(vistos)).toEqual(new Set([true]));
+  });
+});
+
+describe("clínicas ajenas en la base", () => {
+  it("se cuentan sin leer sus documentos (podrían pesar cientos de MB)", async () => {
+    const { carpeta } = await preparar();
+    const almacen = nuevoAlmacen();
+    const gotrue = gotrueFalso();
+    await correr(carpeta, almacen, { gotrue });
+    await almacen.upsertar({ coleccion: "patients", clinica: "ajena", filas: [{ id: "x", data: { enorme: "…" } }, { id: "y", data: {} }] });
+    const leidas: Array<string | null> = [];
+    const original = almacen.leerPagina.bind(almacen);
+    almacen.leerPagina = (async (q: any) => { leidas.push(q.clinica); return original(q); }) as typeof almacen.leerPagina;
+    const informe = await ejecutarCarga({ carpeta, colecciones: COLECCIONES, almacen, gotrue, modo: "solo-verificar" });
+    expect(informe.sobrantesDeClinicas).toEqual([{ coleccion: "patients", clinica: "ajena", docs: 2 }]);
+    expect(leidas).not.toContain("ajena");
+  });
+});
+
+describe("avisos del simulacro", () => {
+  it("sin GoTrue avisa que las cuentas no se consultaron y por eso los usuarios figuran como cambios", async () => {
+    const { carpeta } = await preparar();
+    const informe = await ejecutarCarga({ carpeta, colecciones: COLECCIONES, almacen: nuevoAlmacen(), gotrue: null, modo: "simulacro" });
+    expect(informe.advertencias.join(" ")).toMatch(/No se consultó GoTrue/);
+  });
+  it("cuenta cuándo se generó la exportación que se va a cargar (para no cargar una vieja sin darse cuenta)", async () => {
+    const { carpeta } = await preparar();
+    const mensajes: string[] = [];
+    await ejecutarCarga({ carpeta, colecciones: COLECCIONES, almacen: null, gotrue: null, modo: "simulacro", alAvanzar: (m: string) => mensajes.push(m) });
+    expect(mensajes.join("\n")).toMatch(/Exportación generada el \d{4}-\d{2}-\d{2}T/);
   });
 });

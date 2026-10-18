@@ -3,13 +3,13 @@ import { ErrorDeGoTrue, crearClienteGoTrue } from "./gotrue.mjs";
 
 const CLAVE = "clave-de-servicio-SECRETA";
 
-type Llamada = { url: string; metodo: string; cabeceras: Record<string, string>; cuerpo: unknown };
+type Llamada = { url: string; metodo: string; cabeceras: Record<string, string>; cuerpo: unknown; redirect?: string };
 
 /** Un `fetch` falso: responde lo que diga `respuestas` (en orden) y anota cada llamada. */
 function fetchFalso(respuestas: Array<{ estado?: number; json?: unknown; cabeceras?: Record<string, string> } | Error>) {
   const llamadas: Llamada[] = [];
-  const pedir = async (url: string, init: { method?: string; headers: Record<string, string>; body?: string }) => {
-    llamadas.push({ url, metodo: init.method ?? "GET", cabeceras: init.headers, cuerpo: init.body ? JSON.parse(init.body) : undefined });
+  const pedir = async (url: string, init: { method?: string; headers: Record<string, string>; body?: string; redirect?: string }) => {
+    llamadas.push({ url, metodo: init.method ?? "GET", cabeceras: init.headers, cuerpo: init.body ? JSON.parse(init.body) : undefined, redirect: init.redirect });
     const r = respuestas.shift();
     if (!r) throw new Error("no quedan respuestas");
     if (r instanceof Error) throw r;
@@ -20,7 +20,7 @@ function fetchFalso(respuestas: Array<{ estado?: number; json?: unknown; cabecer
 }
 const sinEspera = async () => {};
 const cliente = (f: ReturnType<typeof fetchFalso>, extra = {}) => crearClienteGoTrue({ url: "http://127.0.0.1:18100/auth/v1/", clave: CLAVE, fetch: f.pedir, esperar: sinEspera, ...extra });
-const usuarioGoTrue = (id: string, email: string, anonimo = false) => ({ id, email, is_anonymous: anonimo });
+const usuarioGoTrue = (id: string, email: string, anonimo = false, app_metadata: Record<string, unknown> = {}) => ({ id, email, is_anonymous: anonimo, app_metadata });
 
 describe("crearClienteGoTrue", () => {
   it("rechaza una URL que no sea http(s) o una clave vacía", () => {
@@ -34,12 +34,27 @@ describe("crearClienteGoTrue", () => {
     const f = fetchFalso([{ json: { users: pagina1 } }, { json: { users: [usuarioGoTrue("idz", "z@x.com"), usuarioGoTrue("ida", "", true)] } }]);
     const usuarios = await cliente(f).listarUsuarios();
     expect(usuarios).toHaveLength(202);
-    expect(usuarios[201]).toEqual({ id: "ida", email: "", esAnonimo: true });
+    expect(usuarios[201]).toEqual({ id: "ida", email: "", esAnonimo: true, creadaPorElCargador: false });
     expect(f.llamadas.map((l) => l.url)).toEqual([
       "http://127.0.0.1:18100/auth/v1/admin/users?page=1&per_page=200",
       "http://127.0.0.1:18100/auth/v1/admin/users?page=2&per_page=200",
     ]);
     expect(f.llamadas[0].cabeceras).toMatchObject({ apikey: CLAVE, Authorization: `Bearer ${CLAVE}` });
+  });
+
+  it("distingue las cuentas que creó el cargador (app_metadata.origen = firebase) de las que ya estaban", async () => {
+    const f = fetchFalso([{ json: { users: [usuarioGoTrue("a", "a@x.com", false, { origen: "firebase", firebase_uid: "fb" }), usuarioGoTrue("b", "b@x.com")] } }]);
+    const [a, b] = await cliente(f).listarUsuarios();
+    expect(a.creadaPorElCargador).toBe(true);
+    expect(b.creadaPorElCargador).toBe(false);
+  });
+
+  it("no sigue redirecciones (la clave de servicio no puede ir a otro servidor)", async () => {
+    const f = fetchFalso([{ json: { users: [] } }, { json: { id: "u", email: "a@x.com" } }]);
+    const c = cliente(f);
+    await c.listarUsuarios();
+    await c.crearUsuario({ email: "a@x.com", nombre: "A", firebaseUid: "x" });
+    expect(f.llamadas.map((l) => l.redirect)).toEqual(["error", "error"]);
   });
 
   it("crearUsuario manda email confirmado, sin contraseña, con el nombre y el uid viejo de Firebase como datos de rastro", async () => {

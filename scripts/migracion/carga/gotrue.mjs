@@ -37,7 +37,8 @@ export function crearClienteGoTrue({ url, clave, fetch: pedir = fetch, esperar =
     for (let intento = 0; ; intento++) {
       let res;
       try {
-        res = await pedir(`${raiz}${ruta}`, { method: metodo, headers: cabeceras, ...(cuerpo ? { body: JSON.stringify(cuerpo) } : {}) });
+        // `redirect: "error"`: la clave de servicio nunca sigue una redirección a otro servidor.
+        res = await pedir(`${raiz}${ruta}`, { method: metodo, headers: cabeceras, redirect: "error", ...(cuerpo ? { body: JSON.stringify(cuerpo) } : {}) });
       } catch (e) {
         if (intento >= reintentos) throw new ErrorDeGoTrue(`sin conexión con GoTrue en ${que} (${e?.cause?.code ?? e?.name ?? "error"})`);
         await esperar(Math.min(8000, 500 * 2 ** intento));
@@ -66,13 +67,14 @@ export function crearClienteGoTrue({ url, clave, fetch: pedir = fetch, esperar =
       }
     },
 
-    /** Todas las cuentas de GoTrue. @returns {Promise<Array<{ id: string, email: string, esAnonimo: boolean }>>} */
+    /** Todas las cuentas de GoTrue. `creadaPorElCargador`: la creó este cargador (lleva `app_metadata.origen = firebase`).
+     *  @returns {Promise<Array<{ id: string, email: string, esAnonimo: boolean, creadaPorElCargador: boolean }>>} */
     async listarUsuarios() {
       const todos = [];
       for (let pagina = 1; pagina < 10000; pagina++) {
         const datos = await solicitar("GET", `/admin/users?page=${pagina}&per_page=${POR_PAGINA}`);
         const usuarios = Array.isArray(datos?.users) ? datos.users : [];
-        for (const u of usuarios) todos.push({ id: String(u.id), email: typeof u.email === "string" ? u.email : "", esAnonimo: Boolean(u.is_anonymous) });
+        for (const u of usuarios) todos.push({ id: String(u.id), email: typeof u.email === "string" ? u.email : "", esAnonimo: Boolean(u.is_anonymous), creadaPorElCargador: u.app_metadata?.origen === "firebase" });
         if (usuarios.length < POR_PAGINA) break;
       }
       return todos;

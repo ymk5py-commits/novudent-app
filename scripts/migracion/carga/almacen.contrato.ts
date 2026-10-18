@@ -5,9 +5,10 @@ import { canonizar } from "./canonico.mjs";
 
 export type Almacen = {
   preparar(colecciones: string[]): Promise<{ problemas: string[] }>;
-  upsertar(lote: { coleccion: string; clinica: string | null; filas: Array<{ id: string; data: Record<string, unknown> }> }): Promise<{ insertados: number; actualizados: number; iguales: number; fallidos: Array<{ id: string; codigo: string; mensaje: string }> }>;
+  upsertar(lote: { coleccion: string; clinica: string | null; filas: Array<{ id: string; data: Record<string, unknown> }>; sobrescribir?: boolean }): Promise<{ insertados: number; actualizados: number; iguales: number; fallidos: Array<{ id: string; codigo: string; mensaje: string }> }>;
   leerPagina(consulta: { coleccion: string; clinica: string | null; despuesDe: string | null; limite: number }): Promise<Array<{ id: string; data: Record<string, unknown> }>>;
   clinicasEn(coleccion: string): Promise<string[]>;
+  contar(consulta: { coleccion: string; clinica: string | null }): Promise<number>;
   cerrar(): Promise<void>;
 };
 
@@ -92,6 +93,31 @@ export function contratoDeAlmacen(nombre: string, fabrica: FabricaDeAlmacen) {
         const leidas = await todo(a, "patients", "c1", 3);
         expect(leidas.map((f) => f.id).sort()).toEqual([...ids].sort());
         for (const f of leidas) expect(canonizar(f.data)).toBe(canonizar({ ...rico, id: f.id }));
+      });
+    });
+
+    it("con sobrescribir: false solo agrega lo que falta: lo que ya está, igual o distinto, queda como estaba", async () => {
+      await conAlmacen(async (a) => {
+        await a.upsertar({ coleccion: "patients", clinica: "c1", filas: [{ id: "p1", data: { v: "base" } }, { id: "p2", data: { v: "base" } }] });
+        const r = await a.upsertar({ coleccion: "patients", clinica: "c1", sobrescribir: false, filas: [{ id: "p1", data: { v: "base" } }, { id: "p2", data: { v: "OTRO" } }, { id: "p3", data: { v: "nuevo" } }] });
+        expect(r).toMatchObject({ insertados: 1, actualizados: 0, fallidos: [] });
+        expect((await todo(a, "patients", "c1")).map((f) => [f.id, f.data.v])).toEqual([["p1", "base"], ["p2", "base"], ["p3", "nuevo"]]);
+        // y en la raíz también
+        await a.upsertar({ coleccion: "clinics", clinica: null, filas: [{ id: "c1", data: { v: 1 } }] });
+        expect(await a.upsertar({ coleccion: "clinics", clinica: null, sobrescribir: false, filas: [{ id: "c1", data: { v: 2 } }, { id: "c2", data: { v: 3 } }] })).toMatchObject({ insertados: 1, actualizados: 0 });
+        expect((await todo(a, "clinics", null)).map((f) => f.data.v)).toEqual([1, 3]);
+      });
+    });
+
+    it("contar cuenta las filas de una colección de una clínica (o de la raíz) sin leerlas", async () => {
+      await conAlmacen(async (a) => {
+        expect(await a.contar({ coleccion: "patients", clinica: "c1" })).toBe(0);
+        await a.upsertar({ coleccion: "patients", clinica: "c1", filas: [{ id: "a", data: {} }, { id: "b", data: {} }] });
+        await a.upsertar({ coleccion: "patients", clinica: "c2", filas: [{ id: "a", data: {} }] });
+        await a.upsertar({ coleccion: "clinics", clinica: null, filas: [{ id: "c1", data: {} }, { id: "c2", data: {} }, { id: "c3", data: {} }] });
+        expect(await a.contar({ coleccion: "patients", clinica: "c1" })).toBe(2);
+        expect(await a.contar({ coleccion: "patients", clinica: "c2" })).toBe(1);
+        expect(await a.contar({ coleccion: "clinics", clinica: null })).toBe(3);
       });
     });
 

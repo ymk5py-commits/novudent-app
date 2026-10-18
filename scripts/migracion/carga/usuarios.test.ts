@@ -28,7 +28,7 @@ describe("recolectarUsuarios", () => {
     ]);
     expect(r.reales.map((u: { clinica: string; id: string; email: string }) => `${u.clinica}/${u.id}/${u.email}`)).toEqual(["c1/fbUidAna/ana@example.com", "c1/u2/luis@example.com"]);
     expect(r.reales[0]).toMatchObject({ nombre: "Ana", firebaseUid: "fbUidAna" });
-    expect(r.deLaDemo).toBe(1);
+    expect(r.sinAuthUid).toEqual([{ clinica: "cl_demo", id: "u1" }]);
     expect(r.sinCorreo).toEqual([{ clinica: "c1", id: "u9" }]);
   });
 });
@@ -93,7 +93,7 @@ describe("asegurarUsuarios", () => {
   it("si otra persona lo creó en el medio (422 email_exists), lo vuelve a buscar en vez de fallar", async () => {
     const g = gotrueFalso();
     let llamadas = 0;
-    g.listarUsuarios = async () => { llamadas++; return llamadas === 1 ? [] : [{ id: "uuid-tarde", email: "ana@example.com", esAnonimo: false }]; };
+    g.listarUsuarios = async () => { llamadas++; return llamadas === 1 ? [] : [{ id: "uuid-tarde", email: "ana@example.com", esAnonimo: false, creadaPorElCargador: false }]; };
     g.crearUsuario = async () => { throw new ErrorDeGoTrue("ya existe", { estado: 422, codigo: "email_exists" }); };
     const r = await asegurarUsuarios({ reales: [reales[0]], gotrue: g, crear: true });
     expect(r.uuidPorEmail.get("ana@example.com")).toBe("uuid-tarde");
@@ -104,6 +104,12 @@ describe("asegurarUsuarios", () => {
     const error = await asegurarUsuarios({ reales, gotrue: g, crear: true }).catch((e) => e);
     expect(error).toBeInstanceOf(ErrorDeGoTrue);
     expect(error.message).not.toMatch(/example\.com/);
+  });
+
+  it("cuenta las cuentas que ya existían sin haberlas creado el cargador (alguien pudo registrar ese correo antes)", async () => {
+    const g = gotrueFalso([{ id: "uuid-ajeno", email: "ana@example.com", creadaPorElCargador: false }, { id: "uuid-nuestro", email: "luis@example.com", creadaPorElCargador: true }]);
+    const r = await asegurarUsuarios({ reales, gotrue: g, crear: false });
+    expect(r).toMatchObject({ existentes: 2, adoptadas: 1 });
   });
 
   it("las cuentas anónimas de GoTrue no cuentan como usuarios existentes", async () => {

@@ -10,7 +10,7 @@
  *  lee de la base, y también en el otro sentido (lo que hay en la base y no está en la exportación). El cargador NUNCA borra: lo que sobra se informa. */
 import { hashDeDocumento } from "./canonico.mjs";
 import { NO_SE_CARGA, leerDocumentos, leerManifiesto, planDeCarga, verificarArchivos } from "./exportacion.mjs";
-import { asegurarUsuarios, recolectarUsuarios, reescribirUsuario } from "./usuarios.mjs";
+import { CLINICA_DEMO, asegurarUsuarios, recolectarUsuarios, reescribirUsuario } from "./usuarios.mjs";
 
 export class ErrorDeCarga extends Error {
   constructor(mensaje) {
@@ -20,7 +20,7 @@ export class ErrorDeCarga extends Error {
 }
 
 export const MODOS = ["cargar", "solo-verificar", "simulacro"];
-const PAGINA = 500;
+const PAGINA = 100; // una página con documentos de ~1 MB (radiografías en base64) ocupa ~100 MB
 const BYTES_POR_LOTE = 4 * 1024 * 1024;
 
 const nombreDe = (clinica, coleccion) => (clinica ? `clinics/${clinica}/${coleccion}` : coleccion);
@@ -35,12 +35,13 @@ const nombreDe = (clinica, coleccion) => (clinica ? `clinics/${clinica}/${colecc
  *   permitirIncompleto?: boolean,
  *   ignorarDesconocidas?: boolean,
  *   sobrescribir?: boolean,
+ *   aceptarSinCorreo?: boolean,
  *   tamanoDeLote?: number,
  *   alAvanzar?: (mensaje: string) => void,
  * }} opciones
  * @returns {Promise<any>}  el informe (ver `informe.mjs`)
  */
-export async function ejecutarCarga({ carpeta, colecciones, almacen, gotrue, modo, permitirIncompleto = false, ignorarDesconocidas = false, sobrescribir = false, tamanoDeLote = 200, alAvanzar = () => {} }) {
+export async function ejecutarCarga({ carpeta, colecciones, almacen, gotrue, modo, permitirIncompleto = false, ignorarDesconocidas = false, sobrescribir = false, aceptarSinCorreo = false, tamanoDeLote = 200, alAvanzar = () => {} }) {
   if (!MODOS.includes(modo)) throw new ErrorDeCarga(`Modo desconocido: «${modo}».`);
   if (modo !== "simulacro" && !almacen) throw new ErrorDeCarga("Falta la base de datos de destino.");
   if (modo !== "simulacro" && !gotrue) throw new ErrorDeCarga(`Para ${modo === "cargar" ? "cargar" : "verificar"} hace falta GoTrue (--url-gotrue y la clave de servicio): sin él no se sabe qué \`authUid\` le corresponde a cada usuario.`);
@@ -48,6 +49,7 @@ export async function ejecutarCarga({ carpeta, colecciones, almacen, gotrue, mod
 
   // 1. La exportación: el manifiesto y cada archivo contra su SHA-256, antes de tocar nada.
   const manifiesto = leerManifiesto(carpeta);
+  alAvanzar(`Exportación generada el ${manifiesto.generado ?? "(fecha desconocida)"}`);
   const { entradas, advertencias } = planDeCarga(manifiesto, colecciones, { permitirIncompleto, ignorarDesconocidas });
   const problemas = await verificarArchivos(carpeta, entradas, { alAvanzar });
   if (problemas.length) {
@@ -64,7 +66,7 @@ export async function ejecutarCarga({ carpeta, colecciones, almacen, gotrue, mod
     destino: almacen?.destino ?? null,
     generado: manifiesto.generado ?? null,
     archivos: { verificados: entradas.length, problemas: [] },
-    usuarios: { reales: 0, deLaDemo: 0, sinCorreo: [], creados: 0, existentes: 0, porCrear: 0, repetidos: [], consultado: false },
+    usuarios: { reales: 0, deLaDemo: 0, sinAuthUidFueraDeLaDemo: [], sinCorreo: [], creados: 0, existentes: 0, adoptadas: 0, porCrear: 0, repetidos: [], consultado: false },
     colecciones: [],
     sobrantesDeClinicas: [],
     totales: { manifiesto: 0, base: 0, iguales: 0, faltan: 0, distintos: 0, sobran: 0, diferencias: 0, cargados: { insertados: 0, actualizados: 0, iguales: 0, fallidos: 0 } },
@@ -102,7 +104,9 @@ export async function ejecutarCarga({ carpeta, colecciones, almacen, gotrue, mod
   for (const entrada of entradas.filter((e) => e.coleccion === "users")) {
     for await (const { id, data } of leerDocumentos(carpeta, entrada)) documentosDeUsuarios.push({ clinica: entrada.clinica, id, data });
   }
-  const { reales, sinCorreo, deLaDemo } = recolectarUsuarios(documentosDeUsuarios);
+  const { reales, sinCorreo, sinAuthUid } = recolectarUsuarios(documentosDeUsuarios);
+  const deLaDemo = sinAuthUid.filter((u) => u.clinica === CLINICA_DEMO).length;
+  const sinAuthUidFueraDeLaDemo = sinAuthUid.filter((u) => u.clinica !== CLINICA_DEMO);
   let cuentas = await asegurarUsuarios({ reales, gotrue, crear: false, alAvanzar });
 
   /** El documento tal como debe quedar en la base: igual a la exportación salvo `authUid` en los usuarios reales. */
@@ -149,8 +153,7 @@ export async function ejecutarCarga({ carpeta, colecciones, almacen, gotrue, mod
     for (const coleccion of colecciones.porClinica) {
       for (const clinica of await almacen.clinicasEn(coleccion)) {
         if (conocidas.has(clinica)) continue;
-        const f = await compararColeccion(coleccion, clinica, null);
-        sobrantesDeClinicas.push({ coleccion, clinica, docs: f.base.docs });
+        sobrantesDeClinicas.push({ coleccion, clinica, docs: await almacen.contar({ coleccion, clinica }) }); // se cuentan, no se leen: son datos ajenos y pueden pesar mucho
       }
     }
     return { filas, sobrantesDeClinicas };
@@ -177,7 +180,7 @@ export async function ejecutarCarga({ carpeta, colecciones, almacen, gotrue, mod
       let bytes = 0;
       const subir = async () => {
         if (!lote.length) return;
-        const r = await almacen.upsertar({ coleccion: entrada.coleccion, clinica: entrada.clinica, filas: lote });
+        const r = await almacen.upsertar({ coleccion: entrada.coleccion, clinica: entrada.clinica, filas: lote, sobrescribir });
         carga.insertados += r.insertados; carga.actualizados += r.actualizados; carga.iguales += r.iguales; carga.fallidos.push(...r.fallidos);
         lote = []; bytes = 0;
       };
@@ -190,9 +193,12 @@ export async function ejecutarCarga({ carpeta, colecciones, almacen, gotrue, mod
       alAvanzar(`${nombreDe(entrada.clinica, entrada.coleccion)}: ${entrada.docs} documentos cargados${carga.fallidos.length ? ` (${carga.fallidos.length} NO se pudieron cargar)` : ""}`);
     }
   }
-  informe.usuarios = { reales: reales.length, deLaDemo, sinCorreo, creados: cuentas.creados, existentes: cuentas.existentes, porCrear: cuentas.porCrear, repetidos: cuentas.repetidos, consultado: cuentas.consultado };
-  if (sinCorreo.length) informe.advertencias.push(`⚠️ ${sinCorreo.length} usuario(s) tienen authUid pero ningún correo usable: no se les puede crear la cuenta de GoTrue (${sinCorreo.map((u) => `${u.clinica}/${u.id}`).join(", ")}).`);
+  informe.usuarios = { reales: reales.length, deLaDemo, sinAuthUidFueraDeLaDemo, sinCorreo, creados: cuentas.creados, existentes: cuentas.existentes, adoptadas: cuentas.adoptadas, porCrear: cuentas.porCrear, repetidos: cuentas.repetidos, consultado: cuentas.consultado };
+  if (sinCorreo.length) informe.advertencias.push(`⚠️ ${sinCorreo.length} usuario(s) tienen authUid pero ningún correo usable: no se les puede crear la cuenta de GoTrue y no van a poder entrar (${sinCorreo.map((u) => `${u.clinica}/${u.id}`).join(", ")})${aceptarSinCorreo ? " — aceptado con --aceptar-sin-correo" : ""}.`);
+  if (sinAuthUidFueraDeLaDemo.length) informe.advertencias.push(`${sinAuthUidFueraDeLaDemo.length} usuario(s) de clínicas reales no tienen authUid (se cargan tal cual, sin cuenta de GoTrue): ${sinAuthUidFueraDeLaDemo.map((u) => `${u.clinica}/${u.id}`).join(", ")}.`);
   if (cuentas.repetidos.length) informe.advertencias.push(`${cuentas.repetidos.length} correo(s) aparecen en más de un documento de usuario: comparten una sola cuenta de GoTrue (y el esquema admite una sola clínica real por persona: el segundo documento no se va a poder cargar).`);
+  if (cuentas.adoptadas) informe.advertencias.push(`⚠️ ${cuentas.adoptadas} cuenta(s) de GoTrue ya existían con el correo de un usuario y no las creó el cargador (el registro de GoTrue está abierto: confirmá que son de esas personas).`);
+  if (!cuentas.consultado && reales.length) informe.advertencias.push(`No se consultó GoTrue: los ${reales.length} usuarios reales figuran como documentos a actualizar porque su authUid todavía no existe (pasá --url-gotrue para ver el plan real).`);
 
   // 6. La comparación final (o, en el simulacro, el plan) y los totales.
   const { filas, sobrantesDeClinicas } = await compararTodo();
@@ -207,7 +213,8 @@ export async function ejecutarCarga({ carpeta, colecciones, almacen, gotrue, mod
   const ajenos = sobrantesDeClinicas.reduce((n, s) => n + s.docs, 0);
   t.base += ajenos; t.sobran += ajenos;
   const cuentasFaltantes = modo === "solo-verificar" ? cuentas.porCrear : 0;
-  t.diferencias = t.faltan + t.distintos + t.sobran + cuentasFaltantes;
+  const sinCuenta = aceptarSinCorreo ? 0 : sinCorreo.length; // una persona real sin correo no puede entrar después del corte
+  t.diferencias = t.faltan + t.distintos + t.sobran + cuentasFaltantes + sinCuenta;
   informe.diferencias = t.diferencias;
   informe.ok = modo === "simulacro" ? true : t.diferencias === 0 && t.cargados.fallidos === 0;
   return informe;

@@ -28,6 +28,14 @@ describe("ubicarExportacion", () => {
     expect(ubicarExportacion(null, entorno(casa))).toBe(join(casa, "novudent-export", "2026-10-17"));
   });
 
+  it("entre varias carpetas toma la que se GENERÓ más tarde (por la fecha del manifiesto), no la de nombre más 'grande'", async () => {
+    const casa = carpetaTemporal("casa-");
+    await escribirExportacion(join(casa, "novudent-export", "hoy"), { extra: { generado: "2026-10-15T10:00:00.000Z" } }); // el nombre «hoy» ordena último, pero es la más vieja
+    await escribirExportacion(join(casa, "novudent-export", "2026-10-17"), { extra: { generado: "2026-10-17T10:00:00.000Z" } });
+    await escribirExportacion(join(casa, "novudent-export", "2026-10-16"), { extra: { generado: "2026-10-16T10:00:00.000Z" } });
+    expect(ubicarExportacion(null, entorno(casa))).toBe(join(casa, "novudent-export", "2026-10-17"));
+  });
+
   it("falla con un mensaje claro si no hay ninguna exportación", () => {
     const casa = carpetaTemporal("casa-");
     expect(() => ubicarExportacion(null, entorno(casa))).toThrow(/No encuentro una exportación/);
@@ -62,6 +70,16 @@ describe("leerManifiesto y planDeCarga", () => {
   it("una exportación de --solo-medir no sirve: no tiene los datos", async () => {
     const { carpeta } = await exportacion({ extra: { soloMedir: true } });
     expect(() => planDeCarga(leerManifiesto(carpeta), COLECCIONES)).toThrow(/--solo-medir/);
+  });
+
+  it("avisa de los valores que no son JSON puro (se guardaron como texto) y se niega si hubo valores desconocidos que se perdieron como null", async () => {
+    const con = await exportacion({ extra: { hallazgos: { timestamp: 2, geopoint: 0, referencia: 0, bytes: 0, enteroGrande: 1, decimalEspecial: 0, desconocido: 0 } } });
+    const { advertencias } = planDeCarga(leerManifiesto(con.carpeta), COLECCIONES);
+    expect(advertencias.join(" ")).toMatch(/timestamp: 2/);
+    expect(advertencias.join(" ")).toMatch(/enteroGrande: 1/);
+    const perdidos = await exportacion({ extra: { hallazgos: { timestamp: 0, geopoint: 0, referencia: 0, bytes: 0, enteroGrande: 0, decimalEspecial: 0, desconocido: 3 } } });
+    expect(() => planDeCarga(leerManifiesto(perdidos.carpeta), COLECCIONES)).toThrow(/desconocido/);
+    expect(planDeCarga(leerManifiesto(perdidos.carpeta), COLECCIONES, { permitirIncompleto: true }).advertencias.join(" ")).toMatch(/desconocido: 3/);
   });
 
   it("una exportación parcial (--clinica) o incompleta (colecciones sin leer) se rechaza, salvo que se pida lo contrario", async () => {
