@@ -1,16 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
-import { test, expect } from "./soporte";
+import { test, expect, sembrarDemoSiFalta } from "./soporte";
 import { escribirDoc, rest, stack } from "../lib/server/stack-de-prueba";
-import { cargarDB } from "../lib/backend/carga";
-import { crearDatosSupabase } from "../lib/backend/supabase";
 
 /* La demo pública: sin cuenta, con la sesión ANÓNIMA de GoTrue (rol authenticated sin ficha en ninguna clínica). Se lee y se escribe `cl_demo`, y nada más. */
 
-test.beforeAll(async () => {
-  const s = stack();
-  const admin = createClient(s.url, s.servicio, { auth: { persistSession: false, autoRefreshToken: false } });
-  await cargarDB(crearDatosSupabase(admin, async () => null), "cl_demo"); // siembra la demo si falta (lo mismo que hace la app al primer ingreso)
-});
+test.beforeAll(async () => { await sembrarDemoSiFalta(); });
 
 test("«Ver demo» entra con una sesión anónima, muestra los usuarios de ejemplo y deja escribir en cl_demo", async ({ page }) => {
   await page.goto("/login?demo=1");
@@ -45,7 +38,7 @@ test("«Ver demo» entra con una sesión anónima, muestra los usuarios de ejemp
 });
 
 test("la sesión anónima de la demo no lee ni un dato de una clínica real (RLS)", async ({ page, mundo }) => {
-  await escribirDoc("patients", "p_secreto", { id: "p_secreto", firstName: "Dato", lastName: "Sensible", document: "999" }, mundo.clinica.cid);
+  await escribirDoc("patients", "p_secreto", { id: "p_secreto", firstName: "Dato", lastName: "Sensible", document: "999", phone: "0981 999 999" }, mundo.clinica.cid);
   await page.goto("/login?demo=1");
   await page.getByRole("button", { name: "Ver demo" }).click();
   await page.getByRole("button", { name: /Carlos Admin/ }).click();

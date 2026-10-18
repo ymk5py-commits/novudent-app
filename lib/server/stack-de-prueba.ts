@@ -17,6 +17,13 @@ export function stack(): Stack {
 
 export const sufijo = () => randomBytes(4).toString("hex");
 
+/** `fetch` con un reintento si la conexión se cortó: el túnel SSH a veces cierra una conexión inactiva que `fetch` quería reutilizar («fetch failed»). Solo para pruebas. */
+async function pedir(url: string, init?: RequestInit): Promise<Response> {
+  for (let intento = 0; ; intento++) {
+    try { return await fetch(url, init); } catch (e) { if (intento >= 2) throw e; await new Promise((r) => setTimeout(r, 150 * (intento + 1))); }
+  }
+}
+
 async function json(res: Response): Promise<any> {
   const t = await res.text();
   try { return t ? JSON.parse(t) : null; } catch { return t; }
@@ -25,7 +32,7 @@ async function json(res: Response): Promise<any> {
 /** Crea una cuenta con el correo confirmado (como lo hace el servidor). */
 export async function crearCuenta(email: string, password: string): Promise<string> {
   const s = stack();
-  const res = await fetch(`${s.url}/auth/v1/admin/users`, {
+  const res = await pedir(`${s.url}/auth/v1/admin/users`, {
     method: "POST",
     headers: { apikey: s.servicio, Authorization: `Bearer ${s.servicio}`, "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, email_confirm: true }),
@@ -37,12 +44,12 @@ export async function crearCuenta(email: string, password: string): Promise<stri
 
 export async function borrarCuenta(uid: string): Promise<void> {
   const s = stack();
-  await fetch(`${s.url}/auth/v1/admin/users/${uid}`, { method: "DELETE", headers: { apikey: s.servicio, Authorization: `Bearer ${s.servicio}` } });
+  await pedir(`${s.url}/auth/v1/admin/users/${uid}`, { method: "DELETE", headers: { apikey: s.servicio, Authorization: `Bearer ${s.servicio}` } });
 }
 
 export async function iniciarSesion(email: string, password: string): Promise<{ token: string; uid: string }> {
   const s = stack();
-  const res = await fetch(`${s.url}/auth/v1/token?grant_type=password`, {
+  const res = await pedir(`${s.url}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: { apikey: s.anon, "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -54,7 +61,7 @@ export async function iniciarSesion(email: string, password: string): Promise<{ 
 
 export async function sesionAnonima(): Promise<{ token: string; uid: string }> {
   const s = stack();
-  const res = await fetch(`${s.url}/auth/v1/signup`, { method: "POST", headers: { apikey: s.anon, "Content-Type": "application/json" }, body: "{}" });
+  const res = await pedir(`${s.url}/auth/v1/signup`, { method: "POST", headers: { apikey: s.anon, "Content-Type": "application/json" }, body: "{}" });
   const cuerpo = await json(res);
   if (!res.ok) throw new Error(`sesionAnonima: ${res.status} ${JSON.stringify(cuerpo)}`);
   return { token: cuerpo.access_token as string, uid: cuerpo.user.id as string };
@@ -63,7 +70,7 @@ export async function sesionAnonima(): Promise<{ token: string; uid: string }> {
 /** PostgREST con la clave de servicio (se salta RLS): para armar y mirar el escenario. */
 export async function rest(tabla: string, metodo: "GET" | "POST" | "PATCH" | "DELETE", params: Record<string, string> = {}, cuerpo?: unknown, prefer?: string): Promise<any> {
   const s = stack();
-  const res = await fetch(`${s.url}/rest/v1/${encodeURIComponent(tabla)}?${new URLSearchParams(params)}`, {
+  const res = await pedir(`${s.url}/rest/v1/${encodeURIComponent(tabla)}?${new URLSearchParams(params)}`, {
     method: metodo,
     headers: { apikey: s.servicio, Authorization: `Bearer ${s.servicio}`, "Content-Type": "application/json", ...(prefer ? { Prefer: prefer } : {}) },
     body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
@@ -93,7 +100,7 @@ export interface ClinicaArmada {
 export async function armarClinica(opciones: { cid?: string; plan?: string; suscripcion?: Record<string, unknown> | null; personas: PersonaDeClinica[]; clinica?: Record<string, unknown> }): Promise<ClinicaArmada> {
   const cid = opciones.cid ?? `cl_t${sufijo()}`;
   const plan = opciones.plan ?? "clinica";
-  await escribirDoc("clinics", cid, { id: cid, name: `Clínica ${cid}`, plan, config: { timezone: "America/Asuncion", currency: "PYG" }, ...(opciones.clinica ?? {}) });
+  await escribirDoc("clinics", cid, { id: cid, name: `Clínica ${cid}`, plan, config: { timezone: "America/Asuncion", currency: "PYG" }, onboarding: { usersCreated: true, servicesDefined: true, tourDone: true }, ...(opciones.clinica ?? {}) });
   if (opciones.suscripcion !== null) {
     await escribirDoc("subscriptions", cid, { clinicId: cid, plan, status: "active", currentPeriodEndMs: Date.now() + 30 * 86_400_000, ...(opciones.suscripcion ?? {}) });
   }

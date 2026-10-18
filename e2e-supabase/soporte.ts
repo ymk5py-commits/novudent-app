@@ -1,5 +1,16 @@
 import { test as base, expect, type Page } from "@playwright/test";
-import { armarClinica, limpiar, type ClinicaArmada } from "../lib/server/stack-de-prueba";
+import { createClient } from "@supabase/supabase-js";
+import { armarClinica, limpiar, stack, type ClinicaArmada } from "../lib/server/stack-de-prueba";
+import { cargarDB } from "../lib/backend/carga";
+import { crearDatosSupabase } from "../lib/backend/supabase";
+
+/** La demo (`cl_demo`) tiene que existir: la app la carga al abrir cualquier página sin sesión, y sin ella cae a «modo local» y el ingreso no encuentra la clínica.
+ *  En producción la deja sembrada la migración; acá la siembra la primera prueba (lo mismo que hace `cargarDB`). */
+export async function sembrarDemoSiFalta() {
+  const s = stack();
+  const admin = createClient(s.url, s.servicio, { auth: { persistSession: false, autoRefreshToken: false } });
+  await cargarDB(crearDatosSupabase(admin, async () => null), "cl_demo");
+}
 
 /** Analytics y fuentes externas: fuera. (Firebase no se pide: con Supabase la app no lo usa; si lo pidiera, la prueba lo veríamos en `pedidosAFirebase`.) */
 const BLOQUEADOS = ["google-analytics.com", "googletagmanager.com", "fonts.googleapis.com", "fonts.gstatic.com"];
@@ -11,6 +22,7 @@ type Mundo = { clinica: ClinicaArmada };
 export const test = base.extend<Fixtures, { mundo: Mundo }>({
   /* Una clínica con equipo, armada con la clave de servicio, para todo el archivo. Los ids de documento NO son los uid de login (usuarios migrados). */
   mundo: [async ({}, use) => {
+    await sembrarDemoSiFalta();
     const clinica = await armarClinica({
       plan: "clinica",
       personas: [

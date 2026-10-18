@@ -1,6 +1,7 @@
 /** Corre el contrato de datos contra Supabase de verdad (un stack descartable con el esquema de la fase B). `npm run test:supabase`.
- *  Usa la clave de servicio: lo que se prueba acá es la capa de datos (qué se guarda y qué se escucha), no los permisos; los permisos se prueban
- *  en `supabase.permisos.supabase.test.ts` con sesiones de verdad. */
+ *  OJO: cada prueba VACÍA todas las tablas (también `cl_demo`): usarlo solo con el stack descartable.
+ *  Usa la clave de servicio: lo que se prueba acá es la capa de datos (qué se guarda y qué se escucha), no los permisos; los permisos los prueban las
+ *  pruebas de RLS de la fase B (test/rls) y los e2e con sesiones de verdad (e2e-supabase). */
 import { createClient } from "@supabase/supabase-js";
 import { describeContratoDeDatos } from "./contrato-de-datos";
 import { COLECCIONES_DE_CLINICA } from "./colecciones";
@@ -38,7 +39,9 @@ describeContratoDeDatos("Supabase (stack local)", async () => {
     sembrar,
     vaciar: async () => {
       for (const t of [...COLECCIONES_DE_CLINICA, ...TABLAS_RAIZ]) {
-        const { error } = await admin.from(t).delete().not("id", "is", null);
+        // Un reintento: el túnel SSH a veces cierra una conexión inactiva que `fetch` quería reutilizar.
+        let error = (await admin.from(t).delete().not("id", "is", null)).error;
+        if (error && /fetch failed/i.test(error.message)) error = (await admin.from(t).delete().not("id", "is", null)).error;
         if (error) throw new Error(`vaciar ${t}: ${error.message}`);
       }
     },

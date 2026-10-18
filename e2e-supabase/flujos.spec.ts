@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Browser, Page } from "@playwright/test";
 import { test, expect, ingresar } from "./soporte";
 import { escribirDoc, leerDoc, rest } from "../lib/server/stack-de-prueba";
 
@@ -8,14 +8,22 @@ import { escribirDoc, leerDoc, rest } from "../lib/server/stack-de-prueba";
 
 const campo = (page: Page, etiqueta: RegExp, control = "input, select, textarea") =>
   page.getByRole("dialog").locator("label").filter({ hasText: etiqueta }).locator(control).first();
-const sinCache = (page: Page) => page.evaluate(() => localStorage.removeItem("novudent.db.v4"));
-const filas = (tabla: string, cid: string, extra: Record<string, string> = {}) => rest(tabla, "GET", { select: "id,data", clinic_id: `eq.${cid}`, ...extra });
+/** Otro navegador (contexto nuevo, sin caché ni sesión) que entra con esa cuenta: lo que ve viene de la base, no de lo que quedó en el primero. */
+async function otroNavegador(browser: Browser, persona: { email: string; password: string }): Promise<{ page: Page; cerrar: () => Promise<void> }> {
+  const ctx = await browser.newContext({ locale: "es-PY" });
+  const page = await ctx.newPage();
+  await page.addInitScript(() => localStorage.setItem("novudent.consentimiento.v1", JSON.stringify({ version: 1, analitica: false, fecha: new Date().toISOString() })));
+  await ingresar(page, persona.email, persona.password);
+  return { page, cerrar: () => ctx.close() };
+}
+type Fila = { id: string; data: Record<string, any> };
+const filas = (tabla: string, cid: string, extra: Record<string, string> = {}): Promise<Fila[]> => rest(tabla, "GET", { select: "id,data", clinic_id: `eq.${cid}`, ...extra });
 
 test.describe("ficha, cita y pago", () => {
   test.describe.configure({ mode: "serial" }); // cada paso usa lo que dejó el anterior (el paciente, su cita)
   const ci = String(8_000_000 + Math.floor(Math.random() * 999_999));
 
-  test("pacientes: dar de alta un paciente queda en Postgres y reaparece sin el caché", async ({ page, mundo }) => {
+  test("pacientes: dar de alta un paciente queda en Postgres y lo ve quien entra desde otro navegador", async ({ browser, page, mundo }) => {
     const ana = mundo.clinica.personas.admin;
     await ingresar(page, ana.email, ana.password);
     await page.goto("/app/pacientes");
@@ -39,13 +47,14 @@ test.describe("ficha, cita y pago", () => {
     // La Historia Clínica queda pendiente (crearPaciente del store) y también se guarda.
     await expect.poll(async () => (await filas("clinicalDocs", mundo.clinica.cid)).length).toBeGreaterThan(0);
 
-    await sinCache(page);
-    await page.goto("/app/pacientes");
-    await page.getByPlaceholder(/Buscar por nombre, CI/).fill(ci);
-    await expect(page.locator("main").getByRole("link", { name: /Prueba Supabase/ }).first()).toBeVisible();
+    const otro = await otroNavegador(browser, ana);
+    await otro.page.goto("/app/pacientes");
+    await otro.page.getByPlaceholder(/Buscar por nombre, CI/).fill(ci);
+    await expect(otro.page.locator("main").getByRole("link", { name: /Prueba Supabase/ }).first()).toBeVisible();
+    await otro.cerrar();
   });
 
-  test("agenda: dar una cita a ese paciente la guarda en appointments y sigue ahí después de borrar el caché", async ({ page, mundo }) => {
+  test("agenda: dar una cita a ese paciente la guarda en appointments y la ve quien entra desde otro navegador", async ({ browser, page, mundo }) => {
     const rita = mundo.clinica.personas.recep;
     await ingresar(page, rita.email, rita.password);
     await page.goto("/app/agenda");
@@ -60,12 +69,12 @@ test.describe("ficha, cita y pago", () => {
     await expect.poll(async () => (await filas("appointments", mundo.clinica.cid)).length).toBe(1);
     const cita = (await filas("appointments", mundo.clinica.cid))[0].data;
     expect(cita).toMatchObject({ status: "pendiente", clinicId: mundo.clinica.cid });
-    await sinCache(page);
-    await page.reload();
-    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("novudent.db.v4") || "null")?.appointments?.length)).toBe(1);
+    const otro = await otroNavegador(browser, rita);
+    await expect.poll(() => otro.page.evaluate(() => JSON.parse(localStorage.getItem("novudent.db.v4") || "null")?.appointments?.length)).toBe(1);
+    await otro.cerrar();
   });
 
-  test("caja: registrar un pago lo guarda en payments y se ve en los movimientos", async ({ page, mundo }) => {
+  test("caja: registrar un pago lo guarda en payments y se ve en los movimientos", async ({ browser, page, mundo }) => {
     const ana = mundo.clinica.personas.admin;
     await ingresar(page, ana.email, ana.password);
     await page.goto("/app/caja");
@@ -86,9 +95,10 @@ test.describe("ficha, cita y pago", () => {
 
     await expect.poll(async () => (await filas("payments", mundo.clinica.cid)).length).toBe(1);
     expect((await filas("payments", mundo.clinica.cid))[0].data).toMatchObject({ amount: 150000, method: "efectivo", concept: "Pago E2E Supabase" });
-    await sinCache(page);
-    await page.reload();
-    await expect(page.locator("main").getByText("Pago E2E Supabase").first()).toBeVisible();
+    const otro = await otroNavegador(browser, ana);
+    await otro.page.goto("/app/caja");
+    await expect(otro.page.locator("main").getByText("Pago E2E Supabase").first()).toBeVisible();
+    await otro.cerrar();
   });
 
   test("lo que un rol escribe lo ve otro de la misma clínica, y el dentista no recibe los gastos (RLS: son del administrador)", async ({ browser, mundo }) => {

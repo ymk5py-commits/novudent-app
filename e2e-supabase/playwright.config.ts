@@ -26,7 +26,8 @@ export default defineConfig({
     viewport: { width: 1440, height: 900 },
   },
   webServer: {
-    command: `npx next start -p ${PORT}`,
+    // E2E_SUPABASE_COMANDO="npx next dev -p 3110" sirve para depurar con el código sin minificar (las NEXT_PUBLIC_* salen de las variables del stack).
+    command: process.env.E2E_SUPABASE_COMANDO ?? `npx next start -p ${PORT}`,
     cwd: path.resolve(__dirname, ".."),
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,
