@@ -4,6 +4,17 @@ Fase B del traspaso a un servidor propio. Diseño: `docs/superpowers/specs/2026-
 
 Las migraciones de `supabase/migrations/` **se generan, no se escriben a mano**: `node scripts/supabase/generar-esquema.mjs` las arma a partir de `lib/backend/colecciones.json` y de las plantillas de `scripts/supabase/plantillas/`. `npx vitest run` falla si lo que está en el repositorio no coincide con lo que genera el generador.
 
+## Estado de la fase B (17-oct-2026)
+
+| Hito | Qué | Commit | Terminó |
+|---|---|---|---|
+| 1 | Generador, tablas, funciones de datos (`guardar`, `quitar`, `fijar_campo`, `mezclar_clinica`, `lote`), funciones de permisos, `aplicar-esquema.sh` | `f564d1a` | 17-oct-2026 20:57 (-03) |
+| 2 | Políticas RLS y las 5 reglas por campo | `ac8d830` | 17-oct-2026 |
+| 3 | Las 143 pruebas de reglas transcriptas + `CASOS.md`, sin membresía, extras | `81343bd` | 17-oct-2026 |
+| + | Prueba de punta a punta en el stack completo (PostgREST, GoTrue, Realtime) y tope de 2 MiB por documento | `6804d8e` | 17-oct-2026 |
+
+Las fases C y D se apoyan en el hito 1 (mergear desde `f564d1a` o más nuevo). Verde al cierre: 254 pruebas contra `supabase/postgres:17.6.1.136` real (`probar-rls.sh`), 12 de punta a punta (`probar-stack.sh`), 8 de vitest sin base (`npx vitest run test/rls`).
+
 ## Cómo se usan
 
 | Qué | Comando |
