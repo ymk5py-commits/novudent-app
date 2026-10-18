@@ -27,7 +27,8 @@ const CARPETAS = ["app", "components", "lib"];
  *  con GoTrue por HTTP: tampoco importan el SDK. */
 const PERMITIDOS_SDK_SUPABASE = new Set(["lib/backend/supabase.ts"]);
 const PERMITIDOS_BACKEND_SUPABASE = new Set(["lib/backend/index.ts"]);
-const esPruebaConSupabase = (ruta: string) => ruta.startsWith("lib/backend/") && ruta.endsWith(".supabase.test.ts");
+/** Las pruebas con un stack de verdad (`*.supabase.test.ts`) y la de la sesión con un cliente falso (`supabase.sesion.test.ts`, corre con `npm test`). */
+const esPruebaConSupabase = (ruta: string) => ruta.startsWith("lib/backend/") && (ruta.endsWith(".supabase.test.ts") || ruta === "lib/backend/supabase.sesion.test.ts");
 const ES_SDK_SUPABASE = /^@supabase(\/|$)/;
 const BACKEND_SUPABASE = join(RAIZ, "lib", "backend", "supabase");
 
@@ -87,14 +88,14 @@ describe("aislamiento de Firebase", () => {
     expect(infractores).toEqual([]);
   });
 
-  it("solo lib/backend/supabase.ts (y sus pruebas con un stack) importan el SDK de Supabase", () => {
+  it("solo lib/backend/supabase.ts (y sus pruebas) importan el SDK de Supabase", () => {
     const infractores = TODOS
       .filter(({ ruta }) => !PERMITIDOS_SDK_SUPABASE.has(ruta) && !esPruebaConSupabase(ruta))
       .flatMap(({ ruta, imports }) => imports.filter((e) => ES_SDK_SUPABASE.test(e)).map((e) => `${ruta} importa el SDK «${e}»`));
     expect(infractores).toEqual([]);
   });
 
-  it("solo lib/backend/index.ts (y las lib/backend/*.supabase.test.ts) importan lib/backend/supabase: el resto pasa por el selector NEXT_PUBLIC_BACKEND", () => {
+  it("solo lib/backend/index.ts (y las pruebas del adaptador) importan lib/backend/supabase: el resto pasa por el selector NEXT_PUBLIC_BACKEND", () => {
     const infractores = TODOS
       .filter(({ ruta }) => !PERMITIDOS_BACKEND_SUPABASE.has(ruta) && !esPruebaConSupabase(ruta))
       .flatMap(({ ruta, absoluta, imports }) => imports.filter((e) => apuntaAlBackendSupabase(e, absoluta)).map((e) => `${ruta} importa el backend de Supabase «${e}» sin pasar por lib/backend/index.ts`));

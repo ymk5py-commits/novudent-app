@@ -35,15 +35,26 @@ cambian con un reinicio. **Ningún valor va al repositorio ni al chat**; los sec
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | Dominio propio (canónica, sitemap, redirección desde `novudent-app.vercel.app`) | `https://novudent.novumholding.lat`. **En la app de prueba, la URL de prueba** |
 | `NEXT_PUBLIC_BACKEND` | Qué backend usa la tienda: `firestore` o `supabase` | `firestore`. Pasa a `supabase` en la fase C/F |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | URL de Kong (`https://api-novudent….novumholding.lat`) y clave anónima | Fase C |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | URL de Kong (`https://api-novudent….novumholding.lat`) y clave anónima | Solo con `NEXT_PUBLIC_BACKEND=supabase` (ver la sección de Supabase) |
 | `NEXT_PUBLIC_APPCHECK_SITE_KEY` | App Check de Firebase | Sin ella no se registra nada |
 | `NEXT_PUBLIC_WHATSAPP_VENTAS`, `NEXT_PUBLIC_SOPORTE_WHATSAPP`, `NEXT_PUBLIC_SOPORTE_HORARIO`, `NEXT_PUBLIC_SOPORTE_EMAIL`, `NEXT_PUBLIC_CONTACTO_LEGAL` | Datos de contacto y soporte que muestra la web | Ver `lib/site.ts` |
 
 La config web de Firebase no es una variable: está escrita en `lib/firebase.ts` (es pública por diseño).
 
-## Nuevas del lado servidor (fase C)
+## Supabase (fase C: `NEXT_PUBLIC_BACKEND=supabase`)
 
-`SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` y, si el servidor usa `pg` directo, `DATABASE_URL`. Las genera Coolify al crear el servicio de Supabase.
+La misma variable `NEXT_PUBLIC_BACKEND` elige la base del navegador **y** la de las rutas `/api` (`lib/server/backend.ts`): se hornea al compilar y las dos tienen que coincidir.
+Las genera Coolify al crear el servicio de Supabase (ver `supabase.md`); ninguna va al repositorio ni al chat.
+
+| Variable | Cuándo | Para qué |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Build (`NEXT_PUBLIC_*`) | El navegador habla con Kong (`https://api-novudent….novumholding.lat`) con la clave anónima (pública por diseño) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Ejecución, **secreta** | Las rutas `/api` leen y escriben con ella (se salta RLS) y crean las cuentas con la API de administración de GoTrue. Nunca llega al navegador |
+| `SUPABASE_JWT_SECRET` | Ejecución, **secreta** | Verificar en el servidor, sin llamar a nadie, el token de sesión (HS256) de quien llama a las rutas `/api` |
+| `SUPABASE_URL` | Ejecución, opcional | URL de Kong **para el servidor**, si es distinta de la pública (por ejemplo, la interna de la red de Docker: no da la vuelta por Cloudflare). Sin ella se usa `NEXT_PUBLIC_SUPABASE_URL` |
+
+`/api/health` consulta la base cuando el backend es Supabase y responde 503 si no contesta. La clave anónima también la usa el servidor (iniciar sesión para recuperar una cuenta y cambiar la contraseña con el token de quien llama).
+`DATABASE_URL` no hace falta: el servidor habla con PostgREST por HTTP, no con `pg`.
 
 ## Solo para pruebas (no van en producción)
 
