@@ -50,6 +50,13 @@ describe("tablas", () => {
     }
   });
 
+  test("un documento no pasa de 2 MiB (la demo la escribe cualquiera)", async () => {
+    const casiDos = "x".repeat(1_900_000);
+    await admin(`insert into public.patients (clinic_id, id, data) values ('clBig', 'justo', jsonb_build_object('foto', $1::text))`, [casiDos]);
+    await assert.rejects(admin(`insert into public.patients (clinic_id, id, data) values ('clBig', 'enorme', jsonb_build_object('foto', $1::text))`, [casiDos + casiDos]), (e) => e.code === "23514");
+    await assert.rejects(admin(`insert into public.subscriptions (id, data) values ('enorme', jsonb_build_object('foto', $1::text))`, [casiDos + casiDos]), (e) => e.code === "23514");
+  });
+
   test("`data` tiene que ser un objeto JSON", async () => {
     await assert.rejects(admin(`insert into public.patients (clinic_id, id, data) values ('clX', 'p', '[1]')`), /patients_data_objeto/);
     await assert.rejects(admin(`insert into public.patients (clinic_id, id, data) values ('clX', 'p', '"texto"')`), /patients_data_objeto/);

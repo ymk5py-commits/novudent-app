@@ -111,6 +111,14 @@ ${columnas}
     revoke all on table public.${q(t)} from anon, authenticated;
   end if;
 end $$;
+-- Un documento no pasa de 2 MiB (Firestore: 1 MiB; las imágenes en base64 se achican en el cliente): la demo la escribe cualquiera con una
+-- sesión anónima, y sin tope un solo pedido podría llenar el disco.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public.${q(t)}'::regclass and conname = ${lit(`${t}_data_tamano`)}) then
+    alter table public.${q(t)} add constraint ${q(`${t}_data_tamano`)} check (pg_column_size(data) <= 2097152);
+  end if;
+end $$;
 alter table public.${q(t)} enable row level security;
 grant all on table public.${q(t)} to service_role;
 create or replace trigger ${q(`${t}_al_actualizar`)} before update on public.${q(t)}

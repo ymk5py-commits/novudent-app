@@ -11,6 +11,7 @@ Las migraciones de `supabase/migrations/` **se generan, no se escriben a mano**:
 | Regenerar las migraciones (después de tocar el manifiesto o una plantilla) | `node scripts/supabase/generar-esquema.mjs` |
 | Aplicarlas a un Postgres de Supabase en un contenedor (el `db-…` de Coolify) | `scripts/supabase/aplicar-esquema.sh db-<uuid> --ssh gmktec` (`--simular` solo muestra qué haría) |
 | Probar todo contra un Postgres **descartable** en el servidor | `scripts/supabase/probar-rls.sh` (levanta `nvsb-test-esquema-*`, abre el túnel, corre `test/rls/*.test.mjs` y lo borra todo) |
+| Probar de punta a punta en el stack COMPLETO (Kong, PostgREST, GoTrue, Realtime) descartable | `scripts/supabase/probar-stack.sh` (las mismas imágenes fijadas de `infra/supabase`; aplica las migraciones y corre `test/rls/stack.test.mjs`: JWT real, rpc por HTTP, Realtime con RLS) |
 | Un solo archivo o caso de las pruebas | `scripts/supabase/probar-rls.sh -- reglas.test.mjs` (lo que va después de `--` es de `node --test`) |
 | Pruebas que no necesitan Postgres (migraciones al día, roles de fábrica atados a `lib/rbac.ts`) | `npx vitest run test/rls` |
 
@@ -29,7 +30,7 @@ colecciones raíz (5):          id text, data jsonb, updated_at timestamptz     
 ```
 
 `directory` y `serviceAccounts` **no existen**: el enrutamiento uid → clínica sale de `users.data->>'authUid'` (`public.mi_directorio()`), y la «cuenta de servicio» es la clave `service_role`.
-`updated_at` lo mantiene un disparador; la clave de un documento (clínica e id) no se puede cambiar con un update.
+`updated_at` lo mantiene un disparador; la clave de un documento (clínica e id) no se puede cambiar con un update. Un documento no pasa de **2 MiB** (`23514`): la demo la escribe cualquiera con una sesión anónima.
 
 Índices: `users` por `authUid` (único entre clínicas reales: **una persona pertenece a una sola clínica**; la demo queda afuera), `appointments`/`agendaBlocks` por `start`, `appointments` por `confirmToken`, `signatures` por `token`, `patients` por `document`, `outbox` por `status`, `directMessages` por `participants` (GIN).
 
@@ -78,3 +79,9 @@ Las **5 reglas por campo** (`20261017000500_rls_disparadores.sql`, disparadores 
 - `authenticated` (GoTrue: email y contraseña, o la sesión anónima de la demo) pasa por RLS. **Sin membresía en una clínica no se lee ni se escribe nada fuera de `cl_demo`.** La demo se escribe con cualquier sesión.
 - `service_role` salta RLS y las reglas por campo. Es la llave del servidor: nunca va al navegador.
 - Usuarios: `users.data.authUid` = el uuid de GoTrue; `users.id` = el id del documento (para usuarios migrados es el id viejo; para los nuevos, el mismo uuid). Todo lo que dice «mi id» (`participants`, `fromId`, `toId`, `dentistId`…) es el **id del documento**, no el uid.
+
+## Qué falta decidir o hacer (no es de esta fase)
+
+- **La demo es escribible por cualquiera con una sesión anónima** (a propósito: es el sandbox de ventas). Cada documento tiene tope, pero no hay tope de cantidad: hace falta limitación de tasa en la entrada (Cloudflare/Kong) y una limpieza periódica de `cl_demo` (y de las cuentas anónimas viejas de GoTrue, spec §8).
+- **Rendimiento de las políticas:** cada fila llama a `isMember` (una búsqueda por índice): medido con 20.000 filas en una clínica, ~10 µs por fila (≈200 ms la lectura entera). Si hiciera falta, se puede calcular una vez por consulta (`clinic_id in (select …)`); medir antes con la prueba de carga del spec §13.
+- **Aplicar el esquema al stack real** (Coolify): `scripts/supabase/aplicar-esquema.sh db-<uuid> --ssh gmktec --simular` primero; no se corrió contra `supabase-prueba`.
