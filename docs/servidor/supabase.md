@@ -59,3 +59,23 @@ Nuevo recurso › **Docker Compose** desde un repositorio Git (público) › ram
   (este último guarda la clave de pgsodium: sin él, un reinicio la regenera).
 - **Actualizar versiones:** se cambian las etiquetas del `docker-compose.yml` (el conjunto que Supabase publica junto en `supabase/docker`), se corre `probar-local.sh` y recién
   después se redespliega en Coolify.
+
+## Lo que la app necesita de GoTrue (fase C)
+
+- **Recuperar contraseña.** El correo de GoTrue vuelve a `/login#access_token=…&type=recovery` y la pantalla de ingreso muestra el formulario de contraseña nueva. La URL tiene que estar en
+  la lista de permitidas: `SITE_URL` (la de la app) y `ADDITIONAL_REDIRECT_URLS` (por ejemplo `https://novudent.novumholding.lat/**`); si no, GoTrue redirige a `SITE_URL` sin el recorrido.
+  El correo sale por SMTP (`SMTP_*`, Resend): sin SMTP, «olvidé mi contraseña» responde un error. Para probar sin correo: `POST /auth/v1/admin/generate_link` con `type: "recovery"`.
+- **Cuentas reales:** las crea el servidor (`/api/clinicas`, `/api/team-users`) con la API de administración y el correo ya confirmado. El registro abierto de GoTrue no sirve para entrar sin confirmar el correo (probado).
+- **Demo:** sesión anónima (`ENABLE_ANONYMOUS_USERS=true`). Un anónimo es rol `authenticated` sin ficha en ninguna clínica: las políticas (fase B) solo le dejan `cl_demo`.
+- **Pendiente:** purgar las cuentas anónimas de más de 30 días (spec del 9-oct §8). Hoy se acumulan en `auth.users`; no molestan, pero hay que limpiarlas antes de tener tráfico real.
+
+## Probar los adaptadores (fase C)
+
+Stack descartable en el servidor (`nvsb-test-c-…`, solo `127.0.0.1`, con límite de memoria y un túnel SSH desde la Mac); las claves se generan allá y quedan en `~/.cache/novudent-fase-c/` (modo 600, fuera del repositorio):
+
+```bash
+scripts/adaptadores/stack-descartable.sh up supabase/migrations   # levanta y aplica el esquema de la fase B
+npm run test:supabase                                              # contrato de datos + las rutas /api contra el stack
+npm run test:e2e:supabase                                          # compila con NEXT_PUBLIC_BACKEND=supabase y corre Playwright (e2e-supabase/)
+scripts/adaptadores/stack-descartable.sh down                      # borra todo
+```

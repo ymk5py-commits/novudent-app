@@ -20,7 +20,8 @@
  * Cuesta 3 lecturas de Firestore (~centavos de millón) contra una llamada a un
  * modelo de visión: la relación es abismalmente favorable.
  */
-import { getDocument } from "./firestore-rest";
+import { getDocument } from "./datos";
+import { directorioDe } from "./directorio";
 import { isSubscriptionActive, subscriptionPlanId } from "../subscription";
 import { planHas, type PlanFeature } from "../plan";
 import type { Subscription } from "../types";
@@ -28,7 +29,10 @@ import { AuthError } from "./auth";
 import { isValidId } from "./ids";
 
 export interface Autorizado {
+  /** El uid de LOGIN (el del token). */
   uid: string;
+  /** El id del documento de usuario en la clínica. Es el mismo uid salvo en los usuarios migrados a Supabase (ver `directorio.ts`). */
+  userId: string;
   clinicId: string;
   role: string;
 }
@@ -45,10 +49,9 @@ export interface Autorizado {
 export async function requireFeature(uid: string, feature: PlanFeature): Promise<Autorizado> {
   if (!uid || !isValidId(uid)) throw new AuthError("Sesión inválida", 403);
 
-  const dir = (await getDocument(`directory/${uid}`).catch(() => null)) as
-    | { clinicId?: string } | null;
+  const dir = await directorioDe(uid).catch(() => null);
   const clinicId = dir?.clinicId;
-  if (!clinicId || typeof clinicId !== "string" || !isValidId(clinicId)) {
+  if (!dir || !clinicId || !isValidId(clinicId) || !isValidId(dir.userId)) {
     throw new AuthError("Tu cuenta no está asignada a ninguna clínica.", 403);
   }
 
@@ -56,7 +59,7 @@ export async function requireFeature(uid: string, feature: PlanFeature): Promise
    * TODAVÍA pertenece. No es redundante: al dar de baja a un empleado se marca
    * `active:false` en el usuario y el directorio no se toca, así que sin esta
    * segunda lectura un despedido conservaría la IA de la clínica. */
-  const user = (await getDocument(`clinics/${clinicId}/users/${uid}`).catch(() => null)) as
+  const user = (await getDocument(`clinics/${clinicId}/users/${dir.userId}`).catch(() => null)) as
     | { active?: boolean; role?: string } | null;
   if (!user || user.active === false) {
     throw new AuthError("Tu usuario no está activo en la clínica.", 403);
@@ -70,7 +73,7 @@ export async function requireFeature(uid: string, feature: PlanFeature): Promise
     throw new AuthError("Tu plan no incluye esta función.", 403);
   }
 
-  return { uid, clinicId, role: String(user.role ?? "") };
+  return { uid, userId: dir.userId, clinicId, role: String(user.role ?? "") };
 }
 
 /**
@@ -80,15 +83,15 @@ export async function requireFeature(uid: string, feature: PlanFeature): Promise
  */
 export async function requireMiembro(uid: string): Promise<Autorizado> {
   if (!uid || !isValidId(uid)) throw new AuthError("Sesión inválida", 403);
-  const dir = (await getDocument(`directory/${uid}`).catch(() => null)) as { clinicId?: string } | null;
+  const dir = await directorioDe(uid).catch(() => null);
   const clinicId = dir?.clinicId;
-  if (!clinicId || typeof clinicId !== "string" || !isValidId(clinicId)) {
+  if (!dir || !clinicId || !isValidId(clinicId) || !isValidId(dir.userId)) {
     throw new AuthError("Tu cuenta no está asignada a ninguna clínica.", 403);
   }
-  const user = (await getDocument(`clinics/${clinicId}/users/${uid}`).catch(() => null)) as
+  const user = (await getDocument(`clinics/${clinicId}/users/${dir.userId}`).catch(() => null)) as
     | { active?: boolean; role?: string } | null;
   if (!user || user.active === false) throw new AuthError("Tu usuario no está activo en la clínica.", 403);
   const sub = (await getDocument(`subscriptions/${clinicId}`).catch(() => null)) as Subscription | null;
   if (!isSubscriptionActive(sub)) throw new AuthError("La suscripción de la clínica no está vigente.", 403);
-  return { uid, clinicId, role: String(user.role ?? "") };
+  return { uid, userId: dir.userId, clinicId, role: String(user.role ?? "") };
 }

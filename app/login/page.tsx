@@ -74,7 +74,7 @@ export default function Login() {
    * nueva — así conserva el email que la persona ya haya tecleado. Antes esto
    * no existía y cada olvido era un llamado a Carlos para recrear la cuenta a
    * mano; no escala pasadas un puñado de clínicas. */
-  const [vista, setVista] = useState<"login" | "recuperar">("login");
+  const [vista, setVista] = useState<"login" | "recuperar" | "nueva">("login");
   const [recEmail, setRecEmail] = useState("");
   const [recBusy, setRecBusy] = useState(false);
   const [recError, setRecError] = useState<string | null>(null);
@@ -91,6 +91,41 @@ export default function Login() {
       setError(friendlyAuthError(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  /* Con Supabase el correo de recuperación vuelve a esta página con una sesión de recuperación en la URL: se muestra el formulario de contraseña
+   * nueva. Con Firebase `hayEnlaceDeRecuperacion` no existe (la página de Firebase lo resuelve) y esto no hace nada. */
+  const [claveNueva, setClaveNueva] = useState("");
+  const [claveNueva2, setClaveNueva2] = useState("");
+  const [nuevaBusy, setNuevaBusy] = useState(false);
+  const [nuevaError, setNuevaError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  useEffect(() => {
+    if (/error_code=otp_expired|error=access_denied/.test(window.location.hash)) {
+      setError("El enlace para elegir la contraseña venció o ya se usó. Pedí uno nuevo con «¿Olvidaste tu contraseña?».");
+      return;
+    }
+    backendDeDatos.hayEnlaceDeRecuperacion?.().then((si) => { if (si) setVista("nueva"); }).catch(() => {});
+  }, []);
+
+  async function submitClaveNueva(e: React.FormEvent) {
+    e.preventDefault();
+    setNuevaError(null);
+    if (claveNueva.length < 6) return setNuevaError("La contraseña debe tener al menos 6 caracteres.");
+    if (claveNueva !== claveNueva2) return setNuevaError("Las dos contraseñas no coinciden.");
+    setNuevaBusy(true);
+    try {
+      await backendDeDatos.fijarClaveNueva!(claveNueva);
+      window.history.replaceState(null, "", window.location.pathname);
+      setClaveNueva(""); setClaveNueva2("");
+      setAviso("Listo: tu contraseña quedó cambiada. Ingresá con la nueva.");
+      setVista("login");
+    } catch (err: any) {
+      const code = String(err?.code ?? "");
+      setNuevaError(code.includes("same-password") ? "La contraseña nueva tiene que ser distinta de la que tenías." : code.includes("weak-password") ? "La contraseña es demasiado débil." : "No pudimos guardar la contraseña. Pedí un enlace nuevo y probá de nuevo.");
+    } finally {
+      setNuevaBusy(false);
     }
   }
 
@@ -174,7 +209,30 @@ export default function Login() {
             </div>
             )}
 
-            {vista === "recuperar" ? (
+            {vista === "nueva" ? (
+              <form onSubmit={submitClaveNueva} className="space-y-4">
+                <div>
+                  <h1 className="flex items-center gap-2 text-xl font-extrabold text-navy-800">
+                    <KeyRound className="h-5 w-5 text-azure-600" /> Elegí tu contraseña nueva
+                  </h1>
+                  <p className="mt-1 text-sm text-clinic-muted">Escribila dos veces. Después ingresás con ella.</p>
+                </div>
+                <Field label="Contraseña nueva">
+                  <input type="password" name="new-password" required minLength={6} autoComplete="new-password" spellCheck={false} className={inputCls} value={claveNueva} onChange={(e) => setClaveNueva(e.target.value)} />
+                </Field>
+                <Field label="Repetí la contraseña">
+                  <input type="password" name="new-password-2" required minLength={6} autoComplete="new-password" spellCheck={false} className={inputCls} value={claveNueva2} onChange={(e) => setClaveNueva2(e.target.value)} />
+                </Field>
+                {nuevaError && <p role="alert" className="rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-state-err">{nuevaError}</p>}
+                <button
+                  type="submit"
+                  disabled={nuevaBusy}
+                  className="grid min-h-12 w-full place-items-center rounded-[10px] bg-azure-600 py-3 text-sm font-bold text-white shadow-[0_8px_22px_-10px_rgba(3,105,201,0.55)] transition-[color,background-color,box-shadow] hover:bg-azure-700 disabled:cursor-not-allowed disabled:bg-clinic-border disabled:text-clinic-muted disabled:shadow-none"
+                >
+                  {nuevaBusy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : "Guardar contraseña"}
+                </button>
+              </form>
+            ) : vista === "recuperar" ? (
               recEnviado ? (
                 <div className="space-y-4 text-center">
                   <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-state-okbg text-state-ok">
@@ -260,6 +318,7 @@ export default function Login() {
                     ¿Olvidaste tu contraseña?
                   </button>
                 </div>
+                {aviso && <p role="status" className="rounded-xl bg-state-okbg px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-state-ok">{aviso}</p>}
                 {error && <p role="alert" className="rounded-xl bg-state-errbg px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-state-err">{error}</p>}
                 <button
                   type="submit"

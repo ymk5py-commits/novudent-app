@@ -7,7 +7,7 @@ import {
   createIfAbsent,
   queryRange,
   queryIn,
-} from "@/lib/server/firestore-rest";
+} from "@/lib/server/datos";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 import { ahoraEnZona, slotAlcanzaAnticipacion, anticipacionDe, turnosOcupados, turnosBloqueados } from "@/lib/reserva-online";
 import { historiaClinicaPendiente, plantillasDeClinica } from "@/lib/documentosClinicos";
@@ -30,7 +30,7 @@ import type { FieldConfig } from "@/lib/types";
  *
  * Página pública (sin login): los datos pasan por estas rutas — el
  * navegador del paciente nunca toca Firestore. El servidor se
- * autentica con el usuario de servicio (ver lib/server/firestore-rest).
+ * escribe con la credencial del servidor (ver lib/server/datos).
  */
 
 const SLOT_MIN = 30;
@@ -210,8 +210,9 @@ export async function GET(req: NextRequest) {
       campos: extrasOnline(camposConfig(clinic)),
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: msg }, { status: 502 });
+    // Sin detalles internos (paths, mensajes de la base) hacia una página pública.
+    console.error("[reservas GET]", e);
+    return NextResponse.json({ ok: false, error: "No se pudo cargar la disponibilidad. Intentá de nuevo en un momento." }, { status: 502 });
   }
 }
 

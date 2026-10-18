@@ -4,7 +4,7 @@ import {
   getDocument,
   queryWhere,
   setDocument,
-} from "@/lib/server/firestore-rest";
+} from "@/lib/server/datos";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 import { canSign, validateSignPayload } from "@/lib/firma";
 
@@ -22,7 +22,7 @@ import { canSign, validateSignPayload } from "@/lib/firma";
  *
  * El token ES la credencial: no hay verifyIdToken. El navegador del paciente
  * nunca toca Firestore — el servidor se autentica con el usuario de servicio
- * (mismo mecanismo que /api/reservas, ver lib/server/firestore-rest).
+ * (mismo mecanismo que /api/reservas, ver lib/server/datos).
  *
  * Seguridad:
  *   - NUNCA se enumeran tokens: el GET/POST sólo busca por igualdad de `token`

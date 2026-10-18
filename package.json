@@ -12,6 +12,7 @@
     "supabase:esquema": "node scripts/supabase/generar-esquema.mjs",
     "test:rls": "scripts/supabase/probar-rls.sh",
     "test:backend": "firebase emulators:exec --only firestore \"vitest run -c vitest.emulador.config.ts\"",
+    "test:supabase": "scripts/adaptadores/correr.sh vitest run -c vitest.supabase.config.ts",
     "migracion:exportar": "node scripts/migracion/exportar-firestore.mjs",
     "migracion:cargar": "node scripts/migracion/cargar-postgres.mjs",
     "verificar:cobro": "node scripts/verificar-cobro.mjs",
@@ -19,10 +20,12 @@
     "marca": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generar-marca.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:e2e:supabase": "scripts/adaptadores/e2e.sh",
     "manual:capturas": "playwright test -c docs/manual/playwright.manual.config.ts capturar",
     "manual:pdf": "playwright test -c docs/manual/playwright.manual.config.ts generar"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "fflate": "^0.8.3",
     "firebase": "^12.14.0",
     "framer-motion": "^12.43.0",

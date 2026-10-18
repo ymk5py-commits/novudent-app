@@ -15,7 +15,7 @@ const listCollection = vi.fn(async (parent: string, col: string) =>
 let actor = { uid: "admin_a", clinicId: "cl_a", role: "admin" };
 let anonymous = false;
 
-vi.mock("@/lib/server/firestore-rest", () => ({
+vi.mock("@/lib/server/datos", () => ({
   createIfAbsent: (...args: [string, Record<string, unknown>]) => createIfAbsent(...args),
   getDocument: (...args: [string]) => getDocument(...args),
   listCollection: (...args: [string, string]) => listCollection(...args),

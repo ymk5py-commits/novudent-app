@@ -25,7 +25,7 @@ const listCollection = vi.fn(async (_parent: string, col: string) =>
 );
 const rateLimit = vi.fn(() => ({ ok: true }));
 
-vi.mock("@/lib/server/firestore-rest", () => ({
+vi.mock("@/lib/server/datos", () => ({
   getDocument: (...a: unknown[]) => getDocument(...(a as [string])),
   listCollection: (...a: unknown[]) => listCollection(...(a as [string, string])),
   setDocument: async () => {},

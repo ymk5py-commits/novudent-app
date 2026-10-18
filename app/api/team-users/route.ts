@@ -1,49 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
 import { requireMiembro } from "@/lib/server/require-feature";
-import { createIfAbsent, getDocument, isServerFirestoreConfigured, listCollection } from "@/lib/server/firestore-rest";
+import { createIfAbsent, getDocument, isServerFirestoreConfigured, listCollection } from "@/lib/server/datos";
+import { crearOCuentaRecuperar, cuentasEstaConfigurado } from "@/lib/server/cuentas";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 import { planUserLimitError } from "@/lib/plan";
 import { isSubscriptionActive, subscriptionPlanId } from "@/lib/subscription";
-import { isValidId } from "@/lib/server/ids";
 import { esIdDeRolValido, esRolDeFabrica, normalizarRolesPropios } from "@/lib/rbac";
 import type { RolId, Subscription, User } from "@/lib/types";
 
 export const runtime = "nodejs";
 
-/** Identity Toolkit crea la cuenta sin iniciar sesión en el navegador del admin. */
-async function createOrRecoverUser(email: string, password: string): Promise<string> {
-  const key = encodeURIComponent(process.env.FIREBASE_WEB_API_KEY!);
-  const call = async (endpoint: string) => {
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${endpoint}?key=${key}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, returnSecureToken: true }),
-      signal: AbortSignal.timeout(8000),
-    });
-    const data = await response.json().catch(() => ({}));
-    return { ok: response.ok, data };
-  };
-  const created = await call("signUp");
-  if (created.ok && isValidId(created.data.localId)) return created.data.localId;
-  const code = String(created.data?.error?.message ?? "");
-  if (code.includes("EMAIL_EXISTS")) {
-    // Un corte después de signUp puede dejar una cuenta sin ficha. Con la misma
-    // contraseña provisional, el admin puede terminar el alta al reintentar.
-    const recovered = await call("signInWithPassword");
-    if (recovered.ok && isValidId(recovered.data.localId)) return recovered.data.localId;
-    throw new AuthError("Ese email ya tiene una cuenta. Usá otro email o la contraseña provisional original.", 409);
-  }
-  if (code.includes("WEAK_PASSWORD")) throw new AuthError("La contraseña es demasiado débil.", 400);
-  if (code.includes("INVALID_EMAIL")) throw new AuthError("El email no es válido.", 400);
-  if (code.includes("OPERATION_NOT_ALLOWED")) throw new AuthError("El ingreso por email no está habilitado en Firebase.", 503);
-  throw new Error("No se pudo crear la cuenta en Firebase Auth.");
-}
-
 export async function POST(req: NextRequest) {
   const ipLimit = await rateLimit(`team-users-ip:${clientIp(req)}`, { limit: 30, windowMs: 60_000 });
   if (!ipLimit.ok) return tooManyRequests(ipLimit.retryAfterSec);
-  if (!isServerFirestoreConfigured()) {
+  if (!isServerFirestoreConfigured() || !cuentasEstaConfigurado()) {
     return NextResponse.json({ ok: false, error: "El servidor no está configurado para crear usuarios." }, { status: 503 });
   }
 
@@ -95,7 +66,7 @@ export async function POST(req: NextRequest) {
     const limit = planUserLimitError({ plan: effectivePlan }, users.map(({ data }) => ({ role: String(data.role ?? ""), active: data.active !== false })), role);
     if (limit) throw new AuthError(limit, 409);
 
-    const uid = await createOrRecoverUser(email, password);
+    const uid = await crearOCuentaRecuperar(email, password);
     const dirPath = `directory/${uid}`;
     const dirCreated = await createIfAbsent(dirPath, { clinicId: cid, email });
     if (!dirCreated) {

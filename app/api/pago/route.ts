@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
+import { getDocument, isServerFirestoreConfigured } from "@/lib/server/datos";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 import { isValidId } from "@/lib/server/ids";
 

@@ -5,7 +5,7 @@ const TOKEN = "tok_ABCDEFGHIJKLmnop";
 const DOCS: Record<string, Record<string, unknown> | null> = {};
 const CITAS: Array<{ id: string; data: Record<string, unknown> }> = [];
 const patchFields = vi.fn(async () => {});
-vi.mock("@/lib/server/firestore-rest", () => ({
+vi.mock("@/lib/server/datos", () => ({
   isServerFirestoreConfigured: () => true,
   getDocument: vi.fn(async (path: string) => DOCS[path] ?? null),
   queryWhere: vi.fn(async (_parent: string, _col: string, _field: string, value: unknown) => CITAS.filter((c) => c.data.confirmToken === value)),

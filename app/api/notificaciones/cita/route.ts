@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
 import { requireMiembro } from "@/lib/server/require-feature";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
-import { getDocument, isServerFirestoreConfigured, patchFields } from "@/lib/server/firestore-rest";
+import { getDocument, isServerFirestoreConfigured, patchFields } from "@/lib/server/datos";
 import { isValidId, isValidToken } from "@/lib/server/ids";
 import { linkConfirmacion as linkConfirmacionDe, puedeResponder } from "@/lib/confirmacionCita";
 import { newSignToken } from "@/lib/firma";

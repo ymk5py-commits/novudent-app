@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 const DOCS: Record<string, Record<string, unknown> | null> = {};
-vi.mock("@/lib/server/firestore-rest", () => ({
+vi.mock("@/lib/server/datos", () => ({
   getDocument: vi.fn(async (path: string) => DOCS[path] ?? null),
   patchFields: vi.fn(async () => {}),
   isServerFirestoreConfigured: () => true,
@@ -22,7 +22,7 @@ vi.mock("@/lib/server/rate-limit", () => ({
 }));
 
 import { POST } from "./route";
-import { patchFields } from "@/lib/server/firestore-rest";
+import { patchFields } from "@/lib/server/datos";
 
 const post = (body: unknown) =>
   new Request("http://x/api/notificaciones/cita", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }) as unknown as Parameters<typeof POST>[0];

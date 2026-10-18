@@ -17,7 +17,8 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
-import { getDocument, setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
+import { getDocument, setDocument, isServerFirestoreConfigured } from "@/lib/server/datos";
+import { directorioDe } from "@/lib/server/directorio";
 import { buildCheckoutUrl } from "@/lib/lemonsqueezy";
 import type { PlanId } from "@/lib/plan";
 
@@ -56,9 +57,9 @@ export async function POST(req: Request) {
   }
 
   // La clínica sale del directorio server-side, NO de lo que mande el cliente.
-  const dir = await getDocument(`directory/${user.uid}`);
-  const clinicId = typeof dir?.clinicId === "string" ? dir.clinicId : null;
-  if (!clinicId) {
+  const dir = await directorioDe(user.uid);
+  const clinicId = dir?.clinicId ?? null;
+  if (!dir || !clinicId) {
     return NextResponse.json({ ok: false, error: "No pudimos identificar tu clínica." }, { status: 400 });
   }
 
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
    * atacante — que después la cancela desde el portal y la deja en solo-lectura.
    * Es el ataque de los $45 que el token cerró para desconocidos, reabierto para
    * cualquiera que alguna vez tuvo login en la clínica. */
-  const miembro = (await getDocument(`clinics/${clinicId}/users/${user.uid}`).catch(() => null)) as
+  const miembro = (await getDocument(`clinics/${clinicId}/users/${dir.userId}`).catch(() => null)) as
     | { role?: string; active?: boolean } | null;
   if (!miembro || miembro.active === false || miembro.role !== "admin") {
     return NextResponse.json(

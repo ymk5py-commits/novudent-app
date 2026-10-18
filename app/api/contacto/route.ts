@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clientIp, rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
-import { setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
+import { setDocument, isServerFirestoreConfigured } from "@/lib/server/datos";
 
 /**
  * Pedido de acceso desde la landing — PÚBLICO, sin sesión.
