@@ -12,7 +12,19 @@ describeContratoDeDatos("Supabase (stack local)", async () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const servicio = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !servicio) throw new Error("Faltan NEXT_PUBLIC_SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY: usá scripts/adaptadores/correr.sh");
-  const admin = createClient(url, servicio, { auth: { persistSession: false, autoRefreshToken: false } });
+  // Cada caso representa un cliente distinto. La limpieza de 41 tablas por caso no debe agotar el límite de otro caso.
+  // Este header solo se envía al stack descartable, accesible por el túnel SSH local.
+  let clienteDePrueba = 1;
+  const admin = createClient(url, servicio, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        headers.set("cf-connecting-ip", `198.51.100.${clienteDePrueba}`);
+        return fetch(input, { ...init, headers });
+      },
+    },
+  });
   const usuarioId = "u-sesion";
 
   const sembrar = async (ruta: string, data: Record<string, unknown>) => {
@@ -38,6 +50,7 @@ describeContratoDeDatos("Supabase (stack local)", async () => {
     usuarioId,
     sembrar,
     vaciar: async () => {
+      clienteDePrueba++;
       for (const t of [...COLECCIONES_DE_CLINICA, ...TABLAS_RAIZ]) {
         // Un reintento: el túnel SSH a veces cierra una conexión inactiva que `fetch` quería reutilizar.
         let error = (await admin.from(t).delete().not("id", "is", null)).error;
