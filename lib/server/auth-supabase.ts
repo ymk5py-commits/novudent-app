@@ -47,7 +47,7 @@ export function verificarJwtSupabase(token: string, secreto: string | undefined,
   if (!c) throw new AuthError("Sesión inválida o expirada");
   if (typeof c.exp !== "number" || c.exp * 1000 <= ahoraMs) throw new AuthError("Sesión inválida o expirada");
   // Las claves `anon` y `service_role` también son JWT firmados con este secreto, pero no son una persona: sin `sub` y con otro rol.
-  if (c.role !== "authenticated" || typeof c.sub !== "string" || c.sub === "") throw new AuthError("Sesión inválida o expirada");
+  if (c.role !== "authenticated" || c.aud !== "authenticated" || typeof c.sub !== "string" || c.sub === "") throw new AuthError("Sesión inválida o expirada");
 
   return {
     uid: c.sub,

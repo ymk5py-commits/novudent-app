@@ -210,8 +210,9 @@ export async function GET(req: NextRequest) {
       campos: extrasOnline(camposConfig(clinic)),
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: msg }, { status: 502 });
+    // Sin detalles internos (paths, mensajes de la base) hacia una página pública.
+    console.error("[reservas GET]", e);
+    return NextResponse.json({ ok: false, error: "No se pudo cargar la disponibilidad. Intentá de nuevo en un momento." }, { status: 502 });
   }
 }
 

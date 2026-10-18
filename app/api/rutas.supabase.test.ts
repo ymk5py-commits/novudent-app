@@ -6,7 +6,8 @@
  */
 import { createHmac } from "node:crypto";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { armarClinica, borrarCuenta, crearCuenta, escribirDoc, iniciarSesion, leerDoc, limpiar, rest, sesionAnonima, sufijo, type ClinicaArmada } from "@/lib/server/stack-de-prueba";
+import { reiniciarCacheDeSalud } from "@/lib/server/salud";
+import { armarClinica, borrarCuenta, crearCuenta, escribirDoc, iniciarSesion, leerDoc, limpiar, rest, sesionAnonima, stack, sufijo, type ClinicaArmada } from "@/lib/server/stack-de-prueba";
 
 import { GET as health } from "./health/route";
 import { POST as clinicas } from "./clinicas/route";
@@ -23,7 +24,6 @@ import { POST as webhookLS } from "./webhooks/lemonsqueezy/route";
 import { POST as email } from "./email/route";
 import { POST as correoCita } from "./notificaciones/cita/route";
 import { POST as iaResumen } from "./ia/agenda-resumen/route";
-import { POST as iaCopilot } from "./ia/copilot/route";
 
 let ip = 0;
 const IP = () => `10.${Math.floor(++ip / 250)}.${ip % 250}.7`;
@@ -79,12 +79,13 @@ describe("/api/health", () => {
     expect(await res.json()).toEqual({ ok: true });
   });
   it("si la base no contesta responde 503", async () => {
+    reiniciarCacheDeSalud(); // el resultado de la comprobación anterior vale unos segundos
     vi.stubEnv("SUPABASE_URL", "http://127.0.0.1:9");
     try {
       const res = await health();
       expect(res.status).toBe(503);
       expect(await res.json()).toEqual({ ok: false });
-    } finally { vi.unstubAllEnvs(); vi.stubEnv("NEXT_PUBLIC_BACKEND", "supabase"); vi.stubEnv("OWNER_PANEL_KEY", "clave-del-dueño-de-prueba"); vi.stubEnv("RESEND_API_KEY", "re_de_prueba"); vi.stubEnv("EMAIL_FROM", "Clínica <avisos@novudent.test>"); vi.stubEnv("LEADS_EMAIL", "ventas@novudent.test"); vi.stubEnv("GEMINI_API_KEY", "gemini_de_prueba"); vi.stubEnv("LEMONSQUEEZY_WEBHOOK_SECRET", "secreto-ls"); vi.stubEnv("LS_VARIANT_CLINICA", "111"); }
+    } finally { reiniciarCacheDeSalud(); vi.unstubAllEnvs(); vi.stubEnv("NEXT_PUBLIC_BACKEND", "supabase"); vi.stubEnv("OWNER_PANEL_KEY", "clave-del-dueño-de-prueba"); vi.stubEnv("RESEND_API_KEY", "re_de_prueba"); vi.stubEnv("EMAIL_FROM", "Clínica <avisos@novudent.test>"); vi.stubEnv("LEADS_EMAIL", "ventas@novudent.test"); vi.stubEnv("GEMINI_API_KEY", "gemini_de_prueba"); vi.stubEnv("LEMONSQUEEZY_WEBHOOK_SECRET", "secreto-ls"); vi.stubEnv("LS_VARIANT_CLINICA", "111"); }
   });
 });
 
@@ -549,5 +550,35 @@ describe("webhook de Lemon Squeezy (/api/webhooks/lemonsqueezy)", () => {
     const e = evento({ sub: "sub_ws_2", actualizado: "2026-10-02T10:00:00.000000Z" });
     (e.meta.custom_data as Record<string, string>).novudent_token = "z".repeat(40);
     expect(await (await webhookLS(firmado(e))).json()).toEqual({ ok: true, ignored: true });
+  });
+});
+
+/* ─────────────────────── la demo no es una clínica a la que se «pertenece» ─────────────────────── */
+
+describe("sesión anónima que planta su ficha en cl_demo (revisión de seguridad, 17-oct)", () => {
+  /* Cualquiera con una sesión anónima puede escribir en cl_demo (a propósito: es la demo pública). Si el servidor resolviera «a qué clínica pertenece este uid» también
+   * dentro de la demo, bastaba plantar un usuario administrador con el propio authUid para pasar `requireFeature` y gastar Gemini, mandar correos con la marca de la
+   * clínica o pedir un checkout. `mi_clinica()` de la fase B ya excluye la demo; el servidor tiene que hacer lo mismo. */
+  it("no consigue IA ni correos aunque la ficha plantada diga admin y esté activa", async () => {
+    const anonima = await sesionAnonima();
+    cuentasCreadas.push(anonima.uid);
+    const s = stack();
+    const id = `u_plantado_${sufijo()}`;
+    const plantar = await fetch(`${s.url}/rest/v1/rpc/guardar`, {
+      method: "POST",
+      headers: { apikey: s.anon, Authorization: `Bearer ${anonima.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ tabla: "users", clinic_id: "cl_demo", id, data: { id, authUid: anonima.uid, clinicId: "cl_demo", name: "Plantado", email: "x@x.test", role: "admin", active: true } }),
+    });
+    expect(plantar.status, "la demo deja escribir a una sesión anónima: es el escenario").toBeLessThan(300);
+    try {
+      const ia = await iaResumen(pedido("ia/agenda-resumen", { token: anonima.token, json: { datos: {} } }));
+      expect(ia.status).toBe(403);
+      expect(afuera.filter((a) => a.url.includes("generativelanguage"))).toHaveLength(0);
+      const aviso = await correoCita(pedido("notificaciones/cita", { token: anonima.token, json: { appointmentId: "cualquiera", tipo: "confirmacion" } }));
+      expect(aviso.status).toBe(403);
+      expect(afuera.filter((a) => a.url.includes("resend"))).toHaveLength(0);
+    } finally {
+      await rest("users", "DELETE", { clinic_id: "eq.cl_demo", id: `eq.${id}` });
+    }
   });
 });

@@ -27,6 +27,11 @@ describe("directorioDe", () => {
     expect(await directorioDe("x")).toBeNull();
   });
 
+  it("nunca devuelve la demo (defensa en profundidad: la capa de datos ya la excluye)", async () => {
+    getDocument.mockResolvedValue({ clinicId: "cl_demo", userId: "plantado", email: "x@x.test" });
+    expect(await directorioDe("uid-anonimo")).toBeNull();
+  });
+
   it("propaga el error de lectura (quien llama decide)", async () => {
     getDocument.mockImplementation(async () => { throw new Error("caído"); });
     await expect(directorioDe("x")).rejects.toThrow("caído");

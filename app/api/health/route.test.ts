@@ -8,8 +8,9 @@ import { afterEach, describe, it, expect, vi } from "vitest";
 const ping = vi.fn();
 vi.mock("@/lib/server/datos-supabase", () => ({ datosSupabase: { ping: () => ping() } }));
 import { GET } from "./route";
+import { reiniciarCacheDeSalud } from "@/lib/server/salud";
 
-afterEach(() => { vi.unstubAllEnvs(); ping.mockReset(); });
+afterEach(() => { vi.unstubAllEnvs(); ping.mockReset(); vi.useRealTimers(); reiniciarCacheDeSalud(); });
 
 describe("GET /api/health", () => {
   it("responde 200 con { ok: true } y nada más", async () => {
@@ -46,5 +47,21 @@ describe("GET /api/health", () => {
     expect(cuerpo).toEqual({ ok: false });
     expect(JSON.stringify(cuerpo)).not.toContain("secreto");
     expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("no consulta la base en cada llamada (es pública y sin límite): el resultado vale unos segundos, también cuando falla", async () => {
+    vi.stubEnv("NEXT_PUBLIC_BACKEND", "supabase");
+    vi.useFakeTimers();
+    ping.mockResolvedValue(undefined);
+    await GET(); await GET(); await GET();
+    expect(ping).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(6_000);
+    await GET();
+    expect(ping).toHaveBeenCalledTimes(2);
+    ping.mockRejectedValue(new Error("caída"));
+    vi.advanceTimersByTime(6_000);
+    expect((await GET()).status).toBe(503);
+    expect((await GET()).status).toBe(503);
+    expect(ping).toHaveBeenCalledTimes(3);
   });
 });

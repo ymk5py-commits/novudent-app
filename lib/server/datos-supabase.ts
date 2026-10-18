@@ -15,6 +15,7 @@
  *  - `patchFields` no tiene `updateMask`: lee la fila y la reescribe solo si `updated_at` no cambió (control optimista, con reintentos).
  *  - PostgREST corta cada respuesta en 1000 filas (`db-max-rows`): `listCollection` y las consultas paginan solas.
  */
+import { CLINICA_DEMO } from "../backend/constantes";
 import { esTablaDeClinica, esTablaRaiz } from "../backend/supabase-esquema";
 import type { DatosDeServidor, Fila } from "./datos";
 
@@ -117,8 +118,10 @@ export function crearDatosSupabase(config: ConfigDeDatosSupabase = {}): DatosDeS
 
   /* ---------- directory/{uid}: sale de users.authUid ---------- */
 
+  /* La demo (`cl_demo`) NO cuenta: cualquiera con una sesión anónima puede escribir ahí (es la demo pública), así que podría plantar una ficha de administrador con su
+   * propio authUid y pasar por miembro de una clínica (IA, correos, checkout). `mi_directorio()` de la fase B hace lo mismo: nunca devuelve la demo. */
   async function usuarioPorAuthUid(uid: string): Promise<{ clinic_id: string; id: string; data: Record<string, unknown> } | null> {
-    const params = new URLSearchParams({ select: "clinic_id,id,data", "data->>authUid": `eq.${uid}`, order: "clinic_id.asc,id.asc", limit: "1" });
+    const params = new URLSearchParams({ select: "clinic_id,id,data", "data->>authUid": `eq.${uid}`, clinic_id: `neq.${CLINICA_DEMO}`, order: "clinic_id.asc,id.asc", limit: "1" });
     const filas = filasDe(await pedir(`directory/${uid}`, "GET", "users", params));
     return (filas[0] as { clinic_id: string; id: string; data: Record<string, unknown> } | undefined) ?? null;
   }

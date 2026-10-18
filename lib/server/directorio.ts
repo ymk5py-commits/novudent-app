@@ -4,6 +4,7 @@
  *  el uid de login (`User.authUid`) puede ser distinto del id del documento (los usuarios migrados conservan su id viejo), así que el servidor
  *  tiene que preguntar AMBAS cosas. Toda ruta que parte de un token verificado (`verifyIdToken().uid`) y necesita la ficha del usuario pasa por
  *  acá y usa `userId` —nunca el uid— para armar `clinics/{cid}/users/{userId}`. */
+import { CLINICA_DEMO } from "../backend/constantes";
 import { getDocument } from "./datos";
 
 export interface EntradaDeDirectorio {
@@ -17,6 +18,8 @@ export interface EntradaDeDirectorio {
 export async function directorioDe(uid: string): Promise<EntradaDeDirectorio | null> {
   const d = await getDocument(`directory/${uid}`);
   if (!d || typeof d.clinicId !== "string" || d.clinicId === "") return null;
+  // La demo no es una clínica a la que se «pertenezca» (cualquiera con una sesión anónima puede escribir ahí): la capa de datos ya la excluye; esto es el respaldo.
+  if (d.clinicId === CLINICA_DEMO) return null;
   return {
     clinicId: d.clinicId,
     userId: typeof d.userId === "string" && d.userId !== "" ? d.userId : uid,

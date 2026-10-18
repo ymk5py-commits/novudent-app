@@ -109,11 +109,21 @@ describe("getDocument", () => {
 });
 
 describe("directory/{uid} (virtual: sale de users.authUid)", () => {
+  beforeEach(() => { llamadas = []; });
   it("getDocument busca al usuario por authUid y devuelve clínica, id del documento y email", async () => {
     respuestas = [{ json: [{ clinic_id: "cl_a", id: "u_viejo", data: { email: "a@b.c", authUid: "uid-nuevo" } }] }];
     expect(await datos().getDocument("directory/uid-nuevo")).toEqual({ clinicId: "cl_a", userId: "u_viejo", email: "a@b.c" });
     expect(llamadas[0].url.pathname).toBe("/rest/v1/users");
     expect(q().get("data->>authUid")).toBe("eq.uid-nuevo");
+  });
+
+  it("la demo no cuenta: cualquiera con una sesión anónima puede plantar una ficha en cl_demo, así que el directorio nunca la devuelve", async () => {
+    const d = datos();
+    respuestas = [{ json: [] }, { json: [] }];
+    await d.getDocument("directory/uid-anonimo");
+    expect(q().get("clinic_id")).toBe("neq.cl_demo");
+    expect(await d.createIfAbsent("directory/uid-anonimo", { clinicId: "cl_a" })).toBe(true);
+    expect(q(1).get("clinic_id")).toBe("neq.cl_demo");
   });
 
   it("getDocument devuelve null si nadie tiene ese authUid", async () => {

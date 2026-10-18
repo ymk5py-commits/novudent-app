@@ -56,6 +56,12 @@ describe("verificarJwtSupabase", () => {
     expect(intenta(jwt({ ...valida, role: "service_role" }))).toThrow(AuthError);
   });
 
+  it("rechaza un token cuya audiencia no es «authenticated»", () => {
+    expect(intenta(jwt({ ...valida, aud: "otro-servicio" }))).toThrow(AuthError);
+    const { aud: _a, ...sinAud } = valida;
+    expect(intenta(jwt(sinAud))).toThrow(AuthError);
+  });
+
   it("rechaza un token mal formado o vacío", () => {
     for (const t of ["", "a.b", "a.b.c.d", "no-es-un-jwt", "....", `${b64("{no es json")}.${b64(valida)}.x`]) expect(intenta(t)).toThrow(AuthError);
   });
