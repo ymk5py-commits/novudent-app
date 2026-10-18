@@ -15,3 +15,11 @@ Se corrigió la preparación de las pruebas: cada cliente del ensayo tiene una i
 ## Lo que todavía falta para el corte
 
 Esto verifica el código integrado con datos sintéticos; **no acredita una migración de datos reales ni un despliegue de esta rama**. Faltan exportar y validar los datos actuales, realizar dos simulacros de carga, configurar y comprobar los respaldos externos y el correo de recuperación, y coordinar el cambio de la aplicación de producción. Firebase continúa como origen hasta completar esos pasos. La dependencia externa por outbox debe resolverse antes de apagar Firebase, según la decisión del propietario.
+
+## Avance posterior: primera copia de los datos reales
+
+Con la autorización de continuar se exportaron 186 documentos de Firestore a una carpeta privada fuera del repositorio. Los 182 migrables se cargaron dos veces en un stack temporal: ambas cargas y la verificación independiente dieron cero diferencias; la segunda carga reutilizó las cuatro cuentas reales. Los cuatro documentos excluidos corresponden a colecciones técnicas de Firebase. Los siete usuarios de demo no generan cuentas de login.
+
+Se aplicaron las cinco migraciones en el Supabase de destino de Coolify (`supabase-prueba`), con 41 tablas protegidas por RLS, y se realizó una **carga inicial** de esos mismos 182 documentos. Una lectura independiente confirmó 182 iguales y cero faltantes, distintos o sobrantes. El origen sigue admitiendo escrituras: esta copia necesita actualizarse dentro de la ventana de corte.
+
+Se creó un respaldo cifrado en el servidor, se validó su contenido y se restauró en un Postgres descartable sin errores. La clave se guarda en el servidor con permisos 600; falta guardarla fuera de él y configurar R2. No se enviaron invitaciones ni correos. GoTrue carece de SMTP y la app carece de `RESEND_API_KEY` y `EMAIL_FROM`; los cuatro usuarios migrados todavía necesitan un canal de recuperación de contraseña operativo antes de cambiar la aplicación pública. La rama integrada tampoco se desplegó todavía como aplicación pública.
