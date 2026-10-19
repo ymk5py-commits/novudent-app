@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
-import { getDocument, setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
+import { getDocument, setDocument, isServerFirestoreConfigured } from "@/lib/server/datos";
+import { crearOCuentaRecuperar, cuentasEstaConfigurado } from "@/lib/server/cuentas";
+import { directorioDe } from "@/lib/server/directorio";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 import { buildSeed } from "@/lib/seed";
 
@@ -20,9 +22,10 @@ function safeEqual(a: string, b: string): boolean {
  * POST /api/clinicas
  *   { ownerKey, clinicName, adminName, adminEmail, adminPassword, phone?, address? }
  *
- * Crea: cuenta de Firebase Auth para el admin + clinics/{id} con config
- * inicial + aranceles de arranque + users/{uid} (admin) + directory/{uid}
- * (índice global uid → clínica para el login multi-clínica).
+ * Crea: cuenta de login para el admin (Firebase Auth o GoTrue) + clinics/{id} con
+ * config inicial + aranceles de arranque + users/{uid} (admin) + directory/{uid}
+ * (índice global uid → clínica para el login multi-clínica; en Supabase lo
+ * reemplaza users.authUid y escribirlo no hace nada).
  *
  * Protección: header/body ownerKey debe coincidir con OWNER_PANEL_KEY (env
  * en Vercel). Sin esa clave el endpoint no hace nada.
@@ -48,32 +51,6 @@ function slugify(name: string): string {
     .slice(0, 24) || "clinica";
 }
 
-/** Crea (o recupera, si ya existía con esa contraseña) la cuenta del admin. */
-async function createOrRecoverAuthUser(email: string, password: string): Promise<string> {
-  const key = encodeURIComponent(process.env.FIREBASE_WEB_API_KEY!);
-  const call = async (endpoint: string) => {
-    const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${endpoint}?key=${key}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, returnSecureToken: true }),
-    });
-    const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, data };
-  };
-  const up = await call("signUp");
-  if (up.ok && up.data.localId) return up.data.localId as string;
-  const code = up.data?.error?.message || "";
-  if (code.includes("EMAIL_EXISTS")) {
-    // reintento tras un alta a medias: si la contraseña coincide, reusamos la cuenta
-    const si = await call("signInWithPassword");
-    if (si.ok && si.data.localId) return si.data.localId as string;
-    throw new Error("Ese email ya tiene una cuenta con otra contraseña. Usá otro email o la contraseña original.");
-  }
-  if (code.includes("WEAK_PASSWORD")) throw new Error("La contraseña debe tener al menos 6 caracteres.");
-  if (code.includes("INVALID_EMAIL")) throw new Error("El email no es válido.");
-  throw new Error(`No se pudo crear la cuenta: ${code || "error desconocido"}`);
-}
-
 export async function POST(req: NextRequest) {
   // Antibruteforce sobre OWNER_PANEL_KEY: pocas creaciones por minuto por IP.
   const rl = await rateLimit(`clinicas:${clientIp(req)}`, { limit: 5, windowMs: 60_000 });
@@ -97,8 +74,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Clave de propietario incorrecta." }, { status: 401 });
   }
 
-  if (!isServerFirestoreConfigured()) {
-    return NextResponse.json({ error: "Faltan las credenciales de servidor (FIREBASE_WEB_API_KEY / SERVICE_USER_*)." }, { status: 503 });
+  if (!isServerFirestoreConfigured() || !cuentasEstaConfigurado()) {
+    return NextResponse.json({ error: "Faltan las credenciales de servidor (la base y el servicio de ingreso: ver docs/servidor/variables.md)." }, { status: 503 });
   }
 
   const clinicName = norm(body.clinicName);
@@ -114,11 +91,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // 1) cuenta real del administrador en Firebase Auth
-    const uid = await createOrRecoverAuthUser(adminEmail, adminPassword);
+    // 1) cuenta real del administrador (Firebase Auth o GoTrue, según el backend)
+    const uid = await crearOCuentaRecuperar(adminEmail, adminPassword);
 
     // 2) si esa cuenta ya pertenece a una clínica, no duplicamos
-    const existingDir = await getDocument(`directory/${uid}`);
+    const existingDir = await directorioDe(uid);
     if (existingDir?.clinicId) {
       return NextResponse.json(
         { error: `Esa cuenta ya es usuario de la clínica «${existingDir.clinicId}».` },

@@ -348,6 +348,22 @@ bytes y SHA-256). La credencial por defecto es la sesión del CLI de Firebase (`
 exportación tiene datos de pacientes: va fuera del repo (`~/novudent-export`), y `scripts/migracion/exportar-firestore.mjs` se niega a escribir adentro
 del repositorio** (compara las rutas reales, también por un enlace simbólico). Código de salida 2 = quedó algo sin leer.
 
+**Adaptadores de Supabase (17-oct-2026, fase C)** — `NEXT_PUBLIC_BACKEND=supabase` (por defecto sigue `firestore`) elige la base del navegador **y** la de las rutas `/api`
+(`lib/server/backend.ts`). **Navegador:** `lib/backend/supabase.ts` (único que importa `@supabase/*`; `aislamiento.test.ts`) cumple `DatosDeBackend` + `SesionDeBackend`: escribe con las funciones de
+la fase B (`guardar`, `quitar`, `fijar_campo`, `mezclar_clinica`, `lote`), lee con RLS (una colección sin permiso sobre la tabla da `[]`, una fila ajena simplemente no aparece) y escucha con Realtime
+`postgres_changes` (lectura inicial + eventos en cola + relectura al reconectar; `updated_at` descarta lo viejo). **`iniciarSesion` devuelve el uid de LOGIN (`User.authUid`) y `usuarioActual()` el id del
+DOCUMENTO de usuario: en los usuarios migrados NO coinciden** (el `id` no cambia al migrar; `authUid` apunta al uuid de GoTrue), y la tienda necesita ambos. Los errores llegan con los `code` de siempre
+(`permission-denied`, `not-found`, `unavailable`) y los del ingreso con los de Firebase Auth (`auth/invalid-credential`…). **Servidor:** las rutas importan SIEMPRE de `@/lib/server/datos` (la interfaz
+`DatosDeServidor`, mismas 8 operaciones; `datos-firestore.ts` / `datos-supabase.ts` con PostgREST y la clave `service_role`), nunca de `firestore-rest.ts`. `directory/{uid}` no existe en Postgres: se deriva
+de `users.authUid`, y **toda ruta que parte de un token verificado usa `directorioDe(uid)` (`lib/server/directorio.ts`) y arma `clinics/{cid}/users/{userId}` con su `userId`, nunca con el uid**
+(`requireFeature`/`requireMiembro` ya lo devuelven en `Autorizado.userId`). `auth.ts` verifica el JWT de GoTrue en local (HS256, `SUPABASE_JWT_SECRET`); `cuentas.ts` crea cuentas y cambia la contraseña
+(API de administración y `PUT /auth/v1/user`; el código de Identity Toolkit quedó en `cuentas-firebase.ts` hasta la fase F). `patchFields` no tiene `updateMask`: lee y reescribe solo si `updated_at` no cambió
+(reintenta). `/api/health` consulta la base con el resultado guardado 5 s (`lib/server/salud.ts`). **La demo (`cl_demo`) nunca cuenta como clínica del usuario** en el servidor (`usuarioPorAuthUid` excluye `cl_demo` y `directorioDe` lo repite): cualquiera con una sesión anónima puede escribir ahí y plantar una ficha de admin con su authUid (probado en `rutas.supabase.test.ts`). Analytics ya no usa Firebase: `lib/analitica.ts` (gtag.js, mismo ID, mismo bloqueo por consentimiento; revocar apaga la medición). «Olvidé mi contraseña»: el correo vuelve a `/login` con la sesión de recuperación y la
+pantalla pide la contraseña nueva (`hayEnlaceDeRecuperacion` / `fijarClaveNueva`). **Pruebas** (necesitan un stack: `scripts/adaptadores/stack-descartable.sh up supabase/migrations`, ver `docs/servidor/supabase.md`):
+`npm run test:supabase` (contrato de datos y las rutas `/api` contra GoTrue y PostgREST de verdad; `*.supabase.test.ts`, `npm test` no las corre) y `npm run test:e2e:supabase` (`e2e-supabase/`: ingreso,
+recuperación, ficha, cita, pago, chat en vivo, reserva online y demo con el build `supabase`, que pisa `.next`). `lib/server/stack-de-prueba.ts` son ayudas de prueba, no se importan desde la app.
+**`mundo` (la clínica de prueba) se comparte entre los archivos de un mismo worker: un paciente sin `phone` o `document` que deje una prueba rompe la lista de pacientes en la siguiente** (la página llama `p.phone.includes`).
+
 **Servidor propio: Coolify + túnel de Cloudflare (17-oct-2026, fase A)** — spec en `docs/superpowers/specs/2026-10-17-plataforma-coolify-tunel-design.md`
 (actualiza el del 9-oct en lo que cambió al existir el servidor: el GMKtec de Croman, sin puertos abiertos). `Dockerfile` en tres etapas sobre `output: "standalone"`
 (usuario `node`, `HOSTNAME=0.0.0.0`, `HEALTHCHECK` contra `GET /api/health`, pública y sin datos); las `NEXT_PUBLIC_*` se hornean en el build, el resto se lee al arrancar
@@ -364,6 +380,9 @@ Docker crea directorios vacíos; los archivos van como `configs` con `content:` 
 la app: si depende de un alias de la red `default`, declaráselo; (3) los dominios de un compose se agregan en «Domains» eligiendo el servicio y el puerto, y un dominio no puede estar en dos recursos
 a la vez (falla en silencio). El registro de GoTrue queda habilitado solo por la sesión anónima de la demo (con `DISABLE_SIGNUP=true` también se rechaza esa): un hook `before-user-created` (`public.hook_antes_de_crear_usuario`) rechaza con 403 todo registro por correo, y las cuentas reales las crea el servidor con la API de administración. Respaldos y corte: `docs/servidor/respaldos.md`
 y `docs/servidor/corte.md`.
+**Correo (18-oct-2026):** toda salida pasa por `lib/server/correo.ts` (SMTP propio; Resend solo como compatibilidad). El remitente se elige con `enviarCorreo({ …, remitente })` entre los de `REMITENTES`
+(`hola`: conversación, `info`: comercial, `no-reply`: avisos automáticos); la dirección de cada uno es `EMAIL_FROM_<ID>` en Coolify y, sin ella, sale `EMAIL_FROM`. Un aviso automático
+nunca lleva respuestas a Novum: `no-reply` + `Reply-To` de la clínica. Esquema, plan de ImprovMX, DKIM pendiente y cómo sumar una dirección: `docs/servidor/correo-propio.md`.
 
 ## Diferenciadores (cross-repo con Botika)
 

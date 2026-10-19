@@ -1,6 +1,7 @@
+import { correoConfigurado, enviarCorreo } from "@/lib/server/correo";
 import { NextRequest, NextResponse } from "next/server";
 import { clientIp, rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
-import { setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
+import { setDocument, isServerFirestoreConfigured } from "@/lib/server/datos";
 
 /**
  * Pedido de acceso desde la landing — PÚBLICO, sin sesión.
@@ -13,10 +14,10 @@ import { setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore
  *
  * El lead se GUARDA en Firestore (colección raíz `leads`, solo el usuario de
  * servicio) y ADEMÁS se avisa por correo. El correo es la notificación, no el
- * registro: si Resend falla o falta una env, el pedido igual queda.
+ * registro: si el correo falla o falta una variable, el pedido igual queda.
  *
- * Env (Vercel): RESEND_API_KEY, EMAIL_FROM, LEADS_EMAIL (a dónde llegan) +
- * SERVICE_USER_EMAIL/PASSWORD y FIREBASE_WEB_API_KEY (para guardar el lead).
+ * Configuración: cuenta SMTP (o Resend), EMAIL_FROM y LEADS_EMAIL.
+ * El registro del lead usa el backend de datos configurado en el servidor.
  */
 export const runtime = "nodejs";
 
@@ -96,11 +97,9 @@ export async function POST(req: NextRequest) {
 
   /* 2) Avisar por correo. Es la notificación, ya no el registro. */
   let enviado = false;
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
   const to = process.env.LEADS_EMAIL;
-  if (!apiKey || !from || !to) {
-    console.error("[Contacto] faltan envs de correo: RESEND_API_KEY / EMAIL_FROM / LEADS_EMAIL");
+  if (!correoConfigurado("hola") || !to) {
+    console.error("[Contacto] cuenta de correo o destino de ventas sin configurar");
   } else {
     const filas: [string, string][] = [
       ["Nombre", nombre], ["Clínica", clinica || "—"],
@@ -108,26 +107,20 @@ export async function POST(req: NextRequest) {
       ["Plan", plan || "—"],
     ];
     try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          from,
+      await enviarCorreo({
+          remitente: "hola",
           to: [to],
           reply_to: email, // responder desde la bandeja le contesta a quien pidió
-          subject: `Pedido de acceso — ${nombre}${clinica ? ` (${clinica})` : ""}`,
+          subject: `Pedido de acceso — ${nombre}${clinica ? ` (${clinica})` : ""}`.slice(0, 200),
           html: `<h2 style="font:600 18px system-ui;margin:0 0 12px">Nuevo pedido de acceso</h2>
 <table style="font:14px system-ui;border-collapse:collapse">
 ${filas.map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#5B6B85">${k}</td><td style="padding:4px 0"><b>${esc(v)}</b></td></tr>`).join("")}
 </table>
 ${mensaje ? `<p style="font:14px system-ui;margin:16px 0 0;white-space:pre-wrap">${esc(mensaje)}</p>` : ""}`,
-        }),
-        signal: AbortSignal.timeout(20_000),
       });
-      enviado = res.ok;
-      if (!res.ok) console.error("[Contacto] Resend:", res.status);
+      enviado = true;
     } catch (e) {
-      console.error("[Contacto] error al enviar:", e);
+      console.error("[Contacto] el servidor no confirmó el envío");
     }
   }
 

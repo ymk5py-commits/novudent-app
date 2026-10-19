@@ -2,7 +2,7 @@
  *  La respuesta se escribe con el usuario de servicio (el paciente no tiene sesión),
  *  mismo patrón que /api/reservas. */
 import { NextResponse } from "next/server";
-import { getDocument, setDocument, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
+import { getDocument, setDocument, isServerFirestoreConfigured } from "@/lib/server/datos";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 import { isValidId } from "@/lib/server/ids";
 

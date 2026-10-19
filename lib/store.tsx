@@ -400,6 +400,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           try { localStorage.removeItem(DB_KEY); } catch {}
           setSession(null);
         }
+      }).catch(() => {
+        // No se pudo comprobar quién es (con Supabase: la base no contestó y no hay un id recordado de esta sesión). No se borra la sesión guardada: con la base de
+        // vuelta se restaura en la próxima carga. Mientras tanto la persona ve el ingreso.
       });
     } else if (guardada) {
       setSession(guardada);

@@ -1,8 +1,9 @@
+import { correoConfigurado, enviarCorreo } from "@/lib/server/correo";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
 import { requireMiembro } from "@/lib/server/require-feature";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
-import { getDocument, isServerFirestoreConfigured, patchFields } from "@/lib/server/firestore-rest";
+import { getDocument, isServerFirestoreConfigured, patchFields } from "@/lib/server/datos";
 import { isValidId, isValidToken } from "@/lib/server/ids";
 import { linkConfirmacion as linkConfirmacionDe, puedeResponder } from "@/lib/confirmacionCita";
 import { newSignToken } from "@/lib/firma";
@@ -13,7 +14,7 @@ import type { AppointmentStatus, Role } from "@/lib/types";
 
 /**
  * Aviso al paciente por correo sobre su cita (agenda: «Enviar al correo» y «Notificar
- * por mail»). Manda por Resend (https://resend.com/docs/api-reference/emails/send-email).
+ * por mail»). Usa la cuenta de correo configurada en el servidor.
  *
  * POST { appointmentId, tipo: "confirmacion" | "estado" } → { ok }
  *
@@ -21,7 +22,7 @@ import type { AppointmentStatus, Role } from "@/lib/types";
  * clínica; el navegador solo dice QUÉ cita y QUÉ aviso. Así la ruta no sirve para
  * mandar texto arbitrario en nombre de la clínica.
  *
- * Env: RESEND_API_KEY y EMAIL_FROM («Clínica <avisos@dominio-verificado>»). Sin ellas
+ * Configuración: SMTP y EMAIL_FROM (o Resend para compatibilidad). Sin cuenta
  * responde 503 con un mensaje claro: el resto de la agenda funciona igual.
  */
 
@@ -40,9 +41,7 @@ export async function POST(req: NextRequest) {
   const rlIp = await rateLimit(`correo-cita-ip:${clientIp(req)}`, { limit: 60, windowMs: 60_000 });
   if (!rlIp.ok) return tooManyRequests(rlIp.retryAfterSec);
 
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
-  if (!apiKey || !from || !isServerFirestoreConfigured()) {
+  if (!correoConfigurado("no-reply") || !isServerFirestoreConfigured()) {
     return NextResponse.json({ ok: false, error: "El envío de correos todavía no está configurado." }, { status: 503 });
   }
 
@@ -100,27 +99,16 @@ export async function POST(req: NextRequest) {
       zonaHoraria: config.timezone,
       linkConfirmacion,
     });
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from,
-        to: [email],
-        subject: correo.asunto,
-        text: correo.texto,
-        html: correo.html,
-        ...(config.email ? { reply_to: config.email } : {}),
-      }),
-      signal: AbortSignal.timeout(15_000),
+    // Aviso automático: sale de no-reply y, si la clínica tiene correo propio, las respuestas del paciente van a la clínica
+    // (nunca a Novum: son datos de salud de esa clínica).
+    await enviarCorreo({
+      to: [email], subject: correo.asunto, text: correo.texto, html: correo.html, remitente: "no-reply",
+      ...(config.email ? { reply_to: config.email } : {}),
     });
-    if (!res.ok) {
-      console.error("[correo-cita] Resend", res.status, (await res.text().catch(() => "")).slice(0, 300));
-      return NextResponse.json({ ok: false, error: "El proveedor de correo no aceptó el envío. Probá de nuevo en un rato." }, { status: 502 });
-    }
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof AuthError) return NextResponse.json({ ok: false, error: e.message }, { status: e.status });
-    console.error("[correo-cita]", e);
+    console.error("[correo-cita] el servidor no confirmó el envío");
     return NextResponse.json({ ok: false, error: "No se pudo enviar el correo." }, { status: 502 });
   }
 }

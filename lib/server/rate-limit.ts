@@ -1,7 +1,10 @@
 /**
  * Rate limiting para las rutas /api/*.
  *
- * DOS BACKENDS, MISMA FIRMA (async):
+ * BACKENDS, MISMA FIRMA (async):
+ *
+ * REDIS_URL: Redis propio, con ventana atómica y reloj del servidor compartido.
+ * Tiene prioridad sobre la configuración REST anterior de Upstash.
  *
  * 1) DISTRIBUIDO — si están UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
  *    (env en Vercel), el contador vive en Redis y comparte cuota entre TODAS
@@ -136,14 +139,19 @@ export async function rateLimit(
   opts: { limit: number; windowMs: number },
   now: number = Date.now()
 ): Promise<RateResult> {
+  const propia = process.env.REDIS_URL;
   const cfg = redisConfig();
-  if (!cfg) return memoryRate(key, opts, now);
+  if (!propia && !cfg) return memoryRate(key, opts, now);
   try {
-    return await upstashRate(cfg, `rl:${key}`, opts, now);
+    if (propia) {
+      const { redisRate } = await import("./redis-rate");
+      return await redisRate(propia, key, opts);
+    }
+    return await upstashRate(cfg!, `rl:${key}`, opts, now);
   } catch (e) {
     // Warn como mucho una vez por minuto: no inundar los logs de Vercel.
     if (now - lastRedisWarn > 60_000) {
-      console.warn("[rate-limit] Redis caído — fail-open:", e instanceof Error ? e.message : e);
+      console.warn("[rate-limit] Redis no disponible; límite local de respaldo activo");
       lastRedisWarn = now;
     }
     return memoryRate(key, opts, now);

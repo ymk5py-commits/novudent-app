@@ -25,6 +25,8 @@ pública**: cambia de dónde lee y escribe la app. Eso lo hace un redeploy con o
 
 ## Después
 
+- Siguiente etapa solicitada: [escalabilidad, caché, colas y balanceo](escalabilidad.md), después de verificar migración y correo.
+
 - Firestore queda **solo lectura 14 días**; después se archiva y se apaga Firebase (Firestore, Auth y App Check) y se borran las variables `FIREBASE_*` y `SERVICE_USER_*` de Coolify.
 - **Vercel:** los proyectos están pausados; se borran pasados esos 14 días. El dominio ya no apunta ahí.
 - **Marcha atrás:** limpia solo *dentro de la ventana* (nada se escribió todavía en Supabase): se republican las reglas viejas de Firestore y se vuelve a desplegar la app con `NEXT_PUBLIC_BACKEND=firestore`. Pasada la ventana no hay retorno automático; el riesgo se cubre con los simulacros.

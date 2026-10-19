@@ -15,7 +15,7 @@ vi.mock("@/lib/server/auth", () => {
   return { AuthError, verifyIdToken: vi.fn(async () => ({ uid: "u1" })) };
 });
 vi.mock("@/lib/server/require-feature", () => ({
-  requireFeature: vi.fn(async () => ({ uid: "u1", clinicId: "c1", role: "admin" })),
+  requireFeature: vi.fn(async () => ({ uid: "u1", userId: "u1", clinicId: "c1", role: "admin" })),
 }));
 vi.mock("@/lib/server/rate-limit", () => ({
   rateLimit: vi.fn(async () => ({ ok: true })),
@@ -44,7 +44,7 @@ beforeEach(() => {
     return respuestaGemini();
   }));
   vi.mocked(verifyIdToken).mockResolvedValue({ uid: "u1" } as never);
-  vi.mocked(requireFeature).mockResolvedValue({ uid: "u1", clinicId: "c1", role: "admin" });
+  vi.mocked(requireFeature).mockResolvedValue({ uid: "u1", userId: "u1", clinicId: "c1", role: "admin" });
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
@@ -163,7 +163,7 @@ describe("POST /api/ia/agenda-resumen", () => {
   });
 
   it("…y NO viaja si el rol no los ve, aunque el navegador la mande", async () => {
-    vi.mocked(requireFeature).mockResolvedValue({ uid: "u1", clinicId: "c1", role: "receptionist" });
+    vi.mocked(requireFeature).mockResolvedValue({ uid: "u1", userId: "u1", clinicId: "c1", role: "receptionist" });
     await pedir("agenda-resumen", { datos });
     expect(JSON.stringify(aGemini()[0].body)).not.toContain("4567890");
   });

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, AuthError } from "@/lib/server/auth";
 import { requireFeature } from "@/lib/server/require-feature";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
-import { getDocument } from "@/lib/server/firestore-rest";
+import { getDocument } from "@/lib/server/datos";
 import { can, normalizarPermisos, type PermisosDeLaClinica } from "@/lib/rbac";
 import type { Role } from "@/lib/types";
 

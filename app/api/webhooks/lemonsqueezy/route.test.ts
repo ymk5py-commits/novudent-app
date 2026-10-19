@@ -23,7 +23,7 @@ const patchFields = vi.fn(async () => {});
 const docs: Record<string, Record<string, unknown> | null> = {};
 const getDocument = vi.fn(async (path: string) => docs[path] ?? null);
 
-vi.mock("@/lib/server/firestore-rest", () => ({
+vi.mock("@/lib/server/datos", () => ({
   setDocument: (...a: unknown[]) => setDocument(...(a as [])),
   getDocument: (...a: unknown[]) => getDocument(...(a as [string])),
   createIfAbsent: (...a: unknown[]) => createIfAbsent(...(a as [])),

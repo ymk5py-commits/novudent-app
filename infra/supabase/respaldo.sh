@@ -26,10 +26,12 @@ RETENCION_R2_MENSUAL_DIAS="${RETENCION_R2_MENSUAL_DIAS:-400}"
 RCLONE_IMAGEN="rclone/rclone:1.68.2"
 mkdir -p "$DIR_LOCAL"; chmod 700 "$DIR_LOCAL"
 log() { printf '%s  %s\n' "$(date '+%F %T')" "$*"; }
+exec 9>"$DIR_LOCAL/.respaldo.lock"
+flock -n 9 || { log "ya hay un respaldo en curso"; exit 75; }
 
 # 1) La base: el único contenedor db-<uuid> que levanta Coolify (o el indicado).
 if [ -n "${DB_CONTENEDOR:-}" ]; then DB="$DB_CONTENEDOR"; else
-  mapfile -t candidatos < <(docker ps --format '{{.Names}}' | grep -E '^db-[a-z0-9]{24}-' || true)
+  mapfile -t candidatos < <(docker ps --format '{{.Names}}' | grep -E '^db-[a-z0-9]+-' | grep -F "db-${DB_RECURSO:-}" || true)
   [ "${#candidatos[@]}" -eq 1 ] || { echo "Esperaba exactamente un contenedor db-<uuid> y hay ${#candidatos[@]}: definí DB_CONTENEDOR" >&2; exit 2; }
   DB="${candidatos[0]}"
 fi
@@ -45,7 +47,11 @@ mv "$RUTA.parcial" "$RUTA"; chmod 600 "$RUTA"
 log "volcado cifrado: $ARCHIVO ($(du -h "$RUTA" | cut -f1))"
 
 # 3) Comprobación: se descifra y se lista el contenido con pg_restore. Un archivo que no abre no es un respaldo.
-ENTRADAS="$(openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:RESPALDO_CLAVE < "$RUTA" | docker exec -i "$DB" pg_restore --list | grep -c -E '^[0-9]+;' || true)"
+if ! ENTRADAS="$(openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:RESPALDO_CLAVE < "$RUTA" | docker exec -i "$DB" pg_restore --list | awk '/^[0-9]+;/ {n++} END {print n+0}')"; then
+  echo "Falló la comprobación del respaldo: NO se sube" >&2
+  rm -f "$RUTA"
+  exit 1
+fi
 [ "$ENTRADAS" -gt 50 ] || { echo "El respaldo no se puede leer o está vacío ($ENTRADAS entradas): NO se sube" >&2; rm -f "$RUTA"; exit 1; }
 sha256sum "$RUTA" | awk '{print $1}' > "$RUTA.sha256"
 log "comprobado: $ENTRADAS entradas en el volcado"

@@ -21,8 +21,13 @@ sleep 5
 # en una recuperación real alcanza con levantar el stack (Realtime lo crea solo) antes de restaurar.
 docker exec "$NOMBRE" psql -U supabase_admin -d postgres -qc "do \$\$ begin if not exists (select 1 from pg_roles where rolname = 'supabase_realtime_admin') then create role supabase_realtime_admin nologin; end if; end \$\$;"
 echo "== Restaurando =="
-openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:RESPALDO_CLAVE < "$ARCHIVO" \
-  | docker exec -i "$NOMBRE" pg_restore -U supabase_admin -d postgres --clean --if-exists --no-owner 2>"/tmp/$NOMBRE.err" || true
+if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:RESPALDO_CLAVE < "$ARCHIVO" \
+  | docker exec -i "$NOMBRE" pg_restore -U supabase_admin -d postgres --clean --if-exists --no-owner 2>"/tmp/$NOMBRE.err"; then
+  cat "/tmp/$NOMBRE.err" >&2
+  rm -f "/tmp/$NOMBRE.err"
+  echo "La restauración falló: el respaldo no está validado." >&2
+  exit 1
+fi
 ERRORES="$(grep -c -i -E 'error' "/tmp/$NOMBRE.err" || true)"
 q() { docker exec "$NOMBRE" psql -U supabase_admin -d postgres -At -c "$1"; }
 echo "tablas en public:        $(q "select count(*) from information_schema.tables where table_schema='public'")"
@@ -30,7 +35,9 @@ echo "usuarios en auth.users:  $(q "select count(*) from auth.users")"
 echo "filas por tabla de public (mayores a 0):"
 q "select relname || ': ' || n_live_tup from pg_stat_user_tables where schemaname='public' and n_live_tup > 0 order by 1" | sed 's/^/   /'
 echo "mensajes de error del restore: $ERRORES (los de objetos propios del sistema, p. ej. extensiones o roles que ya existen, son normales; el resto hay que mirarlo)"
-grep -i -E 'error' "/tmp/$NOMBRE.err" | sort | uniq -c | sort -rn | head -8 | cut -c1-220 | sed 's/^/   /'
+if [ "$ERRORES" -gt 0 ]; then
+  grep -i -E 'error' "/tmp/$NOMBRE.err" | sort | uniq -c | sort -rn | head -8 | cut -c1-220 | sed 's/^/   /'
+fi
 
 rm -f "/tmp/$NOMBRE.err"
 echo "Restauración de prueba terminada; el contenedor se borra al salir."

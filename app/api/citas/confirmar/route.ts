@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDocument, isServerFirestoreConfigured, patchFields, queryWhere } from "@/lib/server/firestore-rest";
+import { getDocument, isServerFirestoreConfigured, patchFields, queryWhere } from "@/lib/server/datos";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 import { isValidId, isValidToken } from "@/lib/server/ids";
 import { canalDe, puedeResponder, respuestaCita, type AccionConfirmacion } from "@/lib/confirmacionCita";
@@ -19,7 +19,7 @@ import { canalDe, puedeResponder, respuestaCita, type AccionConfirmacion } from 
  * Seguridad (mismo esquema que /api/firmar):
  *   - El token ES la credencial; se busca por igualdad en Firestore, nunca se enumera.
  *   - Un fallo de validación o un token que no existe devuelven el mismo 404 genérico.
- *   - Rate limit por IP + token. Escribe el usuario de servicio (lib/server/firestore-rest).
+ *   - Rate limit por IP + token. Escribe con la credencial del servidor (lib/server/datos).
  */
 
 async function findByToken(cid: string, token: string) {

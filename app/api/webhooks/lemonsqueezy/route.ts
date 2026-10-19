@@ -18,7 +18,7 @@ import { verifyLsSignature, subscriptionFromLsPayload, tokenDePayload, puedeApli
 import { isValidToken, isValidId } from "@/lib/server/ids";
 import { isSubscriptionActive } from "@/lib/subscription";
 import type { Subscription } from "@/lib/types";
-import { setDocument, getDocument, createIfAbsent, patchFields, isServerFirestoreConfigured } from "@/lib/server/firestore-rest";
+import { setDocument, getDocument, createIfAbsent, patchFields, isServerFirestoreConfigured } from "@/lib/server/datos";
 import { rateLimit, clientIp, tooManyRequests } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
