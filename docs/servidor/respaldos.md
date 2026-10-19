@@ -1,8 +1,8 @@
 # Respaldos de la base de Supabase de Novudent
 
-**Estado (17-oct-2026):** los scripts están hechos y probados (respaldo cifrado + restauración en una base descartable, 0 errores); **todavía no hay bucket de R2 ni temporizador**: faltan
-las credenciales de Croman (abajo). Sin pacientes reales hoy, un volcado diario alcanza; el objetivo del spec (RPO ≤ 15 min con archivado continuo de WAL y `pgBackRest`) queda como mejora
-para cuando haya datos reales: **hoy el RPO es de 24 horas**.
+**Estado verificado (18-oct-2026):** temporizador diario activo a las 03:30, con ejecución manual exitosa y restauración en una base descartable: 41 tablas, cero errores. Se guardó una copia cifrada fuera del servidor, en la Mac, junto con la clave en archivos privados; SHA-256 coincide. La base destino contiene la carga inicial de datos reales, todavía pendiente de sincronización final.
+
+**R2 sigue sin habilitar:** el panel pide activar la suscripción y aceptar sus términos. No hay copia externa automática. El objetivo del temporizador local es un intervalo de 24 horas; la protección frente a pérdida del servidor depende por ahora de la última copia manual externa. WAL/PITR y RPO de 15 minutos siguen pendientes.
 
 | Script | Qué hace |
 |---|---|
@@ -33,7 +33,8 @@ Servicio y temporizador **de usuario** de systemd (el servidor ya corre `cloudfl
 Description=Respaldo cifrado de la base de Supabase de Novudent
 [Service]
 Type=oneshot
-ExecStart=%h/novudent-infra/respaldo.sh
+ExecStart=/usr/bin/sg docker -c %h/novudent-infra/respaldo.sh
+UMask=0077
 ```
 
 `~/.config/systemd/user/respaldo-novudent.timer`:
@@ -50,6 +51,8 @@ WantedBy=timers.target
 
 `systemctl --user enable --now respaldo-novudent.timer` (y una sola vez `loginctl enable-linger novum` para que corra sin sesión abierta; pide `sudo`, lo teclea Croman).
 
+En este servidor `Linger=yes` ya estaba habilitado. `sg docker` permite al gestor de usuario usar el grupo Docker actualizado. La configuración privada fija `DB_RECURSO` al recurso de Novudent para seleccionar su contenedor aunque cambie el sufijo durante un despliegue. Un bloqueo `flock` impide ejecutar dos respaldos a la vez.
+
 ## Recuperación real
 
 1. Levantar el stack (Coolify › `supabase-prueba` › Deploy): Realtime crea solo su rol `supabase_realtime_admin`.
@@ -59,5 +62,5 @@ WantedBy=timers.target
 ## Riesgos que quedan
 
 - **El servidor está en una casa:** luz e internet. Con R2 los datos sobreviven; el servicio no. Un UPS chico es lo más barato que mejora esto.
-- **RPO de 24 h** hasta que haya WAL archivado.
+- **Copia externa manual:** R2 pendiente; un temporizador local no cubre pérdida del servidor. Falta archivado de WAL para reducir el intervalo de recuperación.
 - **Una sola frase de cifrado:** perderla = perder todos los respaldos.

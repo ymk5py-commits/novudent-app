@@ -1,6 +1,19 @@
 # Escalabilidad de Novum y Novudent
 
-Pedido del 18-oct-2026: aplicar los ocho puntos enviados por Croman **después de completar la migración y el correo**. Este documento registra trabajo pendiente; no acredita despliegues ni capacidad de carga.
+Pedido del 18-oct-2026: aplicar los ocho puntos enviados por Croman **después de completar la migración y el correo**. Este documento distingue las entregas verificadas del trabajo pendiente; no acredita una capacidad de carga determinada.
+
+## Entrega desplegada el 18-oct-2026
+
+- Aplicación pública actualizada en Coolify desde `supabase-servidor`, commit público `35f8a63`. Sigue con `NEXT_PUBLIC_BACKEND=firestore`: SMTP y recuperación aún no están verificados. `main` y `servidor-propio` no se modificaron.
+- Redis propio desplegado como recurso separado `novudent-redis`, autenticado, sin puertos publicados, con límite de memoria. Solo guarda contadores con claves SHA-256, sin documentos clínicos. `REDIS_URL` selecciona el transporte nativo; conserva respaldo local en caso de indisponibilidad.
+- Ventana Redis atómica con reloj compartido. Prueba contra Redis real: exactamente 10 admitidos de 100 concurrentes. Prueba con dos procesos de la aplicación: cinco respuestas 200 y tres 429 al alternar ocho pedidos con cuota cinco; identidad sintética y trampa de bots, sin crear pacientes, leads ni correos. La segunda instancia de prueba se eliminó al terminar.
+- CDN comprobado para un estático versionado de la página pública: `public, max-age=31536000, immutable`, primera consulta `MISS` y siguiente `HIT`. No se añadieron reglas de caché para información privada.
+- Respaldo diario y copia externa manual verificados: ver [respaldos](respaldos.md). R2 permanece pendiente de activación.
+- Validación: TypeScript, 2.144 pruebas generales y build de producción aprobados; dos pruebas adicionales con Redis real aprobadas. Página principal, login, reserva demo y salud públicas responden 200; correo sin sesión devuelve 401.
+
+Esto **no completa los ocho puntos**: siguen pendientes cola persistente y worker, paginación de interfaz/carga diferida, optimización medida de consultas, cuotas compartidas de Kong (aún locales), balanceo permanente con varias instancias, segundo host y evaluación de réplicas/particionado. No se acreditó una capacidad de carga determinada.
+
+Referencias de implementación: [cliente oficial Redis](https://redis.io/docs/latest/develop/clients/nodejs/connect/) y [operación de Next.js en infraestructura propia](https://nextjs.org/docs/app/guides/self-hosting).
 
 ## Orden de ejecución
 

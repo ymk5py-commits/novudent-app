@@ -61,3 +61,6 @@ Las genera Coolify al crear el servicio de Supabase (ver `supabase.md`); ninguna
 ## Solo para pruebas (no van en producción)
 
 `FIRESTORE_EMULATOR_HOST`, `PARITY_CAPTURE`.
+# Redis propio (18-oct-2026)
+
+`REDIS_URL` se configura **solo en ejecución** en Coolify; contiene la credencial del recurso privado `novudent-redis`. No es una variable `NEXT_PUBLIC_*` ni un argumento de build. El limitador usa operaciones atómicas compartidas entre procesos; si Redis falla, aplica el límite local y emite un aviso genérico. No se usa el Redis interno de Coolify.
